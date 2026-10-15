@@ -31,22 +31,22 @@ and `~/Library/Application Support/Claude`.
 The rule is to prefer documented surfaces and to treat undocumented files as
 read-only, version-gated sources that can break on any update.
 
-| Source | What it gives us | Documented |
-|---|---|---|
-| Agent SDK `@anthropic-ai/claude-agent-sdk` | Full control of sessions Overlord launches: streaming messages, `interrupt()`, `setModel()`, `setPermissionMode()`, `applyFlagSettings()`, `getContextUsage()`, `mcpServerStatus()`, `rewindFiles()`, `canUseTool` permission callback, task started/progress/notification events, rate limit events | Yes |
-| Hooks (33 events) | Live events from every session, including ones started in a terminal. `InstructionsLoaded` gives `file_path`, `memory_type`, `load_reason`, `trigger_file_path`, `parent_file_path`. `SubagentStart`/`SubagentStop` give the agent tree. `PermissionRequest` lets us approve from the UI | Yes |
-| OpenTelemetry | `claude_code.cost.usage` and `token.usage` by model, agent, skill, plugin and MCP tool. `api_request`, `tool_result`, `tool_decision` events. Beta traces with `ttft_ms` per request | Yes |
-| Status line payload | Context window use, prompt cache hit ratio and miss causes, rate limits (5 hour, 7 day), cost | Yes |
-| `claude agents --json` | Active interactive and background sessions: `id`, `kind`, `pid`, `cwd`, `state`, `status` | Yes |
-| Settings files, `.claude/` dirs, skills, agents, output styles, plugins | Static config inventory | Yes |
-| `~/.claude/projects/<project>/<session>.jsonl` | Full transcript: messages, usage per request, `instructions`, `nested_memory`, `prompt_snapshot` (the exact system prompt), skill listings, invoked skills, MCP instruction deltas, permission mode changes | No, docs say the format changes between versions |
-| `.../<session>/subagents/agent-<id>.jsonl` and `.meta.json` | Subagent transcripts, type, description, spawn depth, and the `toolUseId` that links back to the parent | No |
-| `~/.claude/sessions/<pid>.json` | Live session registry with status and a messaging socket path | No |
-| `~/.claude/stats-cache.json` | Daily activity, tokens per model, hour of day counts | No |
-| `~/.claude.json` | MCP servers, per-project state, cached feature flags (`cachedGrowthBookFeatures`). Also OAuth account and IDs, which we never copy anywhere | No |
-| `~/Library/Application Support/Claude/claude-code-sessions/` | Desktop Code tab sessions, each with a `cliSessionId` that maps to a transcript in `~/.claude/projects` | No |
-| `~/Library/Application Support/Claude/local-agent-mode-sessions/` | Cowork sessions: title, cwd, model, system prompt, MCP tools, `audit.jsonl`, outputs | No |
-| claude.ai data export (`conversations.json`) | claude.ai chat history, imported by hand | Partly |
+| Source                                                                  | What it gives us                                                                                                                                                                                                                                                                                     | Documented                                       |
+| ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| Agent SDK `@anthropic-ai/claude-agent-sdk`                              | Full control of sessions Overlord launches: streaming messages, `interrupt()`, `setModel()`, `setPermissionMode()`, `applyFlagSettings()`, `getContextUsage()`, `mcpServerStatus()`, `rewindFiles()`, `canUseTool` permission callback, task started/progress/notification events, rate limit events | Yes                                              |
+| Hooks (33 events)                                                       | Live events from every session, including ones started in a terminal. `InstructionsLoaded` gives `file_path`, `memory_type`, `load_reason`, `trigger_file_path`, `parent_file_path`. `SubagentStart`/`SubagentStop` give the agent tree. `PermissionRequest` lets us approve from the UI             | Yes                                              |
+| OpenTelemetry                                                           | `claude_code.cost.usage` and `token.usage` by model, agent, skill, plugin and MCP tool. `api_request`, `tool_result`, `tool_decision` events. Beta traces with `ttft_ms` per request                                                                                                                 | Yes                                              |
+| Status line payload                                                     | Context window use, prompt cache hit ratio and miss causes, rate limits (5 hour, 7 day), cost                                                                                                                                                                                                        | Yes                                              |
+| `claude agents --json`                                                  | Active interactive and background sessions: `id`, `kind`, `pid`, `cwd`, `state`, `status`                                                                                                                                                                                                            | Yes                                              |
+| Settings files, `.claude/` dirs, skills, agents, output styles, plugins | Static config inventory                                                                                                                                                                                                                                                                              | Yes                                              |
+| `~/.claude/projects/<project>/<session>.jsonl`                          | Full transcript: messages, usage per request, `instructions`, `nested_memory`, `prompt_snapshot` (the exact system prompt), skill listings, invoked skills, MCP instruction deltas, permission mode changes                                                                                          | No, docs say the format changes between versions |
+| `.../<session>/subagents/agent-<id>.jsonl` and `.meta.json`             | Subagent transcripts, type, description, spawn depth, and the `toolUseId` that links back to the parent                                                                                                                                                                                              | No                                               |
+| `~/.claude/sessions/<pid>.json`                                         | Live session registry with status and a messaging socket path                                                                                                                                                                                                                                        | No                                               |
+| `~/.claude/stats-cache.json`                                            | Daily activity, tokens per model, hour of day counts                                                                                                                                                                                                                                                 | No                                               |
+| `~/.claude.json`                                                        | MCP servers, per-project state, cached feature flags (`cachedGrowthBookFeatures`). Also OAuth account and IDs, which we never copy anywhere                                                                                                                                                          | No                                               |
+| `~/Library/Application Support/Claude/claude-code-sessions/`            | Desktop Code tab sessions, each with a `cliSessionId` that maps to a transcript in `~/.claude/projects`                                                                                                                                                                                              | No                                               |
+| `~/Library/Application Support/Claude/local-agent-mode-sessions/`       | Cowork sessions: title, cwd, model, system prompt, MCP tools, `audit.jsonl`, outputs                                                                                                                                                                                                                 | No                                               |
+| claude.ai data export (`conversations.json`)                            | claude.ai chat history, imported by hand                                                                                                                                                                                                                                                             | Partly                                           |
 
 Every undocumented parser gets a version range it was tested against. Outside
 that range Overlord shows the data with a "format not verified" badge instead
@@ -54,7 +54,7 @@ of silently showing wrong numbers.
 
 ## Architecture
 
-```
+```text
 VS Code extension host (Node)
   core/          pure TypeScript, no vscode imports, 100% unit tested
     sources/     transcript tailer, session registry, hook receiver,
@@ -200,13 +200,13 @@ permissions, UI).
 
 One list across every surface, with handoff where Claude Code supports it.
 
-| Surface | How we list it | Handoff |
-|---|---|---|
-| CLI and Overlord sessions | transcripts, `claude agents --json` | resume, fork |
-| Desktop Code tab | `claude-code-sessions/*.json` → `cliSessionId` → transcript | open in Desktop with `claude --desktop --resume <id>` |
-| Cowork | `local-agent-mode-sessions/*.json` and `audit.jsonl` | hand a session to Desktop with `claude --desktop`, more once M0 finds what Cowork accepts |
-| Claude Code on the web | SDK `remote_agent` tasks, `--cloud` sessions we created | pull to local with `claude --teleport <id>`, start a cloud session with `claude --cloud`, steer a local session from the web or phone with `--remote-control` |
-| claude.ai chats | import of the official data export | view and search only |
+| Surface                   | How we list it                                              | Handoff                                                                                                                                                       |
+| ------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| CLI and Overlord sessions | transcripts, `claude agents --json`                         | resume, fork                                                                                                                                                  |
+| Desktop Code tab          | `claude-code-sessions/*.json` → `cliSessionId` → transcript | open in Desktop with `claude --desktop --resume <id>`                                                                                                         |
+| Cowork                    | `local-agent-mode-sessions/*.json` and `audit.jsonl`        | hand a session to Desktop with `claude --desktop`, more once M0 finds what Cowork accepts                                                                     |
+| Claude Code on the web    | SDK `remote_agent` tasks, `--cloud` sessions we created     | pull to local with `claude --teleport <id>`, start a cloud session with `claude --cloud`, steer a local session from the web or phone with `--remote-control` |
+| claude.ai chats           | import of the official data export                          | view and search only                                                                                                                                          |
 
 What is not possible yet, so we are clear going in:
 
@@ -226,17 +226,17 @@ What is not possible yet, so we are clear going in:
 
 Every config item on the machine in one tree, each with a badge:
 
-| Badge | Meaning | Example on this machine |
-|---|---|---|
-| Versioned | in the config repo, clean | `~/.claude/CLAUDE.md`, `settings.json`, `writing-voice` skill |
-| Modified | in the config repo with uncommitted changes | settings Claude wrote with `/config` |
-| External repo | symlink into another git repo | `canvas` skill from `~/repos/edutools` |
-| Local only | not versioned anywhere | per-project auto memory |
-| Cloud synced | pushed from claude.ai | `~/.claude/skills/synced/` |
-| Plugin | provided by an installed plugin | `pyright-lsp`, `clangd-lsp` |
-| Managed | from managed policy | none here |
-| Built-in | ships with Claude Code | Explore, Plan, claude-code-guide |
-| Secret | value lives in the OS keychain, repo has a placeholder | MCP tokens |
+| Badge         | Meaning                                                | Example on this machine                                       |
+| ------------- | ------------------------------------------------------ | ------------------------------------------------------------- |
+| Versioned     | in the config repo, clean                              | `~/.claude/CLAUDE.md`, `settings.json`, `writing-voice` skill |
+| Modified      | in the config repo with uncommitted changes            | settings Claude wrote with `/config`                          |
+| External repo | symlink into another git repo                          | `canvas` skill from `~/repos/edutools`                        |
+| Local only    | not versioned anywhere                                 | per-project auto memory                                       |
+| Cloud synced  | pushed from claude.ai                                  | `~/.claude/skills/synced/`                                    |
+| Plugin        | provided by an installed plugin                        | `pyright-lsp`, `clangd-lsp`                                   |
+| Managed       | from managed policy                                    | none here                                                     |
+| Built-in      | ships with Claude Code                                 | Explore, Plan, claude-code-guide                              |
+| Secret        | value lives in the OS keychain, repo has a placeholder | MCP tokens                                                    |
 
 Actions: adopt into the repo, push, pull, diff, revert, move between user and
 project scope.
@@ -260,7 +260,7 @@ use over time.
 
 A separate repo, `shanep/claude-config` by default, that Overlord owns:
 
-```
+```text
 claude-config/
   overlord.json         manifest: every item, its target path, how to link it
   global/CLAUDE.md
