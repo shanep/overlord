@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { ExecFunction } from '../surfaces/process.js';
 
-import { FinishedJobs } from './jobs.js';
+import { BackgroundJobs } from './jobs.js';
 
 interface State {
   readonly calls: string[][];
@@ -12,7 +12,7 @@ interface State {
   reply: unknown[] | Error;
 }
 
-function setup(): State & { readonly jobs: FinishedJobs } {
+function setup(): State & { readonly jobs: BackgroundJobs } {
   const state: State = { calls: [], kept: [], errors: [], changes: 0, reply: [] };
   const exec: ExecFunction = async (command, args) => {
     state.calls.push([command, ...args]);
@@ -22,7 +22,7 @@ function setup(): State & { readonly jobs: FinishedJobs } {
     }
     return { stdout: JSON.stringify(state.reply) };
   };
-  const jobs = new FinishedJobs({
+  const jobs = new BackgroundJobs({
     exec,
     claudeBin: async (): Promise<string> => {
       await Promise.resolve();
@@ -45,7 +45,7 @@ function setup(): State & { readonly jobs: FinishedJobs } {
 const DONE = { sessionId: 'd', kind: 'background', state: 'done', name: 'Done', startedAt: 5 };
 const WORKING = { sessionId: 'w', kind: 'background', state: 'working', startedAt: 6 };
 
-describe('FinishedJobs', () => {
+describe('BackgroundJobs', () => {
   it('asks claude for every job and keeps the finished ones, telling others only on change', async () => {
     const h = setup();
     h.reply = [DONE, WORKING];

@@ -123,7 +123,7 @@ describe('OverlordApp', () => {
     });
     await app.start();
     await app.start();
-    expect(intervals.map((entry) => entry.ms)).toStrictEqual([30_000, 5000, 15_000]);
+    expect(intervals.map((entry) => entry.ms)).toStrictEqual([30_000, 5000, 10_000]);
     const workspace = env.host.workspace ?? '';
     expect(watches.map((entry) => entry.file)).toStrictEqual([
       env.paths.userSettings,
@@ -178,7 +178,7 @@ describe('OverlordApp', () => {
     await app.dispose();
   });
 
-  it('keeps finished background jobs in the fleet as done until Claude Code forgets them', async () => {
+  it('keeps waiting and finished background jobs in the fleet until Claude Code forgets them', async () => {
     const env = await makeEnv();
     const line = JSON.stringify({ ...userPrompt('u1', 0, 'hello'), sessionId: 'abc' });
     await writeText(path.join(env.paths.projectsDir, '-work', 'abc.jsonl'), `${line}\n`);
@@ -202,6 +202,11 @@ describe('OverlordApp', () => {
         : [];
     };
     expect(fleet().toSorted((a, b) => a.localeCompare(b))).toStrictEqual(['abc done', 'gone done']);
+    // A job asking a question stays in the fleet as waiting however long it waits.
+    jobs = [{ sessionId: 'abc', kind: 'background', state: 'blocked', name: 'Ran' }];
+    await app.refresh();
+    expect(fleet()).toStrictEqual(['abc waiting']);
+    expect(app.statusLine()).toContain('1 waiting');
     jobs = [];
     await app.refresh();
     expect(fleet()).toStrictEqual([]);

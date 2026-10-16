@@ -1,4 +1,5 @@
-// The status bar text and the items of the "Running" tree view.
+// The status bar text, the Fleet's sidebar badge and the items of the
+// "Running" tree view.
 
 import type { AgentNode, SessionState, SessionSummary } from '../../shared/model.js';
 import type { FleetState } from '../../shared/protocol.js';
@@ -36,6 +37,22 @@ export function statusLine(fleet: FleetState): string {
     parts.push(`5h ${String(Math.round(fiveHour * 100))}%`);
   }
   return `Overlord: ${parts.join(', ')}`;
+}
+
+export interface WaitingBadge {
+  readonly value: number;
+  readonly tooltip: string;
+}
+
+/** The count on the Fleet's sidebar icon: sessions waiting on an answer or a permission, if any. */
+export function waitingBadge(fleet: FleetState): WaitingBadge | undefined {
+  const ids = new Set([
+    ...fleet.sessions.filter((session) => session.state === 'waiting').map((session) => session.id),
+    ...fleet.pendingPermissions.map((request) => request.sessionId),
+  ]);
+  return ids.size === 0
+    ? undefined
+    : { value: ids.size, tooltip: `${plural(ids.size, 'session')} waiting on you` };
 }
 
 function agentItem(agent: AgentNode): RunningItem {

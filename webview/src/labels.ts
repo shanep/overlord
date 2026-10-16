@@ -73,7 +73,7 @@ export const STATE_INFO: Readonly<Record<SessionState, StateInfo>> = {
     label: 'waiting',
     icon: '!',
     tone: 'warning',
-    description: 'Blocked on a permission prompt that needs your answer.',
+    description: 'Blocked on a permission prompt or a question that needs your answer.',
   },
   idle: {
     label: 'idle',

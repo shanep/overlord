@@ -29,7 +29,7 @@ import { ChangeHub } from './changes.js';
 import type { AppError } from './errors.js';
 import { ErrorLog } from './errors.js';
 import type { HostPort, PanelParams } from './host-port.js';
-import { FinishedJobs, JOBS_REFRESH_MS } from './jobs.js';
+import { BackgroundJobs, JOBS_REFRESH_MS } from './jobs.js';
 import { PermissionHub } from './permissions.js';
 import { PLACES_REFRESH_MS, SessionPlaces } from './places.js';
 import type { FileWatchFunction, IntervalFunction, KillFunction } from './process.js';
@@ -219,7 +219,7 @@ export class OverlordApp {
       onChange: notify,
       report,
     });
-    const jobs = new FinishedJobs({
+    const jobs = new BackgroundJobs({
       exec: surfacesExec,
       // Null means a bare claude the login shell cannot find either, so leave it to PATH.
       claudeBin: async (): Promise<string> =>

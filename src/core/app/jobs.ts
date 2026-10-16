@@ -1,9 +1,9 @@
-// Keeps the list of finished background jobs current for the fleet. Each
-// read runs `claude agents --json --all`, which takes a fraction of a second,
-// so it is polled less often than the session registry.
+// Keeps the background jobs waiting on the user or finished current for the
+// fleet. Each read runs `claude agents --json --all`, which takes a fraction
+// of a second, so it is polled a little less often than the session registry.
 
-import type { FinishedJob } from '../surfaces/jobs.js';
-import { finishedJobs } from '../surfaces/jobs.js';
+import type { BackgroundJob } from '../surfaces/jobs.js';
+import { backgroundJobs } from '../surfaces/jobs.js';
 import { readClaudeAgents } from '../surfaces/live.js';
 import type { ExecFunction } from '../surfaces/process.js';
 
@@ -17,18 +17,18 @@ export interface JobsDeps {
   readonly report: (source: string, message: string) => void;
 }
 
-export const JOBS_REFRESH_MS = 15_000;
+export const JOBS_REFRESH_MS = 10_000;
 const SOURCE = 'background jobs';
 
-export class FinishedJobs {
-  private current: readonly FinishedJob[] = [];
+export class BackgroundJobs {
+  private current: readonly BackgroundJob[] = [];
   private lastError: string | null = null;
   private running: Promise<void> | null = null;
 
   constructor(private readonly deps: JobsDeps) {}
 
-  /** Finished background jobs Claude Code still lists, oldest first. */
-  get value(): readonly FinishedJob[] {
+  /** Background jobs waiting on the user or finished, oldest first. */
+  get value(): readonly BackgroundJob[] {
     return this.current;
   }
 
@@ -55,7 +55,7 @@ export class FinishedJobs {
     if (result.items.length === 0 && result.errors.length > 0) {
       return;
     }
-    const next = finishedJobs(result.items);
+    const next = backgroundJobs(result.items);
     if (JSON.stringify(next) === JSON.stringify(this.current)) {
       return;
     }

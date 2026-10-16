@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { finishedJobs } from './jobs.js';
+import { backgroundJobs } from './jobs.js';
 import type { AgentEntry } from './live.js';
 
 function entry(sessionId: string, overrides: Partial<AgentEntry> = {}): AgentEntry {
@@ -18,24 +18,26 @@ function entry(sessionId: string, overrides: Partial<AgentEntry> = {}): AgentEnt
   };
 }
 
-describe('finishedJobs', () => {
-  it('keeps finished background jobs, oldest first, with stopped counted as done', () => {
+describe('backgroundJobs', () => {
+  it('keeps blocked and finished background jobs, oldest first, with stopped counted as done', () => {
     expect(
-      finishedJobs([
+      backgroundJobs([
         entry('late', { startedAt: 30 }),
+        entry('asking', { state: 'blocked', startedAt: 25 }),
         entry('stopped', { state: 'stopped', startedAt: 20 }),
         entry('broke', { state: 'failed', startedAt: null, cwd: null, name: null }),
       ]),
     ).toStrictEqual([
       { sessionId: 'broke', name: null, cwd: null, startedAt: null, state: 'failed' },
       { sessionId: 'stopped', name: 'job stopped', cwd: '/work', startedAt: 20, state: 'done' },
+      { sessionId: 'asking', name: 'job asking', cwd: '/work', startedAt: 25, state: 'waiting' },
       { sessionId: 'late', name: 'job late', cwd: '/work', startedAt: 30, state: 'done' },
     ]);
   });
 
   it('leaves out running jobs, jobs with no state and interactive sessions', () => {
     expect(
-      finishedJobs([
+      backgroundJobs([
         entry('working', { state: 'working' }),
         entry('unknown', { state: null }),
         entry('terminal', { kind: 'interactive' }),

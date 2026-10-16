@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import type { FleetState } from '../../shared/protocol.js';
 
-import { runningItems, statusLine } from './status.js';
-import { agent, session } from './test-helpers/fixtures.js';
+import { runningItems, statusLine, waitingBadge } from './status.js';
+import { agent, permissionRequest, session } from './test-helpers/fixtures.js';
 
 function fleet(overrides: Partial<FleetState> = {}): FleetState {
   return {
@@ -36,6 +36,25 @@ describe('statusLine', () => {
       }),
     );
     expect(line).toBe('Overlord: 2 running, 1 waiting, $1.20/h, 5h 41%');
+  });
+});
+
+describe('waitingBadge', () => {
+  it('shows nothing when no session waits', () => {
+    const quiet = fleet({ sessions: [session('a'), session('b', { state: 'done' })] });
+    expect(waitingBadge(quiet)).toBeUndefined();
+  });
+
+  it('counts each session waiting on an answer or a permission once', () => {
+    const request = { ...permissionRequest('p1'), sessionId: 'b' };
+    const twin = { ...permissionRequest('p2'), sessionId: 'a' };
+    const busy = fleet({
+      sessions: [session('a', { state: 'waiting' }), session('b'), session('c')],
+      pendingPermissions: [request, twin],
+    });
+    expect(waitingBadge(busy)).toStrictEqual({ value: 2, tooltip: '2 sessions waiting on you' });
+    const one = fleet({ sessions: [session('a', { state: 'waiting' })] });
+    expect(waitingBadge(one)).toStrictEqual({ value: 1, tooltip: '1 session waiting on you' });
   });
 });
 

@@ -136,7 +136,7 @@ export class TranscriptWatcher {
   private readonly tracked = new Map<string, TrackedSession>();
   /** Sessions opened from a list view, tailed even outside the active window. */
   private readonly pinned = new Set<string>();
-  /** Sessions held from outside (finished background jobs), replaced whole by keep(). */
+  /** Sessions held from outside (background jobs that wait or finished), replaced whole by keep(). */
   private kept: ReadonlySet<string> = new Set();
   /** Sessions dropped as idle, with the mtime they had then. A newer write brings them back. */
   private readonly settled = new Map<string, number>();

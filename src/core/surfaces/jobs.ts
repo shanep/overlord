@@ -1,33 +1,36 @@
-// Background jobs Claude Code still lists after they finish. `claude agents
-// --json --all` keeps a finished job until the user deletes it, so the fleet
-// shows it as done for exactly as long as Claude Code's own list does.
+// Background jobs whose state the fleet cannot read from a transcript. A job
+// blocked on the user looks idle in its transcript, and a finished one looks
+// the same. `claude agents --json --all` knows the difference and keeps a
+// finished job until the user deletes it, so the fleet follows its list.
 
 import type { AgentEntry } from './live.js';
 
-export interface FinishedJob {
+export interface BackgroundJob {
   readonly sessionId: string;
   readonly name: string | null;
   readonly cwd: string | null;
   readonly startedAt: number | null;
-  readonly state: 'done' | 'failed';
+  readonly state: 'waiting' | 'done' | 'failed';
 }
 
-// A job the user stopped is as finished as one that ran to the end.
-const FINISHED = new Map<string, FinishedJob['state']>([
+// Blocked means the job needs an answer, a login or a retry from the user. A
+// job the user stopped is as finished as one that ran to the end.
+const STATES = new Map<string, BackgroundJob['state']>([
+  ['blocked', 'waiting'],
   ['done', 'done'],
   ['stopped', 'done'],
   ['failed', 'failed'],
 ]);
 
-function startedAt(job: FinishedJob): number {
+function startedAt(job: BackgroundJob): number {
   return job.startedAt ?? 0;
 }
 
-/** The background jobs that have finished, oldest first. Running and interactive ones are left out. */
-export function finishedJobs(entries: readonly AgentEntry[]): FinishedJob[] {
-  const jobs: FinishedJob[] = [];
+/** Background jobs waiting on the user or finished, oldest first. Working and interactive ones are left out. */
+export function backgroundJobs(entries: readonly AgentEntry[]): BackgroundJob[] {
+  const jobs: BackgroundJob[] = [];
   for (const entry of entries) {
-    const state = FINISHED.get(entry.state ?? '');
+    const state = STATES.get(entry.state ?? '');
     if (entry.kind !== 'background' || state === undefined) {
       continue;
     }

@@ -21,7 +21,7 @@ import {
   buildFleet,
   normalizeRateLimits,
   toFraction,
-  withFinishedJobs,
+  withJobStates,
   withPlanLimits,
 } from './fleet.js';
 import { buildKnobs, EMPTY_KNOBS, loadKnobs, loadProfiles } from './knobs.js';
@@ -105,10 +105,10 @@ describe('fleet view', () => {
 
   it('hands back the same sessions when no job applies', () => {
     const sessions = [session('a', { state: 'done' })];
-    expect(withFinishedJobs(sessions, [])).toBe(sessions);
+    expect(withJobStates(sessions, [])).toBe(sessions);
     const job = { sessionId: 'a', name: 'A', cwd: '/w', startedAt: 5, state: 'done' as const };
-    expect(withFinishedJobs(sessions, [job])[0]).toBe(sessions[0]);
-    expect(withFinishedJobs([], [job])).toStrictEqual([
+    expect(withJobStates(sessions, [job])[0]).toBe(sessions[0]);
+    expect(withJobStates([], [job])).toStrictEqual([
       session('a', { title: 'A', cwd: '/w', state: 'done', startedAt: 5, updatedAt: 5 }),
     ]);
   });

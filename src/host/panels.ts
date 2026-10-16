@@ -4,6 +4,7 @@
 import { randomFillSync } from 'node:crypto';
 import * as vscode from 'vscode';
 
+import { waitingBadge } from '../core/app/status.js';
 import { buildWebviewHtml, makeNonce } from '../core/webview-html.js';
 import type { HostToWebview, ViewId, WebviewAction } from '../shared/protocol.js';
 import { isWebviewToHost } from '../shared/protocol.js';
@@ -205,10 +206,15 @@ export class FleetSidebar implements vscode.WebviewViewProvider, vscode.Disposab
   }
 
   private push(): void {
-    if (this.view === null || !this.ready) {
+    if (this.view === null) {
       return;
     }
-    void this.view.webview.postMessage(this.source.stateFor('fleet', {}));
+    const message = this.source.stateFor('fleet', {});
+    // The badge shows on the sidebar icon even while the Fleet is collapsed or hidden.
+    this.view.badge = message.view === 'fleet' ? waitingBadge(message.state) : undefined;
+    if (this.ready) {
+      void this.view.webview.postMessage(message);
+    }
   }
 
   dispose(): void {

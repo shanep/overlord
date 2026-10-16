@@ -1,12 +1,12 @@
-// The fleet view: the store's sessions and agents with finished background
-// jobs marked done, the pending permissions from both sources, and rate
-// limits as 0 to 1 fractions.
+// The fleet view: the store's sessions and agents with background jobs marked
+// waiting or done, the pending permissions from both sources, and rate limits
+// as 0 to 1 fractions.
 
 import type { PermissionRequest, SessionPlace, SessionSummary } from '../../../shared/model.js';
 import { ZERO_USAGE } from '../../../shared/model.js';
 import type { FleetState, PlanLimits, RateLimits } from '../../../shared/protocol.js';
 import type { OverlordStore } from '../../store/store.js';
-import type { FinishedJob } from '../../surfaces/jobs.js';
+import type { BackgroundJob } from '../../surfaces/jobs.js';
 import type { Runtime } from '../runtime.js';
 
 import { currentPlan } from './usage.js';
@@ -42,8 +42,8 @@ export function withPlanLimits(limits: RateLimits, plan: PlanLimits | null): Rat
   };
 }
 
-/** A row for a finished job whose transcript is gone, from what Claude Code still knows. */
-function jobSession(job: FinishedJob): SessionSummary {
+/** A row for a job whose transcript is gone, from what Claude Code still knows. */
+function jobSession(job: BackgroundJob): SessionSummary {
   const startedAt = job.startedAt ?? 0;
   return {
     id: job.sessionId,
@@ -68,12 +68,12 @@ function jobSession(job: FinishedJob): SessionSummary {
 }
 
 /**
- * A transcript cannot tell a finished job from an idle session, so Claude
- * Code's job state wins. Jobs with no transcript still get a row.
+ * A transcript cannot tell a job waiting on the user or a finished one from
+ * an idle session, so Claude Code's job state wins. Jobs with no transcript still get a row.
  */
-export function withFinishedJobs(
+export function withJobStates(
   sessions: readonly SessionSummary[],
-  jobs: readonly FinishedJob[],
+  jobs: readonly BackgroundJob[],
 ): readonly SessionSummary[] {
   if (jobs.length === 0) {
     return sessions;
@@ -96,13 +96,13 @@ export interface FleetInputs {
   readonly now: number;
   readonly plan: PlanLimits | null;
   readonly places: Readonly<Record<string, SessionPlace>>;
-  readonly jobs: readonly FinishedJob[];
+  readonly jobs: readonly BackgroundJob[];
 }
 
 export function buildFleet(input: FleetInputs): FleetState {
   const base = input.store.fleetState(input.now);
   return {
-    sessions: withFinishedJobs(base.sessions, input.jobs),
+    sessions: withJobStates(base.sessions, input.jobs),
     agents: base.agents,
     pendingPermissions: input.pending,
     places: input.places,
