@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import type { HostToWebview, ViewId } from '../../src/shared/protocol.js';
 import { contextState, knobsState } from '../test/fixtures-context.js';
 import { configState, launcherState, sessionsState, usageState } from '../test/fixtures-tools.js';
-import { agentState, fleetState, NOW } from '../test/fixtures.js';
+import { agentState, fleetState, NOW, session } from '../test/fixtures.js';
 import { expectAccessible, FakeApi } from '../test/render.js';
 
 import { App, readViewId, ViewSwitch } from './app.js';
@@ -20,6 +20,11 @@ const messages: readonly HostToWebview[] = [
   { type: 'state', view: 'sessions', state: sessionsState },
   { type: 'state', view: 'config', state: configState },
   { type: 'state', view: 'usage', state: usageState },
+  {
+    type: 'state',
+    view: 'properties',
+    state: { sessionId: 's1', session: session({ id: 's1' }), agents: [], pendingPermissions: [] },
+  },
 ];
 
 describe('readViewId', () => {

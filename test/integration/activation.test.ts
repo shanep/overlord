@@ -1,8 +1,33 @@
 // Runs inside a real VS Code instance through @vscode/test-cli.
 import assert from 'node:assert/strict';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import * as vscode from 'vscode';
 
 const EXTENSION_ID = 'shanep.overlord';
+
+async function waitFor(check: () => boolean): Promise<void> {
+  const deadline = Date.now() + 5000;
+  while (!check() && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+}
+
+function tabLabels(): string[] {
+  return vscode.window.tabGroups.all.flatMap((group) => group.tabs.map((tab) => tab.label));
+}
+
+/** A stand-in claude that records its arguments and then waits on stdin. */
+function stubClaude(): { readonly bin: string; readonly argsFile: string } {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'overlord-stub-'));
+  const bin = path.join(dir, 'claude');
+  const argsFile = path.join(dir, 'args');
+  writeFileSync(bin, `#!/bin/sh\nprintf '%s\\n' "$@" > '${argsFile}'\nexec cat\n`, {
+    mode: 0o755,
+  });
+  return { bin, argsFile };
+}
 
 describe('Overlord extension', () => {
   it('activates', async () => {
@@ -46,19 +71,41 @@ describe('Overlord extension', () => {
     assert.ok(labels.includes('Overlord: Fleet'), `tabs were: ${labels.join(', ')}`);
   });
 
-  it('opens a new Claude Code session as an editor tab', async () => {
-    // Tests must never start the real CLI, so point the setting at a plain shell.
+  it('opens a new Claude Code session as an editor tab with properties beside it', async () => {
+    // Tests must never start the real CLI, so point the setting at a stub.
+    const stub = stubClaude();
     const config = vscode.workspace.getConfiguration('overlord');
-    await config.update('claudePath', '/bin/sh', vscode.ConfigurationTarget.Global);
+    await config.update('claudePath', stub.bin, vscode.ConfigurationTarget.Global);
     try {
       await vscode.commands.executeCommand('overlord.newClaudeSession');
       const terminal = vscode.window.terminals.find((entry) => entry.name === 'Claude Code');
       assert.ok(terminal, 'a Claude Code terminal was created');
-      const deadline = Date.now() + 5000;
-      while (vscode.window.activeTerminal?.name !== 'Claude Code' && Date.now() < deadline) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      }
+      await waitFor(() => vscode.window.activeTerminal?.name === 'Claude Code');
       assert.equal(vscode.window.activeTerminal?.name, 'Claude Code');
+      await waitFor(() => tabLabels().includes('Overlord: Properties'));
+      assert.ok(
+        tabLabels().includes('Overlord: Properties'),
+        `tabs were: ${tabLabels().join(', ')}`,
+      );
+      const properties = vscode.window.tabGroups.all.find((group) =>
+        group.tabs.some((tab) => tab.label === 'Overlord: Properties'),
+      );
+      const cli = vscode.window.tabGroups.all.find((group) =>
+        // A terminal tab's label follows its process, so find it by input type.
+        group.tabs.some((tab) => tab.input instanceof vscode.TabInputTerminal),
+      );
+      assert.ok(properties !== undefined && cli !== undefined);
+      assert.ok(properties.viewColumn > cli.viewColumn, 'properties sit to the right of the tab');
+      await waitFor(() => {
+        try {
+          return readFileSync(stub.argsFile, 'utf8').length > 0;
+        } catch {
+          return false;
+        }
+      });
+      const args = readFileSync(stub.argsFile, 'utf8').trim().split('\n');
+      assert.equal(args[0], '--session-id');
+      assert.match(args[1] ?? '', /^[0-9a-f]{8}-[0-9a-f]{4}-/u);
       terminal.dispose();
     } finally {
       await config.update('claudePath', undefined, vscode.ConfigurationTarget.Global);

@@ -241,6 +241,7 @@ describe('OverlordApp', () => {
     const changed = vi.fn();
     const off = app.onChange(changed);
     expect(app.stateFor('agent', {})).toMatchObject({ state: { agent: null, session: null } });
+    expect(app.stateFor('properties', {})).toMatchObject({ state: { sessionId: null } });
     for (const view of VIEW_IDS) {
       const message = app.stateFor(view, { sessionId: 's1' });
       expect(message.type).toBe('state');

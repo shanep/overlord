@@ -14,6 +14,8 @@ export interface TerminalRequest {
   readonly command: string;
   readonly args: readonly string[];
   readonly cwd: string;
+  /** The Claude Code session the terminal runs, when known, for the properties panel. */
+  readonly sessionId: string | null;
 }
 
 export interface FilePickRequest {

@@ -30,7 +30,8 @@ export type ViewId =
   | 'config'
   | 'usage'
   | 'frustration'
-  | 'messages';
+  | 'messages'
+  | 'properties';
 
 export const VIEW_IDS: readonly ViewId[] = [
   'fleet',
@@ -43,6 +44,7 @@ export const VIEW_IDS: readonly ViewId[] = [
   'usage',
   'frustration',
   'messages',
+  'properties',
 ];
 
 export interface RateLimits {
@@ -69,6 +71,17 @@ export interface AgentDetailState {
   readonly requests: readonly ApiRequest[];
   /** Compaction times, for chart markers. */
   readonly compactions: readonly number[];
+}
+
+/** The session running in a Claude CLI tab, for the properties panel beside it. */
+export interface PropertiesState {
+  /** The session the tab runs, or null when no CLI tab is active. */
+  readonly sessionId: string | null;
+  /** Null until Claude Code reports the session, which can lag the tab opening. */
+  readonly session: SessionSummary | null;
+  /** Subagents in this session, all depths, oldest first. */
+  readonly agents: readonly AgentNode[];
+  readonly pendingPermissions: readonly PermissionRequest[];
 }
 
 export interface ContextState {
@@ -236,6 +249,7 @@ interface ViewStateMap {
   readonly usage: UsageState;
   readonly frustration: FrustrationState;
   readonly messages: MessagesState;
+  readonly properties: PropertiesState;
 }
 
 export type HostToWebview = {

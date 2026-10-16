@@ -91,6 +91,12 @@ async function signal(
 
 export const IN_LAUNCHER = 'This session is running in the Overlord launcher. Stop the run first.';
 
+/** Handoffs whose terminal runs this same session, so its properties can follow it. */
+const TRACKED_HANDOFFS: ReadonlySet<HandoffKind> = new Set<HandoffKind>([
+  'resume-local',
+  'remote-control',
+]);
+
 /** No other process may hold the session when Overlord resumes it. */
 async function readyToResume(rt: Runtime, session: SurfaceSession): Promise<boolean> {
   if (sdkTarget(rt, session.id) !== null) {
@@ -150,6 +156,7 @@ export const sessionActions: ActionHandlers<SessionActions> = {
       command: rt.host.settings.claudePath,
       args,
       cwd: cwdFor(rt, action.sessionId, live?.cwd ?? null),
+      sessionId: action.sessionId,
     });
   },
   setModel: async ({ rt }, action) => {
@@ -205,6 +212,7 @@ export const sessionActions: ActionHandlers<SessionActions> = {
       command: command.command,
       args: command.args,
       cwd,
+      sessionId: TRACKED_HANDOFFS.has(action.kind) ? session.id : null,
     });
   },
 };

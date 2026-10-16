@@ -39,6 +39,12 @@
         "icon": "$(sparkle)"
       },
       {
+        "command": "overlord.showProperties",
+        "title": "Show Session Properties",
+        "category": "Overlord",
+        "icon": "$(info)"
+      },
+      {
         "command": "overlord.installTransferSkill",
         "title": "Add /overlord Command to Claude Code",
         "category": "Overlord"
@@ -211,6 +217,13 @@
       ]
     },
     "menus": {
+      "editor/title": [
+        {
+          "command": "overlord.showProperties",
+          "when": "activeEditor == terminalEditor && overlord.cliTabActive",
+          "group": "navigation"
+        }
+      ],
       "view/title": [
         {
           "command": "overlord.newClaudeSession",
@@ -229,6 +242,10 @@
         }
       ],
       "commandPalette": [
+        {
+          "command": "overlord.showProperties",
+          "when": "overlord.cliTabActive"
+        },
         {
           "command": "overlord.openAgent",
           "when": "false"

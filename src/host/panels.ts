@@ -31,11 +31,21 @@ const TITLES: Readonly<Record<ViewId, string>> = {
   usage: 'Overlord: Usage',
   frustration: 'Overlord: Frustration',
   messages: 'Overlord: Agent Messages',
+  properties: 'Overlord: Properties',
 };
 
 function isViewKey(value: string): value is ViewId {
   return Object.hasOwn(TITLES, value);
 }
+
+/** Where a panel opens: over the active editor, or in the column to its right. */
+export interface PanelPlacement {
+  readonly beside: boolean;
+  /** Keeps focus where it is, so typing still goes to the tab beside the panel. */
+  readonly preserveFocus: boolean;
+}
+
+const OVER_ACTIVE: PanelPlacement = { beside: false, preserveFocus: false };
 
 interface OpenPanel {
   readonly panel: vscode.WebviewPanel;
@@ -57,13 +67,13 @@ export class PanelManager implements vscode.Disposable {
     });
   }
 
-  open(view: ViewId, params: PanelParams = {}): void {
+  open(view: ViewId, params: PanelParams = {}, placement: PanelPlacement = OVER_ACTIVE): void {
     // The agent view keys on the agent so several can be open side by side.
     const key = view === 'agent' ? `agent:${params.sessionId ?? ''}:${params.agentId ?? ''}` : view;
     const existing = this.panels.get(key);
     if (existing !== undefined) {
       existing.params = params;
-      existing.panel.reveal();
+      existing.panel.reveal(undefined, placement.preserveFocus);
       this.push(view, existing);
       return;
     }
@@ -71,7 +81,10 @@ export class PanelManager implements vscode.Disposable {
     const panel = vscode.window.createWebviewPanel(
       `overlord.${view}`,
       TITLES[view],
-      vscode.ViewColumn.Active,
+      {
+        viewColumn: placement.beside ? vscode.ViewColumn.Beside : vscode.ViewColumn.Active,
+        preserveFocus: placement.preserveFocus,
+      },
       { enableScripts: true, retainContextWhenHidden: true, localResourceRoots: [webviewRoot] },
     );
     panel.iconPath = vscode.Uri.joinPath(this.extensionUri, 'media', 'overlord.svg');
@@ -103,6 +116,17 @@ export class PanelManager implements vscode.Disposable {
     panel.onDidDispose(() => {
       this.panels.delete(key);
     });
+  }
+
+  /** Points an open panel at new params without revealing it. False when it is closed. */
+  pointTo(view: ViewId, params: PanelParams): boolean {
+    const entry = this.panels.get(view);
+    if (entry === undefined) {
+      return false;
+    }
+    entry.params = params;
+    this.push(view, entry);
+    return true;
   }
 
   private push(view: ViewId, entry: OpenPanel): void {

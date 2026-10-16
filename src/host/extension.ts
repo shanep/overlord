@@ -1,13 +1,15 @@
 // VS Code entry point. Builds the app, the panels, the sidebar and the
 // status bar, and maps every contributed command onto the app.
 
+import { randomUUID } from 'node:crypto';
 import * as vscode from 'vscode';
 
 import { OverlordApp } from '../core/app/app.js';
 import { parseTransferUri } from '../core/app/transfer.js';
 import type { HostToWebview, ViewId, WebviewAction } from '../shared/protocol.js';
 
-import { createVscodeHostPort } from './host-port.js';
+import { CliTabs } from './cli-tabs.js';
+import { createVscodeHostPort, terminalLaunch } from './host-port.js';
 import { FleetSidebar, PanelManager } from './panels.js';
 
 let app: OverlordApp | null = null;
@@ -51,28 +53,38 @@ class ViewListProvider implements vscode.TreeDataProvider<ViewEntry> {
   }
 }
 
-/** Starts an interactive Claude Code CLI in an editor tab, in the workspace folder. */
-function newClaudeSession(claudePath: string, cwd: string | null): vscode.Terminal {
+/**
+ * Starts an interactive Claude Code CLI in an editor tab, in the workspace
+ * folder. Overlord picks the session id up front so the properties panel
+ * knows which session the tab runs before Claude Code reports it.
+ */
+function newClaudeSession(claudePath: string, cwd: string | null, tabs: CliTabs): void {
+  const sessionId = randomUUID();
   const terminal = vscode.window.createTerminal({
     name: 'Claude Code',
     ...(cwd === null ? {} : { cwd }),
     location: { viewColumn: vscode.ViewColumn.Active },
     iconPath: new vscode.ThemeIcon('sparkle'),
-    // Running claude as the terminal's process means closing the session closes the tab.
-    shellPath: claudePath,
+    // claude runs through the login shell (for the full PATH) and execs, so
+    // closing the session closes the tab.
+    ...terminalLaunch(claudePath, ['--session-id', sessionId]),
   });
   terminal.show();
-  return terminal;
+  tabs.track(terminal, sessionId);
 }
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   // The host port opens panels, and the panel manager needs the app, so the
-  // port reaches the manager through this holder once it exists.
+  // port reaches the manager and the CLI tabs through holders once they exist.
   const panelHolder: { current: PanelManager | null } = { current: null };
+  const tabsHolder: { current: CliTabs | null } = { current: null };
   const host = createVscodeHostPort({
     context,
     openPanel: (view, params) => {
       panelHolder.current?.open(view, params);
+    },
+    onSessionTerminal: (terminal, sessionId) => {
+      tabsHolder.current?.track(terminal, sessionId);
     },
   });
   const overlord = new OverlordApp({ host });
@@ -86,6 +98,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     async (action, params) => overlord.dispatch(action, params),
   );
   panelHolder.current = panels;
+  const tabs = new CliTabs(panels);
+  tabsHolder.current = tabs;
 
   const status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 50);
   status.command = 'overlord.openFleet';
@@ -103,6 +117,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   context.subscriptions.push(
     panels,
+    tabs,
     status,
     vscode.window.registerWebviewViewProvider(
       FleetSidebar.viewType,
@@ -157,7 +172,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     register('overlord.enableTelemetry', async () => overlord.setup.enableTelemetry()),
     register('overlord.disableTelemetry', async () => overlord.setup.disableTelemetry()),
     register('overlord.newClaudeSession', (): void => {
-      newClaudeSession(host.settings.claudePath, host.workspaceFolder());
+      newClaudeSession(host.settings.claudePath, host.workspaceFolder(), tabs);
+    }),
+    register('overlord.showProperties', (): void => {
+      tabs.showActive();
     }),
     register('overlord.launchPrompt', () => {
       panels.open('launcher');

@@ -14,6 +14,7 @@ import { buildFleet } from './fleet.js';
 import { buildFrustration } from './frustration.js';
 import { buildKnobs } from './knobs.js';
 import { buildMessages } from './messages.js';
+import { buildProperties } from './properties.js';
 import { buildSessions } from './sessions.js';
 
 function buildAgent(rt: Runtime, params: PanelParams): AgentDetailState {
@@ -33,7 +34,34 @@ function buildLauncher(rt: Runtime): LauncherState {
   };
 }
 
+type SessionView = 'agent' | 'context' | 'properties';
+
+const SESSION_VIEWS: ReadonlySet<ViewId> = new Set<SessionView>(['agent', 'context', 'properties']);
+
+function isSessionView(view: ViewId): view is SessionView {
+  return SESSION_VIEWS.has(view);
+}
+
+/** Views about one session or agent, picked by the panel params. */
+function sessionStateFor(rt: Runtime, view: SessionView, params: PanelParams): HostToWebview {
+  switch (view) {
+    case 'agent': {
+      return { type: 'state', view, state: buildAgent(rt, params) };
+    }
+    case 'context': {
+      return { type: 'state', view, state: rt.context.build(params) };
+    }
+    case 'properties': {
+      const state = buildProperties(rt.store, rt.permissions.list(), params.sessionId ?? null);
+      return { type: 'state', view, state };
+    }
+  }
+}
+
 export function stateFor(rt: Runtime, view: ViewId, params: PanelParams): HostToWebview {
+  if (isSessionView(view)) {
+    return sessionStateFor(rt, view, params);
+  }
   switch (view) {
     case 'fleet': {
       return {
@@ -41,12 +69,6 @@ export function stateFor(rt: Runtime, view: ViewId, params: PanelParams): HostTo
         view,
         state: buildFleet(rt.store, rt.permissions.list(), rt.clock()),
       };
-    }
-    case 'agent': {
-      return { type: 'state', view, state: buildAgent(rt, params) };
-    }
-    case 'context': {
-      return { type: 'state', view, state: rt.context.build(params) };
     }
     case 'knobs': {
       const state = buildKnobs(rt.caches.knobs.value, rt.caches.profiles.value);

@@ -17,6 +17,7 @@ import { FrustrationView } from './views/frustration-view.js';
 import { KnobsView } from './views/knobs-view.js';
 import { LauncherView } from './views/launcher-view.js';
 import { MessagesView } from './views/messages-view.js';
+import { PropertiesView } from './views/properties-view.js';
 import { SessionsView } from './views/sessions-view.js';
 import { UsageView } from './views/usage-view.js';
 
@@ -58,6 +59,9 @@ export function ViewSwitch(props: { readonly message: HostToWebview }): ReactEle
     }
     case 'messages': {
       return <MessagesView state={message.state} />;
+    }
+    case 'properties': {
+      return <PropertiesView state={message.state} />;
     }
   }
 }

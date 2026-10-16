@@ -631,3 +631,48 @@ details > summary {
 .row-title {
   font-weight: 600;
 }
+
+/* ---- Properties panel ---------------------------------------------------- */
+
+.props-group {
+  margin: 12px 0;
+}
+
+.props-group h2 {
+  margin: 0 0 4px;
+  color: var(--ov-muted);
+  font-size: 0.85em;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.props {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 2px 12px;
+  margin: 0;
+}
+
+.prop {
+  display: contents;
+}
+
+.prop dt {
+  color: var(--ov-muted);
+}
+
+.prop dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.props-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.props-list li {
+  margin: 2px 0;
+}

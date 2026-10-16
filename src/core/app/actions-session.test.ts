@@ -225,7 +225,13 @@ describe('attach', () => {
     env.host.settings = { ...env.host.settings, claudePath: '/opt/claude' };
     await test.app.dispatch({ type: 'attach', sessionId: 'bg' }, {});
     expect(env.host.terminals).toStrictEqual([
-      { name: 'Claude bg', command: '/opt/claude', args: ['attach', 'agent-7'], cwd: '/bg' },
+      {
+        name: 'Claude bg',
+        command: '/opt/claude',
+        args: ['attach', 'agent-7'],
+        cwd: '/bg',
+        sessionId: 'bg',
+      },
     ]);
   });
 
@@ -305,7 +311,13 @@ describe('handoff', () => {
     await test.app.dispatch({ type: 'handoff', sessionId: 'local', kind: 'resume-local' }, {});
     expect(killed).toStrictEqual(['SIGTERM']);
     expect(env.host.terminals).toStrictEqual([
-      { name: 'Claude: Mine', command: 'claude', args: ['--resume', 'local'], cwd: env.home },
+      {
+        name: 'Claude: Mine',
+        command: 'claude',
+        args: ['--resume', 'local'],
+        cwd: env.home,
+        sessionId: 'local',
+      },
     ]);
     const before = test.calls.length;
     await test.app.dispatch({ type: 'handoff', sessionId: 'local', kind: 'start-cloud' }, {});
@@ -313,7 +325,10 @@ describe('handoff', () => {
     expect(env.host.terminals[1]).toMatchObject({
       name: 'Claude start-cloud: Mine',
       args: ['--cloud', 'Mine'],
+      sessionId: null,
     });
+    await test.app.dispatch({ type: 'handoff', sessionId: 'local', kind: 'remote-control' }, {});
+    expect(env.host.terminals[2]?.sessionId).toBe('local');
   });
 
   it('will not continue a session whose folder is gone', async () => {

@@ -248,6 +248,26 @@ describe('OverlordStore fleetState', () => {
   });
 });
 
+describe('OverlordStore sessionProperties', () => {
+  it('is empty for an unknown session', () => {
+    const { store } = setup();
+    expect(store.sessionProperties('s')).toStrictEqual({ session: null, agents: [] });
+  });
+
+  it('lists every subagent in the session, all depths, oldest first', () => {
+    const { bus, store } = setup();
+    bus.emit('session.upserted', session('s1'));
+    bus.emit('agent.upserted', agent('s1', 's1'));
+    bus.emit('agent.upserted', agent('s1', 'late', { startedAt: 9 }));
+    bus.emit('agent.upserted', agent('s1', 'early', { startedAt: 1 }));
+    bus.emit('agent.upserted', agent('s1', 'grandchild', { parentAgentId: 'early', startedAt: 5 }));
+    bus.emit('agent.upserted', agent('s2', 'elsewhere', { parentAgentId: 's2' }));
+    const properties = store.sessionProperties('s1');
+    expect(properties.session).toStrictEqual(session('s1'));
+    expect(properties.agents.map((item) => item.id)).toStrictEqual(['early', 'grandchild', 'late']);
+  });
+});
+
 describe('OverlordStore agentDetailState', () => {
   it('is empty for an unknown agent', () => {
     const { store } = setup();

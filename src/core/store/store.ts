@@ -162,6 +162,20 @@ export class OverlordStore {
     };
   }
 
+  /** A session and every subagent in it, oldest first, for the properties panel. */
+  sessionProperties(sessionId: string): {
+    readonly session: SessionSummary | null;
+    readonly agents: readonly AgentNode[];
+  } {
+    return {
+      session: this.sessions.get(sessionId) ?? null,
+      agents: this.agents
+        .inSession(sessionId)
+        .filter((agent) => agent.parentAgentId !== null)
+        .toSorted(byStart),
+    };
+  }
+
   /** The snapshot for one agent, the main thread when agentId is null. */
   contextState(sessionId: string, agentId: string | null = null): ContextState {
     return {

@@ -14,7 +14,22 @@ import type {
   TerminalRequest,
 } from '../core/app/host-port.js';
 import { findOnPath } from '../core/find-on-path.js';
+import { loginShellLaunch } from '../core/login-shell.js';
 import type { ViewId } from '../shared/protocol.js';
+
+/** claude through the login shell, so the tab gets the user's full PATH. */
+export function terminalLaunch(
+  command: string,
+  args: readonly string[],
+): { shellPath: string; shellArgs: string[] } {
+  const launch = loginShellLaunch({
+    command,
+    args,
+    shell: process.env['SHELL'],
+    platform: process.platform,
+  });
+  return { shellPath: launch.shellPath, shellArgs: [...launch.shellArgs] };
+}
 
 function expandHome(value: string): string {
   return value === '~' || value.startsWith('~/') ? path.join(os.homedir(), value.slice(1)) : value;
@@ -44,6 +59,8 @@ function readSettings(): OverlordSettings {
 export interface VscodeHostPortOptions {
   readonly context: vscode.ExtensionContext;
   readonly openPanel: (view: ViewId, params: PanelParams) => void;
+  /** Called with each terminal that runs a known Claude Code session. */
+  readonly onSessionTerminal: (terminal: vscode.Terminal, sessionId: string) => void;
 }
 
 export function createVscodeHostPort(options: VscodeHostPortOptions): HostPort {
@@ -63,10 +80,12 @@ export function createVscodeHostPort(options: VscodeHostPortOptions): HostPort {
         iconPath: new vscode.ThemeIcon('sparkle'),
         // Run claude as the terminal's own process: no shell quoting, and the
         // tab closes when the session ends.
-        shellPath: request.command,
-        shellArgs: [...request.args],
+        ...terminalLaunch(request.command, request.args),
       });
       terminal.show();
+      if (request.sessionId !== null) {
+        options.onSessionTerminal(terminal, request.sessionId);
+      }
     },
     pickFile: async (request: FilePickRequest): Promise<string | null> => {
       const filters: Record<string, string[]> = {};
