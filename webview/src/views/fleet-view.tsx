@@ -253,7 +253,10 @@ export function FleetView(props: { readonly state: FleetState }): ReactElement {
         />
       ) : null}
       <div className="toolbar">
-        <label className="filter">
+        <label
+          className="filter"
+          title="Show only rows whose title, state, model, tool or folder has this text"
+        >
           <span className="visually-hidden">Filter</span>
           <input
             type="search"
@@ -264,7 +267,7 @@ export function FleetView(props: { readonly state: FleetState }): ReactElement {
             }}
           />
         </label>
-        <label>
+        <label title="Leave out sessions that have finished">
           <input
             type="checkbox"
             checked={preferences.hideDone}
@@ -274,7 +277,7 @@ export function FleetView(props: { readonly state: FleetState }): ReactElement {
           />
           Hide done
         </label>
-        <label>
+        <label title="Nest sessions under the project they belong to">
           <input
             type="checkbox"
             checked={preferences.grouped}
@@ -284,7 +287,7 @@ export function FleetView(props: { readonly state: FleetState }): ReactElement {
           />
           Group by project
         </label>
-        <label>
+        <label title="Show a line under each session on what it is doing">
           <input
             type="checkbox"
             checked={preferences.showSummary}

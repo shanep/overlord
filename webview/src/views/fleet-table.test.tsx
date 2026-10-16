@@ -70,6 +70,17 @@ describe('FleetTable', () => {
     expect(lines[0]?.closest('td')?.className).toBe('col-title');
   });
 
+  it('describes each row button in its tooltip', () => {
+    const grid = renderTable(fleetState);
+    const stop = grid.querySelector('button[aria-label^="Stop "]');
+    expect(stop?.getAttribute('title')).toBe('Stop: End the session');
+    const titles = [...grid.querySelectorAll('button.icon-button')].map(
+      (button) => button.getAttribute('title') ?? '',
+    );
+    expect(titles.length).toBeGreaterThan(0);
+    expect(titles.every((title) => /^[^:]+: \S/u.test(title))).toBe(true);
+  });
+
   it('leaves the working on line out when it is turned off', () => {
     const recap = { text: 'Split the parser in two.', at: NOW - 60_000 };
     const grid = renderTable(

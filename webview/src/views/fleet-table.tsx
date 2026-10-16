@@ -35,6 +35,23 @@ const ACTION_LABELS: Readonly<Record<RowAction | ProjectAction, string>> = {
   delete: 'Delete project',
 };
 
+/** What each action button does, shown as its tooltip after the label. */
+const ACTION_TIPS: Readonly<Record<RowAction | ProjectAction, string>> = {
+  open: 'Open the transcript and controls for this session',
+  context: 'See what fills the context window',
+  interrupt: 'Stop the current turn, keep the session',
+  stop: 'End the session',
+  move: 'Put this session in another project',
+  openFolder: 'Reveal the folder this project works in',
+  setFolder: 'Pick the folder this project works in',
+  rename: 'Give this project a new name',
+  delete: 'Remove the project, its sessions stay',
+};
+
+function actionTip(action: RowAction | ProjectAction): string {
+  return `${ACTION_LABELS[action]}: ${ACTION_TIPS[action]}`;
+}
+
 const COLUMNS: readonly { readonly id: string; readonly label: string }[] = [
   { id: 'state', label: 'State' },
   { id: 'surface', label: 'Surface' },
@@ -82,7 +99,7 @@ function RowActions(props: {
       className="icon-button"
       tabIndex={tabIndex}
       disabled={disabled}
-      title={ACTION_LABELS[action]}
+      title={actionTip(action)}
       aria-label={`${ACTION_LABELS[action]} ${row.title}`}
       onClick={onClick}
     >
@@ -165,7 +182,7 @@ function Twisty(props: {
       type="button"
       className="twisty"
       tabIndex={-1}
-      title={verb}
+      title={`${verb}: ${visible.expanded ? 'Hide' : 'Show'} the rows under this one`}
       aria-label={`${verb} ${visible.row.title}`}
       onClick={() => {
         onToggle(visible);
