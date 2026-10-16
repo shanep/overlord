@@ -50,7 +50,11 @@ export function sdkTarget(rt: Runtime, sessionId: string): SdkTarget | null {
   return run === undefined || session === null ? null : { run, session };
 }
 
-async function liveProcess(rt: Runtime, sessionId: string): Promise<LiveProcess | undefined> {
+/** The live claude process holding a session on this machine, if any. */
+export async function liveProcess(
+  rt: Runtime,
+  sessionId: string,
+): Promise<LiveProcess | undefined> {
   const table = await buildLiveProcessTable({
     paths: rt.paths,
     exec: rt.surfacesExec,

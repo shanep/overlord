@@ -485,6 +485,7 @@ export type WebviewAction =
   | { readonly type: 'discardWorktree'; readonly id: string }
   | { readonly type: 'openWorktree'; readonly id: string }
   | { readonly type: 'moveSession'; readonly sessionId: string }
+  | { readonly type: 'continueInFolder'; readonly sessionId: string }
   | { readonly type: 'newProject'; readonly sessionId: string }
   | { readonly type: 'renameProject'; readonly projectId: string }
   | { readonly type: 'deleteProject'; readonly projectId: string }

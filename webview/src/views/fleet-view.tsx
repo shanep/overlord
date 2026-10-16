@@ -176,6 +176,10 @@ export function FleetView(props: { readonly state: FleetState }): ReactElement {
         post({ type: 'moveSession', sessionId: row.sessionId });
         break;
       }
+      case 'relocate': {
+        post({ type: 'continueInFolder', sessionId: row.sessionId });
+        break;
+      }
       case 'combine': {
         post({ type: 'combineSessions', sessionId: row.sessionId });
         break;

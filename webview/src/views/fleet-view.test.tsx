@@ -432,6 +432,7 @@ describe('FleetView grouped by project', () => {
     await user.click(screen.getByRole('button', { name: 'Rename project Course' }));
     await user.click(screen.getByRole('button', { name: 'Delete project Course' }));
     await user.click(screen.getByRole('button', { name: 'Move to project Write docs' }));
+    await user.click(screen.getByRole('button', { name: 'Continue in folder Write docs' }));
     await user.click(screen.getByRole('button', { name: 'Combine sessions Write docs' }));
     await user.click(rowFor('Write docs'));
     await user.keyboard('m');
@@ -441,6 +442,7 @@ describe('FleetView grouped by project', () => {
       { type: 'renameProject', projectId: 'm1' },
       { type: 'deleteProject', projectId: 'm1' },
       { type: 'moveSession', sessionId: 's2' },
+      { type: 'continueInFolder', sessionId: 's2' },
       { type: 'combineSessions', sessionId: 's2' },
       { type: 'openSession', sessionId: 's2' },
       { type: 'moveSession', sessionId: 's2' },

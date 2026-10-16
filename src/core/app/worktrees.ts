@@ -16,6 +16,7 @@ import type { Exec } from '../sync/exec.js';
 import { NotARepoError, WorktreeGit } from '../worktrees/git.js';
 import { type Lease, WorktreeRegistry } from '../worktrees/registry.js';
 
+import type { ClaudeTab } from './claude-tabs.js';
 import { openClaudeTab } from './claude-tabs.js';
 import { messageOf } from './errors.js';
 import { stopIfIdle } from './idle-stop.js';
@@ -109,9 +110,17 @@ async function showSetupWarnings(rt: Runtime, lease: Lease): Promise<void> {
 export interface SessionStart {
   readonly name: string;
   readonly prompt?: string;
+  /** The session this one continues as a fork, which stays as it was. */
+  readonly forkOf?: string;
 }
 
 const PLAIN_START: SessionStart = { name: 'Claude Code' };
+
+/** The tab fields for a start: a new session, or a fork of forkOf. */
+function tabStart(start: SessionStart): Pick<ClaudeTab, 'name' | 'prompt' | 'resume' | 'fork'> {
+  const { forkOf, ...rest } = start;
+  return forkOf === undefined ? { ...rest, resume: null } : { ...rest, resume: forkOf, fork: true };
+}
 
 async function openSession(
   rt: Runtime,
@@ -126,9 +135,8 @@ async function openSession(
     await setup;
   }
   const sessionId = await openClaudeTab(rt, {
-    ...start,
+    ...tabStart(start),
     cwd: lease.entry.path,
-    resume: null,
     env: lease.env,
     newId,
   });
@@ -167,9 +175,8 @@ export async function startSession(
     }
   }
   await openClaudeTab(rt, {
-    ...start,
+    ...tabStart(start),
     cwd: folder ?? rt.paths.home,
-    resume: null,
     newId: id,
   });
 }

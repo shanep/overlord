@@ -119,6 +119,7 @@ function RowActions(props: {
       {row.kind === 'session' ? (
         <>
           {button('move')}
+          {button('relocate')}
           {button('combine')}
           {button('interrupt', !row.sessionActive)}
           {button('stop', !row.sessionActive)}

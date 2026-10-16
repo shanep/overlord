@@ -19,17 +19,20 @@ export interface HandoffOptions {
 const DEFAULT_BIN = 'claude';
 
 /**
- * `claude --bg` args: a new idle session, or one continued under its own id.
- * A background session gets its environment from Claude Code's background
- * service, not from the caller, so variables go in as settings instead.
+ * `claude --bg` args: a new idle session, or one continued under its own id,
+ * or under a new one when forked. A background session gets its environment
+ * from Claude Code's background service, not from the caller, so variables go
+ * in as settings instead.
  */
 export function backgroundArgs(
   resume: string | null,
   env: Readonly<Record<string, string>>,
   prompt: string | null = null,
+  fork = false,
 ): readonly string[] {
   const settings = Object.keys(env).length === 0 ? [] : ['--settings', JSON.stringify({ env })];
-  const session = resume === null ? [] : ['--resume', resume];
+  const forked = fork ? ['--fork-session'] : [];
+  const session = resume === null ? [] : ['--resume', resume, ...forked];
   return ['--bg', ...settings, ...session, ...(prompt === null ? [] : [prompt])];
 }
 

@@ -1,6 +1,6 @@
 // The buttons on Fleet rows: what each one is called and what its tooltip says.
 
-export type RowAction = 'open' | 'context' | 'interrupt' | 'stop' | 'move' | 'combine';
+export type RowAction = 'open' | 'context' | 'interrupt' | 'stop' | 'move' | 'relocate' | 'combine';
 export type ProjectAction = 'openFolder' | 'setFolder' | 'rename' | 'delete';
 
 export const ACTION_LABELS: Readonly<Record<RowAction | ProjectAction, string>> = {
@@ -9,6 +9,7 @@ export const ACTION_LABELS: Readonly<Record<RowAction | ProjectAction, string>> 
   interrupt: 'Interrupt',
   stop: 'Stop',
   move: 'Move to project',
+  relocate: 'Continue in folder',
   combine: 'Combine sessions',
   openFolder: 'Open project folder',
   setFolder: 'Set project folder',
@@ -23,6 +24,7 @@ const ACTION_TIPS: Readonly<Record<RowAction | ProjectAction, string>> = {
   interrupt: 'Stop the current turn, keep the session',
   stop: 'End the session',
   move: 'Put this session in another project',
+  relocate: 'Continue a copy of this session in another folder',
   combine: 'Start one new session from a digest of this and others',
   openFolder: 'Reveal the folder this project works in',
   setFolder: 'Pick the folder this project works in',

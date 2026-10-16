@@ -50,6 +50,12 @@ export const ROW_BUTTONS: readonly RowButton[] = [
       'On the row of a project you made, deletes it after asking. Its sessions go back to their repository or to Unassigned.',
   },
   {
+    icon: 'relocate',
+    name: 'Continue in folder',
+    meaning:
+      "Continues a copy of the session in a folder you pick, with that folder's CLAUDE.md, settings and memory, in a worktree when the folder is in git. A session still running is stopped first. The original stays in its old folder.",
+  },
+  {
     icon: 'combine',
     name: 'Combine sessions',
     meaning:

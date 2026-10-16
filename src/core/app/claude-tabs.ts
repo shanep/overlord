@@ -27,6 +27,8 @@ export interface ClaudeTab {
   readonly cwd: string;
   /** The session to continue, or null for a new one. */
   readonly resume: string | null;
+  /** Continue a copy of the resumed session under a new id, leaving the original as it was. */
+  readonly fork?: boolean;
   /** Variables the session needs, such as its worktree's port slot. */
   readonly env?: Readonly<Record<string, string>>;
   /** The id a new session takes when claude runs in the tab itself. Random when left out. */
@@ -72,7 +74,7 @@ async function openAttached(rt: Runtime, tab: ClaudeTab): Promise<string | null 
   const cli = await rt.claudeCli();
   const result = await rt.exec(
     cli.bin,
-    backgroundArgs(tab.resume, tab.env ?? {}, tab.prompt ?? null),
+    backgroundArgs(tab.resume, tab.env ?? {}, tab.prompt ?? null, tab.fork === true),
     {
       cwd: tab.cwd,
       timeoutMs: BACKGROUND_TIMEOUT_MS,
@@ -109,6 +111,18 @@ async function openAttached(rt: Runtime, tab: ClaudeTab): Promise<string | null 
   return sessionId;
 }
 
+/** Args for a tab that runs claude itself. A fork takes sessionId as its new id. */
+function plainArgs(tab: ClaudeTab, sessionId: string): readonly string[] {
+  const prompt = tab.prompt === undefined ? [] : [tab.prompt];
+  if (tab.resume === null) {
+    return ['--session-id', sessionId, ...prompt];
+  }
+  if (tab.fork === true) {
+    return ['--resume', tab.resume, '--fork-session', '--session-id', sessionId, ...prompt];
+  }
+  return ['--resume', sessionId, ...prompt];
+}
+
 /**
  * Opens a Claude tab whose session outlives it, or a plain one when the
  * background start fails. Resolves to the session id the tab runs, when known.
@@ -118,14 +132,12 @@ export async function openClaudeTab(rt: Runtime, tab: ClaudeTab): Promise<string
   if (attached !== undefined) {
     return attached;
   }
-  const sessionId = tab.resume ?? tab.newId ?? randomUUID();
+  const continued = tab.fork === true ? null : tab.resume;
+  const sessionId = continued ?? tab.newId ?? randomUUID();
   rt.host.runInTerminal({
     name: tab.name,
     command: rt.host.settings.claudePath,
-    args: [
-      ...(tab.resume === null ? ['--session-id', sessionId] : ['--resume', sessionId]),
-      ...(tab.prompt === undefined ? [] : [tab.prompt]),
-    ],
+    args: plainArgs(tab, sessionId),
     cwd: tab.cwd,
     sessionId,
     ...(tab.env === undefined ? {} : { env: tab.env }),

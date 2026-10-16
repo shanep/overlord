@@ -26,6 +26,8 @@ const SHAPES = {
   prompt: <path d="m3 5 3 3-3 3M8 11h5" />,
   /** A folder with an arrow: move to another project. */
   move: <path d="M2 4.5h4l1.5 1.5H14v6.5H2zM7 9.5h4M9.5 8l1.5 1.5L9.5 11" />,
+  /** An arrow into a folder: continue the session in another folder. */
+  relocate: <path d="M2 2.5V6a2 2 0 0 0 2 2h2.5M5 6.5 6.5 8 5 9.5M8 7h2.5l1 1H14v5H8z" />,
   /** Two lines joining into one: combine sessions. */
   combine: <path d="M3 3v2.5c0 2 5 2.5 5 5V13M13 3v2.5c0 2-5 2.5-5 5M6 11l2 2 2-2" />,
   /** An open folder: show the project's folder in the Explorer. */

@@ -39,6 +39,12 @@ describe('background sessions', () => {
     expect(backgroundArgs(null, {})).toStrictEqual(['--bg']);
     expect(backgroundArgs('abc-123', {})).toStrictEqual(['--bg', '--resume', 'abc-123']);
     expect(backgroundArgs(null, {}, 'Read this')).toStrictEqual(['--bg', 'Read this']);
+    expect(backgroundArgs('abc-123', {}, null, true)).toStrictEqual([
+      '--bg',
+      '--resume',
+      'abc-123',
+      '--fork-session',
+    ]);
     expect(backgroundArgs(null, { OVERLORD_SLOT: '2' })).toStrictEqual([
       '--bg',
       '--settings',

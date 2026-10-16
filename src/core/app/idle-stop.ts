@@ -9,7 +9,7 @@ import { readClaudeAgents } from '../surfaces/live.js';
 import { attachesTo, parseAttachClients } from '../surfaces/places.js';
 
 import { messageOf } from './errors.js';
-import type { Runtime } from './runtime.js';
+import type { ClaudeCli, Runtime } from './runtime.js';
 
 /** The closed tab's own `claude attach` can take a moment to exit. */
 export const DETACH_TRIES = 10;
@@ -57,6 +57,28 @@ async function waitForExit(rt: Runtime, pid: number): Promise<void> {
   }
 }
 
+/** A background job with a process to stop. */
+export interface RunningJob {
+  readonly id: string;
+  readonly pid: number;
+}
+
+/** Stops a background job, keeping its conversation, and waits for its process to go. True when it stopped. */
+export async function stopJob(rt: Runtime, cli: ClaudeCli, job: RunningJob): Promise<boolean> {
+  const result = await rt.exec(cli.bin, ['stop', job.id], {
+    timeoutMs: STOP_TIMEOUT_MS,
+    env: cli.env,
+  });
+  if (result.code !== 0) {
+    rt.report(SOURCE, `claude stop ${job.id} failed: ${result.stderr.trim()}`);
+    return false;
+  }
+  await waitForExit(rt, job.pid);
+  void rt.places.refresh();
+  void rt.jobs.refresh();
+  return true;
+}
+
 /**
  * A tab showing this session closed. Stops the session when it is a
  * background job with nothing left to do and no other tab shows it. True when
@@ -78,18 +100,7 @@ export async function stopIfIdle(rt: Runtime, sessionId: string): Promise<boolea
     if (await stillAttached(rt, sessionId)) {
       return false;
     }
-    const result = await rt.exec(cli.bin, ['stop', job.id], {
-      timeoutMs: STOP_TIMEOUT_MS,
-      env: cli.env,
-    });
-    if (result.code !== 0) {
-      rt.report(SOURCE, `claude stop ${job.id} failed: ${result.stderr.trim()}`);
-      return false;
-    }
-    await waitForExit(rt, job.pid);
-    void rt.places.refresh();
-    void rt.jobs.refresh();
-    return true;
+    return await stopJob(rt, cli, { id: job.id, pid: job.pid });
   } catch (error: unknown) {
     rt.report(SOURCE, messageOf(error));
     return false;
