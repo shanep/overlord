@@ -7,6 +7,7 @@ const config: KnipConfig = {
     'webview/src/main.tsx',
     'webview/vite.config.ts',
     'scripts/*.mjs',
+    'stryker.fast.config.mjs',
     'test/fake-claude/*.mjs',
     'test/integration/**/*.ts',
   ],

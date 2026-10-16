@@ -58,12 +58,18 @@ Press F5 in VS Code to run the extension in a development host.
 ## Testing
 
 ```sh
-npm test                  # unit tests
-npm run test:coverage     # unit tests with the 100% coverage gate
-npm run test:mutation     # Stryker, fails under a 90% mutation score
-npm run test:integration  # runs the extension inside VS Code
-npm run check             # every gate CI runs
+npm test                       # unit tests
+npm run test:coverage          # unit tests with the 100% coverage gate
+npm run test:mutation:changed  # Stryker on the files you changed, a minute or two
+npm run test:mutation          # Stryker on everything, about 13 minutes
+npm run test:integration       # runs the extension inside VS Code
+npm run check                  # every gate except mutation testing
 ```
+
+Mutation testing fails under a 90% score. Day to day, run the changed-files
+version. It diffs against `origin/master` (or `MUTATION_BASE`) and keeps an
+incremental cache, so a repeat run takes seconds. CI does the same on every
+push, and the full sweep runs nightly.
 
 `npm run check` runs typecheck, ESLint (zero warnings), Prettier, coverage, type coverage at
 100%, knip, dependency-cruiser, cspell, markdownlint and the no-dashes check. The pre-push hook
@@ -71,6 +77,9 @@ runs it too.
 
 None of the tests call the Claude API. Sessions run against a fake Claude binary in
 `test/fake-claude/` that replays scripted conversations through the real Agent SDK.
+`test/unit-setup.ts` also blocks every test process from starting a real `claude`
+binary and points the API at a closed local port, so a broken mutant cannot
+reach Anthropic or write to your `~/.claude`.
 
 ## Regenerating the knobs catalog
 
