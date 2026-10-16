@@ -6,10 +6,17 @@ import { defineConfig } from '@vscode/test-cli';
 
 // Point Claude Code paths at an empty temp dir so tests never read or write the real ~/.claude.
 const claudeConfigDir = mkdtempSync(path.join(os.tmpdir(), 'overlord-it-'));
+// VS Code puts an IPC socket in its user data folder, and socket paths must
+// stay under 103 characters, so keep it short instead of under the checkout.
+const userDataDir = mkdtempSync(path.join(os.tmpdir(), 'ovl-ud-'));
 
 export default defineConfig({
   files: 'out/test/integration/**/*.test.cjs',
-  launchArgs: ['--disable-extensions', '--disable-workspace-trust'],
+  launchArgs: [
+    '--disable-extensions',
+    '--disable-workspace-trust',
+    `--user-data-dir=${userDataDir}`,
+  ],
   // Same guard as the unit tests: no real API calls, ever.
   env: {
     CLAUDE_CONFIG_DIR: claudeConfigDir,
