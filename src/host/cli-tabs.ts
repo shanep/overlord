@@ -6,11 +6,15 @@
 import * as vscode from 'vscode';
 
 import type { ActiveTerminal } from '../core/app/places.js';
+import { forgetTab, parseStoredTabs, rememberTab, restoreTabs } from '../core/tab-memory.js';
 
 import type { SidebarView } from './panels.js';
 
 /** True while the active terminal is a Claude CLI tab Overlord knows the session of. */
 const ACTIVE_CONTEXT = 'overlord.cliTabActive';
+
+/** Workspace state key for the tabs Overlord opened, so a reload does not forget them. */
+const STORE_KEY = 'overlord.cliTabs';
 
 export class CliTabs implements vscode.Disposable {
   private readonly sessions = new Map<vscode.Terminal, string>();
@@ -22,6 +26,8 @@ export class CliTabs implements vscode.Disposable {
     private readonly onActive: (terminal: ActiveTerminal | null) => void,
     /** Hears the session of a tab Overlord opened once that tab closes. */
     private readonly onClosed: (sessionId: string) => void,
+    /** Where the tab list survives a window reload (the workspace state). */
+    private readonly store: vscode.Memento,
   ) {
     this.subscriptions = [
       vscode.window.onDidChangeActiveTerminal((terminal) => {
@@ -33,17 +39,57 @@ export class CliTabs implements vscode.Disposable {
         if (sessionId !== undefined) {
           this.onClosed(sessionId);
         }
+        void this.forget(terminal);
         this.follow(vscode.window.activeTerminal);
       }),
     ];
   }
 
+  /**
+   * Picks the tabs Overlord opened back up after a reload. VS Code reconnects
+   * a tab to the same running process, so its shell pid still matches.
+   */
+  async restore(): Promise<void> {
+    const terminals = await Promise.all(
+      vscode.window.terminals.map(async (terminal) => ({
+        terminal,
+        pid: await terminal.processId,
+      })),
+    );
+    const open = terminals.flatMap(({ pid }) => (pid === undefined ? [] : [pid]));
+    const { matched, kept } = restoreTabs(parseStoredTabs(this.store.get(STORE_KEY)), open);
+    for (const { terminal, pid } of terminals) {
+      const sessionId = pid === undefined ? undefined : matched.get(pid);
+      if (sessionId !== undefined) {
+        this.sessions.set(terminal, sessionId);
+      }
+    }
+    await this.store.update(STORE_KEY, kept);
+  }
+
   /** Ties a new CLI tab to its session and shows its properties in the sidebar. */
   track(terminal: vscode.Terminal, sessionId: string): void {
     this.sessions.set(terminal, sessionId);
+    void this.remember(terminal, sessionId);
     this.setActiveContext(true);
     this.announceActive();
     this.properties.reveal();
+  }
+
+  private async remember(terminal: vscode.Terminal, sessionId: string): Promise<void> {
+    const pid = await terminal.processId;
+    if (pid !== undefined) {
+      const stored = parseStoredTabs(this.store.get(STORE_KEY));
+      await this.store.update(STORE_KEY, rememberTab(stored, pid, sessionId));
+    }
+  }
+
+  private async forget(terminal: vscode.Terminal): Promise<void> {
+    const pid = await terminal.processId;
+    if (pid !== undefined) {
+      const stored = parseStoredTabs(this.store.get(STORE_KEY));
+      await this.store.update(STORE_KEY, forgetTab(stored, pid));
+    }
   }
 
   /** Tells the app which terminal is active now, for example right after activation. */

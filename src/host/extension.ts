@@ -112,7 +112,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     (sessionId) => {
       void overlord.sessionClosed(sessionId);
     },
+    context.workspaceState,
   );
+  // Pick up the Claude tabs Overlord opened before this reload, then say which is active.
+  await tabs.restore();
   tabs.announceActive();
   tabsHolder.current = tabs;
 
