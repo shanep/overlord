@@ -15,7 +15,16 @@
     "test/fixtures/**",
     "src/core/knobs/catalog.generated.json"
   ],
-  "dictionaries": ["typescript", "node", "softwareTerms", "npm", "bash", "html", "css"],
+  "dictionaries": [
+    "typescript",
+    "node",
+    "softwareTerms",
+    "npm",
+    "bash",
+    "html",
+    "css",
+    "overlord-frustration"
+  ],
   "words": [
     "abeoprs",
     "abia",
@@ -102,5 +111,12 @@
     "xoxb",
     "xoxe",
     "xoxp"
+  ],
+  "dictionaryDefinitions": [
+    {
+      "name": "overlord-frustration",
+      "path": "./cspell-frustration.txt",
+      "addWords": false
+    }
   ]
 }
