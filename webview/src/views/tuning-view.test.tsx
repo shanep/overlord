@@ -180,6 +180,9 @@ describe('TuningView', () => {
         .getAllByRole('listitem')
         .map((item) => item.textContent),
     ).toStrictEqual([
+      'Sessions past 200K context50% → 10%-80%, better',
+      'Cost per prompt$0.50 → $0.48-4%, about the same',
+      'Rereads per 100 tool calls2.0 → 3.0+50%, worse',
       'Lower autoCompactWindow in Knobs.',
       'Write a handoff note.',
       'Compaction happens on its own.',
@@ -286,31 +289,31 @@ describe('TuningView', () => {
   it('shows how a tracked tip went, overall and week by week, and passes axe', async () => {
     const { getByRole, container } = renderView(<TuningView state={STATE} />);
     const huge = getByRole('article', { name: 'Sessions grow huge without compacting' });
-    const results = within(huge).getByRole('region', { name: /^Results since/u });
-    expect(results.textContent).toContain(VERDICT_INFO.mixed.label);
-    expect(results.textContent).toContain(IMPACT.summary);
-    const rows = within(within(results).getByRole('table', { name: 'Before and since' }))
-      .getAllByRole('row')
-      .slice(1)
-      .map((row) => row.textContent);
-    expect(rows).toStrictEqual([
-      'Sessions past 200K context50%10%-80%, better',
-      'Cost per prompt$0.50 est.$0.48 est.-4%, about the same',
-      'Rereads per 100 tool calls2.03.0+50%, worse',
+    expect(within(huge).getByRole('banner').textContent).toContain(VERDICT_INFO.mixed.label);
+    const results = within(huge).getByRole('region', { name: /^Since/u });
+    expect(results.textContent).toContain('6 sessions, 9 before');
+    // The numbers say it, so the summary sentence is left out.
+    expect(results.textContent).not.toContain(IMPACT.summary);
+    const lines = within(within(results).getByRole('list', { name: 'Before and since' }))
+      .getAllByRole('listitem')
+      .map((item) => item.getAttribute('title'));
+    expect(lines).toStrictEqual([
+      'What the tip is about',
+      'Overall cost',
+      'Side effect: After a compaction Claude may reread files.',
     ]);
     const weeks = within(within(results).getByRole('table', { name: 'Week by week' }))
       .getAllByRole('row')
       .slice(1)
       .map((row) => row.textContent);
     expect(weeks).toStrictEqual([
-      '30 days before950%$0.50 est.2.0',
-      expect.stringContaining('425%$0.50 est.2.5'),
-      expect.stringContaining('20%$0.40 est.n/a'),
+      'Sessions942',
+      'Sessions past 200K context50%25%0%',
+      'Cost per prompt$0.50$0.50$0.40',
+      'Rereads per 100 tool calls2.02.5n/a',
     ]);
     const denials = getByRole('article', { name: 'Tool calls keep getting denied' });
-    expect(within(denials).getByRole('region', { name: 'Results' }).textContent).toContain(
-      'Taking this advice?',
-    );
+    expect(within(denials).getByRole('button', { name: 'Track from now' })).toBeDefined();
     await expectAccessible(container);
   });
 
@@ -328,16 +331,17 @@ describe('TuningView', () => {
       })),
     };
     const { getByRole } = renderView(<TuningView state={blank} />);
-    const row = within(getByRole('table', { name: 'Before and since' })).getAllByRole('row')[1];
-    expect([...(row?.children ?? [])].map((cell) => cell.textContent)).toStrictEqual([
+    const item = within(getByRole('list', { name: 'Before and since' })).getAllByRole(
+      'listitem',
+    )[0];
+    expect([...(item?.children ?? [])].map((cell) => cell.textContent)).toStrictEqual([
       'Sessions past 200K context',
-      'n/a',
-      '10%',
+      'n/a → 10%',
       'n/a',
     ]);
   });
 
-  it('leaves the comparison out until there is something to compare', () => {
+  it('says why there is no comparison yet instead of the numbers', () => {
     const early: TuningState = {
       ...STATE,
       tips: STATE.tips.map((tip) => ({
@@ -346,10 +350,10 @@ describe('TuningView', () => {
       })),
     };
     const { getAllByRole, queryByRole } = renderView(<TuningView state={early} />);
-    expect(getAllByRole('region', { name: /^Results since/u })[0]?.textContent).toContain(
-      VERDICT_INFO.early.label,
-    );
-    expect(queryByRole('table', { name: 'Before and since' })).toBeNull();
+    const [card] = getAllByRole('article');
+    expect(card?.textContent).toContain(VERDICT_INFO.early.label);
+    expect(card?.textContent).toContain(IMPACT.summary);
+    expect(queryByRole('list', { name: 'Before and since' })).toBeNull();
     expect(queryByRole('table', { name: 'Week by week' })).toBeNull();
   });
 });
@@ -364,9 +368,8 @@ describe('impact formatting', () => {
 
   it('says which way a change went', () => {
     expect(formatChange({ ...TARGET, direction: null })).toBe('n/a');
-    expect(formatChange({ ...TARGET, change: null, direction: 'worse' })).toBe(
-      'up from none, worse',
-    );
-    expect(formatChange(TARGET)).toBe('-80%, better');
+    expect(formatChange({ ...TARGET, change: null, direction: 'worse' })).toBe('new');
+    expect(formatChange(TARGET)).toBe('-80%');
+    expect(formatChange({ ...TARGET, change: 0.25, direction: 'worse' })).toBe('+25%');
   });
 });

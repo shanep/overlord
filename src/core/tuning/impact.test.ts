@@ -275,6 +275,22 @@ describe('impactOf', () => {
     });
   });
 
+  it('says a measure with no data since could not be compared, keeping capitals', () => {
+    const impact = impactOf({
+      tracking: { target: 'premiumShare', watch: [] },
+      since: SINCE,
+      measures: [
+        ...before(5, 0).map((m) => ({ ...m, subagentRequests: 10, premiumSubagentRequests: 9 })),
+        ...after(5, 0),
+      ],
+      now: SINCE,
+    });
+    expect(impact.metrics[0]).toMatchObject({ before: 0.9, after: null, direction: null });
+    expect(impact.summary).toMatch(
+      /^Subagent requests on Opus or Fable had nothing to compare on one side over 5 sessions/u,
+    );
+  });
+
   it('has no value where there is nothing to divide by', () => {
     const impact = impactOf({
       tracking: { target: 'premiumShare', watch: [{ metric: 'denials', why: '' }] },

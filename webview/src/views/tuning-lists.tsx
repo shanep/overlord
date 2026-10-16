@@ -17,7 +17,7 @@ import {
 import type { Tone } from '../labels.js';
 import { usePostAction } from '../vscode-context.js';
 
-import { TipResults } from './tuning-impact.js';
+import { TipResults, VERDICT_INFO } from './tuning-impact.js';
 
 export const SEVERITY_INFO: Readonly<Record<TipSeverity, { label: string; tone: Tone }>> = {
   high: { label: 'High impact', tone: 'critical' },
@@ -88,29 +88,38 @@ function TipCard(props: {
       <header className="tip-header">
         <h3 id={headingId}>{tip.title}</h3>
         <Badge label={severity.label} tone={severity.tone} />
+        {tip.impact === null ? null : (
+          <Badge
+            label={VERDICT_INFO[tip.impact.verdict].label}
+            tone={VERDICT_INFO[tip.impact.verdict].tone}
+          />
+        )}
       </header>
       <p>{tip.finding}</p>
-      <ul className="tip-advice">
-        {tip.advice.map((line) => (
-          <li key={line}>{line}</li>
-        ))}
-      </ul>
-      <Tradeoffs id={headingId} pros={tip.pros} cons={tip.cons} />
-      <p>
-        <strong>Skip it when:</strong> {tip.skipWhen}
-      </p>
       <TipResults tipId={tip.id} impact={tip.impact} />
-      {fixes.length === 0 ? null : (
-        <p className="muted">
-          Would help:{' '}
-          {fixes.map((name, index) => (
-            <span key={name}>
-              {index === 0 ? '' : ', '}
-              <code>{name}</code>
-            </span>
+      <details>
+        <summary>What to do</summary>
+        <ul className="tip-advice">
+          {tip.advice.map((line) => (
+            <li key={line}>{line}</li>
           ))}
+        </ul>
+        <Tradeoffs id={headingId} pros={tip.pros} cons={tip.cons} />
+        <p>
+          <strong>Skip it when:</strong> {tip.skipWhen}
         </p>
-      )}
+        {fixes.length === 0 ? null : (
+          <p className="muted">
+            Would help:{' '}
+            {fixes.map((name, index) => (
+              <span key={name}>
+                {index === 0 ? '' : ', '}
+                <code>{name}</code>
+              </span>
+            ))}
+          </p>
+        )}
+      </details>
       {tip.sessions.length === 0 ? null : (
         <details>
           <summary>Worst sessions</summary>
@@ -135,6 +144,12 @@ export function TipList(props: {
   return (
     <section className="section" aria-labelledby="tips-advice">
       <h2 id="tips-advice">Advice</h2>
+      <p className="hint">
+        Track a tip when you start following it, and its card compares the sessions you start after
+        that with the 30 days before. Lower is better for every measure, and a move under 10% counts
+        as no change, since the work and the model change too. Setting a knob or creating a skill or
+        agent a tip names starts tracking on its own.
+      </p>
       {props.tips.length === 0 ? (
         <p className="muted">Nothing stands out. Your sessions look lean.</p>
       ) : (
@@ -163,7 +178,10 @@ function SuggestionCard(props: { readonly suggestion: Suggestion }): ReactElemen
       </header>
       <p>{suggestion.summary}</p>
       <p className="muted">{suggestion.reason ?? 'Nothing in your sessions calls for it yet.'}</p>
-      <Tradeoffs id={headingId} pros={suggestion.pros} cons={suggestion.cons} />
+      <details>
+        <summary>Pros and cons</summary>
+        <Tradeoffs id={headingId} pros={suggestion.pros} cons={suggestion.cons} />
+      </details>
       <div className="actions">
         <button
           type="button"
@@ -267,14 +285,19 @@ export function TuningSessionTable(props: {
 }): ReactElement {
   return (
     <section className="section" aria-labelledby="tuning-sessions">
-      <h2 id="tuning-sessions">Sessions by cost</h2>
-      <DataTable
-        caption="Sessions by cost"
-        columns={sessionColumns(props.titles)}
-        rows={props.rows}
-        rowKey={(row) => row.sessionId}
-        empty="No sessions measured yet."
-      />
+      <details>
+        <summary>
+          <h2 id="tuning-sessions">Sessions by cost</h2>{' '}
+          <span className="muted">{formatInteger(props.rows.length)}</span>
+        </summary>
+        <DataTable
+          caption="Sessions by cost"
+          columns={sessionColumns(props.titles)}
+          rows={props.rows}
+          rowKey={(row) => row.sessionId}
+          empty="No sessions measured yet."
+        />
+      </details>
     </section>
   );
 }

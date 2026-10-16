@@ -299,7 +299,11 @@ export function verdictOf(metrics: readonly ImpactMetric[]): ImpactVerdict {
 }
 
 function moved(metric: ImpactMetric): string {
-  const label = metric.label.toLowerCase();
+  // Only the first letter, so names such as Opus keep their capital.
+  const label = `${metric.label.charAt(0).toLowerCase()}${metric.label.slice(1)}`;
+  if (metric.direction === null) {
+    return `${label} had nothing to compare on one side`;
+  }
   if (metric.change === null) {
     return `${label} went up from none`;
   }

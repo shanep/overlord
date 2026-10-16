@@ -1,6 +1,6 @@
 // The results part of a tip card: a button to start tracking the tip, and
-// once tracked, how its numbers moved compared with the weeks before, both
-// overall and week by week.
+// once tracked, one line per measure with how it moved against the weeks
+// before, and the week by week numbers behind a disclosure.
 
 import type { ReactElement } from 'react';
 
@@ -11,8 +11,7 @@ import type {
   ImpactVerdict,
   TipImpact,
 } from '../../../src/shared/tuning.js';
-import { Badge } from '../components/badge.js';
-import { formatCompact, formatCost, formatDateTime, formatPercent } from '../format.js';
+import { formatCompact, formatDateTime, formatPercent, formatUsd } from '../format.js';
 import type { Tone } from '../labels.js';
 import { usePostAction } from '../vscode-context.js';
 
@@ -40,7 +39,8 @@ export function formatImpactValue(value: number | null, format: ImpactFormat): s
       return formatCompact(value);
     }
     case 'usd': {
-      return formatCost(value);
+      // The view says once that costs are estimates, so the rows stay short.
+      return formatUsd(value);
     }
     case 'percent': {
       return formatPercent(value);
@@ -51,19 +51,19 @@ export function formatImpactValue(value: number | null, format: ImpactFormat): s
   }
 }
 
-/** "-42%, better", or "new, worse" when it went up from nothing. */
+/** "-42%", "+8%", or "new" when it went up from nothing. */
 export function formatChange(metric: ImpactMetric): string {
   if (metric.direction === null) {
     return 'n/a';
   }
-  const label = DIRECTION_LABELS[metric.direction];
   if (metric.change === null) {
-    return `up from none, ${label}`;
+    return 'new';
   }
   const sign = metric.change > 0 ? '+' : '';
-  return `${sign}${formatPercent(metric.change)}, ${label}`;
+  return `${sign}${formatPercent(metric.change)}`;
 }
 
+/** What a measure is there for, shown when you hover it. */
 function roleLabel(metric: ImpactMetric): string {
   if (metric.role === 'target') {
     return 'What the tip is about';
@@ -71,82 +71,101 @@ function roleLabel(metric: ImpactMetric): string {
   return metric.role === 'cost' ? 'Overall cost' : `Side effect: ${metric.why}`;
 }
 
-function MetricTable(props: { readonly impact: TipImpact; readonly label: string }): ReactElement {
+function MetricList(props: { readonly impact: TipImpact }): ReactElement {
   return (
-    <table className="grid" aria-label={props.label}>
-      <thead>
-        <tr>
-          <th scope="col">Measure</th>
-          <th scope="col" className="num">
-            30 days before
-          </th>
-          <th scope="col" className="num">
-            Since
-          </th>
-          <th scope="col" className="num">
-            Change
-          </th>
-        </tr>
-      </thead>
-      <tbody>
-        {props.impact.metrics.map((metric) => (
-          <tr key={metric.id}>
-            <th scope="row" className="wrap" title={roleLabel(metric)}>
-              {metric.role === 'target' ? <strong>{metric.label}</strong> : metric.label}
-            </th>
-            <td className="num">{formatImpactValue(metric.before, metric.format)}</td>
-            <td className="num">{formatImpactValue(metric.after, metric.format)}</td>
-            <td className={`num impact-${metric.direction ?? 'none'}`}>{formatChange(metric)}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <ul className="impact-metrics" aria-label="Before and since">
+      {props.impact.metrics.map((metric) => (
+        <li key={metric.id} className={`impact-${metric.role}`} title={roleLabel(metric)}>
+          <span className="impact-label">{metric.label}</span>
+          <span className="impact-values">
+            {formatImpactValue(metric.before, metric.format)} →{' '}
+            {formatImpactValue(metric.after, metric.format)}
+          </span>
+          <span className={`impact-change impact-${metric.direction ?? 'none'}`}>
+            {formatChange(metric)}
+            {metric.direction === null ? null : (
+              <span className="visually-hidden">, {DIRECTION_LABELS[metric.direction]}</span>
+            )}
+          </span>
+        </li>
+      ))}
+    </ul>
   );
 }
 
+/** "10-16" for a week starting on October 16, short enough for a column. */
+function weekLabel(start: number): string {
+  return formatDateTime(start).slice(5, 10);
+}
+
+/** One row per measure and one column per week, so long labels sit where there is room. */
 function WeekTable(props: { readonly impact: TipImpact }): ReactElement {
   const { metrics, weeks } = props.impact;
   return (
     <details>
       <summary>Week by week</summary>
-      <table className="grid" aria-label="Week by week">
-        <thead>
-          <tr>
-            <th scope="col">Week from</th>
-            <th scope="col" className="num">
-              Sessions
-            </th>
-            {metrics.map((metric) => (
-              <th key={metric.id} scope="col" className="num wrap">
-                {metric.label}
+      <div className="table-scroll">
+        <table className="grid" aria-label="Week by week">
+          <thead>
+            <tr>
+              <th scope="col">Week from</th>
+              <th scope="col" className="num">
+                Before
               </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <th scope="row">30 days before</th>
-            <td className="num">{props.impact.sessionsBefore.toLocaleString('en-US')}</td>
-            {metrics.map((metric) => (
-              <td key={metric.id} className="num">
-                {formatImpactValue(metric.before, metric.format)}
-              </td>
-            ))}
-          </tr>
-          {weeks.map((week) => (
-            <tr key={week.start}>
-              <th scope="row">{formatDateTime(week.start)}</th>
-              <td className="num">{week.sessions.toLocaleString('en-US')}</td>
-              {metrics.map((metric, index) => (
-                <td key={metric.id} className="num">
-                  {formatImpactValue(week.values[index] ?? null, metric.format)}
+              {weeks.map((week) => (
+                <th key={week.start} scope="col" className="num" title={formatDateTime(week.start)}>
+                  {weekLabel(week.start)}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">Sessions</th>
+              <td className="num">{props.impact.sessionsBefore.toLocaleString('en-US')}</td>
+              {weeks.map((week) => (
+                <td key={week.start} className="num">
+                  {week.sessions.toLocaleString('en-US')}
                 </td>
               ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+            {metrics.map((metric, index) => (
+              <tr key={metric.id}>
+                <th scope="row" className="wrap">
+                  {metric.label}
+                </th>
+                <td className="num">{formatImpactValue(metric.before, metric.format)}</td>
+                {weeks.map((week) => (
+                  <td key={week.start} className="num">
+                    {formatImpactValue(week.values[index] ?? null, metric.format)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </details>
+  );
+}
+
+function TrackButton(props: { readonly tipId: string; readonly on: boolean }): ReactElement {
+  const post = usePostAction();
+  return (
+    <button
+      type="button"
+      className={props.on ? undefined : 'link-button'}
+      title={
+        props.on
+          ? 'Compare the sessions you start from now on with the 30 days before'
+          : 'Stop comparing and forget when tracking started'
+      }
+      onClick={() => {
+        post({ type: 'trackTip', tipId: props.tipId, on: props.on });
+      }}
+    >
+      {props.on ? 'Track from now' : 'Stop tracking'}
+    </button>
   );
 }
 
@@ -154,56 +173,31 @@ export function TipResults(props: {
   readonly tipId: string;
   readonly impact: TipImpact | null;
 }): ReactElement {
-  const post = usePostAction();
   const { impact } = props;
   const headingId = `tip-${props.tipId}-results`;
   if (impact === null) {
     return (
-      <section className="tip-impact" aria-labelledby={headingId}>
-        <h4 id={headingId}>Results</h4>
-        <p className="muted">
-          Taking this advice? Track it, and the sessions you start from now on are compared with the
-          ones from the 30 days before, cost and side effects included. Setting a knob or creating a
-          skill or agent this tip names from Overlord starts tracking on its own.
-        </p>
-        <div className="actions">
-          <button
-            type="button"
-            onClick={() => {
-              post({ type: 'trackTip', tipId: props.tipId, on: true });
-            }}
-          >
-            Track from now
-          </button>
-        </div>
-      </section>
+      <div className="tip-impact actions">
+        <TrackButton tipId={props.tipId} on />
+      </div>
     );
   }
-  const verdict = VERDICT_INFO[impact.verdict];
   const compared = impact.verdict !== 'early' && impact.verdict !== 'no-baseline';
   return (
     <section className="tip-impact" aria-labelledby={headingId}>
-      <header className="tip-header">
-        <h4 id={headingId}>Results since {formatDateTime(impact.trackedSince)}</h4>
-        <Badge label={verdict.label} tone={verdict.tone} />
-      </header>
-      <p>{impact.summary}</p>
-      {compared ? <MetricTable impact={impact} label="Before and since" /> : null}
-      {impact.sessionsAfter > 0 ? <WeekTable impact={impact} /> : null}
-      <p className="muted">
-        Lower is better for every measure. The work and the model change too, so a move under 10%
-        counts as no change. Sessions already running when tracking started are left out.
-      </p>
-      <div className="actions">
-        <button
-          type="button"
-          onClick={() => {
-            post({ type: 'trackTip', tipId: props.tipId, on: false });
-          }}
-        >
-          Stop tracking
-        </button>
+      <div className="impact-caption">
+        <h4 id={headingId}>
+          Since {formatDateTime(impact.trackedSince)}
+          <span className="muted">
+            {' '}
+            {impact.sessionsAfter.toLocaleString('en-US')} sessions,{' '}
+            {impact.sessionsBefore.toLocaleString('en-US')} before
+          </span>
+        </h4>
+        <TrackButton tipId={props.tipId} on={false} />
       </div>
+      {compared ? <MetricList impact={impact} /> : <p className="hint">{impact.summary}</p>}
+      {impact.sessionsAfter > 0 ? <WeekTable impact={impact} /> : null}
     </section>
   );
 }
