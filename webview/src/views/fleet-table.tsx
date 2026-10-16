@@ -139,6 +139,8 @@ interface FleetTableRowProps {
   readonly now: number;
   readonly history: readonly number[];
   readonly theme: ChartTheme;
+  /** Whether a session's row shows the line on what it is working on. */
+  readonly showSummary: boolean;
   readonly rowRef: RefObject<HTMLTableRowElement | null> | undefined;
   readonly onSelect: (key: string) => void;
   /** A click on the row itself, not one of its buttons. */
@@ -176,6 +178,7 @@ function Twisty(props: {
 
 function TitleCell(props: {
   readonly visible: VisibleRow;
+  readonly showSummary: boolean;
   readonly onToggle: (visible: VisibleRow) => void;
 }): ReactElement {
   const { visible } = props;
@@ -195,7 +198,7 @@ function TitleCell(props: {
         />
       ) : null}{' '}
       <span className="muted row-detail">{row.detail}</span>
-      {row.summary === null ? null : (
+      {row.summary === null || !props.showSummary ? null : (
         <span
           className="muted row-summary"
           style={{ paddingLeft: `${(visible.depth * 1.2 + 1.2).toString()}em` }}
@@ -218,7 +221,7 @@ function ProjectCells(props: FleetTableRowProps): ReactElement {
         <StateBadge state={row.state} />
       </td>
       <td role="gridcell" className="col-surface" />
-      <TitleCell visible={visible} onToggle={props.onToggle} />
+      <TitleCell visible={visible} showSummary={props.showSummary} onToggle={props.onToggle} />
       <td role="gridcell" className="col-model" />
       <td role="gridcell" className="col-effort" />
       <td role="gridcell" className="col-elapsed num" />
@@ -259,7 +262,7 @@ function SessionCells(props: FleetTableRowProps): ReactElement {
       <td role="gridcell" className="col-surface">
         <SurfaceBadge surface={row.surface} />
       </td>
-      <TitleCell visible={visible} onToggle={props.onToggle} />
+      <TitleCell visible={visible} showSummary={props.showSummary} onToggle={props.onToggle} />
       <td role="gridcell" className="col-model">
         {row.model ?? ''}
       </td>
@@ -387,6 +390,7 @@ export function FleetTable(props: FleetTableProps): ReactElement {
               now={props.now}
               history={props.historyByKey.get(visible.row.key) ?? EMPTY}
               theme={props.theme}
+              showSummary={props.showSummary}
               rowRef={selected ? props.selectedRef : undefined}
               onSelect={props.onSelect}
               onActivate={props.onActivate}

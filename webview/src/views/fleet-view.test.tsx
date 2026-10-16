@@ -464,6 +464,19 @@ describe('FleetView grouped by project', () => {
     expect(api.saved).toMatchObject({ 'fleet.groupByProject': false });
   });
 
+  it('hides the working on line and saves the choice', async () => {
+    const user = userEvent.setup();
+    const recap = { text: 'Split the parser in two.', at: NOW - 60_000 };
+    const sessions = projectFleet.sessions.map((item) =>
+      item.id === 's1' ? { ...item, recap } : item,
+    );
+    const { api } = setup({ ...projectFleet, sessions }, new FakeApi());
+    expect(screen.getByText('Split the parser in two.')).toBeDefined();
+    await user.click(screen.getByRole('checkbox', { name: 'Show working on' }));
+    expect(screen.queryByText('Split the parser in two.')).toBeNull();
+    expect(api.saved).toMatchObject({ 'fleet.showSummary': false });
+  });
+
   it('opens the folded project of the focused terminal session once', async () => {
     const user = userEvent.setup();
     const api = new FakeApi({ 'fleet.collapsed': ['p:git:/r/web'] });

@@ -15,7 +15,7 @@ function noop(): void {
   // Handlers are not exercised here.
 }
 
-function renderTable(state: FleetState): HTMLElement {
+function renderTable(state: FleetState, showSummary = true): HTMLElement {
   render(
     <FleetTable
       rows={flattenTree(buildFleetTree(state), new Set())}
@@ -26,6 +26,7 @@ function renderTable(state: FleetState): HTMLElement {
       onSort={noop}
       now={NOW}
       theme={theme}
+      showSummary={showSummary}
       onSelect={noop}
       onActivate={noop}
       onKey={noop}
@@ -67,6 +68,18 @@ describe('FleetTable', () => {
     expect(lines[0]?.textContent).toBe('Split the parser in two.');
     expect(lines[0]?.getAttribute('title')).toBe('Split the parser in two.');
     expect(lines[0]?.closest('td')?.className).toBe('col-title');
+  });
+
+  it('leaves the working on line out when it is turned off', () => {
+    const recap = { text: 'Split the parser in two.', at: NOW - 60_000 };
+    const grid = renderTable(
+      {
+        ...fleetState,
+        sessions: fleetState.sessions.map((item) => (item.id === 's1' ? { ...item, recap } : item)),
+      },
+      false,
+    );
+    expect(grid.querySelectorAll('.row-summary')).toHaveLength(0);
   });
 });
 

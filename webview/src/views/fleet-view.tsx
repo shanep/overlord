@@ -60,12 +60,15 @@ function useFleetPreferences(): {
   readonly setCollapsed: (next: readonly string[]) => void;
   readonly grouped: boolean;
   readonly setGrouped: (next: boolean) => void;
+  readonly showSummary: boolean;
+  readonly setShowSummary: (next: boolean) => void;
 } {
   const [sort, setSort] = usePersistentState<SortState>('fleet.sort', DEFAULT_SORT, isSortState);
   const [filter, setFilter] = usePersistentState('fleet.filter', '', isString);
   const [hideDone, setHideDone] = usePersistentState('fleet.hideDone', false, isBoolean);
   const [collapsed, setCollapsed] = usePersistentState('fleet.collapsed', NO_KEYS, isStringArray);
   const [grouped, setGrouped] = usePersistentState('fleet.groupByProject', true, isBoolean);
+  const [showSummary, setShowSummary] = usePersistentState('fleet.showSummary', true, isBoolean);
   return {
     sort,
     setSort,
@@ -77,6 +80,8 @@ function useFleetPreferences(): {
     setCollapsed,
     grouped,
     setGrouped,
+    showSummary,
+    setShowSummary,
   };
 }
 
@@ -279,6 +284,16 @@ export function FleetView(props: { readonly state: FleetState }): ReactElement {
           />
           Group by project
         </label>
+        <label>
+          <input
+            type="checkbox"
+            checked={preferences.showSummary}
+            onChange={(event) => {
+              preferences.setShowSummary(event.target.checked);
+            }}
+          />
+          Show working on
+        </label>
         <span className="spacer" />
         <span className="muted fleet-keys">
           <kbd>{'↑'}</kbd> <kbd>{'↓'}</kbd> move, <kbd>Enter</kbd> open, <kbd>k</kbd> interrupt,{' '}
@@ -310,6 +325,7 @@ export function FleetView(props: { readonly state: FleetState }): ReactElement {
           }}
           now={now}
           theme={theme}
+          showSummary={preferences.showSummary}
           onSelect={setSelected}
           onActivate={activate}
           onKey={onKey}
