@@ -70,7 +70,7 @@ describe('SessionPlaces', () => {
       bg: 'background',
     });
     expect(h.changes).toBe(1);
-    expect(h.psCalls).toStrictEqual([['ps', '-A', '-o', 'pid=,ppid=']]);
+    expect(h.psCalls).toStrictEqual([['ps', '-A', '-o', 'pid=,ppid=,args=']]);
     expect(h.places.terminalFor('here')).toBe(10);
     expect(h.places.terminalFor('elsewhere')).toBeNull();
     expect(h.places.terminalFor('nobody')).toBeNull();
@@ -113,14 +113,28 @@ describe('SessionPlaces', () => {
     expect(h.changes).toBe(before + 4);
   });
 
-  it('skips ps when only background sessions run', async () => {
+  it('skips ps when no terminal is open', async () => {
     const h = await setup();
     await register(h.sessionsDir, 31, 'bg', 'bg');
     h.alive = new Set([31]);
-    h.terminals = [10];
+    h.terminals = [];
     await h.places.refresh();
     expect(h.places.value).toStrictEqual({ bg: 'background' });
     expect(h.psCalls).toStrictEqual([]);
+  });
+
+  it('shows a background session as VS Code while a tab there runs claude attach for it', async () => {
+    const h = await setup('  55  10 /usr/local/bin/claude attach 8052765a\n  10   1 zsh\n');
+    await register(h.sessionsDir, 31, '8052765a-1f6c-468e', 'bg');
+    h.alive = new Set([31]);
+    h.terminals = [10];
+    await h.places.refresh();
+    expect(h.places.value).toStrictEqual({ '8052765a-1f6c-468e': 'vscode' });
+    expect(h.places.terminalFor('8052765a-1f6c-468e')).toBe(10);
+    h.terminals = [];
+    await h.places.refresh();
+    expect(h.places.value).toStrictEqual({ '8052765a-1f6c-468e': 'background' });
+    expect(h.places.terminalFor('8052765a-1f6c-468e')).toBeNull();
   });
 
   it('shares a refresh that is already running', async () => {

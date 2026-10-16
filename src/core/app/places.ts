@@ -7,8 +7,13 @@ import type { SessionPlace } from '../../shared/model.js';
 import type { ClaudePaths } from '../paths.js';
 import type { RegistryEntry } from '../surfaces/live.js';
 import { readSessionRegistry } from '../surfaces/live.js';
-import type { Placement } from '../surfaces/places.js';
-import { liveEntries, parseProcessTable, placeSessions } from '../surfaces/places.js';
+import type { AttachClient, Placement } from '../surfaces/places.js';
+import {
+  liveEntries,
+  parseAttachClients,
+  parseProcessTable,
+  placeSessions,
+} from '../surfaces/places.js';
 import type { ExecFunction, IsAlive } from '../surfaces/process.js';
 
 import { messageOf } from './errors.js';
@@ -41,6 +46,7 @@ export class SessionPlaces {
   private current: Readonly<Record<string, SessionPlace>> = {};
   private placements: ReadonlyMap<string, Placement> = new Map();
   private parents: ReadonlyMap<number, number> = new Map();
+  private attaches: readonly AttachClient[] = [];
   private treeKey = '';
   private running: Promise<void> | null = null;
   private active: ActiveTerminal | null = null;
@@ -99,7 +105,7 @@ export class SessionPlaces {
       const live = liveEntries(registry.items, this.deps.isAlive);
       const roots = new Set(terminals);
       await this.readTree(live, roots);
-      this.placements = placeSessions(live, this.parents, roots);
+      this.placements = placeSessions(live, this.parents, roots, this.attaches);
       const next = Object.fromEntries(
         [...this.placements].map(([sessionId, placement]) => [sessionId, placement.place]),
       );
@@ -112,17 +118,23 @@ export class SessionPlaces {
     }
   }
 
-  /** The process tree only matters for interactive sessions while a terminal is open. */
+  /**
+   * The process tree only matters while a terminal is open: it ties an
+   * interactive session to its terminal, and a background session to the tab
+   * running `claude attach` for it.
+   */
   private async readTree(
     live: readonly RegistryEntry[],
     roots: ReadonlySet<number>,
   ): Promise<void> {
-    const interactive = live.filter((entry) => entry.kind === 'interactive');
+    const placed = live.filter(
+      (entry) => entry.kind === 'interactive' || entry.kind === 'background',
+    );
     const key =
-      interactive.length === 0 || roots.size === 0
+      placed.length === 0 || roots.size === 0
         ? ''
         : JSON.stringify([
-            interactive.map((entry) => entry.pid).toSorted(byNumber),
+            placed.map((entry) => entry.pid).toSorted(byNumber),
             [...roots].toSorted(byNumber),
           ]);
     if (key === this.treeKey) {
@@ -130,11 +142,13 @@ export class SessionPlaces {
     }
     if (key === '') {
       this.parents = new Map();
+      this.attaches = [];
     } else {
-      const ps = await this.deps.exec('ps', ['-A', '-o', 'pid=,ppid='], {
+      const ps = await this.deps.exec('ps', ['-A', '-o', 'pid=,ppid=,args='], {
         timeoutMs: PS_TIMEOUT_MS,
       });
       this.parents = parseProcessTable(ps.stdout);
+      this.attaches = parseAttachClients(ps.stdout);
     }
     this.treeKey = key;
   }

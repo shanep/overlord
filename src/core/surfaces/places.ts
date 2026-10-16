@@ -15,12 +15,34 @@ const MAX_DEPTH = 32;
 export function parseProcessTable(stdout: string): Map<number, number> {
   const parents = new Map<number, number>();
   for (const line of stdout.split('\n')) {
-    const match = /^\s*(\d+)\s+(\d+)\s*$/u.exec(line);
+    // Lines may carry the command after the two pids (ps -o args=).
+    const match = /^\s*(\d+)\s+(\d+)(?:\s|$)/u.exec(line);
     if (match?.[1] !== undefined && match[2] !== undefined) {
       parents.set(Number(match[1]), Number(match[2]));
     }
   }
   return parents;
+}
+
+/** A `claude attach <id>` client: a terminal showing a background session. */
+export interface AttachClient {
+  readonly pid: number;
+  /** The session id, or the start of it, that the client attached to. */
+  readonly target: string;
+}
+
+const ATTACH = /^\s*(\d+)\s+\d+\s+\S*claude\s+attach\s+([\w-]+)/u;
+
+/** Attach clients from `ps -A -o pid=,ppid=,args=`. */
+export function parseAttachClients(stdout: string): readonly AttachClient[] {
+  const clients: AttachClient[] = [];
+  for (const line of stdout.split('\n')) {
+    const match = ATTACH.exec(line);
+    if (match?.[1] !== undefined && match[2] !== undefined) {
+      clients.push({ pid: Number(match[1]), target: match[2] });
+    }
+  }
+  return clients;
 }
 
 /** The root that pid is, or runs somewhere under, or null when it is under none of them. */
@@ -53,20 +75,45 @@ export function liveEntries(
   return [...pickRegistry(entries, isAlive).values()].filter((entry) => isAlive(entry.pid));
 }
 
+/** Ids shorter than this are too vague to tie a client to a session. */
+const MIN_TARGET = 8;
+
+/** The VS Code terminal showing a background session through `claude attach`, or null. */
+function attachedTerminal(
+  sessionId: string,
+  attaches: readonly AttachClient[],
+  context: { readonly parents: ReadonlyMap<number, number>; readonly roots: ReadonlySet<number> },
+): number | null {
+  for (const client of attaches) {
+    if (client.target.length >= MIN_TARGET && sessionId.startsWith(client.target)) {
+      const terminal = rootOf(client.pid, context.parents, context.roots);
+      if (terminal !== null) {
+        return terminal;
+      }
+    }
+  }
+  return null;
+}
+
 /**
  * Place each live session. An interactive session counts as VS Code when its
  * process runs under one of the terminal shells, and as a plain terminal
- * otherwise. Kinds other than interactive and background are left out.
+ * otherwise. A background session counts as VS Code when one of those
+ * terminals runs `claude attach` for it, since that tab is where it shows.
+ * Kinds other than interactive and background are left out.
  */
 export function placeSessions(
   live: readonly RegistryEntry[],
   parents: ReadonlyMap<number, number>,
   terminalPids: ReadonlySet<number>,
+  attaches: readonly AttachClient[] = [],
 ): Map<string, Placement> {
   const places = new Map<string, Placement>();
+  const context = { parents, roots: terminalPids };
   for (const entry of live) {
     if (entry.kind === 'background') {
-      places.set(entry.sessionId, { place: 'background', terminal: null });
+      const terminal = attachedTerminal(entry.sessionId, attaches, context);
+      places.set(entry.sessionId, { place: terminal === null ? 'background' : 'vscode', terminal });
     } else if (entry.kind === 'interactive') {
       const terminal = rootOf(entry.pid, parents, terminalPids);
       places.set(entry.sessionId, { place: terminal === null ? 'terminal' : 'vscode', terminal });
