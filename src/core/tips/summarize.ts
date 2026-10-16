@@ -1,6 +1,6 @@
 // Turns the session measures into what the tips view shows.
 
-import type { TipsSessionRow, TipsState } from '../../shared/protocol.js';
+import type { TipsSessionRow, TipsState } from '../../shared/tips.js';
 
 import type { SessionMeasure } from './measure.js';
 import { buildTips, cacheReadShare, tipsFor } from './rules.js';

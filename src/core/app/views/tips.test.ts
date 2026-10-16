@@ -3,7 +3,7 @@ import path from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import type { TipsState } from '../../../shared/protocol.js';
+import type { TipsState } from '../../../shared/tips.js';
 import type { TestApp, TestEnv } from '../test-helpers/fixtures.js';
 import { makeApp, makeEnv, NOW, waitFor, writeText } from '../test-helpers/fixtures.js';
 

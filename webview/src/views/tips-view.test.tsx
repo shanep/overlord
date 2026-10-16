@@ -1,7 +1,7 @@
 import { fireEvent, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import type { TipsState } from '../../../src/shared/protocol.js';
+import type { TipsState } from '../../../src/shared/tips.js';
 import { NOW } from '../../test/fixtures.js';
 import { expectAccessible, renderView } from '../../test/render.js';
 
@@ -39,6 +39,9 @@ const STATE: TipsState = {
       advice: ['Lower autoCompactWindow in Knobs.', 'Write a handoff note.'],
       sessions: [{ sessionId: S1, title: 'Vault report', detail: '949K peak context' }],
       fixes: ['handoff', 'gone', 'scout'],
+      pros: ['Compaction happens on its own.'],
+      cons: ['The summary can drop details you still needed.'],
+      skipWhen: 'Leave it large for big refactors.',
     },
     {
       id: 'denials',
@@ -48,6 +51,9 @@ const STATE: TipsState = {
       advice: ['Run /fewer-permission-prompts.'],
       sessions: [],
       fixes: [],
+      pros: ['Fewer interruptions.'],
+      cons: ['A broad rule removes a check.'],
+      skipWhen: 'Keep denying pushes.',
     },
   ],
   suggestions: [
@@ -56,6 +62,8 @@ const STATE: TipsState = {
       kind: 'skill',
       name: 'handoff',
       summary: 'Writes a handoff note.',
+      pros: ['You choose what carries over.'],
+      cons: ['Detail it leaves out is gone.'],
       reason: '1 session went past 200K tokens.',
       installed: false,
     },
@@ -64,6 +72,8 @@ const STATE: TipsState = {
       kind: 'agent',
       name: 'scout',
       summary: 'Searches on Haiku.',
+      pros: ['Cheap searches.'],
+      cons: ['Haiku can miss subtle code.'],
       reason: null,
       installed: true,
     },
@@ -118,8 +128,17 @@ describe('TipsView', () => {
     ).toStrictEqual([
       'Lower autoCompactWindow in Knobs.',
       'Write a handoff note.',
+      'Compaction happens on its own.',
+      'The summary can drop details you still needed.',
       'Vault report 949K peak context',
     ]);
+    expect(within(huge).getByRole('list', { name: 'Pros' }).textContent).toBe(
+      'Compaction happens on its own.',
+    );
+    expect(within(huge).getByRole('list', { name: 'Cons' }).textContent).toBe(
+      'The summary can drop details you still needed.',
+    );
+    expect(huge.textContent).toContain('Skip it when: Leave it large for big refactors.');
     expect(huge.textContent).toContain('Would help: handoff, scout');
     const denials = getByRole('article', { name: 'Tool calls keep getting denied' });
     expect(denials.textContent).toContain(SEVERITY_INFO.medium.label);
@@ -128,6 +147,9 @@ describe('TipsView', () => {
     const handoff = getByRole('article', { name: 'handoff' });
     expect(handoff.textContent).toContain('Skill');
     expect(handoff.textContent).toContain('1 session went past 200K tokens.');
+    expect(within(handoff).getByRole('list', { name: 'Cons' }).textContent).toBe(
+      'Detail it leaves out is gone.',
+    );
     expect(within(handoff).getByRole('button', { name: 'Create' })).toBeDefined();
     const scout = getByRole('article', { name: 'scout' });
     expect(scout.textContent).toContain('Agent');

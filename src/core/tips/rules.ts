@@ -2,7 +2,7 @@
 // all, and at each session to list the ones that show the problem worst.
 // Thresholds are set so a tip only shows when it is worth acting on.
 
-import type { Tip, TipSession, TipSeverity } from '../../shared/protocol.js';
+import type { Tip, TipSession, TipSeverity } from '../../shared/tips.js';
 
 import type { SessionMeasure } from './measure.js';
 import { costTotal } from './measure.js';
@@ -19,6 +19,10 @@ export interface TipRule {
   readonly advice: readonly string[];
   /** Suggestion ids that help. */
   readonly fixes: readonly string[];
+  readonly pros: readonly string[];
+  /** What following the advice gives up, so the choice is an informed one. */
+  readonly cons: readonly string[];
+  readonly skipWhen: string;
   /** What the transcripts show, or null when the tip does not apply. */
   readonly finding: (totals: Totals) => string | null;
   /** True when this session shows the problem. */
@@ -54,11 +58,21 @@ export const RULES: readonly TipRule[] = [
     severity: 'high',
     title: 'Most of the spend is re-reading old context',
     advice: [
-      'Every request sends the whole conversation again, so the 300th turn of a session costs far more than the 3rd. Start a new session for each task instead of continuing an old one.',
+      'Every request sends the whole conversation again, so the 300th turn of a session costs far more than the 3rd. When you move on to a new task, start a new session instead of continuing the old one.',
       'Use /clear when you switch to something unrelated, and /compact with a focus (for example "/compact keep the plan and the failing test") at natural breakpoints.',
       'Run /context to see what fills the window before deciding what to drop.',
     ],
     fixes: ['handoff', 'scout'],
+    pros: [
+      'Requests get cheaper in proportion to the context you drop: going from 400K tokens to 40K makes each turn about 10 times cheaper.',
+      'A short context keeps Claude focused, since old dead ends and stale copies of files are not there to confuse it.',
+    ],
+    cons: [
+      '/clear and a new session drop everything Claude learned along the way: the decisions, the dead ends and the files it read. Getting back costs a rebuild, and Claude can repeat a mistake it had already ruled out.',
+      '/compact keeps a summary, but a summary loses detail such as exact error text or why an approach failed.',
+    ],
+    skipWhen:
+      'Keep going in the long session while you are in the middle of hard debugging or a design that took many turns to reach. Write a handoff note first as a safety net, and start fresh once that task is done.',
     finding: (t) =>
       t.totalUsd < 1 || ratio(t.cacheReadUsd, t.totalUsd) < 0.4
         ? null
@@ -76,6 +90,16 @@ export const RULES: readonly TipRule[] = [
       'Before a session gets that large, write a handoff note and carry on in a fresh session.',
     ],
     fixes: ['handoff'],
+    pros: [
+      'Compaction happens on its own, so no session drags 900K tokens through every turn.',
+      'It works on every session without you remembering to do anything.',
+    ],
+    cons: [
+      'Auto compaction picks the moment, sometimes in the middle of a task, and the summary can drop details you still needed.',
+      'After a compaction Claude may reread files to get them back, which eats into the savings.',
+    ],
+    skipWhen:
+      'Leave the window large for work that needs a lot in view at once, such as a refactor across many files. You can set autoCompactWindow per project instead of for every session.',
     finding: (t) =>
       t.largeSessions === 0
         ? null
@@ -93,6 +117,15 @@ export const RULES: readonly TipRule[] = [
       'If you plan to come back, run /compact before stepping away so the rewrite is small.',
     ],
     fixes: ['handoff'],
+    pros: [
+      'Writing a 500K context back into the cache costs about $2.50 at Opus 5.5 prices. A compacted or fresh session costs cents.',
+    ],
+    cons: [
+      'Compacting before a break gives up detail you may want when you come back.',
+      'If you come back before the cache expires, the rewrite never happens, so the compaction was for nothing.',
+    ],
+    skipWhen:
+      'Skip it for short breaks. The cache lasts at least 5 minutes after the last request, so picking up again soon costs nothing extra.',
     finding: (t) =>
       t.idleRewrites < 3
         ? null
@@ -111,6 +144,15 @@ export const RULES: readonly TipRule[] = [
       'Ask for the Explore agent for read-only searches instead of general-purpose.',
     ],
     fixes: ['scout'],
+    pros: [
+      'Sonnet costs about half of Opus per token and Haiku a small fraction, and most subagent work is searching and summarizing.',
+    ],
+    cons: [
+      'A smaller model can miss subtle problems in a review or a tricky investigation, and a wrong summary costs more than the tokens it saved.',
+      'The setting applies to every subagent without its own model, including ones you count on for careful work.',
+    ],
+    skipWhen:
+      'Keep Opus for subagents that review code, plan designs or debug. Set model: opus in those agents and let the cheaper default cover the rest.',
     finding: (t) =>
       t.subagentRequests < 50 || ratio(t.premiumSubagentRequests, t.subagentRequests) < 0.8
         ? null
@@ -129,6 +171,15 @@ export const RULES: readonly TipRule[] = [
       'BASH_MAX_OUTPUT_LENGTH in Knobs caps how many characters of Bash output come back.',
     ],
     fixes: ['quiet-run', 'scout'],
+    pros: [
+      'A huge result stays in context for every later turn, so trimming it once saves on all of them.',
+    ],
+    cons: [
+      'A filter can hide the line that mattered, such as a warning above the error you grepped for, and then Claude guesses or runs the command again.',
+      'BASH_MAX_OUTPUT_LENGTH cuts output off at a fixed size without knowing what is important.',
+    ],
+    skipWhen:
+      'Let the full output through when you do not know yet what you are looking for, such as the first run of an unfamiliar failure. Saving it to a file keeps it available either way.',
     finding: (t) =>
       t.bigResults < 3
         ? null
@@ -146,6 +197,15 @@ export const RULES: readonly TipRule[] = [
       'When a fix and retry loop repeats the same command, stop and ask for a diagnosis before the next attempt.',
     ],
     fixes: ['ci-watch', 'dev-server', 'quiet-run'],
+    pros: [
+      'Each poll from the main session sends the whole context again. Waiting in the background costs nothing until the result arrives.',
+    ],
+    cons: [
+      'In the background you do not watch progress as it happens, and an agent adds a little startup time.',
+      'Stopping a retry loop to diagnose takes a turn that feels slower in the moment.',
+    ],
+    skipWhen:
+      'A quick command you rerun after each small edit, such as one test or a build that takes seconds, is fine to run directly.',
     finding: (t) =>
       t.repeatedRuns < 10 || t.topRepeat === null
         ? null
@@ -163,6 +223,14 @@ export const RULES: readonly TipRule[] = [
       'Put facts every session needs in CLAUDE.md or a skill instead of building them up in a long conversation.',
     ],
     fixes: ['handoff'],
+    pros: [
+      'Each task starts with only what it needs, so it costs less and Claude does not mix up details between tasks.',
+    ],
+    cons: [
+      'Related tasks share a lot: the files, the conventions and the gotchas found along the way. A new session has to learn them again unless they are in CLAUDE.md or a handoff note.',
+    ],
+    skipWhen:
+      'Stay in one session when the tasks build on each other, such as fixing a bug and then the tests it broke. Split when the next task is unrelated.',
     finding: (t) =>
       t.longSessions < 2
         ? null
@@ -181,6 +249,13 @@ export const RULES: readonly TipRule[] = [
       'Say in CLAUDE.md which commands are off limits, so Claude does not try them.',
     ],
     fixes: [],
+    pros: ['Fewer interruptions, and no wasted turns on commands that were going to be refused.'],
+    cons: [
+      'Every allow rule is a command Claude can run without asking. A broad rule, such as all of Bash, removes a check you may want.',
+      'The auto mode classifier denies things for a reason. Allowing around it defeats the point of auto mode.',
+    ],
+    skipWhen:
+      'Keep denying commands that change shared state: pushes, deletes, deploys, and anything touching production or the network.',
     finding: (t) =>
       t.denials < 10
         ? null
@@ -198,6 +273,12 @@ export const RULES: readonly TipRule[] = [
       'For files Claude needs in every session, a short summary in CLAUDE.md is cheaper than rereading them.',
     ],
     fixes: ['scout'],
+    pros: ['Reading a range or grepping costs a fraction of reading a whole file again.'],
+    cons: [
+      'After an edit, a reread is how Claude sees the current file. Cutting it risks edits made against a stale copy.',
+    ],
+    skipWhen:
+      'A reread after the file changed (an edit, a formatter or a git operation) is worth it.',
     finding: (t) =>
       t.extraReads < 10
         ? null
@@ -215,6 +296,12 @@ export const RULES: readonly TipRule[] = [
       'Note required setup (tools, environment variables, services) in CLAUDE.md so commands do not fail on a missing piece.',
     ],
     fixes: [],
+    pros: ['Claude gets the command right the first time instead of trying variations.'],
+    cons: [
+      'CLAUDE.md loads into every session, so each line costs tokens on every request. Instructions also go stale when the project changes.',
+    ],
+    skipWhen:
+      'Some failures are the point: a failing test or a type error is how Claude finds the problem. Only setup mistakes and wrong commands are waste.',
     finding: (t) =>
       t.toolCalls < 100 || ratio(t.toolErrors - t.denials, t.toolCalls) < 0.05
         ? null
@@ -232,6 +319,14 @@ export const RULES: readonly TipRule[] = [
       'Claude Code can put the shell back in the session folder between commands, so a cd often has to be repeated. Absolute paths or git -C avoid that.',
     ],
     fixes: [],
+    pros: [
+      'Project CLAUDE.md files, skills and settings load, and commands run where they belong without a cd each time.',
+    ],
+    cons: [
+      'Work that spans several repos has no single right folder, so some cd commands or absolute paths cannot be avoided.',
+    ],
+    skipWhen:
+      'Starting in your home folder is fine for quick questions that are not about one project.',
     finding: (t) =>
       t.bashCommands < 100 || ratio(t.cdCommands, t.bashCommands) < 0.1
         ? null
@@ -271,6 +366,9 @@ export function buildTips(totals: Totals, measures: readonly SessionMeasure[]): 
         advice: rule.advice,
         sessions: worstSessions(rule, measures),
         fixes: rule.fixes,
+        pros: rule.pros,
+        cons: rule.cons,
+        skipWhen: rule.skipWhen,
       });
     }
   }

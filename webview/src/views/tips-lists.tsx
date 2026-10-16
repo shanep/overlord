@@ -3,7 +3,7 @@
 
 import type { ReactElement } from 'react';
 
-import type { Suggestion, Tip, TipSeverity, TipsSessionRow } from '../../../src/shared/protocol.js';
+import type { Suggestion, Tip, TipSeverity, TipsSessionRow } from '../../../src/shared/tips.js';
 import { Badge } from '../components/badge.js';
 import type { Column } from '../components/data-table.js';
 import { DataTable } from '../components/data-table.js';
@@ -42,6 +42,34 @@ function SessionButton(props: {
   );
 }
 
+/** What following a recommendation gains and what it gives up, side by side. */
+function Tradeoffs(props: {
+  readonly id: string;
+  readonly pros: readonly string[];
+  readonly cons: readonly string[];
+}): ReactElement {
+  return (
+    <div className="tradeoffs">
+      <div>
+        <h4 id={`${props.id}-pros`}>Pros</h4>
+        <ul aria-labelledby={`${props.id}-pros`}>
+          {props.pros.map((line) => (
+            <li key={line}>{line}</li>
+          ))}
+        </ul>
+      </div>
+      <div>
+        <h4 id={`${props.id}-cons`}>Cons</h4>
+        <ul aria-labelledby={`${props.id}-cons`}>
+          {props.cons.map((line) => (
+            <li key={line}>{line}</li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
 function TipCard(props: {
   readonly tip: Tip;
   readonly names: ReadonlyMap<string, string>;
@@ -65,6 +93,10 @@ function TipCard(props: {
           <li key={line}>{line}</li>
         ))}
       </ul>
+      <Tradeoffs id={headingId} pros={tip.pros} cons={tip.cons} />
+      <p>
+        <strong>Skip it when:</strong> {tip.skipWhen}
+      </p>
       {fixes.length === 0 ? null : (
         <p className="muted">
           Would help:{' '}
@@ -128,6 +160,7 @@ function SuggestionCard(props: { readonly suggestion: Suggestion }): ReactElemen
       </header>
       <p>{suggestion.summary}</p>
       <p className="muted">{suggestion.reason ?? 'Nothing in your sessions calls for it yet.'}</p>
+      <Tradeoffs id={headingId} pros={suggestion.pros} cons={suggestion.cons} />
       <div className="actions">
         <button
           type="button"

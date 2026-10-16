@@ -7,7 +7,7 @@
 import { stat } from 'node:fs/promises';
 import path from 'node:path';
 
-import type { TipsState } from '../../../shared/protocol.js';
+import type { TipsState } from '../../../shared/tips.js';
 import { scanInto } from '../../tips/scan.js';
 import type { TipsIndex } from '../../tips/store.js';
 import { loadIndex, saveIndex } from '../../tips/store.js';

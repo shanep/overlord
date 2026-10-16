@@ -159,6 +159,25 @@ describe('buildTips', () => {
   });
 });
 
+describe('tradeoffs', () => {
+  it('gives every tip its pros, its cons and when to skip it', () => {
+    for (const item of RULES) {
+      expect({ id: item.id, pros: item.pros.length > 0, cons: item.cons.length > 0 }).toStrictEqual(
+        {
+          id: item.id,
+          pros: true,
+          cons: true,
+        },
+      );
+      expect(item.skipWhen).not.toBe('');
+    }
+    const measures = [NOISY, LONG];
+    const [tip] = buildTips(totalsOf(measures, HOME), measures);
+    expect(tip?.cons[0]).toMatch(/^\/clear and a new session drop everything Claude learned/u);
+    expect(tip?.skipWhen).toMatch(/^Keep going in the long session/u);
+  });
+});
+
 describe('session flags', () => {
   it('flags only the sessions that show the problem', () => {
     const cases: readonly (readonly [string, SessionMeasure, boolean])[] = [

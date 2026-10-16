@@ -23,6 +23,8 @@ describe('suggestions', () => {
         definition.kind === 'agent' ? validateAgentFile(text) : validateSkillFile(text);
       expect({ id: definition.id, issues }).toStrictEqual({ id: definition.id, issues: [] });
       expect(nameOf(definition)).toBe(definition.id);
+      const both = definition.pros.length > 0 && definition.cons.length > 0;
+      expect({ id: definition.id, both }).toStrictEqual({ id: definition.id, both: true });
     }
   });
 
@@ -61,6 +63,7 @@ describe('suggestions', () => {
     ]);
     expect(busy.filter((item) => item.installed).map((item) => item.id)).toStrictEqual(['land']);
     expect(busy[1]).toMatchObject({ kind: 'agent', name: 'scout' });
+    expect(busy[1]?.cons[0]).toMatch(/^Haiku can miss/u);
     const quiet = buildSuggestions(totalsOf([measureOf()], HOME), new Set());
     expect(quiet.every((item) => item.reason === null)).toBe(true);
   });

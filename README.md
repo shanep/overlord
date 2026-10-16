@@ -40,8 +40,9 @@ See [PLAN.md](PLAN.md) for the full design and the decisions behind it.
 - **Usage**: daily tokens by model and activity by hour.
 - **Tips**: advice from measuring every session transcript, such as how much of the spend goes
   to re-reading old context, sessions that never compact, huge tool output and denied tools.
-  It also suggests skills and agents for work your sessions keep doing by hand, and **Create**
-  writes one into `~/.claude` or the project.
+  Each tip lists its pros and cons and when to skip it, since following one can mean giving up
+  context a long session took hours to build. It also suggests skills and agents for work your
+  sessions keep doing by hand, and **Create** writes one into `~/.claude` or the project.
 - **Keep awake**: while Overlord is open the computer does not sleep, so agents keep working and
   the machine stays reachable remotely. The display still turns off. Turn it off with
   `overlord.keepAwake`.

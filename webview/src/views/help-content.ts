@@ -76,7 +76,7 @@ export const SIDEBAR_GROUPS: readonly SidebarGroup[] = [
         name: 'Tips',
         icon: 'Light bulb',
         meaning:
-          'Advice from measuring every session: context size, where the spend goes, wasteful habits, and skills or agents to add.',
+          'Advice from measuring every session, with the pros and cons of each tip and when to skip it, plus skills or agents to add.',
       },
       { name: 'Help', icon: 'Question mark', meaning: 'This page.' },
     ],

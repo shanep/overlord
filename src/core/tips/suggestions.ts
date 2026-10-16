@@ -4,7 +4,7 @@
 // it, or is null when nothing does yet.
 // cspell:words oneline fuser
 
-import type { Suggestion } from '../../shared/protocol.js';
+import type { Suggestion } from '../../shared/tips.js';
 import type { AgentSpec, SkillSpec } from '../authoring/schema.js';
 
 import type { Totals } from './totals.js';
@@ -14,6 +14,8 @@ import { plural, tokens } from './words.js';
 interface Base {
   readonly id: string;
   readonly summary: string;
+  readonly pros: readonly string[];
+  readonly cons: readonly string[];
   readonly reason: (totals: Totals) => string | null;
 }
 
@@ -153,6 +155,12 @@ export const SUGGESTIONS: readonly SuggestionDefinition[] = [
     kind: 'skill',
     summary:
       'Writes a short handoff note so you can /clear or start fresh without losing the thread.',
+    pros: [
+      'You choose what carries over, so a fresh session starts with the decisions and dead ends instead of hundreds of thousands of tokens of history.',
+    ],
+    cons: [
+      'The note only holds what Claude writes in it, and detail it leaves out is gone from the new session.',
+    ],
     spec: HANDOFF,
     reason: (t) =>
       t.largeSessions === 0 && t.longSessions === 0
@@ -164,6 +172,12 @@ export const SUGGESTIONS: readonly SuggestionDefinition[] = [
     kind: 'agent',
     summary:
       'A read-only search agent on Haiku that returns only the answer, so searches stay out of the main context.',
+    pros: [
+      'Searches run on Haiku at a fraction of Opus prices, and only the answer lands in your context.',
+    ],
+    cons: [
+      'Haiku can miss or misread subtle code, and you see its summary instead of the files, so a wrong answer is harder to spot.',
+    ],
     spec: SCOUT,
     reason: (t) =>
       t.families.search < 200
@@ -174,6 +188,12 @@ export const SUGGESTIONS: readonly SuggestionDefinition[] = [
     id: 'quiet-run',
     kind: 'skill',
     summary: 'Runs builds and tests with output in a log file and brings back only the errors.',
+    pros: [
+      'Only the errors and the last lines reach the context, and the full log stays on disk if you need it.',
+    ],
+    cons: [
+      'The search for errors can miss a failure that never says error or fail, such as a hang or a wrong result.',
+    ],
     spec: QUIET_RUN,
     reason: (t) =>
       t.bigResults < 3 && t.families.buildTest < 100
@@ -185,6 +205,12 @@ export const SUGGESTIONS: readonly SuggestionDefinition[] = [
     kind: 'skill',
     summary:
       'Commits, rebases onto the default branch, reruns checks, pushes and removes the worktree.',
+    pros: [
+      'The same safe sequence runs every time, without Claude working out the steps again in each session.',
+    ],
+    cons: [
+      'It pushes straight to the default branch, so a mistake lands for everyone. It only runs when you type /land for that reason.',
+    ],
     spec: LAND,
     reason: (t) =>
       t.families.land < 30
@@ -196,6 +222,10 @@ export const SUGGESTIONS: readonly SuggestionDefinition[] = [
     kind: 'agent',
     summary:
       'Waits on a GitHub Actions run on Haiku and reports only the result or the failing log lines.',
+    pros: ['Waiting on CI costs nothing in the main session, and you get only the failing lines.'],
+    cons: [
+      'Its guess at the cause comes from Haiku, so treat it as a starting point. It needs the gh CLI signed in.',
+    ],
     spec: CI_WATCH,
     reason: (t) =>
       t.families.ci < 20
@@ -207,6 +237,12 @@ export const SUGGESTIONS: readonly SuggestionDefinition[] = [
     kind: 'skill',
     summary:
       'Starts, restarts and stops local servers in the background and waits until they answer.',
+    pros: [
+      'Servers run in the background with logs in a file, so they neither block the session nor flood it.',
+    ],
+    cons: [
+      'A background server keeps running until it is stopped, and freeing the port kills whatever holds it, even something that is not yours.',
+    ],
     spec: DEV_SERVER,
     reason: (t) =>
       t.families.server < 15
@@ -230,6 +266,8 @@ export function buildSuggestions(totals: Totals, installed: ReadonlySet<string>)
     kind: definition.kind,
     name: nameOf(definition),
     summary: definition.summary,
+    pros: definition.pros,
+    cons: definition.cons,
     reason: definition.reason(totals),
     installed: installed.has(definition.id),
   }));

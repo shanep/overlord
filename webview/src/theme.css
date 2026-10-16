@@ -795,3 +795,27 @@ details > summary {
 .tip-advice li {
   margin-bottom: 4px;
 }
+
+.tradeoffs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 4px 12px;
+}
+
+.tradeoffs h4 {
+  margin: 6px 0 2px;
+  color: var(--ov-muted);
+  font-size: 0.85em;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.tradeoffs ul {
+  margin: 0;
+  padding-left: 1.2em;
+}
+
+.tradeoffs li {
+  margin-bottom: 4px;
+}

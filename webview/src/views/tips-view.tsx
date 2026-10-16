@@ -5,7 +5,7 @@
 import type { ReactElement } from 'react';
 import { useMemo } from 'react';
 
-import type { TipsState } from '../../../src/shared/protocol.js';
+import type { TipsState } from '../../../src/shared/tips.js';
 import { useNow } from '../clock.js';
 import { formatAgo, formatCompact, formatCost, formatDateTime, formatPercent } from '../format.js';
 import { usePostAction } from '../vscode-context.js';
