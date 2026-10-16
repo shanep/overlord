@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { repoFolder, WorktreeGit } from './git.js';
 import {
   freeSlot,
+  type Lease,
   PORT_BASE,
   PORT_STEP,
   projectFolder,
@@ -24,21 +25,30 @@ let dir: string;
 let alive: Set<number>;
 let live: string[];
 let now: number;
+/** Setups the leases started. Each test's folder goes only after they finish, or rm races them. */
+const setups: Promise<unknown>[] = [];
 
 function registry(pid = ME): WorktreeRegistry {
-  return new WorktreeRegistry({
+  const reg = new WorktreeRegistry({
     git: new WorktreeGit(testExec, world.root),
     exec: testExec,
     dir,
     root: world.root,
     pid,
-    isAlive: (candidate) => alive.has(candidate),
-    clock: () => (now += 1),
+    isAlive: (candidate): boolean => alive.has(candidate),
+    clock: (): number => (now += 1),
     liveCwds: async (): Promise<readonly string[]> => {
       await Promise.resolve();
       return live;
     },
   });
+  const acquire = reg.acquire.bind(reg);
+  reg.acquire = async (request): Promise<Lease> => {
+    const lease = await acquire(request);
+    setups.push(lease.ready);
+    return lease;
+  };
+  return reg;
 }
 
 describe('helpers', () => {
@@ -74,6 +84,7 @@ describe('registry with git', { timeout: 30_000 }, () => {
   });
 
   afterEach(async () => {
+    await Promise.allSettled(setups.splice(0));
     await rm(world.dir, { recursive: true, force: true });
   });
 
