@@ -41,6 +41,22 @@ function bgCall(test: TestApp): readonly string[] | undefined {
 }
 
 describe('Claude tabs', () => {
+  it('gives a new session its first prompt in the background and in a plain tab', async () => {
+    const env = await makeEnv();
+    const test = makeApp(env, {
+      responders: [
+        background(BACKGROUNDED),
+        agents([{ id: '8c3efb13', sessionId: '8c3efb13-full', kind: 'background' }]),
+      ],
+    });
+    const tab = { name: 'Combined', cwd: env.home, resume: null, prompt: 'Read this' };
+    await openClaudeTab(test.app.runtime, tab);
+    expect(bgCall(test)).toStrictEqual(['--bg', 'Read this']);
+    const plain = makeApp(env);
+    await openClaudeTab(plain.app.runtime, { ...tab, newId: 'fresh' });
+    expect(env.host.terminals.at(-1)?.args).toStrictEqual(['--session-id', 'fresh', 'Read this']);
+  });
+
   it('starts a new session in the background and attaches the tab to it', async () => {
     const env = await makeEnv();
     const test = makeApp(env, {

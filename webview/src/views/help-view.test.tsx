@@ -5,7 +5,8 @@ import { expectAccessible, renderView } from '../../test/render.js';
 import { PLACE_INFO, STATE_INFO, WINDOWLESS_INFO } from '../labels.js';
 
 import { STATUS_INFO } from './config-labels.js';
-import { ROW_BUTTONS, SIDEBAR_GROUPS, WORKFLOW } from './help-content.js';
+import { SIDEBAR_GROUPS, WORKFLOW } from './help-content.js';
+import { ROW_BUTTONS } from './help-row-buttons.js';
 import { HelpView } from './help-view.js';
 
 describe('HelpView', () => {

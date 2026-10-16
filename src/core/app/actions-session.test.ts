@@ -13,6 +13,7 @@ import {
   NOT_LOCAL,
   SDK_ONLY,
   sdkTarget,
+  stopNow,
   terminalName,
 } from './actions-session.js';
 import type { TestApp, TestEnv } from './test-helpers/fixtures.js';
@@ -181,6 +182,21 @@ describe('SDK sessions Overlord launched', () => {
     expect(sdkTarget(test.app.runtime, sessionId)).toBeNull();
     expect(env.host.questions).toStrictEqual([]);
     expect(test.kills).toStrictEqual([]);
+  });
+});
+
+describe('stopNow', () => {
+  it('stops an SDK run or a live process without asking, and reports one it cannot reach', async () => {
+    const env = await makeEnv();
+    await registry(env, { pid: 123, sessionId: 'live-session', cwd: '/live' });
+    const test = liveApp(env);
+    const sessionId = await launched(test);
+    expect(await stopNow(test.app.runtime, sessionId)).toBe(true);
+    await waitFor(() => test.app.runtime.launcher.runs()[0]?.state === 'stopped');
+    expect(await stopNow(test.app.runtime, 'live-session')).toBe(true);
+    expect(await stopNow(test.app.runtime, 'nobody')).toBe(false);
+    expect(test.kills).toStrictEqual([{ pid: 123, signal: 'SIGTERM' }]);
+    expect(env.host.questions).toStrictEqual([]);
   });
 });
 

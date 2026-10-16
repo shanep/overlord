@@ -15,6 +15,7 @@ import { EmptyState } from '../components/empty-state.js';
 import { isBoolean, isString, isStringArray } from '../guards.js';
 import { usePersistentState, usePostAction } from '../vscode-context.js';
 
+import type { ProjectAction, RowAction } from './fleet-actions.js';
 import type { PermissionChoice } from './fleet-header.js';
 import { FleetHeader, PermissionBanner } from './fleet-header.js';
 import { historySamples, useRowHistory } from './fleet-history.js';
@@ -31,7 +32,6 @@ import {
   nextFleetSort,
   sortTree,
 } from './fleet-rows.js';
-import type { ProjectAction, RowAction } from './fleet-table.js';
 import { FleetTable } from './fleet-table.js';
 
 interface PendingConfirm {
@@ -174,6 +174,10 @@ export function FleetView(props: { readonly state: FleetState }): ReactElement {
       }
       case 'move': {
         post({ type: 'moveSession', sessionId: row.sessionId });
+        break;
+      }
+      case 'combine': {
+        post({ type: 'combineSessions', sessionId: row.sessionId });
         break;
       }
       case 'interrupt':

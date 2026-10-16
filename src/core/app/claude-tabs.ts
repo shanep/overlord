@@ -31,6 +31,8 @@ export interface ClaudeTab {
   readonly env?: Readonly<Record<string, string>>;
   /** The id a new session takes when claude runs in the tab itself. Random when left out. */
   readonly newId?: string;
+  /** The first message, which the session starts working on at once. */
+  readonly prompt?: string;
 }
 
 function firstLine(text: string): string {
@@ -68,11 +70,15 @@ async function waitUntilListed(
  */
 async function openAttached(rt: Runtime, tab: ClaudeTab): Promise<string | null | undefined> {
   const cli = await rt.claudeCli();
-  const result = await rt.exec(cli.bin, backgroundArgs(tab.resume, tab.env ?? {}), {
-    cwd: tab.cwd,
-    timeoutMs: BACKGROUND_TIMEOUT_MS,
-    env: cli.env,
-  });
+  const result = await rt.exec(
+    cli.bin,
+    backgroundArgs(tab.resume, tab.env ?? {}, tab.prompt ?? null),
+    {
+      cwd: tab.cwd,
+      timeoutMs: BACKGROUND_TIMEOUT_MS,
+      env: cli.env,
+    },
+  );
   const short = result.code === 0 ? backgroundedId(result.stdout) : null;
   if (short === null) {
     const reason = firstLine(result.stderr) || firstLine(result.stdout);
@@ -116,7 +122,10 @@ export async function openClaudeTab(rt: Runtime, tab: ClaudeTab): Promise<string
   rt.host.runInTerminal({
     name: tab.name,
     command: rt.host.settings.claudePath,
-    args: tab.resume === null ? ['--session-id', sessionId] : ['--resume', sessionId],
+    args: [
+      ...(tab.resume === null ? ['--session-id', sessionId] : ['--resume', sessionId]),
+      ...(tab.prompt === undefined ? [] : [tab.prompt]),
+    ],
     cwd: tab.cwd,
     sessionId,
     ...(tab.env === undefined ? {} : { env: tab.env }),

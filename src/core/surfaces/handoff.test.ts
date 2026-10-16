@@ -38,6 +38,7 @@ describe('background sessions', () => {
   it('starts a new session or continues one under its own id', () => {
     expect(backgroundArgs(null, {})).toStrictEqual(['--bg']);
     expect(backgroundArgs('abc-123', {})).toStrictEqual(['--bg', '--resume', 'abc-123']);
+    expect(backgroundArgs(null, {}, 'Read this')).toStrictEqual(['--bg', 'Read this']);
     expect(backgroundArgs(null, { OVERLORD_SLOT: '2' })).toStrictEqual([
       '--bg',
       '--settings',

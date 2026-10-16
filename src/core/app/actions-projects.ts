@@ -3,7 +3,6 @@
 // about sessions that are in none.
 
 import { randomUUID } from 'node:crypto';
-import { stat } from 'node:fs/promises';
 import path from 'node:path';
 
 import type { SessionSummary } from '../../shared/model.js';
@@ -203,15 +202,6 @@ function manualName(rt: Runtime, projectId: string): string | null {
   return rt.projects.book.projects.find((item) => item.id === projectId)?.name ?? null;
 }
 
-async function isFolder(folder: string): Promise<boolean> {
-  try {
-    const info = await stat(folder);
-    return info.isDirectory();
-  } catch {
-    return false;
-  }
-}
-
 /**
  * The folder picked for a project, or null when cancelled. The folders its
  * sessions run in come first, since one of them is the likely answer.
@@ -276,7 +266,7 @@ export const projectActions: ActionHandlers<ProjectActions> = {
       rt.host.showInfo(`Set a folder for ${project.name} first.`);
       return;
     }
-    if (!(await isFolder(project.folder))) {
+    if ((await rt.fs.kind(project.folder)) !== 'directory') {
       rt.host.showInfo(`${project.folder} is gone or is not a folder.`);
       return;
     }

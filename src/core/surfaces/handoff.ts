@@ -26,10 +26,11 @@ const DEFAULT_BIN = 'claude';
 export function backgroundArgs(
   resume: string | null,
   env: Readonly<Record<string, string>>,
+  prompt: string | null = null,
 ): readonly string[] {
   const settings = Object.keys(env).length === 0 ? [] : ['--settings', JSON.stringify({ env })];
   const session = resume === null ? [] : ['--resume', resume];
-  return ['--bg', ...settings, ...session];
+  return ['--bg', ...settings, ...session, ...(prompt === null ? [] : [prompt])];
 }
 
 // `claude --bg` prints "backgrounded · 8c3efb13 (idle ...)" and then hints.

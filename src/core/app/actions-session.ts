@@ -92,6 +92,24 @@ async function signal(
   }
 }
 
+/**
+ * Stop a session without asking, for a caller that already asked. False when
+ * it is not running on this machine.
+ */
+export async function stopNow(rt: Runtime, sessionId: string): Promise<boolean> {
+  const target = sdkTarget(rt, sessionId);
+  if (target !== null) {
+    rt.launcher.stopRun(target.run.id);
+    return true;
+  }
+  const live = await liveProcess(rt, sessionId);
+  if (live === undefined || live.pid === null || !live.alive) {
+    return false;
+  }
+  rt.kill(live.pid, 'SIGTERM');
+  return true;
+}
+
 export const IN_LAUNCHER = 'This session is running in the Overlord launcher. Stop the run first.';
 
 /** Handoffs whose terminal runs this same session, so its properties can follow it. */

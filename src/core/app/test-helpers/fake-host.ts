@@ -60,6 +60,7 @@ export class FakeHost implements HostPort {
   readonly askAnswers: (string | null)[] = [];
   readonly inputAnswers: (string | null)[] = [];
   readonly pickAnswers: (string | null)[] = [];
+  readonly pickManyAnswers: (readonly string[] | null)[] = [];
   readonly fileAnswers: (string | null)[] = [];
   readonly folderAnswers: (string | null)[] = [];
   /** What gitHubSession returns. Null is signed out, and an interactive call then gets the queue. */
@@ -143,6 +144,15 @@ export class FakeHost implements HostPort {
     this.picks.push({ items, placeholder });
     await Promise.resolve();
     return this.pickAnswers.shift() ?? null;
+  };
+
+  readonly quickPickMany = async (
+    items: readonly PickItem[],
+    placeholder: string,
+  ): Promise<readonly string[] | null> => {
+    this.picks.push({ items, placeholder });
+    await Promise.resolve();
+    return this.pickManyAnswers.shift() ?? null;
   };
 
   readonly showInfo = (message: string): void => {

@@ -14,6 +14,7 @@ import { reputationActions } from './actions-reputation.js';
 import { sessionActions } from './actions-session.js';
 import { tuningActions } from './actions-tuning.js';
 import { worktreeActions } from './actions-worktrees.js';
+import { combineActions } from './combine.js';
 import { messageOf } from './errors.js';
 import type { PanelParams } from './host-port.js';
 import type { Runtime } from './runtime.js';
@@ -28,6 +29,7 @@ const HANDLERS: ActionHandlers<ActionType> = {
   ...tuningActions,
   ...worktreeActions,
   ...projectActions,
+  ...combineActions,
 };
 
 function isActionType(value: string): value is ActionType {

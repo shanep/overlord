@@ -210,6 +210,16 @@ export function createVscodeHostPort(options: VscodeHostPortOptions): HostPort {
       );
       return picked?.id ?? null;
     },
+    quickPickMany: async (
+      items: readonly PickItem[],
+      placeholder: string,
+    ): Promise<readonly string[] | null> => {
+      const picked = await vscode.window.showQuickPick(
+        items.map((item) => ({ label: item.label, description: item.description, id: item.id })),
+        { placeHolder: placeholder, canPickMany: true },
+      );
+      return picked?.map((item) => item.id) ?? null;
+    },
     showInfo: (message: string): void => {
       void vscode.window.showInformationMessage(message);
     },

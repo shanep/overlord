@@ -483,7 +483,8 @@ export type WebviewAction =
   | { readonly type: 'renameProject'; readonly projectId: string }
   | { readonly type: 'deleteProject'; readonly projectId: string }
   | { readonly type: 'openProjectFolder'; readonly projectId: string }
-  | { readonly type: 'setProjectFolder'; readonly projectId: string };
+  | { readonly type: 'setProjectFolder'; readonly projectId: string }
+  | { readonly type: 'combineSessions'; readonly sessionId: string };
 
 export type WebviewToHost =
   | { readonly type: 'ready'; readonly view: ViewId }

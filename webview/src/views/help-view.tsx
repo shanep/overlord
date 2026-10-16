@@ -23,12 +23,12 @@ import {
   FLEET_KEYS,
   FLEET_STATS,
   HANDOFF_MEANINGS,
-  ROW_BUTTONS,
   SIDEBAR_GROUPS,
   SURFACE_MEANINGS,
   WORKFLOW,
 } from './help-content.js';
 import { ExtendSection } from './help-extend.js';
+import { ROW_BUTTONS } from './help-row-buttons.js';
 import { ScreenSection } from './help-screen.js';
 import { SessionsSection } from './help-sessions.js';
 import { HANDOFF_LABELS } from './sessions-view.js';

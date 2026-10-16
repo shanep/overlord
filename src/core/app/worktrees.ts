@@ -105,11 +105,28 @@ async function showSetupWarnings(rt: Runtime, lease: Lease): Promise<void> {
   }
 }
 
-async function openSession(rt: Runtime, lease: Lease, newId: string): Promise<void> {
-  // The tab opens while setup finishes, since the user still has to type a prompt.
-  void showSetupWarnings(rt, lease);
+/** A new session's tab: its title, and the first message when it should start working at once. */
+export interface SessionStart {
+  readonly name: string;
+  readonly prompt?: string;
+}
+
+const PLAIN_START: SessionStart = { name: 'Claude Code' };
+
+async function openSession(
+  rt: Runtime,
+  lease: Lease,
+  newId: string,
+  start: SessionStart,
+): Promise<void> {
+  // The tab opens while setup finishes, since the user still has to type a
+  // prompt. A session given its first prompt starts at once, so it waits.
+  const setup = showSetupWarnings(rt, lease);
+  if (start.prompt !== undefined) {
+    await setup;
+  }
   const sessionId = await openClaudeTab(rt, {
-    name: 'Claude Code',
+    ...start,
     cwd: lease.entry.path,
     resume: null,
     env: lease.env,
@@ -123,11 +140,14 @@ async function openSession(rt: Runtime, lease: Lease, newId: string): Promise<vo
 
 /**
  * Starts an interactive Claude Code session in a new worktree of the
- * workspace's repository. A folder outside git, or no folder at all, gets a
+ * repository folder is in. A folder outside git, or no folder at all, gets a
  * plain session there instead.
  */
-export async function newSession(rt: Runtime): Promise<void> {
-  const folder = rt.host.workspaceFolder();
+export async function startSession(
+  rt: Runtime,
+  folder: string | null,
+  start: SessionStart,
+): Promise<void> {
   // The worktree takes this id, and so does the session when claude runs in the tab itself.
   const id = randomUUID();
   if (folder !== null) {
@@ -138,7 +158,7 @@ export async function newSession(rt: Runtime): Promise<void> {
         kind: 'session',
         label: `Session in ${path.basename(folder)}`,
       });
-      await openSession(rt, lease, id);
+      await openSession(rt, lease, id, start);
       return;
     } catch (error: unknown) {
       if (!(error instanceof NotARepoError)) {
@@ -147,16 +167,21 @@ export async function newSession(rt: Runtime): Promise<void> {
     }
   }
   await openClaudeTab(rt, {
-    name: 'Claude Code',
+    ...start,
     cwd: folder ?? rt.paths.home,
     resume: null,
     newId: id,
   });
 }
 
+/** Starts a session in a new worktree of the workspace's repository. */
+export async function newSession(rt: Runtime): Promise<void> {
+  await startSession(rt, rt.host.workspaceFolder(), PLAIN_START);
+}
+
 /** Opens a new session in a worktree that is still around, to finish its work. */
 export async function openWorktree(rt: Runtime, id: string): Promise<void> {
-  await openSession(rt, await rt.worktrees.hold(id), randomUUID());
+  await openSession(rt, await rt.worktrees.hold(id), randomUUID(), PLAIN_START);
 }
 
 /**

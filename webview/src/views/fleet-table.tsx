@@ -21,43 +21,13 @@ import { Icon } from '../components/icon.js';
 import { Meter } from '../components/meter.js';
 import { formatCompact, formatCost, formatDuration, formatPercent } from '../format.js';
 
+import type { ProjectAction, RowAction } from './fleet-actions.js';
+import { ACTION_LABELS, actionTip } from './fleet-actions.js';
 import { deltas } from './fleet-history.js';
 import type { RowHistory } from './fleet-history.js';
 import type { FleetRow, VisibleRow } from './fleet-rows.js';
 import { elapsedMs, rowCallsPerMinute } from './fleet-rows.js';
 import { isWindowless } from './windowless.js';
-
-export type RowAction = 'open' | 'context' | 'interrupt' | 'stop' | 'move';
-export type ProjectAction = 'openFolder' | 'setFolder' | 'rename' | 'delete';
-
-const ACTION_LABELS: Readonly<Record<RowAction | ProjectAction, string>> = {
-  open: 'Agent view',
-  context: 'Context Inspector',
-  interrupt: 'Interrupt',
-  stop: 'Stop',
-  move: 'Move to project',
-  openFolder: 'Open project folder',
-  setFolder: 'Set project folder',
-  rename: 'Rename project',
-  delete: 'Delete project',
-};
-
-/** What each action button does, shown as its tooltip after the label. */
-const ACTION_TIPS: Readonly<Record<RowAction | ProjectAction, string>> = {
-  open: 'Open the transcript and controls for this session',
-  context: 'See what fills the context window',
-  interrupt: 'Stop the current turn, keep the session',
-  stop: 'End the session',
-  move: 'Put this session in another project',
-  openFolder: 'Reveal the folder this project works in',
-  setFolder: 'Pick the folder this project works in',
-  rename: 'Give this project a new name',
-  delete: 'Remove the project, its sessions stay',
-};
-
-function actionTip(action: RowAction | ProjectAction): string {
-  return `${ACTION_LABELS[action]}: ${ACTION_TIPS[action]}`;
-}
 
 const COLUMNS: readonly { readonly id: string; readonly label: string }[] = [
   { id: 'state', label: 'State' },
@@ -149,6 +119,7 @@ function RowActions(props: {
       {row.kind === 'session' ? (
         <>
           {button('move')}
+          {button('combine')}
           {button('interrupt', !row.sessionActive)}
           {button('stop', !row.sessionActive)}
         </>

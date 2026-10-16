@@ -90,6 +90,11 @@ export interface HostPort {
   readonly inputBox: (request: InputRequest) => Promise<string | null>;
   /** The id of the picked item, or null when cancelled. */
   readonly quickPick: (items: readonly PickItem[], placeholder: string) => Promise<string | null>;
+  /** The ids of the checked items, or null when cancelled. */
+  readonly quickPickMany: (
+    items: readonly PickItem[],
+    placeholder: string,
+  ) => Promise<readonly string[] | null>;
   readonly showInfo: (message: string) => void;
   readonly showWarning: (message: string) => void;
   readonly showError: (message: string) => void;

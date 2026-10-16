@@ -23,7 +23,7 @@ import {
   waitFor,
   writeJson,
 } from './test-helpers/fixtures.js';
-import { tidyWorktrees, worktreeRoot } from './worktrees.js';
+import { startSession, tidyWorktrees, worktreeRoot } from './worktrees.js';
 
 const PID = 4242;
 
@@ -257,6 +257,18 @@ describe('worktrees in the app', { timeout: 30_000 }, () => {
       await writeFile(path.join(terminal.cwd, 'go'), '');
       await closed;
       expect(existsSync(terminal.cwd)).toBe(true);
+      expect(await readFile(path.join(terminal.cwd, 'set-up.txt'), 'utf8')).toBe('done\n');
+    });
+
+    it('wait for setup before a session that starts working on its first prompt', async () => {
+      await mkdir(path.join(world.other, '.overlord'));
+      await commitFile(world.other, SETUP_SCRIPT, 'sleep 0.2\necho done > set-up.txt\n');
+      await git(world.other, 'push', '-q', 'origin', 'main');
+      const test = await setup();
+      await startSession(test.app.runtime, world.repo, { name: 'Combined', prompt: 'Read this' });
+      const terminal = lastTerminal(test);
+      expect(terminal).toMatchObject({ name: 'Combined' });
+      expect(terminal.args.at(-1)).toBe('Read this');
       expect(await readFile(path.join(terminal.cwd, 'set-up.txt'), 'utf8')).toBe('done\n');
     });
 
