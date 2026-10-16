@@ -158,3 +158,8 @@ export function ruleDenyMessage(ruleId: string, description: string): string {
   const detail = description.trim() === '' ? '' : `: ${description.trim()}`;
   return `Denied by Overlord auto-approve rule ${ruleId}${detail}`;
 }
+
+/** SessionStart output that adds text to the session's context. */
+export function sessionStartOutput(text: string): HookOutput {
+  return { hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: text } };
+}

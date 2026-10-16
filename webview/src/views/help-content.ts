@@ -90,6 +90,12 @@ export const SIDEBAR_GROUPS: readonly SidebarGroup[] = [
         meaning:
           'Tips from measuring every session, with the pros and cons of each tip and when to skip it, plus skills or agents to add. Track a tip to see whether following it made things better or worse.',
       },
+      {
+        name: 'Connectors',
+        icon: 'Plug',
+        meaning:
+          'Every MCP server and claude.ai connector, plus Claude in Chrome and a headless Chrome, with whether each works right now. Sign in or Open Chrome fixes the common problems. Each new session is told what is ready and asked to check what its task needs before it starts.',
+      },
       { name: 'Help', icon: 'Question mark', meaning: 'This page.' },
     ],
   },

@@ -6,6 +6,7 @@ import path from 'node:path';
 
 import type { FleetState, HostToWebview, ViewId, WebviewAction } from '../../shared/protocol.js';
 import type { EventBus } from '../bus.js';
+import { callStdioTool } from '../connectors/stdio-mcp.js';
 import { Launcher } from '../harness/launcher.js';
 import { mergeEnv } from '../harness/options.js';
 import { sdkPlanUsage, sdkQuery } from '../harness/sdk-types.js';
@@ -25,10 +26,10 @@ import { ConfigSync } from './config-sync.js';
 import type { AppError } from './errors.js';
 import { ErrorLog } from './errors.js';
 import type { PanelParams } from './host-port.js';
-import { BackgroundJobs, JOBS_REFRESH_MS } from './jobs.js';
+import { BackgroundJobs } from './jobs.js';
 import { PermissionHub } from './permissions.js';
 import type { ActiveTerminal } from './places.js';
-import { PLACES_REFRESH_MS, SessionPlaces } from './places.js';
+import { SessionPlaces } from './places.js';
 import type { FileWatchFunction, IntervalFunction } from './process.js';
 import { toSurfacesExec } from './process.js';
 import { createProjectIndex } from './projects.js';
@@ -39,7 +40,9 @@ import { Sources } from './sources.js';
 import type { RunningItem } from './status.js';
 import { runningItems, statusLine } from './status.js';
 import { SyncCommands } from './sync-commands.js';
+import { startTimers } from './timers.js';
 import { installTransferSkill } from './transfer.js';
+import { sessionBriefing } from './views/connectors.js';
 import { ContextViews } from './views/context.js';
 import { fleetFor } from './views/fleet.js';
 import { stateFor } from './views/state.js';
@@ -48,10 +51,9 @@ import {
   launcherWorktrees,
   sessionClosed,
   tidyWorktrees,
-  WORKTREE_REFRESH_MS,
 } from './worktrees.js';
 
-export const SESSIONS_REFRESH_MS = 30_000;
+export { SESSIONS_REFRESH_MS } from './timers.js';
 
 export function concurrencyFrom(value: number): number {
   return Number.isFinite(value) ? Math.max(1, Math.round(value)) : 1;
@@ -192,6 +194,7 @@ export class OverlordApp {
         syncNow: async (): Promise<void> => this.configSync.syncNow(),
       },
       fetch: machine.fetch,
+      callTool: deps.callTool ?? callStdioTool,
     };
     const context = new ContextViews({ ...base, onUpdate: notify, onError: report });
     this.rt = { ...base, caches: createCaches(base), context };
@@ -208,6 +211,8 @@ export class OverlordApp {
       context,
       report,
       notify,
+      sessionContext: (): string | null =>
+        host.settings.briefSessions ? sessionBriefing(this.rt) : null,
     });
     this.setup = new SetupCommands({
       paths: this.paths,
@@ -230,20 +235,7 @@ export class OverlordApp {
     await this.rt.worktrees.load();
     await this.sources.startWatcher();
     await this.sources.sync();
-    this.cleanups.push(
-      this.interval(() => {
-        void this.rt.caches.sessions.refresh();
-      }, SESSIONS_REFRESH_MS),
-      this.interval(() => {
-        void this.rt.places.refresh();
-      }, PLACES_REFRESH_MS),
-      this.interval(() => {
-        void this.rt.jobs.refresh();
-      }, JOBS_REFRESH_MS),
-      this.interval(() => {
-        void tidyWorktrees(this.rt);
-      }, WORKTREE_REFRESH_MS),
-    );
+    this.cleanups.push(...startTimers(this.rt, this.interval));
     await Promise.all([this.rt.places.refresh(), this.rt.jobs.refresh()]);
     void tidyWorktrees(this.rt);
     for (const file of this.settingsFiles()) {
@@ -340,6 +332,7 @@ export class OverlordApp {
       caches.config.refresh(),
       caches.usage.refresh(),
       caches.plan.refresh(),
+      caches.connectors.refresh(),
       tidyWorktrees(this.rt),
       this.rt.places.refresh(),
       this.rt.jobs.refresh(),

@@ -26,6 +26,7 @@ const DEFAULT_SETTINGS: OverlordSettings = {
   configRepoPath: '~/.overlord-config',
   configSyncAuto: true,
   configSyncIntervalMinutes: 5,
+  briefSessions: true,
 };
 
 export interface FakeHostOptions {

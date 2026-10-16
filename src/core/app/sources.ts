@@ -31,6 +31,8 @@ export interface SourcesDeps {
   readonly context: ContextViews;
   readonly report: (source: string, message: string) => void;
   readonly notify: () => void;
+  /** The SessionStart note for new sessions, or null for none. */
+  readonly sessionContext: () => string | null;
 }
 
 /** prepareSocketPath says this when another window's hook server owns the socket. */
@@ -178,6 +180,7 @@ export class Sources {
       holdMs: deps.host.settings.holdTimeoutSeconds * 1000,
       now: deps.clock,
       platform: deps.platform,
+      sessionContext: deps.sessionContext,
     });
     try {
       await server.start();

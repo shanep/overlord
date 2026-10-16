@@ -60,6 +60,7 @@ const REQUIRED: Readonly<Record<ViewId, Readonly<Record<string, FieldKind>>>> = 
   properties: { session: 'nullable-object', agents: 'array', pendingPermissions: 'array' },
   help: {},
   tuning: { tips: 'array', suggestions: 'array', rows: 'array', sessions: 'number' },
+  connectors: { connectors: 'array' },
 };
 
 function fieldMatches(value: unknown, kind: FieldKind): boolean {

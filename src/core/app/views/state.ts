@@ -11,6 +11,7 @@ import { launchFolder } from '../actions-launch.js';
 import type { PanelParams } from '../host-port.js';
 import type { Runtime } from '../runtime.js';
 
+import { buildConnectors } from './connectors.js';
 import { fleetFor } from './fleet.js';
 import { buildKnobs } from './knobs.js';
 import { buildMessages } from './messages.js';
@@ -68,9 +69,51 @@ function sessionStateFor(rt: Runtime, view: SessionView, params: PanelParams): H
   }
 }
 
+type ReportView = 'usage' | 'reputation' | 'messages' | 'help' | 'tuning' | 'connectors';
+
+const REPORT_VIEWS: ReadonlySet<ViewId> = new Set<ReportView>([
+  'usage',
+  'reputation',
+  'messages',
+  'help',
+  'tuning',
+  'connectors',
+]);
+
+function isReportView(view: ViewId): view is ReportView {
+  return REPORT_VIEWS.has(view);
+}
+
+/** The Global views that report on history and setup rather than one session. */
+function reportStateFor(rt: Runtime, view: ReportView): HostToWebview {
+  switch (view) {
+    case 'usage': {
+      return { type: 'state', view, state: buildUsage(rt) };
+    }
+    case 'reputation': {
+      return { type: 'state', view, state: buildReputation(rt) };
+    }
+    case 'messages': {
+      return { type: 'state', view, state: buildMessages(rt) };
+    }
+    case 'help': {
+      return { type: 'state', view, state: {} };
+    }
+    case 'tuning': {
+      return { type: 'state', view, state: buildTuning(rt) };
+    }
+    case 'connectors': {
+      return { type: 'state', view, state: buildConnectors(rt) };
+    }
+  }
+}
+
 export function stateFor(rt: Runtime, view: ViewId, params: PanelParams): HostToWebview {
   if (isSessionView(view)) {
     return sessionStateFor(rt, view, params);
+  }
+  if (isReportView(view)) {
+    return reportStateFor(rt, view);
   }
   switch (view) {
     case 'fleet': {
@@ -97,21 +140,6 @@ export function stateFor(rt: Runtime, view: ViewId, params: PanelParams): HostTo
     case 'config': {
       const state = { ...rt.caches.config.value, sync: rt.configSync.status() };
       return { type: 'state', view, state };
-    }
-    case 'usage': {
-      return { type: 'state', view, state: buildUsage(rt) };
-    }
-    case 'reputation': {
-      return { type: 'state', view, state: buildReputation(rt) };
-    }
-    case 'messages': {
-      return { type: 'state', view, state: buildMessages(rt) };
-    }
-    case 'help': {
-      return { type: 'state', view, state: {} };
-    }
-    case 'tuning': {
-      return { type: 'state', view, state: buildTuning(rt) };
     }
   }
 }

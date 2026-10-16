@@ -20,6 +20,7 @@ import {
   permissionOutput,
   preToolUseDenyOutput,
   ruleDenyMessage,
+  sessionStartOutput,
   toAgentNode,
   toInstructionLoaded,
   toPermissionRequest,
@@ -53,6 +54,8 @@ export interface HookServerOptions {
   readonly platform?: NodeJS.Platform;
   /** Longest hook message accepted before the connection is dropped. */
   readonly maxLineBytes?: number;
+  /** Text every new session gets from its SessionStart hook, or null for none. Must not block. */
+  readonly sessionContext?: () => string | null;
 }
 
 export interface HookEvent {
@@ -125,6 +128,7 @@ export class HookServer {
   private readonly eventListeners = new Set<Callback<HookEvent>>();
   private readonly instructionListeners = new Set<Callback<InstructionLoadedEvent>>();
   private readonly agentStarts = new Map<string, number>();
+  private readonly sessionContext: () => string | null;
   private rules: readonly AutoApproveRule[];
 
   constructor(options: HookServerOptions) {
@@ -137,6 +141,7 @@ export class HookServer {
     this.newId = options.newId ?? randomUUID;
     this.platform = options.platform ?? process.platform;
     this.maxLineBytes = options.maxLineBytes ?? MAX_LINE_BYTES;
+    this.sessionContext = options.sessionContext ?? ((): null => null);
     this.server = net.createServer((socket) => {
       this.accept(socket);
     });
@@ -260,11 +265,24 @@ export class HookServer {
         this.publish(hook.payload);
       });
     }
-    const output =
-      hook.known && hook.payload.hook_event_name === 'PreToolUse'
-        ? this.preToolDeny(hook.payload)
-        : null;
-    this.reply(socket, message.id, output ?? {});
+    this.reply(socket, message.id, (hook.known ? this.outputFor(hook.payload) : null) ?? {});
+  }
+
+  /** What a hook prints: a deny on PreToolUse, the session note on SessionStart, else nothing. */
+  private outputFor(payload: KnownPayload): HookOutput | null {
+    if (payload.hook_event_name === 'PreToolUse') {
+      return this.preToolDeny(payload);
+    }
+    if (payload.hook_event_name !== 'SessionStart') {
+      return null;
+    }
+    try {
+      const text = this.sessionContext();
+      return text === null ? null : sessionStartOutput(text);
+    } catch (error) {
+      this.report(`session note failed: ${errorMessage(error)}`);
+      return null;
+    }
   }
 
   /** The deny output when a deny rule covers a tool that never prompts, else null. */

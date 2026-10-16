@@ -10,6 +10,7 @@ import type {
   WorktreeSummary,
 } from '../../shared/protocol.js';
 import type { EventBus } from '../bus.js';
+import type { StdioToolCaller } from '../connectors/stdio-mcp.js';
 import type { FileSystem } from '../context/fs.js';
 import type { Launcher } from '../harness/launcher.js';
 import type { ClaudePaths } from '../paths.js';
@@ -27,6 +28,7 @@ import type { SessionPlaces } from './places.js';
 import type { KillFunction } from './process.js';
 import type { ProjectIndex } from './projects.js';
 import type { Draft } from './storage.js';
+import type { ConnectorsData } from './views/connectors-data.js';
 import type { ContextViews } from './views/context.js';
 import type { KnobsData } from './views/knobs.js';
 import type { SessionsData } from './views/sessions.js';
@@ -40,6 +42,7 @@ export interface Caches {
   readonly usage: AsyncValue<UsageStats>;
   readonly plan: AsyncValue<PlanLimits | null>;
   readonly worktrees: AsyncValue<readonly WorktreeSummary[]>;
+  readonly connectors: AsyncValue<ConnectorsData>;
 }
 
 /** The background config sync, reached from actions and views. */
@@ -93,6 +96,8 @@ export interface Runtime {
   readonly sessionBusy: (sessionId: string) => boolean;
   /** The claude binary and the login shell's environment, for running the CLI outside a terminal. */
   readonly claudeCli: () => Promise<ClaudeCli>;
+  /** Calls one tool on a stdio MCP server, for the Claude in Chrome check. */
+  readonly callTool: StdioToolCaller;
 }
 
 export interface ClaudeCli {

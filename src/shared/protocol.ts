@@ -3,6 +3,7 @@
 // `patch` messages as data changes. The webview sends `ready` once and then
 // `action` messages for user intent.
 
+import type { ConnectorsState } from './connectors.js';
 import type { SessionHealth } from './health.js';
 import type {
   AgentNode,
@@ -38,7 +39,8 @@ export type ViewId =
   | 'messages'
   | 'properties'
   | 'help'
-  | 'tuning';
+  | 'tuning'
+  | 'connectors';
 
 export const VIEW_IDS: readonly ViewId[] = [
   'fleet',
@@ -54,6 +56,7 @@ export const VIEW_IDS: readonly ViewId[] = [
   'properties',
   'help',
   'tuning',
+  'connectors',
 ];
 
 export interface RateLimits {
@@ -420,6 +423,7 @@ interface ViewStateMap {
   readonly properties: PropertiesState;
   readonly help: HelpState;
   readonly tuning: TuningState;
+  readonly connectors: ConnectorsState;
 }
 
 export type HostToWebview = {
@@ -473,6 +477,8 @@ export type WebviewAction =
   | { readonly type: 'rescanTuning' }
   | { readonly type: 'createSuggestion'; readonly suggestionId: string }
   | { readonly type: 'trackTip'; readonly tipId: string; readonly on: boolean }
+  | { readonly type: 'recheckConnectors' }
+  | { readonly type: 'fixConnector'; readonly connectorId: string }
   | { readonly type: 'setInboundPolicy'; readonly value: string | null }
   | { readonly type: 'newSession' }
   | { readonly type: 'landWorktree'; readonly id: string }

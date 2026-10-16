@@ -58,6 +58,7 @@ function readSettings(): OverlordSettings {
     configRepoPath: expandHome(config.get<string>('configRepo.path', '~/.overlord-config')),
     configSyncAuto: config.get<boolean>('configSync.auto', true),
     configSyncIntervalMinutes: config.get<number>('configSync.intervalMinutes', 5),
+    briefSessions: config.get<boolean>('connectors.briefSessions', true),
   };
 }
 

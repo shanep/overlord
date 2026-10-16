@@ -12,6 +12,7 @@ import { TooltipLayer } from './components/tooltip.js';
 import { useHostState } from './use-host-state.js';
 import { AgentView } from './views/agent-view.js';
 import { ConfigView } from './views/config-view.js';
+import { ConnectorsView } from './views/connectors-view.js';
 import { ContextView } from './views/context-view.js';
 import { FleetView } from './views/fleet-view.js';
 import { HelpView } from './views/help-view.js';
@@ -30,7 +31,7 @@ export function readViewId(element: HTMLElement): ViewId | null {
   return isViewId(view) ? view : null;
 }
 
-type GlobalView = 'knobs' | 'config' | 'usage' | 'reputation' | 'tuning' | 'help';
+type GlobalView = 'knobs' | 'config' | 'usage' | 'reputation' | 'tuning' | 'connectors' | 'help';
 type GlobalMessage = Extract<HostToWebview, { readonly view: GlobalView }>;
 type SessionMessage = Exclude<HostToWebview, GlobalMessage>;
 
@@ -40,6 +41,7 @@ const GLOBAL_VIEWS: ReadonlySet<ViewId> = new Set<GlobalView>([
   'usage',
   'reputation',
   'tuning',
+  'connectors',
   'help',
 ]);
 
@@ -65,6 +67,9 @@ function GlobalViewSwitch(props: { readonly message: GlobalMessage }): ReactElem
     }
     case 'tuning': {
       return <TuningView state={message.state} />;
+    }
+    case 'connectors': {
+      return <ConnectorsView state={message.state} />;
     }
     case 'help': {
       return <HelpView />;

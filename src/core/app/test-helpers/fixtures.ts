@@ -207,6 +207,10 @@ export function makeApp(env: TestEnv, options: AppOptions = {}): TestApp {
       await Promise.resolve();
       return { bin: 'claude', env: {} };
     },
+    callTool: async (): Promise<string> => {
+      await Promise.resolve();
+      return '[]';
+    },
     ...options.deps,
   });
   onTestFinished(async () => {

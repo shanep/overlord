@@ -1,0 +1,25 @@
+// The background refreshes OverlordApp starts: each cache or poll on its own
+// interval. Returns the functions that stop them.
+
+import { JOBS_REFRESH_MS } from './jobs.js';
+import { PLACES_REFRESH_MS } from './places.js';
+import type { IntervalFunction } from './process.js';
+import type { Runtime } from './runtime.js';
+import { CONNECTORS_REFRESH_MS } from './views/connectors.js';
+import { tidyWorktrees, WORKTREE_REFRESH_MS } from './worktrees.js';
+
+export const SESSIONS_REFRESH_MS = 30_000;
+
+export function startTimers(rt: Runtime, interval: IntervalFunction): (() => void)[] {
+  const every = (ms: number, work: () => Promise<unknown>): (() => void) =>
+    interval(() => {
+      void work();
+    }, ms);
+  return [
+    every(SESSIONS_REFRESH_MS, async () => rt.caches.sessions.refresh()),
+    every(PLACES_REFRESH_MS, async () => rt.places.refresh()),
+    every(JOBS_REFRESH_MS, async () => rt.jobs.refresh()),
+    every(WORKTREE_REFRESH_MS, async () => tidyWorktrees(rt)),
+    every(CONNECTORS_REFRESH_MS, async () => rt.caches.connectors.refresh()),
+  ];
+}

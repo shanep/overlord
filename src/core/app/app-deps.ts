@@ -4,6 +4,7 @@
 import os from 'node:os';
 
 import { EventBus } from '../bus.js';
+import type { StdioToolCaller } from '../connectors/stdio-mcp.js';
 import { createNodeFileSystem, type FileSystem } from '../context/fs.js';
 import type { PlanUsageFunction, QueryFunction } from '../harness/sdk-types.js';
 import { defaultClaudePaths, type ClaudePaths } from '../paths.js';
@@ -51,6 +52,8 @@ export interface AppDeps {
   readonly claudeCli?: () => Promise<ClaudeCli>;
   /** Calls the GitHub REST API. Defaults to the global fetch. */
   readonly fetch?: FetchFunction;
+  /** Calls a tool on a stdio MCP server. Tests pass a fake so no Chrome server starts. */
+  readonly callTool?: StdioToolCaller;
 }
 
 export interface CoreDeps {

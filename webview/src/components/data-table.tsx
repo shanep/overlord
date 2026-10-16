@@ -10,6 +10,15 @@ export interface Column<T> {
   /** Present when the column can sort. */
   readonly sortValue?: (row: T) => string | number;
   readonly numeric?: boolean;
+  /** Let long text wrap instead of widening the table. */
+  readonly wrap?: boolean;
+}
+
+/** The class for a column's cells: num for numbers, wrap for long text. */
+export function cellClass<T>(column: Column<T>): string | undefined {
+  const names = [column.numeric === true ? 'num' : '', column.wrap === true ? 'wrap' : ''];
+  const joined = names.filter((name) => name !== '').join(' ');
+  return joined === '' ? undefined : joined;
 }
 
 export interface SortState {
@@ -100,7 +109,7 @@ export function DataTable<T>(props: DataTableProps<T>): ReactElement {
             <th
               key={column.id}
               scope="col"
-              className={column.numeric === true ? 'num' : undefined}
+              className={cellClass(column)}
               aria-sort={column.sortValue === undefined ? undefined : ariaSort(sort, column.id)}
             >
               {column.sortValue === undefined ? (
@@ -130,7 +139,7 @@ export function DataTable<T>(props: DataTableProps<T>): ReactElement {
           sorted.map((row) => (
             <tr key={rowKey(row)}>
               {columns.map((column) => (
-                <td key={column.id} className={column.numeric === true ? 'num' : undefined}>
+                <td key={column.id} className={cellClass(column)}>
                   {column.cell(row)}
                 </td>
               ))}

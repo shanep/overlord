@@ -201,6 +201,12 @@
         "icon": "$(tools)"
       },
       {
+        "command": "overlord.openConnectors",
+        "title": "Connectors",
+        "category": "Overlord",
+        "icon": "$(plug)"
+      },
+      {
         "command": "overlord.openHelp",
         "title": "Help",
         "category": "Overlord",
@@ -323,6 +329,11 @@
           "default": 600,
           "minimum": 10,
           "description": "How long a permission request waits in the inbox before Claude Code falls back to its own prompt."
+        },
+        "overlord.connectors.briefSessions": {
+          "type": "boolean",
+          "default": true,
+          "description": "Tell each new Claude Code session which connectors (MCP servers, claude.ai connectors, Claude in Chrome, headless Chrome) are ready, and ask it to check the ones its task needs before it starts."
         },
         "overlord.telemetry.port": {
           "type": "number",

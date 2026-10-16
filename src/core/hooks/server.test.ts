@@ -272,6 +272,51 @@ describe('HookServer', () => {
     expect(events).toHaveLength(2);
   });
 
+  describe('SessionStart', () => {
+    const start = { ...base, hook_event_name: 'SessionStart', source: 'startup' };
+
+    it('adds the session note to the context', async () => {
+      await startServer({ sessionContext: () => 'check the connectors' });
+      const opened = await client();
+      opened.send('m1', start);
+      expect(await opened.next()).toStrictEqual({
+        id: 'm1',
+        output: {
+          hookSpecificOutput: {
+            hookEventName: 'SessionStart',
+            additionalContext: 'check the connectors',
+          },
+        },
+      });
+    });
+
+    it('answers with nothing when there is no note', async () => {
+      await startServer({ sessionContext: (): null => null });
+      const opened = await client();
+      opened.send('m1', start);
+      expect(await opened.next()).toStrictEqual({ id: 'm1', output: {} });
+      await startServer({ socketPath: path.join(dir, 'other.sock') });
+      const other = await TestClient.open(path.join(dir, 'other.sock'));
+      clients.push(other);
+      other.send('m2', start);
+      expect(await other.next()).toStrictEqual({ id: 'm2', output: {} });
+    });
+
+    it('reports a note that throws and answers with nothing', async () => {
+      await startServer({
+        sessionContext: () => {
+          throw new Error('no cache');
+        },
+      });
+      const errors: string[] = [];
+      bus.on('source.error', (error) => errors.push(error.message));
+      const opened = await client();
+      opened.send('m1', start);
+      expect(await opened.next()).toStrictEqual({ id: 'm1', output: {} });
+      expect(errors).toStrictEqual(['session note failed: no cache']);
+    });
+  });
+
   it('reports InstructionsLoaded through onInstructionLoaded', async () => {
     const server = await startServer();
     const loaded: InstructionLoadedEvent[] = [];

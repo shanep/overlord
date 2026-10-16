@@ -8,6 +8,7 @@ import { AsyncValue } from './async-value.js';
 import type { Caches, Runtime } from './runtime.js';
 import { readDrafts, storagePath } from './storage.js';
 import { configRepoDir, emptyConfig, loadConfig } from './views/config.js';
+import { EMPTY_CONNECTORS, loadConnectors } from './views/connectors-data.js';
 import { EMPTY_KNOBS, loadKnobs, loadProfiles } from './views/knobs.js';
 import { EMPTY_SESSIONS, loadSessions, PeekCache } from './views/sessions.js';
 import { loadPlanLimits, loadUsage } from './views/usage.js';
@@ -93,6 +94,22 @@ export function createCaches(rt: CacheRuntime): Caches {
       name: 'worktrees',
       initial: [],
       load: async () => rt.worktrees.summaries(),
+    }),
+    connectors: new AsyncValue({
+      ...common,
+      name: 'connectors',
+      initial: EMPTY_CONNECTORS,
+      load: async () =>
+        loadConnectors({
+          claudeCli: rt.claudeCli,
+          workspace: host.workspaceFolder(),
+          home: rt.paths.home,
+          claudeJson: rt.paths.claudeJson,
+          platform: rt.platform,
+          exec: rt.exec,
+          callTool: rt.callTool,
+          clock: rt.clock,
+        }),
     }),
   };
 }

@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { expectAccessible } from '../../test/render.js';
 
 import type { Column } from './data-table.js';
-import { ariaSort, DataTable, nextSort, sortRows } from './data-table.js';
+import { ariaSort, cellClass, DataTable, nextSort, sortRows } from './data-table.js';
 
 interface Row {
   readonly name: string;
@@ -65,6 +65,17 @@ describe('sortRows', () => {
     expect(
       sortRows(rows, mixed, { column: 'mixed', descending: false }).map((row) => row.name),
     ).toStrictEqual(['beta', 'alpha', 'gamma']);
+  });
+});
+
+const cell = (): string => '';
+
+describe('cellClass', () => {
+  it('marks numbers and wrapping text, and nothing else', () => {
+    expect(cellClass({ id: 'a', header: 'A', cell })).toBeUndefined();
+    expect(cellClass({ id: 'a', header: 'A', cell, numeric: true })).toBe('num');
+    expect(cellClass({ id: 'a', header: 'A', cell, wrap: true })).toBe('wrap');
+    expect(cellClass({ id: 'a', header: 'A', cell, numeric: true, wrap: true })).toBe('num wrap');
   });
 });
 

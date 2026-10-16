@@ -57,6 +57,8 @@ export interface OverlordSettings {
   readonly configSyncAuto: boolean;
   /** How often the background sync checks the remote. */
   readonly configSyncIntervalMinutes: number;
+  /** Tell each new session which connectors work and to check the ones it needs first. */
+  readonly briefSessions: boolean;
 }
 
 /** A GitHub sign-in from the editor's own account list. */

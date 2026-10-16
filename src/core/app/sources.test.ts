@@ -25,6 +25,7 @@ describe('Sources', () => {
       context: rt.context,
       report: rt.report,
       notify: rt.notify,
+      sessionContext: (): null => null,
     });
     expect(sources.sessionBusy('second')).toBe(false);
     await sources.startWatcher();
