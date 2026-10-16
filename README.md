@@ -130,7 +130,7 @@ install over a copy older than this needs one reload by hand.
 
 ```sh
 npm test                       # unit tests
-npm run test:coverage          # unit tests with the 100% coverage gate
+npm run test:coverage          # unit tests with the 90% coverage gate
 npm run test:mutation:changed  # Stryker on the files you changed, a minute or two
 npm run test:mutation          # Stryker on everything, about 13 minutes
 npm run test:integration       # runs the extension inside VS Code
