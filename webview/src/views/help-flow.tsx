@@ -15,19 +15,33 @@ export interface BoxProps {
   /** Lines under the title. A line that starts with a backtick is a command, drawn in the code font. */
   readonly lines?: readonly string[];
   readonly tone?: Tone;
+  /** The places on the screen map where this step shows up, drawn as numbers in the corner. */
+  readonly areas?: readonly number[];
 }
 
 const TITLE_DROP = 22;
 const LINE_HEIGHT = 17;
+const AREA_STEP = 24;
 
 export function Box(props: BoxProps): ReactElement {
-  const { x, y, w, h, title, lines = [], tone = 'plain' } = props;
+  const { x, y, w, h, title, lines = [], tone = 'plain', areas = [] } = props;
   return (
     <g className={`flow-box flow-${tone}`}>
       <rect x={x} y={y} width={w} height={h} rx="6" />
       <text className="flow-title" x={x + 12} y={y + TITLE_DROP}>
         {title}
       </text>
+      {areas.map((area, index) => {
+        const cx = x + w - 16 - (areas.length - 1 - index) * AREA_STEP;
+        return (
+          <g key={area} className="flow-area">
+            <circle cx={cx} cy={y + 16} r="10" />
+            <text x={cx} y={y + 20} textAnchor="middle">
+              {area}
+            </text>
+          </g>
+        );
+      })}
       {lines.map((line, index) => {
         const code = line.startsWith('`');
         return (

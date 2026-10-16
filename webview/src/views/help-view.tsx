@@ -29,6 +29,7 @@ import {
   WORKFLOW,
 } from './help-content.js';
 import { ExtendSection } from './help-extend.js';
+import { ScreenSection } from './help-screen.js';
 import { SessionsSection } from './help-sessions.js';
 import { HANDOFF_LABELS } from './sessions-view.js';
 
@@ -302,6 +303,7 @@ export function HelpView(): ReactElement {
         launch a batch of prompts and watch them side by side.
       </p>
       <WorkflowSection />
+      <ScreenSection />
       <SessionsSection />
       <Section
         id="help-sidebar"

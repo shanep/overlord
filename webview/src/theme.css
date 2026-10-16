@@ -1102,6 +1102,31 @@ fieldset.chips {
   background: var(--ov-orange);
 }
 
+.ext-diagram .ext-strong {
+  font-weight: 600;
+}
+
+.ext-diagram .ext-tiny {
+  font-size: 9px;
+}
+
+.ext-spark {
+  fill: none;
+  stroke: var(--ov-focus);
+  stroke-width: 1.5;
+}
+
+/* The screen map number on a flow diagram box, styled like the map's own markers. */
+.flow-area circle {
+  fill: var(--ov-orange);
+}
+
+.flow .flow-area text {
+  font-size: 11px;
+  font-weight: 700;
+  fill: #000;
+}
+
 /* ---- Tuning --------------------------------------------------------------- */
 
 .tips {

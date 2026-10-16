@@ -7,10 +7,12 @@ import type { ReactElement } from 'react';
 
 import type { Tone } from './help-flow.js';
 import { Arrow, Box, Flow } from './help-flow.js';
+import { SCREEN_MAP_ID } from './help-screen.js';
 
 interface Step {
   readonly title: string;
   readonly lines: readonly string[];
+  readonly areas?: readonly number[];
 }
 
 type Way = readonly [start: Step, runs: Step, see: Step, close: Step];
@@ -24,21 +26,21 @@ const LANE_GAP = 16;
 
 const WAYS: readonly Way[] = [
   [
-    { title: 'Sparkle button', lines: ['New Claude Code Session'] },
+    { title: 'Sparkle button', areas: [4], lines: ['New Claude Code Session'] },
     { title: 'Background job', lines: ['`claude --bg', 'in its own worktree'] },
-    { title: 'Editor tab', lines: ['`claude attach <id>'] },
+    { title: 'Editor tab', areas: [6], lines: ['`claude attach <id>'] },
     { title: 'Stops when idle', lines: ['Mid turn, it keeps', 'going in the background'] },
   ],
   [
-    { title: 'Continue', lines: ['In All Sessions, or the', '/overlord command'] },
+    { title: 'Continue', areas: [6], lines: ['In All Sessions, or the', '/overlord command'] },
     { title: 'Background job', lines: ['`claude --bg --resume'] },
-    { title: 'Editor tab', lines: ['`claude attach <id>'] },
+    { title: 'Editor tab', areas: [6], lines: ['`claude attach <id>'] },
     { title: 'Stops when idle', lines: ['Same as above'] },
   ],
   [
-    { title: 'claude in VS Code', lines: ['You type claude in a', 'VS Code terminal'] },
+    { title: 'claude in VS Code', areas: [9], lines: ['You type claude in a', 'VS Code terminal'] },
     { title: 'claude process', lines: ['in that terminal'] },
-    { title: 'That terminal', lines: ['Fleet place: VS Code'] },
+    { title: 'That terminal', areas: [9], lines: ['Fleet place: VS Code'] },
     { title: 'Session ends', lines: ['VS Code ends the', 'process with the tab'] },
   ],
   [
@@ -48,9 +50,9 @@ const WAYS: readonly Way[] = [
     { title: 'Ends with that app', lines: ['Overlord only watches'] },
   ],
   [
-    { title: 'Launcher', lines: ['Launch, one run per', 'ticked profile'] },
+    { title: 'Launcher', areas: [6], lines: ['Launch, one run per', 'ticked profile'] },
     { title: 'Agent SDK run', lines: ['inside Overlord, in a', 'worktree when ticked'] },
-    { title: 'Agent view', lines: ['and the Runs table,', 'no terminal tab'] },
+    { title: 'Agent view', areas: [6], lines: ['Click its Fleet row.', 'No terminal tab.'] },
     { title: 'Nothing to close', lines: ['It ends when the run', 'finishes or you stop it'] },
   ],
 ];
@@ -113,6 +115,7 @@ function NewSessionDiagram(): ReactElement {
         h={116}
         tone="start"
         title="1. Click the sparkle"
+        areas={[4]}
         lines={['In the Fleet title bar,', 'or run New Claude Code', 'Session']}
       />
       <Box
@@ -143,6 +146,7 @@ function NewSessionDiagram(): ReactElement {
         h={116}
         tone="good"
         title="4. Attach a tab"
+        areas={[6]}
         lines={['Once claude agents', 'lists it, a tab runs', '`claude attach <id>']}
       />
       <Arrow head={head} d="M225 78H265" />
@@ -173,6 +177,7 @@ function NewSessionDiagram(): ReactElement {
         h={96}
         tone="side"
         title="Not listed in 15 s"
+        areas={[11]}
         lines={['A warning and no tab.', 'Open it from the Fleet', 'in a moment.']}
       />
       <Arrow head={head} dashed d="M367 136V186" />
@@ -198,6 +203,7 @@ function TabDiagram(): ReactElement {
         h={124}
         tone="start"
         title="Editor tab"
+        areas={[6]}
         lines={[
           '`claude attach <id>',
           'Shows the session and',
@@ -227,6 +233,7 @@ function TabDiagram(): ReactElement {
         h={124}
         tone="good"
         title="Overlord"
+        areas={[3, 12]}
         lines={[
           'Reads claude agents,',
           '~/.claude/sessions and',
@@ -275,6 +282,7 @@ function CloseDiagram(): ReactElement {
         h={100}
         tone="start"
         title="You close the tab"
+        areas={[6]}
         lines={['Overlord asks claude', 'agents and the transcript', 'what is left to do.']}
       />
       <Box
@@ -310,6 +318,7 @@ function CloseDiagram(): ReactElement {
         h={100}
         tone="good"
         title="Click its Fleet row"
+        areas={[3]}
         lines={['A new tab attaches.', 'You are back where', 'you started.']}
       />
       <Box
@@ -318,6 +327,7 @@ function CloseDiagram(): ReactElement {
         w={190}
         h={90}
         title="Stop on its row"
+        areas={[3]}
         lines={['Asks first, then', 'ends the process.']}
       />
       <Box
@@ -348,6 +358,7 @@ function CloseDiagram(): ReactElement {
         h={100}
         tone="warn"
         title="Not landed"
+        areas={[6]}
         lines={['Edits or commits stay.', 'Open, Land or Discard', 'in the Launcher.']}
       />
       <Arrow head={head} d="M740 310H755V245H770" />
@@ -362,7 +373,9 @@ export function SessionsSection(): ReactElement {
       <h2 id="help-sessions">How a session works</h2>
       <p className="muted">
         What happens from the sparkle to a tidied up worktree. A session Overlord starts runs as a
-        Claude Code background job, and its editor tab is only a window onto it.
+        Claude Code background job, and its editor tab is only a window onto it. An orange number on
+        a box is where that piece is on the screen map in{' '}
+        <a href={`#${SCREEN_MAP_ID}`}>Where things are</a>.
       </p>
       <h3>Ways a session starts</h3>
       <p>
