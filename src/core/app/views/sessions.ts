@@ -134,6 +134,19 @@ export async function loadSessions(deps: SessionsLoadDeps): Promise<SessionsData
   return { sessions: list.sessions, importedAt: stored?.importedAt ?? null };
 }
 
-export function buildSessions(data: SessionsData): SessionsState {
-  return { sessions: data.sessions, claudeAiImportedAt: data.importedAt };
+/** Each worktree folder maps to its repository, so its sessions group with the repo. */
+export function buildSessions(
+  data: SessionsData,
+  projectFor: (cwd: string) => string,
+): SessionsState {
+  const projects: Record<string, string> = {};
+  for (const { cwd } of data.sessions) {
+    if (cwd !== null) {
+      const project = projectFor(cwd);
+      if (project !== cwd) {
+        projects[cwd] = project;
+      }
+    }
+  }
+  return { sessions: data.sessions, claudeAiImportedAt: data.importedAt, projects };
 }

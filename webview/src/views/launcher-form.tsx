@@ -54,7 +54,7 @@ export function LaunchFormView(props: {
     [],
     isStringArray,
   );
-  const [worktree, setWorktree] = useState(false);
+  const [worktree, setWorktree] = useState(true);
   const [budgetText, setBudgetText] = useState('');
   const budget = parseBudget(budgetText);
   const selected = profiles.filter((profile) => checked.includes(profile.id));

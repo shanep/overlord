@@ -13,7 +13,6 @@ import { Launcher } from '../harness/launcher.js';
 import { mergeEnv } from '../harness/options.js';
 import type { PlanUsageFunction, QueryFunction } from '../harness/sdk-types.js';
 import { sdkPlanUsage, sdkQuery } from '../harness/sdk-types.js';
-import { WorktreeManager } from '../harness/worktree.js';
 import { socketPath } from '../hooks/socket-path.js';
 import { defaultClaudePaths, type ClaudePaths } from '../paths.js';
 import type { Scheduler } from '../store/store.js';
@@ -34,13 +33,7 @@ import { PermissionHub } from './permissions.js';
 import type { ActiveTerminal } from './places.js';
 import { PLACES_REFRESH_MS, SessionPlaces } from './places.js';
 import type { FileWatchFunction, IntervalFunction, KillFunction } from './process.js';
-import {
-  defaultInterval,
-  defaultKill,
-  pollingFileWatch,
-  toHarnessExec,
-  toSurfacesExec,
-} from './process.js';
+import { defaultInterval, defaultKill, pollingFileWatch, toSurfacesExec } from './process.js';
 import type { Runtime } from './runtime.js';
 import { SetupCommands } from './setup.js';
 import { once, readLoginShellEnv } from './shell-env.js';
@@ -52,6 +45,13 @@ import { installTransferSkill } from './transfer.js';
 import { ContextViews } from './views/context.js';
 import { fleetFor } from './views/fleet.js';
 import { stateFor } from './views/state.js';
+import {
+  createWorktreeRegistry,
+  launcherWorktrees,
+  sessionClosed,
+  tidyWorktrees,
+  WORKTREE_REFRESH_MS,
+} from './worktrees.js';
 
 export interface AppDeps {
   readonly host: HostPort;
@@ -78,6 +78,8 @@ export interface AppDeps {
   readonly fileWatch?: FileWatchFunction;
   /** Null turns the transcript watcher's fs.watch off and leaves its poll. */
   readonly watchFactory?: WatchFactory | null;
+  /** This process's id, which marks the worktrees it holds. */
+  readonly pid?: number;
 }
 
 export const SESSIONS_REFRESH_MS = 30_000;
@@ -197,12 +199,23 @@ export class OverlordApp {
     });
     // Launched runs get the same PATH and variables as a terminal tab.
     const launchEnv = once(async () => readLoginShellEnv(exec, env, platform));
+    const worktrees = createWorktreeRegistry({
+      paths,
+      storageDir: host.storageDir,
+      exec,
+      isAlive: machine.isAlive,
+      clock,
+      pid: deps.pid ?? process.pid,
+    });
     const launcher = new Launcher(
       {
         queryFunction: deps.queryFunction ?? sdkQuery,
         bus,
         broker: permissions.inbox,
-        worktrees: new WorktreeManager(toHarnessExec(exec)),
+        // The caches exist by the time a run reaches for a worktree.
+        worktrees: launcherWorktrees(worktrees, report, () => {
+          void this.rt.caches.worktrees.refresh();
+        }),
         baseEnv: launchEnv,
         executablePath: (runEnv): string | null =>
           executableFor(host.settings.claudePath, runEnv, platform),
@@ -246,6 +259,8 @@ export class OverlordApp {
       fs: machine.fs,
       store,
       launcher,
+      worktrees,
+      sessionWorktrees: new Map(),
       permissions,
       places,
       jobs,
@@ -296,6 +311,7 @@ export class OverlordApp {
     }
     this.started = true;
     await this.rt.permissions.load();
+    await this.rt.worktrees.load();
     await this.sources.startWatcher();
     await this.sources.sync();
     this.cleanups.push(
@@ -308,8 +324,12 @@ export class OverlordApp {
       this.interval(() => {
         void this.rt.jobs.refresh();
       }, JOBS_REFRESH_MS),
+      this.interval(() => {
+        void tidyWorktrees(this.rt);
+      }, WORKTREE_REFRESH_MS),
     );
     await Promise.all([this.rt.places.refresh(), this.rt.jobs.refresh()]);
+    void tidyWorktrees(this.rt);
     for (const file of this.settingsFiles()) {
       this.cleanups.push(
         this.fileWatch(file, () => {
@@ -361,6 +381,11 @@ export class OverlordApp {
     return this.rt.places.activeSession();
   }
 
+  /** A session tab this window opened has closed. */
+  async sessionClosed(sessionId: string): Promise<void> {
+    await sessionClosed(this.rt, sessionId);
+  }
+
   /** Text for the status bar item. */
   statusLine(): string {
     return statusLine(this.fleet());
@@ -389,6 +414,7 @@ export class OverlordApp {
       caches.config.refresh(),
       caches.usage.refresh(),
       caches.plan.refresh(),
+      tidyWorktrees(this.rt),
       this.rt.places.refresh(),
       this.rt.jobs.refresh(),
     ]);

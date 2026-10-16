@@ -117,6 +117,38 @@ export interface LaunchRun {
   readonly worktreePath: string | null;
 }
 
+/**
+ * Where a worktree stands. Active ones have a session working in them. The
+ * rest are finished: dirty ones hold uncommitted edits, unlanded ones hold
+ * commits the default branch does not have, landed ones are about to go.
+ */
+export type WorktreeState = 'active' | 'dirty' | 'unlanded' | 'landed' | 'missing';
+
+export interface WorktreeOverlap {
+  readonly id: string;
+  readonly label: string;
+  readonly files: readonly string[];
+}
+
+export interface WorktreeSummary {
+  readonly id: string;
+  readonly kind: 'run' | 'session';
+  readonly label: string;
+  readonly repoRoot: string;
+  readonly path: string;
+  readonly branch: string;
+  /** The origin branch work lands on, or null when the repository has no origin. */
+  readonly target: string | null;
+  readonly slot: number;
+  readonly createdAt: number;
+  readonly state: WorktreeState;
+  readonly ahead: number;
+  readonly dirty: number;
+  readonly files: readonly string[];
+  /** Other worktrees of the same repository changing some of the same files. */
+  readonly overlaps: readonly WorktreeOverlap[];
+}
+
 export interface AutoApproveRule {
   readonly id: string;
   readonly enabled: boolean;
@@ -139,6 +171,7 @@ export interface LauncherState {
   readonly pendingPermissions: readonly PermissionRequest[];
   readonly rules: readonly AutoApproveRule[];
   readonly maxConcurrency: number;
+  readonly worktrees: readonly WorktreeSummary[];
 }
 
 export interface SurfaceSession {
@@ -158,6 +191,8 @@ export type HandoffKind =
 export interface SessionsState {
   readonly sessions: readonly SurfaceSession[];
   readonly claudeAiImportedAt: number | null;
+  /** Session folder to the repository it belongs to, for folders that are worktrees. */
+  readonly projects: Readonly<Record<string, string>>;
 }
 
 export interface ConfigState {
@@ -366,7 +401,11 @@ export type WebviewAction =
   | { readonly type: 'newAgent' }
   | { readonly type: 'newSkill' }
   | { readonly type: 'rescanFrustration' }
-  | { readonly type: 'setInboundPolicy'; readonly value: string | null };
+  | { readonly type: 'setInboundPolicy'; readonly value: string | null }
+  | { readonly type: 'newSession' }
+  | { readonly type: 'landWorktree'; readonly id: string }
+  | { readonly type: 'discardWorktree'; readonly id: string }
+  | { readonly type: 'openWorktree'; readonly id: string };
 
 export type WebviewToHost =
   | { readonly type: 'ready'; readonly view: ViewId }

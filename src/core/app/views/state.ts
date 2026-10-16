@@ -32,6 +32,7 @@ function buildLauncher(rt: Runtime): LauncherState {
     drafts: rt.caches.drafts.value,
     pendingPermissions: rt.permissions.list(),
     rules: rt.permissions.rules(),
+    worktrees: rt.caches.worktrees.value,
   };
 }
 
@@ -79,7 +80,11 @@ export function stateFor(rt: Runtime, view: ViewId, params: PanelParams): HostTo
       return { type: 'state', view, state: buildLauncher(rt) };
     }
     case 'sessions': {
-      return { type: 'state', view, state: buildSessions(rt.caches.sessions.value) };
+      return {
+        type: 'state',
+        view,
+        state: buildSessions(rt.caches.sessions.value, rt.worktrees.projectFor),
+      };
     }
     case 'config': {
       return { type: 'state', view, state: rt.caches.config.value };

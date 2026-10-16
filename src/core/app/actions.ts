@@ -11,6 +11,7 @@ import { frustrationActions } from './actions-frustration.js';
 import { launchActions } from './actions-launch.js';
 import { messageActions } from './actions-messages.js';
 import { sessionActions } from './actions-session.js';
+import { worktreeActions } from './actions-worktrees.js';
 import { messageOf } from './errors.js';
 import type { PanelParams } from './host-port.js';
 import type { Runtime } from './runtime.js';
@@ -22,6 +23,7 @@ const HANDLERS: ActionHandlers<ActionType> = {
   ...authoringActions,
   ...frustrationActions,
   ...messageActions,
+  ...worktreeActions,
 };
 
 function isActionType(value: string): value is ActionType {

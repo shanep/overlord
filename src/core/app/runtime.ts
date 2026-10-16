@@ -2,7 +2,12 @@
 // and hands it around, so each piece takes a single argument.
 
 import type { LaunchProfile } from '../../shared/model.js';
-import type { ConfigState, PlanLimits, UsageStats } from '../../shared/protocol.js';
+import type {
+  ConfigState,
+  PlanLimits,
+  UsageStats,
+  WorktreeSummary,
+} from '../../shared/protocol.js';
 import type { EventBus } from '../bus.js';
 import type { FileSystem } from '../context/fs.js';
 import type { Launcher } from '../harness/launcher.js';
@@ -10,6 +15,7 @@ import type { ClaudePaths } from '../paths.js';
 import type { OverlordStore } from '../store/store.js';
 import type { ExecFunction as SurfacesExec, IsAlive } from '../surfaces/process.js';
 import type { Exec } from '../sync/exec.js';
+import type { WorktreeRegistry } from '../worktrees/registry.js';
 
 import type { AsyncValue } from './async-value.js';
 import type { HostPort } from './host-port.js';
@@ -30,6 +36,7 @@ export interface Caches {
   readonly config: AsyncValue<ConfigState>;
   readonly usage: AsyncValue<UsageStats>;
   readonly plan: AsyncValue<PlanLimits | null>;
+  readonly worktrees: AsyncValue<readonly WorktreeSummary[]>;
 }
 
 export interface Runtime {
@@ -49,6 +56,9 @@ export interface Runtime {
   readonly fs: FileSystem;
   readonly store: OverlordStore;
   readonly launcher: Launcher;
+  readonly worktrees: WorktreeRegistry;
+  /** Session id to the worktree it runs in, for the session tabs this window opened. */
+  readonly sessionWorktrees: Map<string, string>;
   readonly permissions: PermissionHub;
   /** Where each live session runs, for the fleet. */
   readonly places: SessionPlaces;

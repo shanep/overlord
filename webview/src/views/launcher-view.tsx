@@ -1,5 +1,5 @@
-// Launcher: start many agents and prompts at once, watch the runs, answer
-// permission requests, and manage auto-approve rules.
+// Launcher: start many agents and prompts at once, watch the runs and their
+// worktrees, answer permission requests, and manage auto-approve rules.
 
 import type { ReactElement } from 'react';
 
@@ -9,6 +9,7 @@ import { LaunchFormView } from './launcher-form.js';
 import { PermissionInbox } from './launcher-permissions.js';
 import { RulesEditor } from './launcher-rules.js';
 import { RunsTable } from './launcher-runs.js';
+import { WorktreesTable } from './launcher-worktrees.js';
 
 export function LauncherView(props: { readonly state: LauncherState }): ReactElement {
   const { state } = props;
@@ -23,6 +24,7 @@ export function LauncherView(props: { readonly state: LauncherState }): ReactEle
         profiles={state.profiles}
         maxConcurrency={state.maxConcurrency}
       />
+      <WorktreesTable worktrees={state.worktrees} />
       <PermissionInbox requests={state.pendingPermissions} />
       <RulesEditor rules={state.rules} />
     </div>

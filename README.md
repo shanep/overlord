@@ -51,6 +51,29 @@ you turn them on, since they write to `~/.claude/settings.json`.
 **Help** under Global in the sidebar explains every icon and badge and walks through a
 typical workflow.
 
+## Worktrees
+
+Every Claude session Overlord starts, from **New Claude Code Session** or the launcher, gets its
+own git worktree, so many sessions can work in one repo without stepping on each other. Worktrees
+live in `~/.overlord/worktrees`, outside the repo, on a branch `overlord/<id>` cut from a fresh
+fetch of the default branch.
+
+When a session ends, Overlord removes its worktree if everything in it landed. Anything left over
+(uncommitted edits, or commits the default branch does not have) stays in the **Worktrees** table
+in the launcher, where you can open a session in it, land it or discard it. Land rebases onto the
+latest default branch and pushes. The table also flags worktrees that change the same files.
+
+A new worktree has none of the repo's ignored files, so Overlord sets it up:
+
+- Ignored files that match `.worktreeinclude` (gitignore syntax) are copied from the main checkout.
+- `node_modules` is cloned from the main checkout when the lockfiles match. The clone is
+  copy-on-write where the file system supports it, so it takes seconds.
+- `.overlord/setup.sh` runs in the worktree if the repo has one.
+
+Each session also gets `OVERLORD_SLOT`, a small number no other live worktree has, and
+`OVERLORD_PORT_BASE` (40000 plus 100 per slot), so dev servers and test databases can pick ports
+that do not collide.
+
 ## New machine
 
 1. Install the extension.

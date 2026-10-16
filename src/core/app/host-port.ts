@@ -21,6 +21,8 @@ export interface TerminalRequest {
   readonly cwd: string;
   /** The Claude Code session the terminal runs, when known, for the properties panel. */
   readonly sessionId: string | null;
+  /** Variables layered over the terminal's environment, such as a worktree's port slot. */
+  readonly env?: Readonly<Record<string, string>>;
 }
 
 export interface FilePickRequest {

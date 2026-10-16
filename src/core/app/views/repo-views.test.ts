@@ -31,6 +31,11 @@ function store(bus: EventBus): OverlordStore {
   return new OverlordStore(bus, { scheduler: immediateScheduler });
 }
 
+/** Pretends /live is a worktree of /repo. */
+function liveIsInRepo(cwd: string): string {
+  return cwd === '/live' ? '/repo' : cwd;
+}
+
 describe('sessions view', () => {
   it('builds a transcript row from file data, preferring what the store knows', () => {
     const info = {
@@ -126,7 +131,11 @@ describe('sessions view', () => {
     expect(byId.get('chat')?.surface).toBe('claude-ai');
     expect(data.sessions).toHaveLength(4);
     expect(report).not.toHaveBeenCalled();
-    expect(buildSessions(data)).toStrictEqual({ sessions: data.sessions, claudeAiImportedAt: 5 });
+    expect(buildSessions(data, liveIsInRepo)).toStrictEqual({
+      sessions: data.sessions,
+      claudeAiImportedAt: 5,
+      projects: { '/live': '/repo' },
+    });
     expect(EMPTY_SESSIONS).toStrictEqual({ sessions: [], importedAt: null });
   });
 

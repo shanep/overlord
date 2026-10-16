@@ -14,18 +14,26 @@ import type { PermissionBroker } from './inbox.js';
 import { findProfile, sessionSettings } from './options.js';
 import type { QueryFunction } from './sdk-types.js';
 import { SdkSession, type SessionEnd } from './session.js';
-import type { WorktreeInfo } from './worktree.js';
+/** A worktree a run holds while it works. */
+export interface WorktreeLease {
+  readonly path: string;
+  /** Variables the session gets, such as its port slot. */
+  readonly env: Readonly<Record<string, string>>;
+}
 
-/** The part of WorktreeManager the launcher needs. */
-export interface WorktreeCreator {
-  readonly create: (cwd: string, runId: string) => Promise<WorktreeInfo>;
+/** Hands out worktrees for runs and takes them back when the runs end. */
+export interface WorktreeProvider {
+  /** Null when cwd is not in a git repository, so the run works in cwd itself. */
+  readonly acquire: (cwd: string, runId: string, label: string) => Promise<WorktreeLease | null>;
+  /** Called once the run ends, whether it made a worktree or failed partway. */
+  readonly release: (runId: string) => Promise<void>;
 }
 
 export interface LauncherDeps {
   readonly queryFunction: QueryFunction;
   readonly bus: EventBus;
   readonly broker: PermissionBroker;
-  readonly worktrees?: WorktreeCreator | null;
+  readonly worktrees?: WorktreeProvider | null;
   /** Loads the environment profiles are merged onto. Defaults to process.env. */
   readonly baseEnv?: () => Promise<Readonly<Record<string, string | undefined>>>;
   /** Picks the claude binary, given the loaded base environment. Defaults to the SDK's own. */
@@ -200,6 +208,7 @@ export class Launcher {
     } catch (error) {
       this.finish(record, 'failed', errorMessage(error));
     } finally {
+      await this.releaseWorktree(record);
       this.running -= 1;
       this.pump();
       this.settleIdle();
@@ -210,7 +219,7 @@ export class Launcher {
     const { spec } = record.run;
     const baseEnv = this.deps.baseEnv === undefined ? process.env : await this.deps.baseEnv();
     const settings = sessionSettings(spec, findProfile(spec, record.profiles), baseEnv);
-    const cwd = spec.worktree ? await this.createWorktree(record) : spec.cwd;
+    const lease = spec.worktree ? await this.acquireWorktree(record) : null;
     if (record.stopRequested) {
       this.finish(record, 'stopped', null);
       return;
@@ -225,7 +234,8 @@ export class Launcher {
       },
       {
         ...settings,
-        cwd,
+        env: { ...settings.env, ...lease?.env },
+        cwd: lease?.path ?? spec.cwd,
         title: spec.label,
         executablePath: this.deps.executablePath?.(baseEnv) ?? null,
       },
@@ -257,14 +267,29 @@ export class Launcher {
     }
   }
 
-  private async createWorktree(record: RunRecord): Promise<string> {
+  private async acquireWorktree(record: RunRecord): Promise<WorktreeLease | null> {
     const worktrees = this.deps.worktrees ?? null;
     if (worktrees === null) {
-      throw new Error('Worktree runs need a WorktreeManager');
+      throw new Error('Worktree runs need a WorktreeProvider');
     }
-    const info = await worktrees.create(record.run.spec.cwd, record.run.id);
-    this.update(record, { worktreePath: info.path });
-    return info.path;
+    const { spec } = record.run;
+    const lease = await worktrees.acquire(spec.cwd, record.run.id, spec.label);
+    if (lease !== null) {
+      this.update(record, { worktreePath: lease.path });
+    }
+    return lease;
+  }
+
+  /** A failed release leaves the worktree for the next tidy-up, so it never fails the run. */
+  private async releaseWorktree(record: RunRecord): Promise<void> {
+    if (record.run.worktreePath === null) {
+      return;
+    }
+    try {
+      await this.deps.worktrees?.release(record.run.id);
+    } catch (error) {
+      this.deps.bus.emit('source.error', { source: 'worktrees', message: errorMessage(error) });
+    }
   }
 
   private finish(

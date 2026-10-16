@@ -12,13 +12,7 @@ import { AsyncValue } from './async-value.js';
 import { ChangeHub } from './changes.js';
 import { ErrorLog, MAX_ERRORS, messageOf } from './errors.js';
 import { DEFAULT_MODEL, formatUsd, MODEL_ALIASES, toEstimatePrices } from './prices.js';
-import {
-  defaultInterval,
-  defaultKill,
-  pollingFileWatch,
-  toHarnessExec,
-  toSurfacesExec,
-} from './process.js';
+import { defaultInterval, defaultKill, pollingFileWatch, toSurfacesExec } from './process.js';
 import { makeEnv, settle, sorted, waitFor, writeText } from './test-helpers/fixtures.js';
 import { plural, shortId } from './text.js';
 
@@ -258,24 +252,6 @@ describe('process helpers', () => {
       'claude exited 3',
     );
     expect(seen[0]).toStrictEqual({ command: 'claude', args: ['good'], options: { timeoutMs: 7 } });
-  });
-
-  it('adapts the sync exec for the harness worktree manager', async () => {
-    const seen: unknown[] = [];
-    const exec: Exec = async (command, args, options) => {
-      seen.push({ command, args, options });
-      await Promise.resolve();
-      return args[0] === 'good'
-        ? { code: 0, stdout: 'o', stderr: 'e' }
-        : { code: 1, stdout: '', stderr: 'bad' };
-    };
-    const harness = toHarnessExec(exec);
-    await expect(harness('git', ['good'], { cwd: '/r' })).resolves.toStrictEqual({
-      stdout: 'o',
-      stderr: 'e',
-    });
-    await expect(harness('git', ['nope'], { cwd: '/r' })).rejects.toThrow('git failed: bad');
-    expect(seen[0]).toStrictEqual({ command: 'git', args: ['good'], options: { cwd: '/r' } });
   });
 
   it('runs an interval until stopped', async () => {

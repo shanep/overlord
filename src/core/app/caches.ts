@@ -88,5 +88,11 @@ export function createCaches(rt: CacheRuntime): Caches {
       initial: null,
       load: async () => loadPlanLimits(rt.planUsage, rt.clock),
     }),
+    worktrees: new AsyncValue({
+      ...common,
+      name: 'worktrees',
+      initial: [],
+      load: async () => rt.worktrees.summaries(),
+    }),
   };
 }

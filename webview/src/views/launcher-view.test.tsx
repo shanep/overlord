@@ -20,6 +20,7 @@ const empty: LauncherState = {
   pendingPermissions: [],
   rules: [],
   maxConcurrency: 2,
+  worktrees: [],
 };
 
 describe('LauncherView', () => {
@@ -29,6 +30,7 @@ describe('LauncherView', () => {
     expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toStrictEqual([
       'New run',
       'Runs',
+      'Worktrees',
       'Permission inbox (1)',
       'Auto-approve rules',
     ]);
@@ -40,6 +42,7 @@ describe('LauncherView', () => {
     expect(screen.queryByRole('combobox', { name: 'Load draft' })).toBeNull();
     expect(screen.getByText('No profiles yet.')).toBeDefined();
     expect(screen.getByText('No runs yet.')).toBeDefined();
+    expect(screen.getByText('No worktrees. Each new session and run gets its own.')).toBeDefined();
     expect(screen.getByText('No pending requests.')).toBeDefined();
     expect(screen.getByText('No rules. Nothing is approved without asking.')).toBeDefined();
     expect(screen.getByRole('button', { name: 'Stop all' })).toHaveProperty('disabled', true);
@@ -63,7 +66,10 @@ describe('launch form', () => {
     await userEvent.type(screen.getByRole('textbox', { name: 'Label' }), 'Fixer');
     await userEvent.type(screen.getByRole('textbox', { name: 'Folder' }), '/repo');
     await userEvent.type(screen.getByRole('spinbutton', { name: 'Budget (USD)' }), '3');
-    await userEvent.click(screen.getByRole('checkbox', { name: 'Own git worktree' }));
+    expect(screen.getByRole('checkbox', { name: 'Own git worktree' })).toHaveProperty(
+      'checked',
+      true,
+    );
     await userEvent.click(screen.getByRole('checkbox', { name: 'Fast' }));
     await userEvent.click(screen.getByRole('checkbox', { name: 'Deep' }));
     await userEvent.click(screen.getByRole('button', { name: 'Launch 2 runs' }));
@@ -79,9 +85,10 @@ describe('launch form', () => {
     ]);
   });
 
-  it('unchecks a profile and launches with no profile', async () => {
+  it('unchecks a profile and the worktree and launches with neither', async () => {
     const { api } = renderView(<LauncherView state={launcherState} />);
     await userEvent.type(screen.getByRole('textbox', { name: 'Prompt' }), 'Go');
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Own git worktree' }));
     const fast = screen.getByRole('checkbox', { name: 'Fast' });
     await userEvent.click(fast);
     expect(screen.getByRole('button', { name: 'Launch 1 run' })).toBeDefined();

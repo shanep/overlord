@@ -20,13 +20,19 @@ export class CliTabs implements vscode.Disposable {
     private readonly properties: SidebarView,
     /** Hears the session and shell pid of the active terminal, or null when none is active. */
     private readonly onActive: (terminal: ActiveTerminal | null) => void,
+    /** Hears the session of a tab Overlord opened once that tab closes. */
+    private readonly onClosed: (sessionId: string) => void,
   ) {
     this.subscriptions = [
       vscode.window.onDidChangeActiveTerminal((terminal) => {
         this.follow(terminal);
       }),
       vscode.window.onDidCloseTerminal((terminal) => {
+        const sessionId = this.sessions.get(terminal);
         this.sessions.delete(terminal);
+        if (sessionId !== undefined) {
+          this.onClosed(sessionId);
+        }
         this.follow(vscode.window.activeTerminal);
       }),
     ];

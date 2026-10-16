@@ -65,13 +65,20 @@ export function projectName(cwd: string | null): string {
   return cwd.split(/[\\/]/u).findLast((part) => part !== '') ?? cwd;
 }
 
-/** Sessions grouped by folder. Groups keep the order of their first session. */
-export function groupByProject(sessions: readonly SurfaceSession[]): readonly ProjectGroup[] {
+/**
+ * Sessions grouped by folder, with worktree folders folded into the
+ * repository they came from. Groups keep the order of their first session.
+ */
+export function groupByProject(
+  sessions: readonly SurfaceSession[],
+  projects: Readonly<Record<string, string>>,
+): readonly ProjectGroup[] {
   const groups = new Map<string | null, SurfaceSession[]>();
   for (const entry of sessions) {
-    const group = groups.get(entry.cwd);
+    const key = entry.cwd === null ? null : (projects[entry.cwd] ?? entry.cwd);
+    const group = groups.get(key);
     if (group === undefined) {
-      groups.set(entry.cwd, [entry]);
+      groups.set(key, [entry]);
     } else {
       group.push(entry);
     }
@@ -166,7 +173,7 @@ export function SessionsView(props: { readonly state: SessionsState }): ReactEle
   const [surface, setSurface] = usePersistentState('sessions.surface', 'all', isSurfaceFilter);
   const [archived, setArchived] = usePersistentState('sessions.archived', false, isBoolean);
   const rows = filterSessions(state.sessions, { text, surface, archived });
-  const groups = groupByProject(rows);
+  const groups = groupByProject(rows, state.projects);
   return (
     <section aria-labelledby="sessions-title">
       <header className="view-header">

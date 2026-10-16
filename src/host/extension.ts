@@ -1,7 +1,6 @@
 // VS Code entry point. Builds the app, the panels, the sidebar and the
 // status bar, and maps every contributed command onto the app.
 
-import { randomUUID } from 'node:crypto';
 import * as vscode from 'vscode';
 
 import { OverlordApp } from '../core/app/app.js';
@@ -10,7 +9,7 @@ import { parseTransferUri } from '../core/app/transfer.js';
 import type { HostToWebview, ViewId, WebviewAction } from '../shared/protocol.js';
 
 import { CliTabs } from './cli-tabs.js';
-import { createVscodeHostPort, terminalLaunch } from './host-port.js';
+import { createVscodeHostPort } from './host-port.js';
 import { keepAwake } from './keep-awake.js';
 import { PanelManager, SidebarView } from './panels.js';
 import { reloadOnUpdate } from './self-update.js';
@@ -56,26 +55,6 @@ class ViewListProvider implements vscode.TreeDataProvider<ViewEntry> {
   getChildren(): ViewEntry[] {
     return [...this.entries];
   }
-}
-
-/**
- * Starts an interactive Claude Code CLI in an editor tab, in the workspace
- * folder. Overlord picks the session id up front so the properties panel
- * knows which session the tab runs before Claude Code reports it.
- */
-function newClaudeSession(claudePath: string, cwd: string | null, tabs: CliTabs): void {
-  const sessionId = randomUUID();
-  const terminal = vscode.window.createTerminal({
-    name: 'Claude Code',
-    ...(cwd === null ? {} : { cwd }),
-    location: { viewColumn: vscode.ViewColumn.Active },
-    iconPath: new vscode.ThemeIcon('sparkle'),
-    // claude runs through the login shell (for the full PATH) and execs, so
-    // closing the session closes the tab.
-    ...terminalLaunch(claudePath, ['--session-id', sessionId]),
-  });
-  terminal.show();
-  tabs.track(terminal, sessionId);
 }
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
@@ -124,9 +103,16 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     onAction,
   );
   propertiesHolder.current = propertiesSidebar;
-  const tabs = new CliTabs(propertiesSidebar, (target) => {
-    overlord.setActiveTerminal(target);
-  });
+  // The fleet follows the focused tab, and a closed session tab lets go of its worktree.
+  const tabs = new CliTabs(
+    propertiesSidebar,
+    (target) => {
+      overlord.setActiveTerminal(target);
+    },
+    (sessionId) => {
+      void overlord.sessionClosed(sessionId);
+    },
+  );
   tabs.announceActive();
   tabsHolder.current = tabs;
 
@@ -201,9 +187,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     register('overlord.uninstallHooks', async () => overlord.setup.uninstallHooks()),
     register('overlord.enableTelemetry', async () => overlord.setup.enableTelemetry()),
     register('overlord.disableTelemetry', async () => overlord.setup.disableTelemetry()),
-    register('overlord.newClaudeSession', (): void => {
-      newClaudeSession(host.settings.claudePath, host.workspaceFolder(), tabs);
-    }),
+    // Each new session gets its own worktree, so sessions never share files.
+    register('overlord.newClaudeSession', async () => dispatch({ type: 'newSession' })),
     register('overlord.showProperties', (): void => {
       tabs.showActive();
     }),

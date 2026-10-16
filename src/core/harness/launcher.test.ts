@@ -15,7 +15,7 @@ import type { LaunchRun } from '../../shared/protocol.js';
 import { EventBus } from '../bus.js';
 
 import { PermissionInbox } from './inbox.js';
-import { Launcher, isTerminal, type LauncherDeps, type WorktreeCreator } from './launcher.js';
+import { Launcher, isTerminal, type LauncherDeps, type WorktreeProvider } from './launcher.js';
 
 function spec(prompt: string, overrides: Partial<LaunchSpec> = {}): LaunchSpec {
   return {
@@ -286,60 +286,92 @@ describe('Launcher stopping', () => {
   });
 });
 
+/** A worktree provider that records what it hands out and takes back. */
+function provider(overrides: Partial<WorktreeProvider> = {}): {
+  readonly worktrees: WorktreeProvider;
+  readonly acquired: [string, string, string][];
+  readonly released: string[];
+} {
+  const acquired: [string, string, string][] = [];
+  const released: string[] = [];
+  const worktrees: WorktreeProvider = {
+    acquire: async (cwd, runId, label) => {
+      acquired.push([cwd, runId, label]);
+      return resolved({ path: `/wt/${runId}`, env: { OVERLORD_SLOT: '3' } });
+    },
+    release: async (runId) => {
+      released.push(runId);
+      await Promise.resolve();
+    },
+    ...overrides,
+  };
+  return { worktrees, acquired, released };
+}
+
 describe('Launcher worktrees', () => {
-  it('runs in a fresh worktree', async () => {
-    const created: [string, string][] = [];
-    const worktrees: WorktreeCreator = {
-      create: async (cwd, runId) => {
-        created.push([cwd, runId]);
-        return resolved({
-          runId,
-          repoRoot: cwd,
-          path: `${cwd}/.claude/worktrees/overlord-${runId}`,
-          branch: `overlord/${runId}`,
-          baseCommit: 'abc',
-        });
-      },
-    };
+  it('runs in a leased worktree with its variables and releases it at the end', async () => {
+    const { worktrees, acquired, released } = provider();
+    const { launcher, queries } = setup(1, { worktrees });
+    launcher.launch([spec('ok:0', { worktree: true, label: 'Fix' })], []);
+    await launcher.idle();
+    expect(acquired).toStrictEqual([['/repo', 'id-2', 'Fix']]);
+    expect(queries[0]?.options.cwd).toBe('/wt/id-2');
+    expect(queries[0]?.options.env).toMatchObject({ OVERLORD_SLOT: '3' });
+    expect(launcher.runs()[0]).toMatchObject({ state: 'done', worktreePath: '/wt/id-2' });
+    expect(released).toStrictEqual(['id-2']);
+  });
+
+  it('runs in the folder itself when it is not a repository', async () => {
+    const { worktrees, released } = provider({ acquire: async () => resolved(null) });
     const { launcher, queries } = setup(1, { worktrees });
     launcher.launch([spec('ok:0', { worktree: true })], []);
     await launcher.idle();
-    expect(created).toStrictEqual([['/repo', 'id-2']]);
-    expect(queries[0]?.options.cwd).toBe('/repo/.claude/worktrees/overlord-id-2');
-    expect(launcher.runs()[0]).toMatchObject({
-      state: 'done',
-      worktreePath: '/repo/.claude/worktrees/overlord-id-2',
-    });
+    expect(queries[0]?.options.cwd).toBe('/repo');
+    expect(launcher.runs()[0]).toMatchObject({ state: 'done', worktreePath: null });
+    expect(released).toStrictEqual([]);
   });
 
-  it('fails without a manager or when git fails', async () => {
-    const worktrees: WorktreeCreator = {
-      create: async () => rejected(new Error('not a repo')),
-    };
+  it('fails without a provider or when the worktree cannot be made', async () => {
     const plain = setup(1, { worktrees: null });
     plain.launcher.launch([spec('ok:0', { worktree: true })], []);
     await plain.launcher.idle();
     expect(plain.launcher.runs()[0]).toMatchObject({
       state: 'failed',
-      result: 'Worktree runs need a WorktreeManager',
+      result: 'Worktree runs need a WorktreeProvider',
+    });
+    const { worktrees, released } = provider({
+      acquire: async () => rejected(new Error('disk full')),
     });
     const broken = setup(1, { worktrees });
     broken.launcher.launch([spec('ok:0', { worktree: true })], []);
     await broken.launcher.idle();
-    expect(broken.launcher.runs()[0]).toMatchObject({ state: 'failed', result: 'not a repo' });
+    expect(broken.launcher.runs()[0]).toMatchObject({ state: 'failed', result: 'disk full' });
     expect(broken.queries).toHaveLength(0);
+    expect(released).toStrictEqual([]);
+  });
+
+  it('reports a failed release without failing the run', async () => {
+    const { worktrees } = provider({ release: async () => rejected(new Error('locked')) });
+    const bus = new EventBus();
+    const { launcher } = setup(1, { worktrees, bus });
+    const errors: unknown[] = [];
+    bus.on('source.error', (payload) => errors.push(payload));
+    launcher.launch([spec('ok:0', { worktree: true })], []);
+    await launcher.idle();
+    expect(launcher.runs()[0]).toMatchObject({ state: 'done' });
+    expect(errors).toStrictEqual([{ source: 'worktrees', message: 'locked' }]);
   });
 
   it('honors a stop that arrives while the worktree is being made', async () => {
     const gates: (() => void)[] = [];
-    const worktrees: WorktreeCreator = {
-      create: async (cwd, runId) => {
+    const { worktrees, released } = provider({
+      acquire: async () => {
         await new Promise<void>((resolve) => {
           gates.push(resolve);
         });
-        return { runId, repoRoot: cwd, path: '/wt', branch: 'b', baseCommit: 'c' };
+        return { path: '/wt', env: {} };
       },
-    };
+    });
     const { launcher, queries } = setup(1, { worktrees });
     launcher.launch([spec('ok:0', { worktree: true })], []);
     await flush();
@@ -350,6 +382,7 @@ describe('Launcher worktrees', () => {
     await launcher.idle();
     expect(launcher.runs()[0]).toMatchObject({ state: 'stopped', worktreePath: '/wt' });
     expect(queries).toHaveLength(0);
+    expect(released).toHaveLength(1);
   });
 });
 

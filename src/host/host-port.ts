@@ -19,7 +19,7 @@ import { loginShellLaunch } from '../core/login-shell.js';
 import type { ViewId } from '../shared/protocol.js';
 
 /** claude through the login shell, so the tab gets the user's full PATH. */
-export function terminalLaunch(
+function terminalLaunch(
   command: string,
   args: readonly string[],
 ): { shellPath: string; shellArgs: string[] } {
@@ -85,6 +85,7 @@ export function createVscodeHostPort(options: VscodeHostPortOptions): HostPort {
       const terminal = vscode.window.createTerminal({
         name: request.name,
         cwd: request.cwd,
+        ...(request.env === undefined ? {} : { env: { ...request.env } }),
         location: { viewColumn: vscode.ViewColumn.Active },
         iconPath: new vscode.ThemeIcon('sparkle'),
         // Run claude as the terminal's own process: no shell quoting, and the

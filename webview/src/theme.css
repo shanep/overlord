@@ -429,6 +429,12 @@ kbd {
   list-style: none;
 }
 
+.plain-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
 .banner li {
   display: flex;
   flex-wrap: wrap;

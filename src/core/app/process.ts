@@ -1,10 +1,9 @@
 // Process and timer helpers the app takes as dependencies. The sync module's
 // Exec (which reports exit codes) is the one the app is given; the surfaces
-// and harness modules want their own shapes, so they get adapters.
+// modules want their own shape, so they get an adapter.
 
 import { unwatchFile, watchFile } from 'node:fs';
 
-import type { ExecFunction as HarnessExec } from '../harness/worktree.js';
 import type { ExecFunction as SurfacesExec } from '../surfaces/process.js';
 import type { Exec, ExecResult } from '../sync/exec.js';
 
@@ -57,16 +56,5 @@ export function toSurfacesExec(exec: Exec): SurfacesExec {
       throw failure(command, result);
     }
     return { stdout: result.stdout };
-  };
-}
-
-/** The harness worktree manager runs git in a working directory and expects a rejection on failure. */
-export function toHarnessExec(exec: Exec): HarnessExec {
-  return async (command, args, options) => {
-    const result = await exec(command, args, { cwd: options.cwd });
-    if (result.code !== 0) {
-      throw failure(command, result);
-    }
-    return { stdout: result.stdout, stderr: result.stderr };
   };
 }

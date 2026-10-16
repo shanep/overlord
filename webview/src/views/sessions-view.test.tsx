@@ -72,13 +72,30 @@ describe('groupByProject', () => {
 
   it('groups by folder in the order each folder first shows up', () => {
     const [x1, x2, x3] = sessionsState.sessions;
-    const groups = groupByProject([x2, x1, lexer, x3].filter((entry) => entry !== undefined));
+    const groups = groupByProject(
+      [x2, x1, lexer, x3].filter((entry) => entry !== undefined),
+      {},
+    );
     expect(
       groups.map((group) => [group.cwd, group.name, group.sessions.map((entry) => entry.id)]),
     ).toStrictEqual([
       [null, 'No folder', ['x2', 'x3']],
       ['/repo', 'repo', ['x1', 'x4']],
     ]);
+  });
+
+  it('folds worktree folders into the repository they came from', () => {
+    const [x1] = sessionsState.sessions;
+    const worktree = { ...lexer, id: 'x5', cwd: '/wt/repo-1/w1' };
+    const groups = groupByProject(
+      [worktree, x1].filter((entry) => entry !== undefined),
+      {
+        '/wt/repo-1/w1': '/repo',
+      },
+    );
+    expect(
+      groups.map((group) => [group.cwd, group.sessions.map((entry) => entry.id)]),
+    ).toStrictEqual([['/repo', ['x5', 'x1']]]);
   });
 });
 
