@@ -6,14 +6,32 @@ import { sessionsState } from '../../test/fixtures-tools.js';
 import { expectAccessible, FakeApi, renderView } from '../../test/render.js';
 
 import type { SessionFilter } from './sessions-view.js';
-import { filterSessions, HANDOFF_LABELS, SessionsView } from './sessions-view.js';
+import {
+  filterSessions,
+  groupByProject,
+  HANDOFF_LABELS,
+  projectName,
+  SessionsView,
+} from './sessions-view.js';
 
-function titles(table: HTMLElement): string[] {
-  return within(table)
-    .getAllByRole('row')
-    .slice(1)
+/** Session titles in page order, across every project table. */
+function titles(root: HTMLElement): string[] {
+  return within(root)
+    .queryAllByRole('row')
+    .filter((row) => row.querySelector('td') !== null)
     .map((row) => row.querySelectorAll('td')[1]?.textContent ?? '');
 }
+
+const lexer = {
+  ...sessionsState.sessions[0],
+  id: 'x4',
+  title: 'Add lexer',
+  cwd: '/repo',
+  updatedAt: 1,
+  archived: false,
+  surface: 'cli' as const,
+  handoffs: [],
+};
 
 describe('filterSessions', () => {
   it('hides archived sessions unless asked and sorts newest first', () => {
@@ -43,16 +61,41 @@ describe('filterSessions', () => {
   });
 });
 
+describe('groupByProject', () => {
+  it('names a project by its last folder', () => {
+    expect(projectName('/Users/me/repos/app')).toBe('app');
+    expect(projectName('/Users/me/repos/app/')).toBe('app');
+    expect(projectName(String.raw`C:\work\api`)).toBe('api');
+    expect(projectName('/')).toBe('/');
+    expect(projectName(null)).toBe('No folder');
+  });
+
+  it('groups by folder in the order each folder first shows up', () => {
+    const [x1, x2, x3] = sessionsState.sessions;
+    const groups = groupByProject([x2, x1, lexer, x3].filter((entry) => entry !== undefined));
+    expect(
+      groups.map((group) => [group.cwd, group.name, group.sessions.map((entry) => entry.id)]),
+    ).toStrictEqual([
+      [null, 'No folder', ['x2', 'x3']],
+      ['/repo', 'repo', ['x1', 'x4']],
+    ]);
+  });
+});
+
 describe('SessionsView', () => {
-  it('lists sessions with surface badges and passes axe', async () => {
+  it('lists sessions under their project with surface badges and passes axe', async () => {
     const { getByRole, getByText, container } = renderView(<SessionsView state={sessionsState} />);
-    const table = getByRole('table', { name: 'Sessions' });
-    expect(titles(table)).toStrictEqual(['Refactor parser', 'Cloud fix']);
-    expect(within(table).getByText('CLI')).toBeDefined();
-    expect(within(table).getByText('Cloud')).toBeDefined();
+    const repo = getByRole('table', { name: 'Sessions in /repo' });
+    const loose = getByRole('table', { name: 'Sessions in no folder' });
+    expect(titles(repo)).toStrictEqual(['Refactor parser']);
+    expect(titles(loose)).toStrictEqual(['Cloud fix']);
+    expect(within(repo).getByText('CLI')).toBeDefined();
+    expect(within(loose).getByText('Cloud')).toBeDefined();
+    expect(getByText('repo')).toBeDefined();
+    expect(getByText('No folder')).toBeDefined();
+    expect(getByText('/repo').className).toBe('muted mono');
     expect(getByText('2 of 3')).toBeDefined();
     expect(getByText('claude.ai import: 1d ago')).toBeDefined();
-    expect(within(table).getAllByText('none')).toHaveLength(1);
     await expectAccessible(container);
   });
 
@@ -98,8 +141,10 @@ describe('SessionsView', () => {
   });
 
   it('filters by text, surface and archived, and saves the filters', async () => {
-    const { getByRole, getByText, api } = renderView(<SessionsView state={sessionsState} />);
-    const table = getByRole('table', { name: 'Sessions' });
+    const { getByRole, getByText, api, container } = renderView(
+      <SessionsView state={sessionsState} />,
+    );
+    const table = container;
     await userEvent.click(getByRole('checkbox', { name: 'Show archived' }));
     expect(titles(table)).toStrictEqual([
       'Refactor parser',
@@ -126,21 +171,23 @@ describe('SessionsView', () => {
 
   it('restores saved filters', () => {
     const api = new FakeApi({ 'sessions.surface': 'cloud', 'sessions.text': 'fix' });
-    const { getByRole } = renderView(<SessionsView state={sessionsState} />, api);
-    expect(titles(getByRole('table', { name: 'Sessions' }))).toStrictEqual(['Cloud fix']);
+    const { getByRole, container } = renderView(<SessionsView state={sessionsState} />, api);
+    expect(titles(container)).toStrictEqual(['Cloud fix']);
     expect(getByRole('combobox', { name: 'Surface' })).toHaveProperty('value', 'cloud');
   });
 
-  it('sorts by a column header', async () => {
-    const { getByRole } = renderView(<SessionsView state={sessionsState} />);
-    const table = getByRole('table', { name: 'Sessions' });
-    await userEvent.click(getByRole('button', { name: 'Title' }));
-    expect(titles(table)).toStrictEqual(['Cloud fix', 'Refactor parser']);
-    await userEvent.click(getByRole('button', { name: 'Surface' }));
-    expect(titles(table)).toStrictEqual(['Refactor parser', 'Cloud fix']);
-    await userEvent.click(getByRole('button', { name: 'Folder' }));
-    expect(titles(table)).toStrictEqual(['Cloud fix', 'Refactor parser']);
-    await userEvent.click(getByRole('button', { name: 'Updated' }));
-    expect(titles(table)).toStrictEqual(['Cloud fix', 'Refactor parser']);
+  it('sorts within a project by a column header', async () => {
+    const state = { ...sessionsState, sessions: [...sessionsState.sessions, lexer] };
+    const { getByRole } = renderView(<SessionsView state={state} />);
+    const table = getByRole('table', { name: 'Sessions in /repo' });
+    expect(titles(table)).toStrictEqual(['Refactor parser', 'Add lexer']);
+    await userEvent.click(within(table).getByRole('button', { name: 'Title' }));
+    expect(titles(table)).toStrictEqual(['Add lexer', 'Refactor parser']);
+    await userEvent.click(within(table).getByRole('button', { name: 'Updated' }));
+    expect(titles(table)).toStrictEqual(['Add lexer', 'Refactor parser']);
+    await userEvent.click(within(table).getByRole('button', { name: 'Updated' }));
+    expect(titles(table)).toStrictEqual(['Refactor parser', 'Add lexer']);
+    await userEvent.click(within(table).getByRole('button', { name: 'Surface' }));
+    expect(titles(table)).toHaveLength(2);
   });
 });

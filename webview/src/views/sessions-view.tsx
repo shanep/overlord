@@ -1,5 +1,5 @@
-// One list of sessions across every surface, with the handoffs each one
-// supports right now.
+// One list of sessions across every surface, grouped by project folder, with
+// the handoffs each one supports right now.
 
 import type { ReactElement } from 'react';
 
@@ -48,6 +48,35 @@ export function filterSessions(
         (entry.cwd ?? '').toLowerCase().includes(needle),
     )
     .toSorted((a, b) => b.updatedAt - a.updatedAt);
+}
+
+export interface ProjectGroup {
+  /** The session folder, null for sessions that have none (claude.ai, some cloud). */
+  readonly cwd: string | null;
+  readonly name: string;
+  readonly sessions: readonly SurfaceSession[];
+}
+
+/** The last folder in a path, so "/Users/me/repos/app" reads as "app". */
+export function projectName(cwd: string | null): string {
+  if (cwd === null) {
+    return 'No folder';
+  }
+  return cwd.split(/[\\/]/u).findLast((part) => part !== '') ?? cwd;
+}
+
+/** Sessions grouped by folder. Groups keep the order of their first session. */
+export function groupByProject(sessions: readonly SurfaceSession[]): readonly ProjectGroup[] {
+  const groups = new Map<string | null, SurfaceSession[]>();
+  for (const entry of sessions) {
+    const group = groups.get(entry.cwd);
+    if (group === undefined) {
+      groups.set(entry.cwd, [entry]);
+    } else {
+      group.push(entry);
+    }
+  }
+  return [...groups].map(([cwd, items]) => ({ cwd, name: projectName(cwd), sessions: items }));
 }
 
 function SessionTitle(props: { readonly entry: SurfaceSession }): ReactElement {
@@ -120,12 +149,6 @@ function columns(now: number): readonly Column<SurfaceSession>[] {
       sortValue: (entry) => entry.title.toLowerCase(),
     },
     {
-      id: 'cwd',
-      header: 'Folder',
-      cell: (entry) => entry.cwd ?? <span className="muted">none</span>,
-      sortValue: (entry) => entry.cwd ?? '',
-    },
-    {
       id: 'updated',
       header: 'Updated',
       cell: (entry) => formatAgo(entry.updatedAt, now),
@@ -143,6 +166,7 @@ export function SessionsView(props: { readonly state: SessionsState }): ReactEle
   const [surface, setSurface] = usePersistentState('sessions.surface', 'all', isSurfaceFilter);
   const [archived, setArchived] = usePersistentState('sessions.archived', false, isBoolean);
   const rows = filterSessions(state.sessions, { text, surface, archived });
+  const groups = groupByProject(rows);
   return (
     <section aria-labelledby="sessions-title">
       <header className="view-header">
@@ -203,13 +227,22 @@ export function SessionsView(props: { readonly state: SessionsState }): ReactEle
           Show archived
         </label>
       </div>
-      <DataTable
-        caption="Sessions"
-        columns={columns(now)}
-        rows={rows}
-        rowKey={(entry) => `${entry.surface}:${entry.id}`}
-        empty="No sessions match."
-      />
+      {groups.length === 0 ? <p className="muted">No sessions match.</p> : null}
+      {groups.map((group) => (
+        <details key={group.cwd ?? ''} open className="section">
+          <summary>
+            <strong>{group.name}</strong>{' '}
+            {group.cwd === null ? null : <span className="muted mono">{group.cwd}</span>} (
+            {group.sessions.length.toString()})
+          </summary>
+          <DataTable
+            caption={`Sessions in ${group.cwd ?? 'no folder'}`}
+            columns={columns(now)}
+            rows={group.sessions}
+            rowKey={(entry) => `${entry.surface}:${entry.id}`}
+          />
+        </details>
+      ))}
     </section>
   );
 }
