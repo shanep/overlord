@@ -1,4 +1,4 @@
-// Runs table with open, stop and a guarded stop all.
+// Runs table with the agent view, stop and a guarded stop all.
 
 import type { ReactElement } from 'react';
 import { useState } from 'react';
@@ -23,12 +23,13 @@ function RunActions(props: { readonly run: LaunchRun }): ReactElement {
       {sessionId === null ? null : (
         <button
           type="button"
-          aria-label={`Open ${run.spec.label}`}
+          aria-label={`Agent view for ${run.spec.label}`}
+          title="Open the live feed, tool timeline and charts for this run"
           onClick={() => {
-            post({ type: 'openSession', sessionId });
+            post({ type: 'openAgent', sessionId, agentId: sessionId });
           }}
         >
-          Open
+          Agent view
         </button>
       )}
       {isActiveRun(run) ? (

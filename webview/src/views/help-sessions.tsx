@@ -52,7 +52,7 @@ const WAYS: readonly Way[] = [
   [
     { title: 'Launcher', areas: [6], lines: ['Launch, one run per', 'ticked profile'] },
     { title: 'Agent SDK run', lines: ['inside Overlord, in a', 'worktree when ticked'] },
-    { title: 'Agent view', areas: [6], lines: ['Click its Fleet row.', 'No terminal tab.'] },
+    { title: 'Agent view', areas: [6], lines: ['Its Fleet row, or its', 'row in the Runs table'] },
     { title: 'Nothing to close', lines: ['It ends when the run', 'finishes or you stop it'] },
   ],
 ];

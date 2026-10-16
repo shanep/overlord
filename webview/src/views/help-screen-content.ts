@@ -199,7 +199,7 @@ export const PIECES: readonly Piece[] = [
     name: 'Agent view',
     area: 6,
     what: 'An editor tab with the live feed of thinking and tool calls, a tool timeline and charts for one session or subagent.',
-    open: 'The Agent view button on a Fleet row. Clicking the row of a Launcher run, or of any session with no tab, opens it too.',
+    open: "The Agent view button on a Fleet row, or on a run in the Launcher's Runs table. Clicking the row of a Launcher run, or of any session with no tab, opens it too.",
   },
   {
     name: 'Launcher',

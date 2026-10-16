@@ -219,7 +219,7 @@ describe('runs', () => {
       .slice(1)
       .map((row) => row.textContent);
     expect(rows).toStrictEqual([
-      'Flaky testFastrunning$0.30 est.41m 35sn/ar1OpenStop',
+      'Flaky testFastrunning$0.30 est.41m 35sn/ar1Agent viewStop',
       'Flaky testnonedone$0.80 est.95m 00sFixed by adding a wait.',
       'Orphangonefailed$0.80 est.95m 00sFixed by adding a wait.',
     ]);
@@ -256,15 +256,15 @@ describe('runs', () => {
     }
   });
 
-  it('opens a run that has a session, and shows its whole result on hover', async () => {
+  it('opens the agent view of a run that has a session, and shows its whole result on hover', async () => {
     const { api } = renderView(<LauncherView state={launcherState} />);
-    expect(screen.getAllByRole('button', { name: /^Open Flaky test$/u })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: /^Agent view for Flaky test$/u })).toHaveLength(1);
     expect(screen.getByText('Fixed by adding a wait.')).toHaveProperty(
       'title',
       'Fixed by adding a wait.',
     );
-    await userEvent.click(screen.getByRole('button', { name: 'Open Flaky test' }));
-    expect(api.actions()).toStrictEqual([{ type: 'openSession', sessionId: 's9' }]);
+    await userEvent.click(screen.getByRole('button', { name: 'Agent view for Flaky test' }));
+    expect(api.actions()).toStrictEqual([{ type: 'openAgent', sessionId: 's9', agentId: 's9' }]);
   });
 
   it('stops one run', async () => {
