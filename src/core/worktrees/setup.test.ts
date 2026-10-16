@@ -92,6 +92,58 @@ describe('worktree setup', { timeout: 30_000 }, () => {
       );
     });
 
+    it('catches a stale clone up with npm install when only npm is in use', async () => {
+      await put(target.repoRoot, 'package-lock.json', 'v1\n');
+      await put(target.repoRoot, 'node_modules/pkg/index.js', 'old\n');
+      await put(target.path, 'package.json', '{}\n');
+      await put(target.path, '.npmrc', 'fund=false\n');
+      const installs: { args: readonly string[]; files: string[]; env: unknown }[] = [];
+      const npm: Exec = async (command, args, options) => {
+        expect(command).toBe('npm');
+        const project = options.cwd ?? '';
+        const files = await readdir(project);
+        installs.push({
+          args,
+          files: files.toSorted((a, b) => a.localeCompare(b)),
+          env: options.env,
+        });
+        expect(await readFile(path.join(project, 'package-lock.json'), 'utf8')).toBe('v2\n');
+        await writeFile(path.join(project, 'node_modules/pkg/index.js'), 'new\n');
+        return ok();
+      };
+      // No lockfile in the worktree means nothing to catch up to.
+      expect(await setUpWorktree(npm, target, {}, 'linux')).toStrictEqual([]);
+      expect(installs).toHaveLength(0);
+      await put(target.path, 'package-lock.json', 'v2\n');
+      expect(await setUpWorktree(npm, target, { OVERLORD_SLOT: '2' }, 'linux')).toStrictEqual([]);
+      expect(installs).toStrictEqual([
+        {
+          args: ['install', '--no-save', '--no-audit', '--no-fund', '--prefer-offline'],
+          files: ['.npmrc', 'node_modules', 'package-lock.json', 'package.json'],
+          env: { OVERLORD_SLOT: '2' },
+        },
+      ]);
+      expect(await readFile(path.join(target.path, 'node_modules/pkg/index.js'), 'utf8')).toBe(
+        'new\n',
+      );
+      expect(await readFile(path.join(target.repoRoot, 'node_modules/pkg/index.js'), 'utf8')).toBe(
+        'old\n',
+      );
+      expect(await readdir(dir)).toStrictEqual(['repo', 'wt']);
+    });
+
+    it('warns and leaves node_modules out when the catch-up install fails', async () => {
+      await put(target.repoRoot, 'package-lock.json', 'v1\n');
+      await put(target.repoRoot, 'node_modules/pkg/index.js', 'old\n');
+      await put(target.path, 'package-lock.json', 'v2\n');
+      const broken = scriptedExec([(): ExecResult => fail('npm error ERESOLVE\n')]);
+      expect(await setUpWorktree(broken, target, {}, 'linux')).toStrictEqual([
+        'Cloning node_modules failed: npm install exited 1: npm error ERESOLVE',
+      ]);
+      expect(existsSync(path.join(target.path, 'node_modules'))).toBe(false);
+      expect(await readdir(dir)).toStrictEqual(['repo', 'wt']);
+    });
+
     it('copies node_modules file by file when the macOS clone fails', async () => {
       await put(target.repoRoot, 'package-lock.json', 'v1\n');
       await put(target.path, 'package-lock.json', 'v1\n');

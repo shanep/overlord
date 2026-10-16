@@ -7,7 +7,11 @@
 // 2. node_modules is cloned from the main checkout when the lockfiles match.
 //    Clones are copy-on-write where the file system supports it (APFS, btrfs,
 //    XFS), so this takes seconds instead of a full install. On macOS the whole
-//    tree clones in one call, which takes about a second instead of ten.
+//    tree clones in one call, which takes about a second instead of ten. The
+//    main checkout falls behind as sessions land work, so when npm is the only
+//    package manager and the lockfiles differ, the clone still happens and
+//    npm install brings it up to the worktree's lockfile. That changes only
+//    what differs, which takes seconds where npm ci takes a minute.
 // 3. .overlord/setup.sh runs in the worktree, for anything else a repo needs.
 //
 // A step that fails becomes a warning. The worktree still works, and the
@@ -24,9 +28,14 @@ import type { Exec } from '../sync/exec.js';
 export const INCLUDE_FILE = '.worktreeinclude';
 export const SETUP_SCRIPT = path.join('.overlord', 'setup.sh');
 const NODE_MODULES = 'node_modules';
-const LOCKFILES = ['package-lock.json', 'pnpm-lock.yaml', 'yarn.lock', 'bun.lock', 'bun.lockb'];
+const NPM_LOCKFILE = 'package-lock.json';
+const LOCKFILES = [NPM_LOCKFILE, 'pnpm-lock.yaml', 'yarn.lock', 'bun.lock', 'bun.lockb'];
+// What npm install reads from the project. --no-save keeps it from rewriting the lockfile.
+const NPM_PROJECT_FILES = ['package.json', NPM_LOCKFILE, '.npmrc'];
+const NPM_CATCH_UP = ['install', '--no-save', '--no-audit', '--no-fund', '--prefer-offline'];
 const SETUP_TIMEOUT_MS = 15 * 60_000;
 const CLONE_TIMEOUT_MS = 5 * 60_000;
+const INSTALL_TIMEOUT_MS = 10 * 60_000;
 
 // clonefileat(2) clones a whole directory tree in one call on APFS, where
 // cloning it file by file takes seconds for a big node_modules. Node has no
@@ -103,6 +112,40 @@ async function sameLockfiles(target: SetupTarget): Promise<boolean> {
   return compared > 0;
 }
 
+/** True when npm is the only package manager on both sides, so npm install can close the gap. */
+async function npmOnly(target: SetupTarget): Promise<boolean> {
+  for (const name of LOCKFILES) {
+    const npm = name === NPM_LOCKFILE;
+    if ((await exists(path.join(target.repoRoot, name))) !== npm) {
+      return false;
+    }
+  }
+  return exists(path.join(target.path, NPM_LOCKFILE));
+}
+
+/** Brings a clone made for the main checkout's lockfile up to the worktree's. */
+async function catchUp(
+  exec: Exec,
+  target: SetupTarget,
+  project: string,
+  env: Readonly<Record<string, string>>,
+): Promise<void> {
+  for (const file of NPM_PROJECT_FILES) {
+    const source = path.join(target.path, file);
+    if (await exists(source)) {
+      await copyFile(source, path.join(project, file));
+    }
+  }
+  const result = await exec('npm', NPM_CATCH_UP, {
+    cwd: project,
+    env,
+    timeoutMs: INSTALL_TIMEOUT_MS,
+  });
+  if (result.code !== 0) {
+    throw new Error(`npm install exited ${String(result.code)}: ${result.stderr.trim()}`);
+  }
+}
+
 /** True when macOS cloned the tree in one call. Anything else leaves the copy to Node. */
 async function cloneWhole(exec: Exec, source: string, destination: string): Promise<boolean> {
   try {
@@ -138,21 +181,31 @@ async function cloneTree(
 async function cloneNodeModules(
   exec: Exec,
   target: SetupTarget,
+  env: Readonly<Record<string, string>>,
   platform: NodeJS.Platform,
 ): Promise<void> {
   const source = path.join(target.repoRoot, NODE_MODULES);
   const destination = path.join(target.path, NODE_MODULES);
-  if (!(await exists(source)) || (await exists(destination)) || !(await sameLockfiles(target))) {
+  if (!(await exists(source)) || (await exists(destination))) {
     return;
   }
-  // The clone is built beside the worktree and moved in whole, so a session
-  // already running there never sees half of it, and keeps a node_modules it
-  // installed itself in the meantime.
+  const fits = await sameLockfiles(target);
+  if (!fits && !(await npmOnly(target))) {
+    return;
+  }
+  // The clone is built in a scratch project beside the worktree and moved in
+  // whole, so a session already running there never sees half of it, and
+  // keeps a node_modules it installed itself in the meantime.
   const staging = `${target.path}.${NODE_MODULES}-${randomUUID()}`;
+  const built = path.join(staging, NODE_MODULES);
   try {
-    await cloneTree(exec, source, staging, platform);
+    await mkdir(staging);
+    await cloneTree(exec, source, built, platform);
+    if (!fits) {
+      await catchUp(exec, target, staging, env);
+    }
     try {
-      await rename(staging, destination);
+      await rename(built, destination);
     } catch (error: unknown) {
       if (!(await exists(destination))) {
         throw error;
@@ -190,7 +243,10 @@ export async function setUpWorktree(
 ): Promise<readonly string[]> {
   const steps: readonly [string, () => Promise<void>][] = [
     [`Copying ${INCLUDE_FILE} files`, async (): Promise<void> => copyIncluded(exec, target)],
-    ['Cloning node_modules', async (): Promise<void> => cloneNodeModules(exec, target, platform)],
+    [
+      'Cloning node_modules',
+      async (): Promise<void> => cloneNodeModules(exec, target, env, platform),
+    ],
     [`Running ${SETUP_SCRIPT}`, async (): Promise<void> => runSetupScript(exec, target, env)],
   ];
   const warnings: string[] = [];
