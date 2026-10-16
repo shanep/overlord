@@ -1,0 +1,94 @@
+/* The Fleet in the narrow sidebar. It reads like a VS Code tree: no column
+   headers, a state glyph, the title, elapsed and cost, with the row actions
+   laid over the right end of the hovered or focused row. The full Fleet
+   panel shows every column. */
+
+:root:has(#root[data-layout='sidebar']) {
+  --ov-bg: var(--vscode-sideBar-background, var(--vscode-editor-background, #ffffff));
+}
+
+#root[data-layout='sidebar'] .app {
+  padding: 6px 8px 12px;
+}
+
+#root[data-layout='sidebar'] .fleet-header h1,
+#root[data-layout='sidebar'] .fleet-keys,
+#root[data-layout='sidebar'] .tree-table thead,
+#root[data-layout='sidebar'] .tree-table .row-detail {
+  display: none;
+}
+
+#root[data-layout='sidebar']
+  .tree-table
+  :is(
+    .col-surface,
+    .col-model,
+    .col-effort,
+    .col-tool,
+    .col-calls,
+    .col-tokens,
+    .col-cache,
+    .col-context,
+    .col-trend
+  ) {
+  display: none;
+}
+
+#root[data-layout='sidebar'] .fleet .toolbar .filter {
+  max-width: none;
+}
+
+#root[data-layout='sidebar'] .state-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+#root[data-layout='sidebar'] .tree-table td {
+  padding: 2px 4px;
+}
+
+#root[data-layout='sidebar'] .tree-table td.col-state {
+  padding-left: 2px;
+}
+
+#root[data-layout='sidebar'] .tree-table .col-cost {
+  color: var(--ov-muted);
+}
+
+#root[data-layout='sidebar'] .tree-table tbody tr {
+  position: relative;
+}
+
+#root[data-layout='sidebar'] .tree-table td.col-actions {
+  display: flex;
+  position: absolute;
+  inset: 0 0 0 auto;
+  align-items: center;
+  padding: 0 2px 0 8px;
+  background: linear-gradient(var(--row-bg), var(--row-bg)), var(--ov-bg);
+}
+
+#root[data-layout='sidebar'] .tree-table tbody tr:not(:hover, :focus-within) td.col-actions {
+  display: none;
+}
+
+#root[data-layout='sidebar'] .stat-tiles {
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 4px;
+}
+
+#root[data-layout='sidebar'] .stat-tiles .stat {
+  padding: 3px 6px;
+}
+
+#root[data-layout='sidebar'] .stat-tiles dd {
+  font-size: 1em;
+}
+
+#root[data-layout='sidebar'] .banner {
+  padding: 6px;
+}

@@ -1,0 +1,386 @@
+{
+  "name": "overlord",
+  "displayName": "Overlord",
+  "description": "htop for Claude Code: watch, tune and run many Claude Code agents from VS Code.",
+  "version": "0.1.0",
+  "publisher": "shanep",
+  "license": "MIT",
+  "author": "Shane Panter",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/shanep/overlord.git"
+  },
+  "engines": {
+    "vscode": "^1.140.0",
+    "node": ">=22"
+  },
+  "categories": [
+    "AI",
+    "Visualization",
+    "Other"
+  ],
+  "keywords": [
+    "claude",
+    "claude code",
+    "agents",
+    "monitor"
+  ],
+  "main": "./dist/extension.cjs",
+  "activationEvents": [
+    "onStartupFinished",
+    "onUri"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "overlord.newClaudeSession",
+        "title": "New Claude Code Session",
+        "category": "Overlord",
+        "icon": "$(sparkle)"
+      },
+      {
+        "command": "overlord.installTransferSkill",
+        "title": "Add /overlord Command to Claude Code",
+        "category": "Overlord"
+      },
+      {
+        "command": "overlord.openFleet",
+        "title": "Fleet (full view)",
+        "category": "Overlord",
+        "icon": "$(pulse)"
+      },
+      {
+        "command": "overlord.openContext",
+        "title": "Context Inspector",
+        "category": "Overlord",
+        "icon": "$(search)"
+      },
+      {
+        "command": "overlord.openKnobs",
+        "title": "Knobs",
+        "category": "Overlord",
+        "icon": "$(settings-gear)"
+      },
+      {
+        "command": "overlord.openLauncher",
+        "title": "Launcher",
+        "category": "Overlord",
+        "icon": "$(rocket)"
+      },
+      {
+        "command": "overlord.openSessions",
+        "title": "All Sessions",
+        "category": "Overlord",
+        "icon": "$(list-unordered)"
+      },
+      {
+        "command": "overlord.openConfig",
+        "title": "Config and Sync",
+        "category": "Overlord",
+        "icon": "$(repo)"
+      },
+      {
+        "command": "overlord.openUsage",
+        "title": "Usage",
+        "category": "Overlord",
+        "icon": "$(graph)"
+      },
+      {
+        "command": "overlord.setup",
+        "title": "Set Up Hooks and Telemetry",
+        "category": "Overlord"
+      },
+      {
+        "command": "overlord.installHooks",
+        "title": "Install Hooks",
+        "category": "Overlord"
+      },
+      {
+        "command": "overlord.uninstallHooks",
+        "title": "Remove Hooks",
+        "category": "Overlord"
+      },
+      {
+        "command": "overlord.enableTelemetry",
+        "title": "Enable Local Telemetry",
+        "category": "Overlord"
+      },
+      {
+        "command": "overlord.disableTelemetry",
+        "title": "Disable Local Telemetry",
+        "category": "Overlord"
+      },
+      {
+        "command": "overlord.launchPrompt",
+        "title": "Launch Prompt",
+        "category": "Overlord"
+      },
+      {
+        "command": "overlord.stopAll",
+        "title": "Stop All Agents",
+        "category": "Overlord"
+      },
+      {
+        "command": "overlord.newAgent",
+        "title": "New Agent",
+        "category": "Overlord"
+      },
+      {
+        "command": "overlord.newSkill",
+        "title": "New Skill",
+        "category": "Overlord"
+      },
+      {
+        "command": "overlord.connectConfigRepo",
+        "title": "Connect Config Repo",
+        "category": "Overlord"
+      },
+      {
+        "command": "overlord.syncPush",
+        "title": "Push Config",
+        "category": "Overlord"
+      },
+      {
+        "command": "overlord.syncPull",
+        "title": "Pull Config",
+        "category": "Overlord"
+      },
+      {
+        "command": "overlord.importDotfiles",
+        "title": "Import Config From dot-files",
+        "category": "Overlord"
+      },
+      {
+        "command": "overlord.bootstrap",
+        "title": "Set Up This Machine From Config Repo",
+        "category": "Overlord"
+      },
+      {
+        "command": "overlord.importClaudeAi",
+        "title": "Import claude.ai Export",
+        "category": "Overlord"
+      },
+      {
+        "command": "overlord.refresh",
+        "title": "Refresh",
+        "category": "Overlord",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "overlord.openAgent",
+        "title": "Open Agent",
+        "category": "Overlord"
+      },
+      {
+        "command": "overlord.openFrustration",
+        "title": "Frustration",
+        "category": "Overlord",
+        "icon": "$(flame)"
+      },
+      {
+        "command": "overlord.openMessages",
+        "title": "Agent Messages",
+        "category": "Overlord",
+        "icon": "$(comment-discussion)"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "overlord",
+          "title": "Overlord",
+          "icon": "media/overlord.svg"
+        }
+      ]
+    },
+    "views": {
+      "overlord": [
+        {
+          "type": "webview",
+          "id": "overlord.fleet",
+          "name": "Fleet"
+        },
+        {
+          "id": "overlord.global",
+          "name": "Global"
+        },
+        {
+          "id": "overlord.sessionViews",
+          "name": "Sessions and Agents"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "overlord.newClaudeSession",
+          "when": "view == overlord.fleet",
+          "group": "navigation@1"
+        },
+        {
+          "command": "overlord.openFleet",
+          "when": "view == overlord.fleet",
+          "group": "navigation@2"
+        },
+        {
+          "command": "overlord.refresh",
+          "when": "view == overlord.fleet",
+          "group": "navigation@3"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "overlord.openAgent",
+          "when": "false"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Overlord",
+      "properties": {
+        "overlord.claudePath": {
+          "type": "string",
+          "default": "claude",
+          "description": "Path to the claude binary."
+        },
+        "overlord.activeWindowMinutes": {
+          "type": "number",
+          "default": 30,
+          "minimum": 1,
+          "description": "Tail transcripts changed within this many minutes."
+        },
+        "overlord.updateThrottleMs": {
+          "type": "number",
+          "default": 250,
+          "minimum": 50,
+          "description": "Minimum time between view updates."
+        },
+        "overlord.maxConcurrency": {
+          "type": "number",
+          "default": 4,
+          "minimum": 1,
+          "maximum": 32,
+          "description": "Most agents the launcher runs at once."
+        },
+        "overlord.permissions.holdTimeoutSeconds": {
+          "type": "number",
+          "default": 600,
+          "minimum": 10,
+          "description": "How long a permission request waits in the inbox before Claude Code falls back to its own prompt."
+        },
+        "overlord.telemetry.port": {
+          "type": "number",
+          "default": 47318,
+          "minimum": 1024,
+          "maximum": 65535,
+          "description": "Port for the local OTLP receiver. It is written into your Claude settings, so it stays fixed."
+        },
+        "overlord.configRepo.url": {
+          "type": "string",
+          "default": "",
+          "description": "Git URL of the config repo, for example git@github.com:shanep/claude-config.git."
+        },
+        "overlord.configRepo.path": {
+          "type": "string",
+          "default": "~/.claude-config",
+          "description": "Where the config repo is cloned."
+        }
+      }
+    }
+  },
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "watch": "node scripts/build.mjs --watch",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p webview/tsconfig.json --noEmit",
+    "typecheck:fast": "tsc -p tsconfig.json --noEmit --incremental --tsBuildInfoFile node_modules/.cache/overlord/tsc-node.tsbuildinfo && tsc -p webview/tsconfig.json --noEmit --incremental --tsBuildInfoFile node_modules/.cache/overlord/tsc-webview.tsbuildinfo",
+    "lint": "eslint . --max-warnings 0",
+    "lint:fast": "eslint . --max-warnings 0 --cache --cache-location node_modules/.cache/overlord/eslint/",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:changed": "vitest run --changed origin/master",
+    "test:coverage": "vitest run --coverage",
+    "test:mutation": "stryker run",
+    "test:mutation:changed": "node scripts/mutation-changed.mjs",
+    "test:integration": "node scripts/build.mjs && node scripts/build-tests.mjs && vscode-test",
+    "type-coverage": "type-coverage --strict --at-least 100 --detail -p tsconfig.json",
+    "knip": "knip",
+    "depcruise": "depcruise src webview --config .dependency-cruiser.cjs",
+    "spell": "cspell --no-progress --gitignore \"**/*.{ts,tsx,md,json,mjs,cjs}\"",
+    "mdlint": "markdownlint-cli2",
+    "nodash": "node scripts/check-no-dashes.mjs",
+    "catalog": "node scripts/generate-catalog.mjs",
+    "check": "npm run typecheck && npm run lint && npm run format:check && npm run test:coverage && npm run type-coverage && npm run knip && npm run depcruise && npm run spell && npm run mdlint && npm run nodash",
+    "check:fast": "npm run typecheck:fast && npm run lint:fast && npm run format:check && npm run nodash && npm run test:changed",
+    "package": "node scripts/build.mjs --production && vsce package --no-dependencies"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.3.301",
+    "echarts": "^6.1.0",
+    "picomatch": "^4.0.7",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "yaml": "^2.9.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "@stryker-mutator/core": "^10.0.0",
+    "@stryker-mutator/typescript-checker": "^10.0.0",
+    "@stryker-mutator/vitest-runner": "^10.0.0",
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.8",
+    "@tsconfig/strictest": "^2.0.8",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^22.20.5",
+    "@types/picomatch": "^4.0.3",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@types/vscode": "^1.140.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "@vitest/coverage-v8": "^4.1.11",
+    "@vitest/eslint-plugin": "^1.6.27",
+    "@vscode/test-cli": "^0.0.15",
+    "@vscode/test-electron": "^3.1.0",
+    "@vscode/vsce": "^4.0.0",
+    "axe-core": "^4.14.0",
+    "cspell": "^10.4.0",
+    "dependency-cruiser": "^17.4.3",
+    "esbuild": "^0.28.2",
+    "eslint": "^9.39.5",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-import-resolver-typescript": "^4.4.5",
+    "eslint-plugin-import-x": "^4.17.1",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-n": "^18.4.1",
+    "eslint-plugin-promise": "^7.3.0",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-regexp": "^3.3.1",
+    "eslint-plugin-security": "^4.2.0",
+    "eslint-plugin-sonarjs": "^4.2.2",
+    "eslint-plugin-unicorn": "^65.0.1",
+    "fast-check": "^4.10.2",
+    "globals": "^17.13.0",
+    "jsdom": "^29.1.1",
+    "knip": "^6.41.0",
+    "lefthook": "^2.2.2",
+    "markdownlint-cli2": "^0.23.3",
+    "mocha": "^12.0.3",
+    "prettier": "^3.9.10",
+    "type-coverage": "^2.30.4",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.71.2",
+    "vite": "^8.3.4",
+    "vitest": "^4.1.11"
+  },
+  "overrides": {
+    "diff": "^9.0.0",
+    "serialize-javascript": "^7.1.2",
+    "qs": "^6.16.1",
+    "smol-toml": "^1.9.1",
+    "katex": "^0.19.0"
+  }
+}

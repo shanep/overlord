@@ -1,0 +1,633 @@
+/*
+ * Overlord webview styles. Every color comes from a VS Code theme variable
+ * so the panels match light, dark and high contrast themes. Density is
+ * compact on purpose: this is htop, not a landing page.
+ */
+
+:root {
+  --ov-fg: var(--vscode-foreground, #3b3b3b);
+  --ov-muted: var(--vscode-descriptionForeground, #717171);
+  --ov-bg: var(--vscode-editor-background, #ffffff);
+  --ov-panel: var(--vscode-sideBar-background, var(--ov-bg));
+  --ov-border: var(--vscode-panel-border, var(--vscode-editorWidget-border, #c8c8c8));
+  --ov-focus: var(--vscode-focusBorder, #005fb8);
+  --ov-hover: var(--vscode-list-hoverBackground, rgb(128 128 128 / 12%));
+  --ov-selected: var(--vscode-list-activeSelectionBackground, #0060c0);
+  --ov-selected-fg: var(--vscode-list-activeSelectionForeground, #ffffff);
+  --ov-inactive-selected: var(--vscode-list-inactiveSelectionBackground, rgb(128 128 128 / 20%));
+  --ov-link: var(--vscode-textLink-foreground, #005fb8);
+  --ov-button: var(--vscode-button-background, #005fb8);
+  --ov-button-fg: var(--vscode-button-foreground, #ffffff);
+  --ov-button-hover: var(--vscode-button-hoverBackground, #0258a8);
+  --ov-button2: var(--vscode-button-secondaryBackground, rgb(128 128 128 / 20%));
+  --ov-button2-fg: var(--vscode-button-secondaryForeground, var(--ov-fg));
+  --ov-input: var(--vscode-input-background, var(--ov-bg));
+  --ov-input-fg: var(--vscode-input-foreground, var(--ov-fg));
+  --ov-input-border: var(--vscode-input-border, var(--ov-border));
+  --ov-badge: var(--vscode-badge-background, rgb(128 128 128 / 25%));
+  --ov-badge-fg: var(--vscode-badge-foreground, var(--ov-fg));
+  --ov-blue: var(--vscode-charts-blue, #2a78d6);
+  --ov-green: var(--vscode-charts-green, #008300);
+  --ov-yellow: var(--vscode-charts-yellow, #eda100);
+  --ov-orange: var(--vscode-charts-orange, #eb6834);
+  --ov-red: var(--vscode-charts-red, #e34948);
+  --ov-purple: var(--vscode-charts-purple, #6250d6);
+  --ov-error: var(--vscode-errorForeground, #e51400);
+  --ov-warning-bg: var(--vscode-inputValidation-warningBackground, rgb(237 161 0 / 15%));
+  --ov-warning-border: var(--vscode-inputValidation-warningBorder, var(--ov-yellow));
+  --ov-mono: var(--vscode-editor-font-family, ui-monospace, monospace);
+  --ov-font: var(--vscode-font-family, system-ui, sans-serif);
+  --ov-size: var(--vscode-font-size, 13px);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  color: var(--ov-fg);
+  background: var(--ov-bg);
+  font-family: var(--ov-font);
+  font-size: var(--ov-size);
+  line-height: 1.35;
+}
+
+.app {
+  padding: 8px 12px 24px;
+}
+
+h1,
+h2,
+h3 {
+  margin: 12px 0 6px;
+  font-weight: 600;
+}
+
+h1 {
+  font-size: 1.15em;
+}
+
+h2 {
+  font-size: 1.05em;
+}
+
+h3 {
+  font-size: 1em;
+}
+
+p {
+  margin: 4px 0;
+}
+
+a,
+.link {
+  color: var(--ov-link);
+}
+
+code,
+pre,
+.mono {
+  font-family: var(--ov-mono);
+  font-size: 0.95em;
+}
+
+.muted {
+  color: var(--ov-muted);
+}
+
+.error-text {
+  color: var(--ov-error);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Focus is always visible, in the theme's focus color. */
+:focus-visible {
+  outline: 1px solid var(--ov-focus);
+  outline-offset: 1px;
+}
+
+/* ---- Controls ---------------------------------------------------------- */
+
+button {
+  padding: 2px 8px;
+  border: 1px solid var(--vscode-button-border, transparent);
+  border-radius: 2px;
+  color: var(--ov-button2-fg);
+  background: var(--ov-button2);
+  font: inherit;
+  cursor: pointer;
+}
+
+button:hover {
+  filter: brightness(1.1);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+button.primary {
+  color: var(--ov-button-fg);
+  background: var(--ov-button);
+}
+
+button.primary:hover {
+  background: var(--ov-button-hover);
+}
+
+button.danger {
+  color: var(--ov-button-fg);
+  background: var(--ov-red);
+}
+
+button.link-button {
+  padding: 0;
+  border: none;
+  color: var(--ov-link);
+  background: none;
+  text-align: left;
+}
+
+button.link-button:hover {
+  text-decoration: underline;
+}
+
+input,
+select,
+textarea {
+  padding: 2px 6px;
+  border: 1px solid var(--ov-input-border);
+  border-radius: 2px;
+  color: var(--ov-input-fg);
+  background: var(--ov-input);
+  font: inherit;
+}
+
+textarea {
+  width: 100%;
+  min-height: 6em;
+  font-family: var(--ov-mono);
+  resize: vertical;
+}
+
+input[type='checkbox'] {
+  margin: 0 4px 0 0;
+  vertical-align: middle;
+}
+
+label {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 6px;
+}
+
+.field > span {
+  color: var(--ov-muted);
+  font-size: 0.9em;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin: 6px 0;
+}
+
+.toolbar .spacer,
+.view-header .spacer {
+  flex: 1;
+}
+
+.actions {
+  display: inline-flex;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.actions button {
+  padding: 0 6px;
+  font-size: 0.9em;
+}
+
+kbd {
+  padding: 0 4px;
+  border: 1px solid var(--ov-border);
+  border-radius: 2px;
+  font-family: var(--ov-mono);
+  font-size: 0.85em;
+}
+
+/* ---- Badges, state, meters --------------------------------------------- */
+
+.badge {
+  display: inline-block;
+  padding: 0 6px;
+  border-radius: 8px;
+  color: var(--ov-badge-fg);
+  background: var(--ov-badge);
+  font-size: 0.85em;
+  white-space: nowrap;
+}
+
+.badge-info {
+  border: 1px solid var(--ov-blue);
+  background: transparent;
+  color: var(--ov-fg);
+}
+
+.badge-good {
+  border: 1px solid var(--ov-green);
+  background: transparent;
+  color: var(--ov-fg);
+}
+
+.badge-warning {
+  border: 1px solid var(--ov-yellow);
+  background: transparent;
+  color: var(--ov-fg);
+}
+
+.badge-critical {
+  border: 1px solid var(--ov-red);
+  background: transparent;
+  color: var(--ov-fg);
+}
+
+.state {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.state-icon {
+  display: inline-block;
+  width: 1em;
+  text-align: center;
+}
+
+.state-good .state-icon {
+  color: var(--ov-green);
+}
+
+.state-warning .state-icon {
+  color: var(--ov-yellow);
+}
+
+.state-critical .state-icon {
+  color: var(--ov-red);
+}
+
+.state-neutral .state-icon,
+.state-info .state-icon {
+  color: var(--ov-muted);
+}
+
+.meter-wrap {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.meter {
+  display: inline-block;
+  position: relative;
+  width: 60px;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--ov-inactive-selected);
+}
+
+.meter-fill {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+}
+
+.meter-info {
+  background: var(--ov-blue);
+}
+
+.meter-warning {
+  background: var(--ov-yellow);
+}
+
+.meter-critical {
+  background: var(--ov-red);
+}
+
+.meter-text {
+  min-width: 3em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Header stats and banners ----------------------------------------- */
+
+.view-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+
+.view-header h1 {
+  margin: 0;
+}
+
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 0;
+}
+
+.stat {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+}
+
+.stat dt {
+  color: var(--ov-muted);
+}
+
+.stat dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.banner {
+  margin: 6px 0;
+  padding: 6px 8px;
+  border: 1px solid var(--ov-warning-border);
+  border-radius: 2px;
+  background: var(--ov-warning-bg);
+}
+
+.banner ul {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.banner li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 2px 0;
+}
+
+.confirm {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 6px 0;
+  padding: 6px 8px;
+  border: 1px solid var(--ov-red);
+  border-radius: 2px;
+}
+
+.empty {
+  padding: 24px 8px;
+  color: var(--ov-muted);
+  text-align: center;
+}
+
+.empty-title {
+  color: var(--ov-fg);
+  font-weight: 600;
+}
+
+.error-box {
+  padding: 8px;
+  border: 1px solid var(--ov-error);
+}
+
+/* ---- Tables ------------------------------------------------------------- */
+
+table.grid {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.grid th,
+.grid td {
+  padding: 1px 6px;
+  border-bottom: 1px solid var(--ov-border);
+  text-align: left;
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+.grid th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--ov-bg);
+  color: var(--ov-muted);
+  font-weight: 600;
+}
+
+.grid td.wrap,
+.grid th.wrap {
+  white-space: normal;
+  word-break: break-word;
+}
+
+.grid .num {
+  text-align: right;
+}
+
+.grid tbody tr:hover {
+  background: var(--ov-hover);
+}
+
+.sort-button {
+  padding: 0;
+  border: none;
+  color: inherit;
+  background: none;
+  font-weight: 600;
+}
+
+.tree-table {
+  outline: none;
+}
+
+.tree-table tr[aria-selected='true'] {
+  background: var(--ov-inactive-selected);
+}
+
+.tree-table:focus-within tr[aria-selected='true'] {
+  color: var(--ov-selected-fg);
+  background: var(--ov-selected);
+}
+
+.tree-table:focus-within tr[aria-selected='true'] .muted {
+  color: inherit;
+}
+
+.twisty {
+  display: inline-block;
+  width: 1.2em;
+  padding: 0;
+  border: none;
+  color: inherit;
+  background: none;
+}
+
+.title-cell {
+  max-width: 28em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---- Sections and charts ---------------------------------------------- */
+
+.section {
+  margin: 12px 0;
+}
+
+details > summary {
+  cursor: pointer;
+}
+
+.charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 12px;
+}
+
+.figure {
+  margin: 0;
+  padding: 6px;
+  border: 1px solid var(--ov-border);
+  border-radius: 2px;
+}
+
+.figure-title {
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+
+.figure-table {
+  margin-top: 4px;
+  font-size: 0.9em;
+}
+
+.chart {
+  width: 100%;
+}
+
+.sparkline {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.json {
+  max-height: 20em;
+  margin: 4px 0;
+  padding: 4px 6px;
+  overflow: auto;
+  border-left: 2px solid var(--ov-border);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ---- Agent feed --------------------------------------------------------- */
+
+.feed {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.feed > li {
+  padding: 3px 0;
+  border-bottom: 1px solid var(--ov-border);
+}
+
+.feed-meta {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  color: var(--ov-muted);
+  font-size: 0.9em;
+}
+
+.feed-text {
+  margin: 2px 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.feed-user .feed-kind {
+  color: var(--ov-blue);
+}
+
+.feed-tool .feed-kind {
+  color: var(--ov-purple);
+}
+
+.feed-error .feed-kind {
+  color: var(--ov-error);
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: 12px;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 4px 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (forced-colors: active) {
+  .meter-fill {
+    background: Highlight;
+  }
+
+  .tree-table tr[aria-selected='true'] {
+    outline: 1px solid Highlight;
+  }
+}
+
+.row-title {
+  font-weight: 600;
+}

@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history so the mutation step can diff against the base commit.
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      # Mutation test only what changed. The full sweep runs nightly.
+      - name: Restore mutation cache
+        if: runner.os == 'Linux'
+        uses: actions/cache@v4
+        with:
+          path: reports/stryker-incremental-fast.json
+          key: stryker-${{ github.sha }}
+          restore-keys: stryker-
+      - name: Mutation test changed files
+        if: runner.os == 'Linux'
+        env:
+          MUTATION_BASE: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || (github.event.before != '0000000000000000000000000000000000000000' && github.event.before || 'HEAD~1') }}
+        run: npm run test:mutation:changed
+      - run: npm run build
+      - name: Integration tests (Linux needs a display)
+        if: runner.os == 'Linux'
+        run: xvfb-run -a npm run test:integration
+      - name: Integration tests
+        if: runner.os != 'Linux'
+        run: npm run test:integration
+
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm audit --omit=dev --audit-level=moderate
+      - uses: google/osv-scanner-action/osv-scanner-action@v2.2.2
+        with:
+          scan-args: --lockfile=package-lock.json
+
+  codeql:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          queries: security-and-quality
+      - uses: github/codeql-action/analyze@v3

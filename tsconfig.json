@@ -1,0 +1,9 @@
+{
+  "$schema": "https://www.schemastore.org/tsconfig",
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node", "mocha"]
+  },
+  "include": ["src/**/*.ts", "test/**/*.ts", "*.config.ts", "*.config.mts"],
+  "exclude": ["node_modules", "dist", "out", "webview"]
+}
