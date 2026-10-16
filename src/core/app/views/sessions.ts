@@ -10,6 +10,8 @@ import { handoffsFor } from '../../surfaces/handoff.js';
 import type { ExecFunction, IsAlive } from '../../surfaces/process.js';
 import type { ExtraSource } from '../../surfaces/sessions.js';
 import { listAllSessions } from '../../surfaces/sessions.js';
+import type { SessionPeek } from '../../transcripts/peek.js';
+import { peekSession } from '../../transcripts/peek.js';
 import type { SessionFileInfo } from '../../transcripts/scanner.js';
 import { scanSessions } from '../../transcripts/scanner.js';
 import { messageOf } from '../errors.js';
@@ -32,22 +34,57 @@ export interface SessionsLoadDeps {
   readonly clock: () => number;
   readonly importFile: string;
   readonly report: (source: string, message: string) => void;
+  readonly peeks: PeekCache;
 }
 
 const SOURCE = 'sessions';
 
+/** Titles and folders of transcripts, reread only when a file changes. */
+export class PeekCache {
+  private readonly entries = new Map<
+    string,
+    { readonly key: string; readonly peek: SessionPeek }
+  >();
+
+  async get(info: SessionFileInfo): Promise<SessionPeek> {
+    const key = `${String(info.mtimeMs)}:${String(info.size)}`;
+    const hit = this.entries.get(info.transcriptPath);
+    if (hit?.key === key) {
+      return hit.peek;
+    }
+    const peek = await peekSession(info.transcriptPath, info.size);
+    this.entries.set(info.transcriptPath, { key, peek });
+    return peek;
+  }
+}
+
+const NO_PEEK: SessionPeek = { cwd: null, gitBranch: null, title: null };
+
 /** A transcript on disk as a row, with what the store knows about it when it is live. */
-export function transcriptRow(info: SessionFileInfo, known?: SessionSummary): SurfaceSession {
+export function transcriptRow(
+  info: SessionFileInfo,
+  peek: SessionPeek,
+  known?: SessionSummary,
+): SurfaceSession {
   const surface = known?.surface ?? 'cli';
   return {
     id: info.sessionId,
     surface,
-    title: known?.title ?? `Session ${info.sessionId.slice(0, 8)}`,
-    cwd: known?.cwd ?? null,
+    title: known?.title ?? peek.title ?? `Session ${info.sessionId.slice(0, 8)}`,
+    cwd: known?.cwd ?? peek.cwd,
     updatedAt: info.mtimeMs,
     archived: false,
     handoffs: handoffsFor({ surface }),
   };
+}
+
+async function peekOrNothing(deps: SessionsLoadDeps, info: SessionFileInfo): Promise<SessionPeek> {
+  try {
+    return await deps.peeks.get(info);
+  } catch (error) {
+    deps.report(SOURCE, messageOf(error));
+    return NO_PEEK;
+  }
 }
 
 function transcriptSource(deps: SessionsLoadDeps): ExtraSource {
@@ -58,7 +95,12 @@ function transcriptSource(deps: SessionsLoadDeps): ExtraSource {
         deps.store.fleetState(deps.clock()).sessions.map((session) => [session.id, session]),
       );
       const files = await scanSessions(deps.paths.projectsDir);
-      return files.map((info) => transcriptRow(info, known.get(info.sessionId)));
+      const rows: SurfaceSession[] = [];
+      // One file at a time keeps the first scan of a big history from opening hundreds at once.
+      for (const info of files) {
+        rows.push(transcriptRow(info, await peekOrNothing(deps, info), known.get(info.sessionId)));
+      }
+      return rows;
     },
   };
 }

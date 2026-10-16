@@ -67,6 +67,15 @@ describe('SessionsView', () => {
     expect(HANDOFF_LABELS['open-desktop']).toBe('Open in Desktop');
   });
 
+  it('opens the agent view from a local session title only', async () => {
+    const { getByRole, queryByRole, api } = renderView(<SessionsView state={sessionsState} />);
+    const title = getByRole('button', { name: 'Refactor parser' });
+    expect(title.getAttribute('title')).toBe('Open the agent view for this session');
+    await userEvent.click(title);
+    expect(api.actions()).toStrictEqual([{ type: 'openAgent', sessionId: 'x1', agentId: 'x1' }]);
+    expect(queryByRole('button', { name: 'Cloud fix' })).toBeNull();
+  });
+
   it('imports the claude.ai export and says never when not imported', async () => {
     const { getByRole, getByText, api } = renderView(
       <SessionsView state={{ ...sessionsState, claudeAiImportedAt: null }} />,

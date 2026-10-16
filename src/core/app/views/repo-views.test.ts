@@ -19,7 +19,13 @@ import {
 } from '../test-helpers/fixtures.js';
 
 import { configRepoDir, connectedRoot, emptyConfig, loadConfig } from './config.js';
-import { buildSessions, EMPTY_SESSIONS, loadSessions, transcriptRow } from './sessions.js';
+import {
+  buildSessions,
+  EMPTY_SESSIONS,
+  loadSessions,
+  PeekCache,
+  transcriptRow,
+} from './sessions.js';
 
 function store(bus: EventBus): OverlordStore {
   return new OverlordStore(bus, { scheduler: immediateScheduler });
@@ -35,7 +41,8 @@ describe('sessions view', () => {
       mtimeMs: 77,
       size: 1,
     };
-    expect(transcriptRow(info)).toStrictEqual({
+    const none = { cwd: null, gitBranch: null, title: null };
+    expect(transcriptRow(info, none)).toStrictEqual({
       id: 'abcdef0123456789',
       surface: 'cli',
       title: 'Session abcdef01',
@@ -49,7 +56,13 @@ describe('sessions view', () => {
       title: 'Known',
       cwd: '/w',
     });
-    expect(transcriptRow(info, known)).toStrictEqual({
+    expect(transcriptRow(info, { cwd: '/peek', gitBranch: 'main', title: 'Peeked' })).toMatchObject(
+      {
+        title: 'Peeked',
+        cwd: '/peek',
+      },
+    );
+    expect(transcriptRow(info, none, known)).toStrictEqual({
       id: 'abcdef0123456789',
       surface: 'desktop-code',
       title: 'Known',
@@ -67,6 +80,10 @@ describe('sessions view', () => {
     bus.emit('session.upserted', session('live-one', { title: 'Live title', cwd: '/live' }));
     await writeText(path.join(env.paths.projectsDir, '-live', 'live-one.jsonl'), '');
     await writeText(path.join(env.paths.projectsDir, '-old', 'old-one.jsonl'), '');
+    await writeText(
+      path.join(env.paths.projectsDir, '-old', 'titled.jsonl'),
+      `${JSON.stringify({ type: 'user', cwd: '/old/work', message: { role: 'user', content: 'x' } })}\n${JSON.stringify({ type: 'ai-title', aiTitle: 'Old work' })}\n`,
+    );
     const importFile = path.join(env.storageDir, 'claude-ai.json');
     await writeImport(importFile, {
       importedAt: 5,
@@ -95,6 +112,7 @@ describe('sessions view', () => {
       clock: () => NOW,
       importFile,
       report,
+      peeks: new PeekCache(),
     });
     expect(calls.map((call) => [call.command, ...call.args])).toStrictEqual([
       ['my-claude', 'agents', '--json'],
@@ -104,8 +122,9 @@ describe('sessions view', () => {
     expect(byId.get('live-one')?.title).toBe('Live title');
     expect(byId.get('live-one')?.cwd).toBe('/live');
     expect(byId.get('old-one')?.title).toBe('Session old-one');
+    expect(byId.get('titled')).toMatchObject({ title: 'Old work', cwd: '/old/work' });
     expect(byId.get('chat')?.surface).toBe('claude-ai');
-    expect(data.sessions).toHaveLength(3);
+    expect(data.sessions).toHaveLength(4);
     expect(report).not.toHaveBeenCalled();
     expect(buildSessions(data)).toStrictEqual({ sessions: data.sessions, claudeAiImportedAt: 5 });
     expect(EMPTY_SESSIONS).toStrictEqual({ sessions: [], importedAt: null });
@@ -125,6 +144,7 @@ describe('sessions view', () => {
       clock: () => NOW,
       importFile,
       report,
+      peeks: new PeekCache(),
     });
     expect(data).toStrictEqual({ sessions: [], importedAt: null });
     expect(report.mock.calls).toStrictEqual([
@@ -188,5 +208,55 @@ describe('config view', () => {
       dirty: 2,
     });
     expect(state.items.find((item) => item.kind === 'claude-md')?.status).toBe('local-only');
+  });
+});
+
+describe('PeekCache', () => {
+  it('rereads a transcript only when its time or size changes', async () => {
+    const env = await makeEnv();
+    const file = await writeText(
+      path.join(env.paths.projectsDir, '-p', 'p1.jsonl'),
+      `${JSON.stringify({ type: 'ai-title', aiTitle: 'First' })}\n`,
+    );
+    const info = {
+      sessionId: 'p1',
+      projectDir: '-p',
+      transcriptPath: file,
+      sessionDir: path.join(env.paths.projectsDir, '-p', 'p1'),
+      mtimeMs: 1,
+      size: 1000,
+    };
+    const cache = new PeekCache();
+    const first = await cache.get(info);
+    expect(first.title).toBe('First');
+    await writeText(file, `${JSON.stringify({ type: 'ai-title', aiTitle: 'Second' })}\n`);
+    expect(await cache.get(info)).toBe(first);
+    const moved = await cache.get({ ...info, mtimeMs: 2 });
+    expect(moved.title).toBe('Second');
+    const grown = await cache.get({ ...info, size: 999 });
+    expect(grown.title).toBe('Second');
+  });
+
+  it('reports a transcript it cannot read and still lists the session', async () => {
+    const env = await makeEnv();
+    const report = vi.fn<(source: string, message: string) => void>();
+    const peeks = new PeekCache();
+    const transcript = path.join(env.paths.projectsDir, '-gone', 'gone.jsonl');
+    await writeText(transcript, '');
+    vi.spyOn(peeks, 'get').mockRejectedValue(new Error('read failed'));
+    const { exec } = recordingExec();
+    const data = await loadSessions({
+      paths: env.paths,
+      exec: toSurfacesExec(exec),
+      isAlive: () => false,
+      claudeBin: 'claude',
+      store: store(new EventBus()),
+      clock: () => NOW,
+      importFile: path.join(env.storageDir, 'none.json'),
+      report,
+      peeks,
+    });
+    expect(data.sessions.map((row) => row.title)).toStrictEqual(['Session gone']);
+    expect(report).toHaveBeenCalledWith('sessions', 'read failed');
   });
 });

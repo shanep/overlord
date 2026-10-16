@@ -50,6 +50,34 @@ export function filterSessions(
     .toSorted((a, b) => b.updatedAt - a.updatedAt);
 }
 
+/** Surfaces whose sessions have a local transcript the agent view can show. */
+const OPENABLE: ReadonlySet<SurfaceSession['surface']> = new Set([
+  'cli',
+  'sdk',
+  'overlord',
+  'desktop-code',
+]);
+
+function SessionTitle(props: { readonly entry: SurfaceSession }): ReactElement {
+  const post = usePostAction();
+  const { entry } = props;
+  if (!OPENABLE.has(entry.surface)) {
+    return <>{entry.title}</>;
+  }
+  return (
+    <button
+      type="button"
+      className="link-button"
+      title="Open the agent view for this session"
+      onClick={() => {
+        post({ type: 'openAgent', sessionId: entry.id, agentId: entry.id });
+      }}
+    >
+      {entry.title}
+    </button>
+  );
+}
+
 function HandoffButtons(props: { readonly entry: SurfaceSession }): ReactElement {
   const post = usePostAction();
   const { entry } = props;
@@ -87,7 +115,7 @@ function columns(now: number): readonly Column<SurfaceSession>[] {
       header: 'Title',
       cell: (entry) => (
         <>
-          {entry.title}
+          <SessionTitle entry={entry} />
           {entry.archived ? (
             <>
               {' '}

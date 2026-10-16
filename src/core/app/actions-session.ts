@@ -81,8 +81,15 @@ async function signal(
 
 export const sessionActions: ActionHandlers<SessionActions> = {
   openAgent: async ({ rt }, action) => {
+    // Old sessions are not tailed, so load the transcript before the panel asks for it.
+    const known = rt.store
+      .fleetState(rt.clock())
+      .sessions.some((session) => session.id === action.sessionId);
+    if (!known && !(await rt.openTranscript(action.sessionId))) {
+      rt.host.showInfo(`No transcript found for session ${shortId(action.sessionId)}.`);
+      return;
+    }
     rt.host.openPanel('agent', { sessionId: action.sessionId, agentId: action.agentId });
-    await Promise.resolve();
   },
   openContext: async ({ rt }, action) => {
     const params =

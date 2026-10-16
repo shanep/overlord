@@ -8,7 +8,7 @@ import type { Caches, Runtime } from './runtime.js';
 import { readDrafts, storagePath } from './storage.js';
 import { configRepoDir, emptyConfig, loadConfig } from './views/config.js';
 import { EMPTY_KNOBS, loadKnobs, loadProfiles } from './views/knobs.js';
-import { EMPTY_SESSIONS, loadSessions } from './views/sessions.js';
+import { EMPTY_SESSIONS, loadSessions, PeekCache } from './views/sessions.js';
 import { loadUsage } from './views/usage.js';
 
 export type CacheRuntime = Omit<Runtime, 'caches' | 'context'>;
@@ -20,6 +20,7 @@ function repoDir(rt: CacheRuntime): string {
 export function createCaches(rt: CacheRuntime): Caches {
   const common = { onUpdate: rt.notify, onError: rt.report };
   const { host } = rt;
+  const peeks = new PeekCache();
   return {
     knobs: new AsyncValue({
       ...common,
@@ -59,6 +60,7 @@ export function createCaches(rt: CacheRuntime): Caches {
           clock: rt.clock,
           importFile: storagePath(host.storageDir, 'claudeAi'),
           report: rt.report,
+          peeks,
         }),
     }),
     config: new AsyncValue({

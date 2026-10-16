@@ -1,6 +1,6 @@
 import path from 'node:path';
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, onTestFinished } from 'vitest';
 
 import type { LaunchSpec } from '../../shared/model.js';
 import type { WebviewAction } from '../../shared/protocol.js';
@@ -17,6 +17,7 @@ import {
   settle,
   waitFor,
   writeJson,
+  writeText,
 } from './test-helpers/fixtures.js';
 
 const SPEC: LaunchSpec = {
@@ -61,7 +62,8 @@ function parsedAction(message: unknown): WebviewAction {
 describe('opening panels and files', () => {
   it('opens the agent panel, the context panel and files', async () => {
     const env = await makeEnv();
-    const { app } = makeApp(env);
+    const { app, bus } = makeApp(env);
+    bus.emit('session.upserted', session('s'));
     await app.dispatch({ type: 'openAgent', sessionId: 's', agentId: 'a' }, {});
     await app.dispatch({ type: 'openContext', sessionId: 's', agentId: null }, {});
     await app.dispatch({ type: 'openContext', sessionId: 's', agentId: 'a' }, {});
@@ -72,6 +74,43 @@ describe('opening panels and files', () => {
       { view: 'context', params: { sessionId: 's', agentId: 'a' } },
     ]);
     expect(env.host.opened).toStrictEqual(['/f.md']);
+  });
+});
+
+describe('opening an old session', () => {
+  it('loads a transcript the store has not seen before opening the panel', async () => {
+    const env = await makeEnv();
+    await writeText(
+      path.join(env.paths.projectsDir, '-old', 'old-1.jsonl'),
+      `${JSON.stringify({ type: 'user', uuid: 'u1', sessionId: 'old-1', cwd: '/old', timestamp: '2020-01-01T00:00:00.000Z', message: { role: 'user', content: 'hi' } })}\n`,
+    );
+    const { app } = makeApp(env);
+    await app.start();
+    onTestFinished(async () => {
+      await app.dispose();
+    });
+    await app.dispatch({ type: 'openAgent', sessionId: 'old-1', agentId: 'old-1' }, {});
+    expect(env.host.panels).toStrictEqual([
+      { view: 'agent', params: { sessionId: 'old-1', agentId: 'old-1' } },
+    ]);
+    const detail = app.stateFor('agent', { sessionId: 'old-1', agentId: 'old-1' });
+    expect(detail.view === 'agent' ? detail.state.session?.cwd : null).toBe('/old');
+  });
+
+  it('says so when there is no transcript, before and after start', async () => {
+    const env = await makeEnv();
+    const { app } = makeApp(env);
+    await app.dispatch({ type: 'openAgent', sessionId: 'nope-1234567', agentId: 'x' }, {});
+    await app.start();
+    onTestFinished(async () => {
+      await app.dispose();
+    });
+    await app.dispatch({ type: 'openAgent', sessionId: 'nope-1234567', agentId: 'x' }, {});
+    expect(env.host.panels).toStrictEqual([]);
+    expect(env.host.infos).toStrictEqual([
+      'No transcript found for session nope-123.',
+      'No transcript found for session nope-123.',
+    ]);
   });
 });
 

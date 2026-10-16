@@ -51,4 +51,6 @@ export interface Runtime {
   readonly report: (source: string, message: string) => void;
   /** Tells open panels to re-render. */
   readonly notify: () => void;
+  /** Loads a session's transcript into the store, even an old one. True when it was found. */
+  readonly openTranscript: (sessionId: string) => Promise<boolean>;
 }

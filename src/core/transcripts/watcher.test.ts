@@ -568,6 +568,63 @@ describe('TranscriptWatcher', () => {
   });
 });
 
+describe('TranscriptWatcher.open', () => {
+  let root = '';
+  let layout: SessionLayout;
+  const watchers: TranscriptWatcher[] = [];
+
+  beforeEach(async () => {
+    root = await makeTemporaryDirectory();
+    layout = await makeSessionLayout(root);
+  });
+
+  afterEach(async () => {
+    for (const watcher of watchers.splice(0)) {
+      watcher.dispose();
+    }
+    await removeDir(root);
+  });
+
+  it('loads an old session outside the active window and keeps tailing it', async () => {
+    await writeFile(layout.transcriptPath, jsonl([userPrompt('u1', 0, 'old work')]));
+    const old = new Date(T0 - YEAR);
+    await utimes(layout.transcriptPath, old, old);
+    const bus = new EventBus();
+    const events = capture(bus);
+    const watcher = new TranscriptWatcher({
+      projectsDir: layout.projectsDir,
+      bus,
+      activeWindowMs: 60_000,
+      now: (): number => T0,
+      watchFactory: null,
+    });
+    watchers.push(watcher);
+    await watcher.refresh();
+    expect(events).toStrictEqual([]);
+    expect(await watcher.open(SESSION)).toBe(true);
+    expect(watcher.sessionIds()).toStrictEqual([SESSION]);
+    expect(payloads(events, 'session.upserted')).toMatchObject([
+      { id: SESSION, cwd: '/work/demo' },
+    ]);
+    await appendFile(layout.transcriptPath, jsonl([userPrompt('u2', 1, 'more')]));
+    await utimes(layout.transcriptPath, old, old);
+    await watcher.refresh();
+    expect(watcher.sessionIds()).toStrictEqual([SESSION]);
+    expect(payloads(events, 'feed.appended').length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('returns false and does not pin a session that has no transcript', async () => {
+    const watcher = new TranscriptWatcher({
+      projectsDir: layout.projectsDir,
+      bus: new EventBus(),
+      watchFactory: null,
+    });
+    watchers.push(watcher);
+    expect(await watcher.open('missing')).toBe(false);
+    expect(watcher.sessionIds()).toStrictEqual([]);
+  });
+});
+
 describe('defaultWatchFactory', () => {
   let root = '';
 
@@ -584,10 +641,12 @@ describe('defaultWatchFactory', () => {
     await mkdir(nested);
     const errors: unknown[] = [];
     const handles: WatchHandle[] = [];
+    const state = { seen: false };
     const changed = new Promise<void>((resolve) => {
       const handle = defaultWatchFactory(
         root,
         () => {
+          state.seen = true;
           resolve();
         },
         (error) => {
@@ -596,7 +655,14 @@ describe('defaultWatchFactory', () => {
       );
       handles.push(handle);
     });
-    await writeFile(path.join(nested, 'session.jsonl'), 'x\n');
+    // macOS can miss a write made right after the watch starts, so keep
+    // writing until the watcher reports one.
+    for (let attempt = 0; attempt < 40 && !state.seen; attempt += 1) {
+      await writeFile(path.join(nested, 'session.jsonl'), `${String(attempt)}\n`);
+      await new Promise<void>((resolve) => {
+        setTimeout(resolve, 100);
+      });
+    }
     await changed;
     expect(handles).toHaveLength(1);
     handles[0]?.close();

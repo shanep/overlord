@@ -195,6 +195,9 @@ export class OverlordApp {
       permissions,
       report,
       notify,
+      // Sources is built below, and this only runs after construction.
+      openTranscript: async (sessionId: string): Promise<boolean> =>
+        this.sources.openTranscript(sessionId),
     };
     const context = new ContextViews({ ...base, onUpdate: notify, onError: report });
     this.rt = { ...base, caches: createCaches(base), context };

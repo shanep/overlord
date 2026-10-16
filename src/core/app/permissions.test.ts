@@ -15,6 +15,7 @@ import {
   NOW,
   permissionRequest,
   settle,
+  waitFor,
   writeText,
   readJson,
 } from './test-helpers/fixtures.js';
@@ -207,7 +208,8 @@ describe('PermissionHub', () => {
     // A folder where the log file should be makes the append fail.
     await writeText(path.join(storageDir, 'audit.jsonl', 'blocker'), '');
     await inbox.inbox.request(permissionRequest('x'), new AbortController().signal);
-    await settle();
+    // The failed append lands a few ticks later, and later still on a slow CI runner.
+    await waitFor(() => errors.length > 0);
     expect(errors).toHaveLength(1);
     expect(errors[0]).toMatch(/^permissions: audit log write failed: /u);
   });

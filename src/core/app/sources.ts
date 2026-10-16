@@ -79,6 +79,11 @@ export class Sources {
     await this.watcher?.refresh();
   }
 
+  /** Loads one session's transcript, even one outside the active window. */
+  async openTranscript(sessionId: string): Promise<boolean> {
+    return (await this.watcher?.open(sessionId)) ?? false;
+  }
+
   /** Starts or stops the hook server and the OTLP receiver to match the settings file. */
   async sync(): Promise<void> {
     return this.enqueue(async () => {

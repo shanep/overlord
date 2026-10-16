@@ -130,6 +130,8 @@ export class TranscriptWatcher {
   private readonly watchFactory: WatchFactory | null;
   private readonly loadOptions: LoadOptions;
   private readonly tracked = new Map<string, TrackedSession>();
+  /** Sessions opened from a list view, tailed even outside the active window. */
+  private readonly pinned = new Set<string>();
   private timer: NodeJS.Timeout | null = null;
   private handle: WatchHandle | null = null;
   private running: Promise<void> | null = null;
@@ -167,6 +169,20 @@ export class TranscriptWatcher {
 
   sessionIds(): string[] {
     return [...this.tracked.keys()];
+  }
+
+  /**
+   * Load an older session into the bus and keep tailing it, even when it is
+   * outside the active window. True when the transcript was found.
+   */
+  async open(sessionId: string): Promise<boolean> {
+    this.pinned.add(sessionId);
+    await this.refresh();
+    if (!this.tracked.has(sessionId)) {
+      this.pinned.delete(sessionId);
+      return false;
+    }
+    return true;
   }
 
   /** Run one scan and read cycle. Calls made while one runs share a single follow-up cycle. */
@@ -236,7 +252,7 @@ export class TranscriptWatcher {
       if (this.disposed) {
         return;
       }
-      if (now - info.mtimeMs <= this.activeWindowMs) {
+      if (now - info.mtimeMs <= this.activeWindowMs || this.pinned.has(info.sessionId)) {
         active.add(info.sessionId);
         await this.poll(info, now);
       }
