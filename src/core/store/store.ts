@@ -143,8 +143,6 @@ export class OverlordStore {
   }
 
   agentDetailState(sessionId: string, agentId: string): AgentDetailState {
-    const mine = (item: { readonly sessionId: string; readonly agentId: string }): boolean =>
-      item.sessionId === sessionId && item.agentId === agentId;
     return {
       agent: this.agents.get(sessionId, agentId) ?? null,
       session: this.sessions.get(sessionId) ?? null,
@@ -153,6 +151,18 @@ export class OverlordStore {
         .filter((agent) => agent.parentAgentId === agentId)
         .toSorted(byStart),
       feed: this.feeds.get(sessionId, agentId)?.toArray() ?? [],
+      ...this.agentActivity(sessionId, agentId),
+    };
+  }
+
+  /** One agent's tool calls, requests and compactions, each oldest first. */
+  agentActivity(
+    sessionId: string,
+    agentId: string,
+  ): Pick<AgentDetailState, 'toolCalls' | 'requests' | 'compactions'> {
+    const mine = (item: { readonly sessionId: string; readonly agentId: string }): boolean =>
+      item.sessionId === sessionId && item.agentId === agentId;
+    return {
       toolCalls: this.toolCalls
         .values()
         .filter((item) => mine(item))

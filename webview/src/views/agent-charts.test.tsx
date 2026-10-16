@@ -7,14 +7,19 @@ import {
   contextTable,
   costTable,
   tokensTable,
-  windowForModel,
+  windowForRequests,
 } from './agent-charts.js';
 
-describe('windowForModel', () => {
-  it('knows the 1M window, the default window, and unknown models', () => {
-    expect(windowForModel('claude-opus-4-7[1m]')).toBe(1_000_000);
-    expect(windowForModel('claude-opus-4-7')).toBe(200_000);
-    expect(windowForModel(null)).toBeNull();
+describe('windowForRequests', () => {
+  it('reads the window from the model, or from a prompt too big for 200K', () => {
+    expect(windowForRequests('claude-opus-4-6', requests)).toBe(200_000);
+    expect(windowForRequests('claude-opus-4-7', [])).toBe(1_000_000);
+    const big = requests.map((request) => ({
+      ...request,
+      usage: { ...request.usage, cacheRead: 300_000 },
+    }));
+    expect(windowForRequests('gateway-model', big)).toBe(1_000_000);
+    expect(windowForRequests(null, [])).toBeNull();
   });
 });
 

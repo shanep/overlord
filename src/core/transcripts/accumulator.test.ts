@@ -232,7 +232,8 @@ describe('SessionAccumulator', () => {
       gitBranch: 'main',
       version: '2.1.301',
       agentCount: 3,
-      contextFill: null,
+      // The latest main thread request read 100 tokens of a 1M window.
+      contextFill: 100 / 1_000_000,
       recap: null,
       lastPrompt: null,
       lastPromptAt: T0,

@@ -23,7 +23,13 @@ const messages: readonly HostToWebview[] = [
   {
     type: 'state',
     view: 'properties',
-    state: { sessionId: 's1', session: session({ id: 's1' }), agents: [], pendingPermissions: [] },
+    state: {
+      sessionId: 's1',
+      session: session({ id: 's1' }),
+      agents: [],
+      pendingPermissions: [],
+      health: null,
+    },
   },
 ];
 

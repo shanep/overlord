@@ -31,6 +31,9 @@ See [PLAN.md](PLAN.md) for the full design and the decisions behind it.
   project you made has no folder until you set one.
 - **Agent detail**: the live feed of thinking and tool calls, a tool timeline, and token, cost
   and context charts.
+- **Session health**: Session Properties flags a session that is wearing out (a large context,
+  compactions, a run of failed tool calls, cache misses, hours of activity) and says what to do
+  about each one.
 - **Context inspector**: the system prompt, every memory file that loaded (and why), and every
   file that did not load (and why not).
 - **Knobs**: 700+ settings, env vars and CLI flags pulled from the docs, grouped into areas

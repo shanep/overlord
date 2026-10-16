@@ -14,7 +14,7 @@ import type {
   TokenUsage,
   ToolCall,
 } from '../../shared/model.js';
-import { ZERO_USAGE } from '../../shared/model.js';
+import { contextWindow, promptTokens, ZERO_USAGE } from '../../shared/model.js';
 
 import { ContextTracker } from './context.js';
 import type { PriceTable } from './pricing.js';
@@ -68,6 +68,16 @@ const SURFACES: ReadonlyMap<string, Surface> = new Map([
   ['sdk-py', 'sdk'],
   ['claude-desktop', 'desktop-code'],
 ]);
+
+/** How full the main thread's context was on its latest request, 0 to 1. */
+function contextFill(requests: readonly ApiRequest[]): number | null {
+  const latest = requests.at(-1);
+  if (latest === undefined) {
+    return null;
+  }
+  const tokens = promptTokens(latest.usage);
+  return tokens / contextWindow(latest.model, tokens);
+}
 
 export function surfaceFor(entrypoint: string | null): Surface {
   return entrypoint === null ? 'cli' : (SURFACES.get(entrypoint) ?? 'cli');
@@ -251,7 +261,7 @@ export class SessionAccumulator {
       gitBranch: this.fields.gitBranch,
       version: this.fields.version,
       agentCount: this.subagents.size,
-      contextFill: null,
+      contextFill: contextFill(main.requests()),
       recap: this.fields.recap,
       lastPrompt: this.fields.lastPrompt,
       lastPromptAt: main.lastPromptAt,

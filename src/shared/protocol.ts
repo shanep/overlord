@@ -3,6 +3,7 @@
 // `patch` messages as data changes. The webview sends `ready` once and then
 // `action` messages for user intent.
 
+import type { SessionHealth } from './health.js';
 import type {
   AgentNode,
   ApiRequest,
@@ -122,6 +123,8 @@ export interface PropertiesState {
   /** Subagents in this session, all depths, oldest first. */
   readonly agents: readonly AgentNode[];
   readonly pendingPermissions: readonly PermissionRequest[];
+  /** Signs the session is working worse than it did, null until it is reported. */
+  readonly health: SessionHealth | null;
 }
 
 export interface ContextState {

@@ -1,8 +1,9 @@
-// Property text is concatenated in assertions. cspell:ignore Branchmain Modelclaude Efforthigh Permissionsdefault Modelunknown Effortunknown Permissionsunknown Branchunknown Processunknown Bashasked
+// Property text is concatenated in assertions. cspell:ignore Contextn hitsn Branchmain Modelclaude Efforthigh Permissionsdefault Modelunknown Effortunknown Permissionsunknown Branchunknown Processunknown Bashasked
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
+import type { HealthSignal, SessionHealth } from '../../../src/shared/health.js';
 import type { PropertiesState } from '../../../src/shared/protocol.js';
 import { agent, NOW, permission, session } from '../../test/fixtures.js';
 import { expectAccessible, renderView } from '../../test/render.js';
@@ -20,7 +21,7 @@ const subagent = agent({
   currentTool: 'Grep',
 });
 
-const full: PropertiesState = {
+const notJudged: PropertiesState = {
   sessionId: 's1',
   session: session({
     id: 's1',
@@ -43,6 +44,41 @@ const full: PropertiesState = {
     }),
   ],
   pendingPermissions: [{ ...permission, requestedAt: NOW - 2 * MINUTE }],
+  health: null,
+};
+
+const healthy: SessionHealth = {
+  level: 'good',
+  metrics: {
+    contextTokens: 120_000,
+    contextWindow: 1_000_000,
+    compactions: 0,
+    turns: 42,
+    recentToolErrors: 1,
+    recentToolCalls: 20,
+    recentCacheHit: 0.93,
+  },
+  signals: [],
+};
+
+const full: PropertiesState = { ...notJudged, health: healthy };
+
+const contextSignal: HealthSignal = {
+  id: 'context',
+  level: 'degraded',
+  title: 'The context is very large',
+  finding: '450K tokens in context, 45% of a 1M window.',
+  why: 'The bigger the context, the more likely the model misses instructions.',
+  actions: ['Run /compact with what to keep.', 'Run /clear for a new task.'],
+};
+
+const compactionSignal: HealthSignal = {
+  id: 'compactions',
+  level: 'watch',
+  title: 'Compacted once',
+  finding: 'Compacted 1 time.',
+  why: 'Each compaction swaps the conversation for a summary.',
+  actions: ['Ask it to restate the goal.'],
 };
 
 function group(name: string): HTMLElement {
@@ -52,14 +88,20 @@ function group(name: string): HTMLElement {
 describe('PropertiesView', () => {
   it('has no accessibility violations', async () => {
     const { container } = renderView(<PropertiesView state={full} />);
-    expect(screen.getAllByRole('region')).toHaveLength(7);
+    expect(screen.getAllByRole('region')).toHaveLength(8);
     await expectAccessible(container);
   });
 
   it('asks for a Claude tab when none is active', () => {
     renderView(
       <PropertiesView
-        state={{ sessionId: null, session: null, agents: [], pendingPermissions: [] }}
+        state={{
+          sessionId: null,
+          session: null,
+          agents: [],
+          pendingPermissions: [],
+          health: null,
+        }}
       />,
     );
     expect(screen.getByRole('status').textContent).toBe(
@@ -70,7 +112,13 @@ describe('PropertiesView', () => {
   it('names the session it is waiting for', () => {
     renderView(
       <PropertiesView
-        state={{ sessionId: 'new-id', session: null, agents: [], pendingPermissions: [] }}
+        state={{
+          sessionId: 'new-id',
+          session: null,
+          agents: [],
+          pendingPermissions: [],
+          health: null,
+        }}
       />,
     );
     expect(screen.getByText('Waiting for Claude Code')).toBeDefined();
@@ -116,9 +164,7 @@ describe('PropertiesView', () => {
     expect(group('Model').textContent).toBe(
       'ModelModelclaude-opus-4-7EfforthighPermissionsdefault',
     );
-    const usage = group('Usage');
-    expect(within(usage).getByRole('meter', { name: 'Context window fill' })).toBeDefined();
-    expect(usage.textContent).toContain('Cost$0.42 est.');
+    expect(group('Usage').textContent).toContain('Cost$0.42 est.');
   });
 
   it('says unknown for facts Claude Code has not reported', () => {
@@ -162,6 +208,82 @@ describe('PropertiesView', () => {
       { type: 'openAgent', sessionId: 's1', agentId: 's1' },
       { type: 'openContext', sessionId: 's1', agentId: null },
     ]);
+  });
+
+  it('shows a healthy session with its numbers', () => {
+    renderView(<PropertiesView state={full} />);
+    const health = group('Health');
+    expect(within(health).getByRole('heading', { level: 2 }).textContent).toBe('Health Healthy');
+    expect(health.textContent).toContain('No signs of trouble.');
+    const meter = within(health).getByRole('meter', { name: 'Context window fill' });
+    expect(meter.getAttribute('aria-valuenow')).toBe('12');
+    expect(meter.firstElementChild?.className).toBe('meter-fill meter-info');
+    expect(health.textContent).toContain('120K of 1M');
+    expect(health.textContent).toContain('Compactions0Turns42Recent tool errors1 of 20');
+    expect(health.textContent).toContain('Recent cache hits93%');
+    expect(within(health).queryAllByRole('article')).toStrictEqual([]);
+  });
+
+  it('lists each sign of trouble with why it matters and what to do', async () => {
+    const state: PropertiesState = {
+      ...full,
+      health: { ...healthy, level: 'degraded', signals: [contextSignal, compactionSignal] },
+    };
+    const { container } = renderView(<PropertiesView state={state} />);
+    const health = group('Health');
+    expect(within(health).getByRole('heading', { level: 2 }).textContent).toBe('Health Degraded');
+    expect(health.textContent).toContain('Likely working worse than it did earlier.');
+    const meter = within(health).getByRole('meter', { name: 'Context window fill' });
+    expect(meter.firstElementChild?.className).toBe('meter-fill meter-critical');
+    const big = within(health).getByRole('article', { name: 'The context is very large' });
+    expect(within(big).getByRole('heading', { level: 3 }).textContent).toBe(
+      'Degraded The context is very large',
+    );
+    expect(big.textContent).toContain('450K tokens in context, 45% of a 1M window.');
+    expect(
+      within(big)
+        .getAllByRole('listitem')
+        .map((item) => item.textContent),
+    ).toStrictEqual(['Run /compact with what to keep.', 'Run /clear for a new task.']);
+    const compacted = within(health).getByRole('article', { name: 'Compacted once' });
+    expect(within(compacted).getByRole('heading', { level: 3 }).textContent).toBe(
+      'Watch Compacted once',
+    );
+    await expectAccessible(container);
+  });
+
+  it('warns on the context meter for a watch level and says when there is no context yet', () => {
+    const watch: PropertiesState = {
+      ...full,
+      health: { ...healthy, level: 'watch', signals: [{ ...contextSignal, level: 'watch' }] },
+    };
+    const { unmount } = renderView(<PropertiesView state={watch} />);
+    expect(group('Health').textContent).toContain('Starting to show strain.');
+    expect(
+      within(group('Health')).getByRole('meter', { name: 'Context window fill' }).firstElementChild
+        ?.className,
+    ).toBe('meter-fill meter-warning');
+    unmount();
+    const empty: PropertiesState = {
+      ...full,
+      health: {
+        ...healthy,
+        metrics: {
+          ...healthy.metrics,
+          contextTokens: null,
+          contextWindow: null,
+          recentCacheHit: null,
+        },
+      },
+    };
+    renderView(<PropertiesView state={empty} />);
+    expect(group('Health').textContent).toContain('Contextn/a');
+    expect(group('Health').textContent).toContain('Recent cache hitsn/a');
+  });
+
+  it('leaves out health when it has not been judged', () => {
+    renderView(<PropertiesView state={notJudged} />);
+    expect(screen.queryByRole('region', { name: 'Health' })).toBeNull();
   });
 
   it('says when there are no subagents yet', () => {

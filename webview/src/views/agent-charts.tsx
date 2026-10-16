@@ -5,6 +5,7 @@ import type { ReactElement } from 'react';
 import { useMemo } from 'react';
 
 import type { ApiRequest, ToolCall } from '../../../src/shared/model.js';
+import { contextWindow } from '../../../src/shared/model.js';
 import type { ChartTheme } from '../charts/chart-theme.js';
 import { useChartTheme } from '../charts/chart-theme.js';
 import {
@@ -24,12 +25,13 @@ import { cacheHitRatio, promptTokens } from '../metrics.js';
 /** Calls shown on the timeline, newest kept. */
 const TIMELINE_LIMIT = 60;
 
-/** Context window size for a model id, when we can tell. */
-export function windowForModel(model: string | null): number | null {
-  if (model === null) {
-    return null;
-  }
-  return model.includes('[1m]') ? 1_000_000 : 200_000;
+/** Context window for the chart's limit line, from the model and the biggest prompt seen. */
+export function windowForRequests(
+  model: string | null,
+  requests: readonly ApiRequest[],
+): number | null {
+  const peak = Math.max(0, ...requests.map((request) => promptTokens(request.usage)));
+  return contextWindow(model, peak);
 }
 
 function byTime(requests: readonly ApiRequest[]): readonly ApiRequest[] {
@@ -98,7 +100,7 @@ function RequestCharts(props: {
       tokens: buildTokensOverTime(requests, theme),
       cost: buildCostOverTime(requests, theme),
       context: buildContextFill(
-        { requests, compactions, windowTokens: windowForModel(model) },
+        { requests, compactions, windowTokens: windowForRequests(model, requests) },
         theme,
       ),
       cache: buildCacheHitRatio(requests, theme),

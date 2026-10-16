@@ -33,6 +33,59 @@ export const ZERO_USAGE: TokenUsage = {
   thinking: 0,
 };
 
+/** Tokens sent to the model as input, cached or not. */
+export function promptTokens(usage: TokenUsage): number {
+  return usage.input + usage.cacheRead + usage.cacheCreation;
+}
+
+const STANDARD_WINDOW = 200_000;
+const LARGE_WINDOW = 1_000_000;
+
+// Family, major and minor from ids like claude-opus-4-7 or claude-haiku-5-5.
+// The minor is at most two digits so a date suffix is not read as one, and it
+// is empty when the id has none.
+const MODEL_ID = /claude-(opus|sonnet|haiku|fable)-(\d+)-?(\d{0,2})(?!\d)/u;
+
+/** Per Claude Code's model docs, these run a 1M window without the [1m] suffix. */
+function largeByDefault(family: string, major: number, minor: number): boolean {
+  switch (family) {
+    case 'fable': {
+      return true;
+    }
+    case 'sonnet': {
+      return major >= 5;
+    }
+    case 'haiku': {
+      return major > 5 || (major === 5 && minor >= 5);
+    }
+    default: {
+      return major > 4 || (major === 4 && minor >= 7);
+    }
+  }
+}
+
+/**
+ * Context window for a model id, or null when the model is unknown. A prompt
+ * bigger than the standard window proves the session has the large one,
+ * which covers model ids this table does not know yet.
+ */
+export function contextWindow(model: string, observedTokens?: number): number;
+export function contextWindow(model: string | null, observedTokens?: number): number | null;
+export function contextWindow(model: string | null, observedTokens = 0): number | null {
+  if (observedTokens > STANDARD_WINDOW || model?.includes('[1m]') === true) {
+    return LARGE_WINDOW;
+  }
+  if (model === null) {
+    return null;
+  }
+  const match = MODEL_ID.exec(model);
+  if (match === null) {
+    return STANDARD_WINDOW;
+  }
+  const large = largeByDefault(String(match[1]), Number(match[2]), Number(match[3]));
+  return large ? LARGE_WINDOW : STANDARD_WINDOW;
+}
+
 /** One row in the fleet view. */
 /** Claude Code's own recap of a session, written when the user comes back to it. */
 export interface SessionRecap {

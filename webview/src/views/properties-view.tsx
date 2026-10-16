@@ -1,35 +1,21 @@
 // Properties panel beside a Claude CLI tab: what the session is working on,
 // the facts about it grouped like an IDE property sheet, and its subagents.
 
-import type { ReactElement, ReactNode } from 'react';
+import type { ReactElement } from 'react';
 
+import type { SessionHealth } from '../../../src/shared/health.js';
 import type { AgentNode, PermissionRequest, SessionSummary } from '../../../src/shared/model.js';
 import type { PropertiesState } from '../../../src/shared/protocol.js';
 import { useNow } from '../clock.js';
 import { StateBadge, SurfaceBadge } from '../components/badge.js';
 import { EmptyState } from '../components/empty-state.js';
-import { Meter } from '../components/meter.js';
 import { formatAgo, formatCompact, formatCost, formatDateTime } from '../format.js';
 import { totalTokens } from '../metrics.js';
 import { usePostAction } from '../vscode-context.js';
 
-type Row = readonly [label: string, value: ReactNode];
-
-function Group(props: { readonly title: string; readonly rows: readonly Row[] }): ReactElement {
-  return (
-    <section className="props-group" aria-label={props.title}>
-      <h2>{props.title}</h2>
-      <dl className="props">
-        {props.rows.map(([label, value]) => (
-          <div key={label} className="prop">
-            <dt>{label}</dt>
-            <dd>{value}</dd>
-          </div>
-        ))}
-      </dl>
-    </section>
-  );
-}
+import { HealthSection } from './properties-health.js';
+import type { Row } from './props-group.js';
+import { Group } from './props-group.js';
 
 function orUnknown(value: string | number | null): string {
   return value === null ? 'unknown' : String(value);
@@ -74,7 +60,6 @@ function modelRows(session: SessionSummary): readonly Row[] {
 function usageRows(session: SessionSummary): readonly Row[] {
   const { usage } = session;
   return [
-    ['Context', <Meter key="context" label="Context window fill" ratio={session.contextFill} />],
     ['Tokens', formatCompact(totalTokens(usage))],
     ['Input', formatCompact(usage.input)],
     ['Output', formatCompact(usage.output)],
@@ -174,6 +159,7 @@ function SessionProperties(props: {
   readonly session: SessionSummary;
   readonly agents: readonly AgentNode[];
   readonly pending: readonly PermissionRequest[];
+  readonly health: SessionHealth | null;
 }): ReactElement {
   const { session } = props;
   const now = useNow();
@@ -206,6 +192,7 @@ function SessionProperties(props: {
       </header>
       <WorkingOn session={session} now={now} />
       <Waiting requests={props.pending} now={now} />
+      {props.health === null ? null : <HealthSection health={props.health} />}
       <Group title="Session" rows={sessionRows(session, now)} />
       <Group title="Workspace" rows={workspaceRows(session)} />
       <Group title="Model" rows={modelRows(session)} />
@@ -216,7 +203,7 @@ function SessionProperties(props: {
 }
 
 export function PropertiesView(props: { readonly state: PropertiesState }): ReactElement {
-  const { sessionId, session, agents, pendingPermissions } = props.state;
+  const { sessionId, session, agents, pendingPermissions, health } = props.state;
   if (sessionId === null) {
     return (
       <EmptyState title="No Claude tab" detail="Focus a Claude Code tab to see its properties." />
@@ -230,5 +217,12 @@ export function PropertiesView(props: { readonly state: PropertiesState }): Reac
       />
     );
   }
-  return <SessionProperties session={session} agents={agents} pending={pendingPermissions} />;
+  return (
+    <SessionProperties
+      session={session}
+      agents={agents}
+      pending={pendingPermissions}
+      health={health}
+    />
+  );
 }

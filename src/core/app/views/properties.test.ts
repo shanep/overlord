@@ -2,7 +2,13 @@ import { describe, expect, it } from 'vitest';
 
 import { EventBus } from '../../bus.js';
 import { OverlordStore } from '../../store/store.js';
-import { agent, immediateScheduler, permissionRequest, session } from '../test-helpers/fixtures.js';
+import {
+  agent,
+  immediateScheduler,
+  NOW,
+  permissionRequest,
+  session,
+} from '../test-helpers/fixtures.js';
 
 import { buildProperties } from './properties.js';
 
@@ -27,6 +33,7 @@ describe('properties view', () => {
       session: null,
       agents: [],
       pendingPermissions: [],
+      health: null,
     });
   });
 
@@ -37,6 +44,7 @@ describe('properties view', () => {
       session: null,
       agents: [],
       pendingPermissions: [],
+      health: null,
     });
   });
 
@@ -60,5 +68,15 @@ describe('properties view', () => {
     expect(buildProperties(store, [], 's1', pidOf).session?.pid).toBe(4242);
     expect(buildProperties(store, [], 's1', noPid).session?.pid).toBeNull();
     expect(buildProperties(store, [], 'missing', pidOf).session).toBeNull();
+  });
+
+  it('judges health from the main thread only', () => {
+    const { bus, store } = setup();
+    bus.emit('session.upserted', session('s1'));
+    bus.emit('compaction.recorded', { sessionId: 's1', agentId: 's1', at: NOW });
+    bus.emit('compaction.recorded', { sessionId: 's1', agentId: 'sub', at: NOW });
+    const health = buildProperties(store, [], 's1', noPid).health;
+    expect(health?.metrics.compactions).toBe(1);
+    expect(health?.signals.map((signal) => signal.id)).toStrictEqual(['compactions']);
   });
 });

@@ -107,7 +107,7 @@ export const SIDEBAR_GROUPS: readonly SidebarGroup[] = [
         name: 'Show Session Properties',
         icon: 'Info (i)',
         meaning:
-          "In the title bar of a Claude Code tab. Opens the Properties panel beside the tab for that session, starting with what it is working on: Claude Code's latest recap and your last prompt.",
+          "In the title bar of a Claude Code tab. Opens the Properties panel beside the tab for that session, starting with what it is working on (Claude Code's latest recap and your last prompt), then a health check that says when the session is wearing out and what to do.",
       },
     ],
   },

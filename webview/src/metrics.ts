@@ -1,15 +1,13 @@
 // Derived numbers shared by several views.
 
 import type { TokenUsage } from '../../src/shared/model.js';
+import { promptTokens } from '../../src/shared/model.js';
+
+export { promptTokens } from '../../src/shared/model.js';
 
 /** Every token the model read or wrote. */
 export function totalTokens(usage: TokenUsage): number {
   return usage.input + usage.output + usage.cacheRead + usage.cacheCreation;
-}
-
-/** Tokens sent to the model as input, cached or not. */
-export function promptTokens(usage: TokenUsage): number {
-  return usage.input + usage.cacheRead + usage.cacheCreation;
 }
 
 /** Share of prompt tokens served from cache, or null with no prompt tokens. */
