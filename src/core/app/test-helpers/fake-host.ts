@@ -14,6 +14,7 @@ import type {
 
 const DEFAULT_SETTINGS: OverlordSettings = {
   activeWindowMinutes: 30,
+  idleMinutes: 10,
   updateThrottleMs: 250,
   maxConcurrency: 4,
   holdTimeoutSeconds: 600,

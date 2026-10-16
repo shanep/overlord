@@ -200,6 +200,11 @@ export class SessionAccumulator {
     return { agentId, ...this.thread(agentId).ingest(record) };
   }
 
+  /** True while the main thread or any subagent is mid-turn, however long ago it last wrote. */
+  busy(): boolean {
+    return [...this.threads.values()].some((thread) => thread.busy);
+  }
+
   agentIds(): string[] {
     return [...this.threads.keys()];
   }

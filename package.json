@@ -266,6 +266,12 @@
           "minimum": 1,
           "description": "Tail transcripts changed within this many minutes."
         },
+        "overlord.idleMinutes": {
+          "type": "number",
+          "default": 10,
+          "minimum": 1,
+          "description": "Drop an idle session from the fleet after this many minutes without activity. A session still mid-turn stays for the full active window."
+        },
         "overlord.updateThrottleMs": {
           "type": "number",
           "default": 250,

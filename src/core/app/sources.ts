@@ -67,6 +67,7 @@ export class Sources {
         projectsDir: deps.paths.projectsDir,
         bus: deps.bus,
         activeWindowMs: deps.host.settings.activeWindowMinutes * 60_000,
+        idleWindowMs: deps.host.settings.idleMinutes * 60_000,
         now: deps.clock,
         ...(deps.watchFactory === undefined ? {} : { watchFactory: deps.watchFactory }),
       });

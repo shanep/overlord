@@ -38,6 +38,7 @@ export interface PickItem {
 /** The overlord.* settings. The host should read them fresh on every access. */
 export interface OverlordSettings {
   readonly activeWindowMinutes: number;
+  readonly idleMinutes: number;
   readonly updateThrottleMs: number;
   readonly maxConcurrency: number;
   readonly holdTimeoutSeconds: number;

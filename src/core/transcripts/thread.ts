@@ -130,12 +130,17 @@ export class AgentThread {
     return delta;
   }
 
+  /** True while a turn is open or a tool call has no result yet. */
+  get busy(): boolean {
+    return this.turnOpen || this.openTools.size > 0;
+  }
+
   state(now: number, windowMs: number): SessionState {
     if (this.lastAt === null) {
       return 'unknown';
     }
     const recent = now - this.lastAt <= windowMs;
-    return recent && (this.turnOpen || this.openTools.size > 0) ? 'running' : 'idle';
+    return recent && this.busy ? 'running' : 'idle';
   }
 
   usage(): TokenUsage {

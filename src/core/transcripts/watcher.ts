@@ -40,6 +40,8 @@ export interface TranscriptWatcherOptions {
   readonly bus: EventBus;
   /** Sessions whose files changed within this window are tailed. */
   readonly activeWindowMs?: number;
+  /** A session with no open turn leaves once its files have been quiet this long. */
+  readonly idleWindowMs?: number;
   readonly pollIntervalMs?: number;
   readonly now?: () => number;
   /** Null turns fs.watch off and leaves only polling. */
@@ -48,6 +50,7 @@ export interface TranscriptWatcherOptions {
 }
 
 export const DEFAULT_ACTIVE_WINDOW_MS = 30 * 60 * 1000;
+export const DEFAULT_IDLE_WINDOW_MS = 10 * 60 * 1000;
 export const DEFAULT_POLL_INTERVAL_MS = 2000;
 const SOURCE = 'transcripts';
 
@@ -125,6 +128,7 @@ export class TranscriptWatcher {
   private readonly projectsDir: string;
   private readonly bus: EventBus;
   private readonly activeWindowMs: number;
+  private readonly idleWindowMs: number;
   private readonly pollIntervalMs: number;
   private readonly now: () => number;
   private readonly watchFactory: WatchFactory | null;
@@ -132,6 +136,8 @@ export class TranscriptWatcher {
   private readonly tracked = new Map<string, TrackedSession>();
   /** Sessions opened from a list view, tailed even outside the active window. */
   private readonly pinned = new Set<string>();
+  /** Sessions dropped as idle, with the mtime they had then. A newer write brings them back. */
+  private readonly settled = new Map<string, number>();
   private timer: NodeJS.Timeout | null = null;
   private handle: WatchHandle | null = null;
   private running: Promise<void> | null = null;
@@ -142,6 +148,7 @@ export class TranscriptWatcher {
     this.projectsDir = options.projectsDir;
     this.bus = options.bus;
     this.activeWindowMs = options.activeWindowMs ?? DEFAULT_ACTIVE_WINDOW_MS;
+    this.idleWindowMs = options.idleWindowMs ?? DEFAULT_IDLE_WINDOW_MS;
     this.pollIntervalMs = options.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS;
     this.now = options.now ?? Date.now;
     this.watchFactory =
@@ -248,22 +255,60 @@ export class TranscriptWatcher {
     const sessions = await scanSessions(this.projectsDir);
     const now = this.now();
     const active = new Set<string>();
+    const recent = new Set<string>();
     for (const info of sessions) {
       if (this.disposed) {
         return;
       }
-      if (now - info.mtimeMs <= this.activeWindowMs || this.pinned.has(info.sessionId)) {
+      if (now - info.mtimeMs <= this.activeWindowMs) {
+        recent.add(info.sessionId);
+      }
+      if (await this.visit(info, now)) {
         active.add(info.sessionId);
-        await this.poll(info, now);
       }
     }
-    // A session that went quiet, or whose transcript is gone, leaves the fleet.
+    for (const sessionId of this.settled.keys()) {
+      if (!recent.has(sessionId)) {
+        this.settled.delete(sessionId);
+      }
+    }
+    // A session that went quiet, finished a while ago, or whose transcript is
+    // gone leaves the fleet.
     for (const sessionId of this.tracked.keys()) {
       if (!active.has(sessionId)) {
         this.tracked.delete(sessionId);
         this.emit('session.removed', { sessionId });
       }
     }
+  }
+
+  /** Read a session when it belongs in the fleet. True when it stays there. */
+  private async visit(info: SessionFileInfo, now: number): Promise<boolean> {
+    if (this.pinned.has(info.sessionId)) {
+      await this.poll(info, now);
+      return true;
+    }
+    if (
+      now - info.mtimeMs > this.activeWindowMs ||
+      this.settled.get(info.sessionId) === info.mtimeMs
+    ) {
+      return false;
+    }
+    this.settled.delete(info.sessionId);
+    await this.poll(info, now);
+    if (this.isSettled(info, now)) {
+      this.settled.set(info.sessionId, info.mtimeMs);
+      return false;
+    }
+    return true;
+  }
+
+  /** Idle past the idle window, with nothing mid-turn that could still finish. */
+  private isSettled(info: SessionFileInfo, now: number): boolean {
+    const session = this.tracked.get(info.sessionId);
+    return (
+      now - info.mtimeMs > this.idleWindowMs && session !== undefined && !session.accumulator.busy()
+    );
   }
 
   private async poll(info: SessionFileInfo, now: number): Promise<void> {

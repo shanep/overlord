@@ -28,6 +28,7 @@ import {
 import type { WatchFactory, WatchHandle } from './watcher.js';
 import {
   DEFAULT_ACTIVE_WINDOW_MS,
+  DEFAULT_IDLE_WINDOW_MS,
   DEFAULT_POLL_INTERVAL_MS,
   defaultWatchFactory,
   TranscriptWatcher,
@@ -313,6 +314,53 @@ describe('TranscriptWatcher', () => {
     expect(events).toStrictEqual([{ name: 'session.removed', payload: { sessionId: SESSION } }]);
   });
 
+  it('drops an idle session after the idle window until its transcript changes', async () => {
+    await writeFile(
+      layout.transcriptPath,
+      jsonl([
+        userPrompt('u1', 0, 'hi'),
+        assistant({ uuid: 'a1', at: 1, messageId: 'm1', content: [text('done')] }),
+      ]),
+    );
+    const quiet = new Date(Date.now() - 11 * 60_000);
+    await utimes(layout.transcriptPath, quiet, quiet);
+    clock = Date.now();
+    const watcher = make({ activeWindowMs: 30 * 60_000, idleWindowMs: 10 * 60_000 });
+    await watcher.refresh();
+    expect(watcher.sessionIds()).toStrictEqual([]);
+    expect(events.at(-1)).toStrictEqual({
+      name: 'session.removed',
+      payload: { sessionId: SESSION },
+    });
+    events.length = 0;
+    await watcher.refresh();
+    expect(events).toStrictEqual([]);
+
+    // Leaving the active window forgets it, so the same mtime reads it again.
+    const old = new Date(Date.now() - 60 * 60_000);
+    await utimes(layout.transcriptPath, old, old);
+    await watcher.refresh();
+    await utimes(layout.transcriptPath, quiet, quiet);
+    await watcher.refresh();
+    expect(names(events).at(-1)).toBe('session.removed');
+
+    const now = new Date();
+    await utimes(layout.transcriptPath, now, now);
+    await watcher.refresh();
+    expect(watcher.sessionIds()).toStrictEqual([SESSION]);
+  });
+
+  it('keeps a session that is mid-turn past the idle window', async () => {
+    await writeFile(layout.transcriptPath, jsonl([userPrompt('u1', 0, 'working')]));
+    const quiet = new Date(Date.now() - 11 * 60_000);
+    await utimes(layout.transcriptPath, quiet, quiet);
+    clock = Date.now();
+    const watcher = make({ activeWindowMs: 30 * 60_000, idleWindowMs: 10 * 60_000 });
+    await watcher.refresh();
+    expect(watcher.sessionIds()).toStrictEqual([SESSION]);
+    expect(names(events)).not.toContain('session.removed');
+  });
+
   it('removes a session whose transcript is deleted, and publishes it again if it comes back', async () => {
     await writeFile(layout.transcriptPath, jsonl([userPrompt('u1', 0, 'x')]));
     const watcher = make();
@@ -470,6 +518,7 @@ describe('TranscriptWatcher', () => {
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
     expect(DEFAULT_POLL_INTERVAL_MS).toBe(2000);
     expect(DEFAULT_ACTIVE_WINDOW_MS).toBe(30 * 60 * 1000);
+    expect(DEFAULT_IDLE_WINDOW_MS).toBe(10 * 60 * 1000);
     await writeFile(layout.transcriptPath, jsonl([userPrompt('u1', 0, 'x')]));
     const watcher = new TranscriptWatcher({
       projectsDir: layout.projectsDir,

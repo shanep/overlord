@@ -46,6 +46,7 @@ function readSettings(): OverlordSettings {
   const config = vscode.workspace.getConfiguration('overlord');
   return {
     activeWindowMinutes: config.get<number>('activeWindowMinutes', 30),
+    idleMinutes: config.get<number>('idleMinutes', 10),
     updateThrottleMs: config.get<number>('updateThrottleMs', 250),
     maxConcurrency: config.get<number>('maxConcurrency', 4),
     holdTimeoutSeconds: config.get<number>('permissions.holdTimeoutSeconds', 600),
