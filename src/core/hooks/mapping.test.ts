@@ -5,6 +5,7 @@ import { ZERO_USAGE } from '../../shared/model.js';
 import {
   agentIdOf,
   permissionOutput,
+  preToolUseDenyOutput,
   ruleDenyMessage,
   toAgentNode,
   toInstructionLoaded,
@@ -108,7 +109,6 @@ describe('toPermissionRequest', () => {
       toPermissionRequest(
         {
           session_id: 's',
-          hook_event_name: 'PermissionRequest',
           tool_name: 'Bash',
           tool_input: { command: 'ls' },
         },
@@ -198,5 +198,17 @@ describe('ruleDenyMessage', () => {
     );
     expect(ruleDenyMessage('r1', ' '.repeat(3))).toBe('Denied by Overlord auto-approve rule r1');
     expect(ruleDenyMessage('r2', '')).toBe('Denied by Overlord auto-approve rule r2');
+  });
+});
+
+describe('preToolUseDenyOutput', () => {
+  it('uses the documented PreToolUse deny shape', () => {
+    expect(preToolUseDenyOutput('no messages to other sessions')).toStrictEqual({
+      hookSpecificOutput: {
+        hookEventName: 'PreToolUse',
+        permissionDecision: 'deny',
+        permissionDecisionReason: 'no messages to other sessions',
+      },
+    });
   });
 });

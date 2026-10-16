@@ -2,6 +2,8 @@
 // overlord-hook script, which forwards its stdin here over a local socket and
 // prints whatever we answer. Only PermissionRequest waits for an answer; every
 // other event is acknowledged at once so hooks never slow a session down.
+// SendMessage never asks permission, so its deny rules are applied on
+// PreToolUse instead. PreToolUse only ever denies; it never allows anything.
 
 import { randomUUID } from 'node:crypto';
 import { mkdir, rm } from 'node:fs/promises';
@@ -16,6 +18,7 @@ import type { AuditEntry } from './audit.js';
 import type { InstructionLoadedEvent } from './mapping.js';
 import {
   permissionOutput,
+  preToolUseDenyOutput,
   ruleDenyMessage,
   toAgentNode,
   toInstructionLoaded,
@@ -31,7 +34,7 @@ import type {
 import { parseHookPayload } from './payloads.js';
 import type { HookOutput } from './protocol.js';
 import { encodeMessage, LineDecoder, MAX_LINE_BYTES, parseRequestLine } from './protocol.js';
-import { findMatchingRule } from './rules.js';
+import { findMatchingRule, SEND_MESSAGE_TOOL } from './rules.js';
 
 export { socketPath } from './socket-path.js';
 
@@ -72,6 +75,11 @@ interface Pending {
 }
 
 const SOURCE = 'hooks';
+
+type PreToolUsePayload = Extract<KnownPayload, { readonly hook_event_name: 'PreToolUse' }>;
+
+/** Tools that run without a permission prompt, so deny rules must act on PreToolUse. */
+const PRE_TOOL_DENY_TOOLS: ReadonlySet<string> = new Set([SEND_MESSAGE_TOOL]);
 
 async function isLive(file: string): Promise<boolean> {
   return new Promise((resolve) => {
@@ -252,7 +260,24 @@ export class HookServer {
         this.publish(hook.payload);
       });
     }
-    this.reply(socket, message.id, {});
+    const output =
+      hook.known && hook.payload.hook_event_name === 'PreToolUse'
+        ? this.preToolDeny(hook.payload)
+        : null;
+    this.reply(socket, message.id, output ?? {});
+  }
+
+  /** The deny output when a deny rule covers a tool that never prompts, else null. */
+  private preToolDeny(payload: PreToolUsePayload): HookOutput | null {
+    if (!PRE_TOOL_DENY_TOOLS.has(payload.tool_name)) {
+      return null;
+    }
+    const rule = findMatchingRule(this.rules, payload.tool_name, payload.tool_input);
+    if (rule?.behavior !== 'deny') {
+      return null;
+    }
+    this.record(toPermissionRequest(payload, this.newId(), this.now()), rule.id, 'deny');
+    return preToolUseDenyOutput(ruleDenyMessage(rule.id, rule.description));
   }
 
   private publish(payload: KnownPayload): void {

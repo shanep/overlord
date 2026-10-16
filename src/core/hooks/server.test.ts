@@ -104,6 +104,16 @@ const denyRm: AutoApproveRule = {
   description: 'no deletes',
 };
 
+function sendEvent(to: unknown, toolName = 'SendMessage'): Readonly<Record<string, unknown>> {
+  return {
+    ...base,
+    agent_id: 'agent-7',
+    hook_event_name: 'PreToolUse',
+    tool_name: toolName,
+    tool_input: { to, message: 'synthetic text', summary: 'note' },
+  };
+}
+
 async function waitFor(check: () => boolean): Promise<void> {
   for (let attempt = 0; attempt < 200 && !check(); attempt += 1) {
     await new Promise((resolve) => {
@@ -460,6 +470,104 @@ describe('HookServer', () => {
     expect(audit.map((entry) => [entry.ruleId, entry.behavior])).toStrictEqual([
       ['deny-rm', 'deny'],
     ]);
+  });
+
+  describe('SendMessage on PreToolUse', () => {
+    const denyPeers: AutoApproveRule = {
+      id: 'deny-peers',
+      enabled: true,
+      behavior: 'deny',
+      tool: 'SendMessage',
+      pattern: 'uds:*',
+      description: 'no other sessions',
+    };
+
+    it('denies a matching send with the documented PreToolUse output and records it', async () => {
+      const audit: AuditEntry[] = [];
+      await startServer({
+        rules: [{ ...denyPeers, behavior: 'allow', id: 'allow-all', pattern: null }, denyPeers],
+        audit: {
+          append: async (entry) => {
+            audit.push(entry);
+            await Promise.resolve();
+          },
+        },
+      });
+      const opened = await client();
+      opened.send('m1', sendEvent('uds:/tmp/cc-socks/9.sock'));
+      expect(await opened.next()).toStrictEqual({
+        id: 'm1',
+        output: {
+          hookSpecificOutput: {
+            hookEventName: 'PreToolUse',
+            permissionDecision: 'deny',
+            permissionDecisionReason:
+              'Denied by Overlord auto-approve rule deny-peers: no other sessions',
+          },
+        },
+      });
+      expect(audit).toStrictEqual([
+        {
+          at: 1002,
+          requestId: 'perm-1',
+          sessionId: 'sess',
+          agentId: 'agent-7',
+          toolName: 'SendMessage',
+          ruleId: 'deny-peers',
+          behavior: 'deny',
+        },
+      ]);
+    });
+
+    it('never allows through PreToolUse, even when an allow rule matches', async () => {
+      const audit: AuditEntry[] = [];
+      await startServer({
+        rules: [{ ...denyPeers, behavior: 'allow', id: 'allow-all', pattern: null }],
+        audit: {
+          append: async (entry) => {
+            audit.push(entry);
+            await Promise.resolve();
+          },
+        },
+      });
+      const opened = await client();
+      opened.send('m1', sendEvent('uds:/tmp/cc-socks/9.sock'));
+      expect(await opened.next()).toStrictEqual({ id: 'm1', output: {} });
+      expect(audit).toStrictEqual([]);
+    });
+
+    it('lets a send through when no deny rule covers its recipient', async () => {
+      await startServer({ rules: [denyPeers, { ...denyPeers, id: 'off', enabled: false }] });
+      const opened = await client();
+      opened.send('m1', sendEvent('main'));
+      expect(await opened.next()).toStrictEqual({ id: 'm1', output: {} });
+      opened.send('m2', sendEvent(null));
+      expect(await opened.next()).toStrictEqual({ id: 'm2', output: {} });
+    });
+
+    it('leaves other tools to PermissionRequest', async () => {
+      const denyAll: AutoApproveRule = { ...denyPeers, tool: '*', pattern: null };
+      await startServer({ rules: [denyAll] });
+      const opened = await client();
+      opened.send('m1', sendEvent('uds:/x', 'Bash'));
+      expect(await opened.next()).toStrictEqual({ id: 'm1', output: {} });
+      opened.send('m2', sendEvent('uds:/x'));
+      expect(await opened.next()).toMatchObject({
+        id: 'm2',
+        output: { hookSpecificOutput: { permissionDecision: 'deny' } },
+      });
+    });
+
+    it('ignores PostToolUse for SendMessage', async () => {
+      await startServer({ rules: [denyPeers] });
+      const opened = await client();
+      opened.send('m1', {
+        ...sendEvent('uds:/x'),
+        hook_event_name: 'PostToolUse',
+        tool_response: {},
+      });
+      expect(await opened.next()).toStrictEqual({ id: 'm1', output: {} });
+    });
   });
 
   it('reports a failed audit write', async () => {

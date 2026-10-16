@@ -9,6 +9,8 @@ import {
   isCompoundCommand,
   ruleMatches,
   ruleSubject,
+  SEND_MESSAGE_TOOL,
+  toolPatternMatches,
 } from './rules.js';
 
 function rule(overrides: Partial<AutoApproveRule> & Pick<AutoApproveRule, 'id'>): AutoApproveRule {
@@ -286,5 +288,45 @@ describe('evaluateRules', () => {
         },
       ),
     );
+  });
+});
+
+describe('SendMessage rules', () => {
+  const message = { to: 'uds:/tmp/cc-socks/42.sock', message: 'hello', summary: 'hi' };
+
+  it('names the tool', () => {
+    expect(SEND_MESSAGE_TOOL).toBe('SendMessage');
+  });
+
+  it('matches the recipient, not a command or path', () => {
+    expect(ruleSubject('SendMessage', message)).toStrictEqual({
+      kind: 'recipient',
+      value: 'uds:/tmp/cc-socks/42.sock',
+    });
+    expect(ruleSubject('SendMessage', { message: 'no recipient', command: 'ls' })).toBeNull();
+    expect(ruleSubject('SendMessage', { to: 7 })).toBeNull();
+  });
+
+  it('lets a star cross the slashes in a socket address', () => {
+    const deny = rule({ id: 'd', behavior: 'deny', tool: 'SendMessage', pattern: 'uds:*' });
+    expect(ruleMatches(deny, 'SendMessage', message)).toBe(true);
+    expect(ruleMatches(deny, 'SendMessage', { to: 'main' })).toBe(false);
+    expect(ruleMatches(deny, 'SendMessage', { to: ' uds:/x' })).toBe(false);
+    const exact = rule({ id: 'e', behavior: 'deny', tool: 'SendMessage', pattern: 'wt-apps-*' });
+    expect(ruleMatches(exact, 'SendMessage', { to: 'wt-apps-d3' })).toBe(true);
+    expect(ruleMatches(exact, 'SendMessage', { to: 'main' })).toBe(false);
+  });
+
+  it('keeps file paths on the strict matcher', () => {
+    const paths = rule({ id: 'p', tool: 'Read', pattern: 'src/*' });
+    expect(ruleMatches(paths, 'Read', { file_path: 'src/a/b.ts' })).toBe(false);
+    expect(ruleMatches(paths, 'Read', { file_path: 'src/b.ts' })).toBe(true);
+  });
+
+  it('checks a tool pattern whether or not the rule is enabled', () => {
+    expect(toolPatternMatches('SendMessage', 'SendMessage')).toBe(true);
+    expect(toolPatternMatches('Send*', 'SendMessage')).toBe(true);
+    expect(toolPatternMatches('*', 'SendMessage')).toBe(true);
+    expect(toolPatternMatches('Bash', 'SendMessage')).toBe(false);
   });
 });

@@ -1,5 +1,6 @@
 // Auto-approve rules for permission requests. Deny rules always win over
-// allow rules, and disabled rules are ignored.
+// allow rules, and disabled rules are ignored. A SendMessage rule pattern
+// matches the message's recipient (the tool's `to` input).
 
 import picomatch from 'picomatch';
 
@@ -10,10 +11,11 @@ export interface RuleMatch {
   readonly ruleId: string;
 }
 
-/** What a rule pattern is matched against: a Bash command or a file tool path. */
+/** What a rule pattern is matched against: a Bash command, a file tool path, or a message recipient. */
 export type RuleSubject =
   | { readonly kind: 'command'; readonly value: string }
-  | { readonly kind: 'path'; readonly value: string };
+  | { readonly kind: 'path'; readonly value: string }
+  | { readonly kind: 'recipient'; readonly value: string };
 
 type Matcher = (value: string) => boolean;
 
@@ -51,7 +53,13 @@ function stringField(input: unknown, key: string): string | null {
   return typeof value === 'string' ? value : null;
 }
 
+export const SEND_MESSAGE_TOOL = 'SendMessage';
+
 export function ruleSubject(toolName: string, input: unknown): RuleSubject | null {
+  if (toolName === SEND_MESSAGE_TOOL) {
+    const to = stringField(input, 'to');
+    return to === null ? null : { kind: 'recipient', value: to };
+  }
   const command = stringField(input, 'command');
   if (command !== null && (toolName === 'Bash' || toolName === 'PowerShell')) {
     return { kind: 'command', value: command };
@@ -82,11 +90,17 @@ function patternMatches(rule: AutoApproveRule, subject: RuleSubject | null): boo
     }
     return compile(rule.pattern, true)(subject.value.trim());
   }
-  return compile(rule.pattern, false)(subject.value);
+  // Recipients such as "uds:/tmp/cc-socks/1.sock" have slashes, so a star crosses them.
+  return compile(rule.pattern, subject.kind === 'recipient')(subject.value);
+}
+
+/** True when a rule's tool pattern covers the tool, whether or not the rule is enabled. */
+export function toolPatternMatches(pattern: string, toolName: string): boolean {
+  return compile(pattern, false)(toolName);
 }
 
 export function ruleMatches(rule: AutoApproveRule, toolName: string, input: unknown): boolean {
-  if (!rule.enabled || !compile(rule.tool, false)(toolName)) {
+  if (!rule.enabled || !toolPatternMatches(rule.tool, toolName)) {
     return false;
   }
   return patternMatches(rule, ruleSubject(toolName, input));

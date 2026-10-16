@@ -1,5 +1,5 @@
 // Turns hook payloads into the shared model and permission decisions into the
-// JSON a PermissionRequest hook prints.
+// JSON a PermissionRequest or PreToolUse hook prints.
 
 import type {
   AgentNode,
@@ -77,8 +77,14 @@ export function toInstructionLoaded(
   };
 }
 
+/** The fields a tool hook (PermissionRequest or PreToolUse) carries about the call. */
+export type ToolCallPayload = Pick<
+  PermissionRequestPayload,
+  'session_id' | 'agent_id' | 'tool_name' | 'tool_input'
+>;
+
 export function toPermissionRequest(
-  payload: PermissionRequestPayload,
+  payload: ToolCallPayload,
   id: string,
   at: number,
 ): PermissionRequest {
@@ -135,6 +141,17 @@ export function permissionOutput(decision: PermissionDecision): HookOutput {
       ? { behavior: 'allow' }
       : { behavior: 'deny', message: decision.message };
   return { hookSpecificOutput: { hookEventName: 'PermissionRequest', decision: body } };
+}
+
+/** The documented PreToolUse output that blocks a tool call and tells Claude why. */
+export function preToolUseDenyOutput(reason: string): HookOutput {
+  return {
+    hookSpecificOutput: {
+      hookEventName: 'PreToolUse',
+      permissionDecision: 'deny',
+      permissionDecisionReason: reason,
+    },
+  };
 }
 
 export function ruleDenyMessage(ruleId: string, description: string): string {
