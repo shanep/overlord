@@ -208,17 +208,19 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     register('overlord.newAgent', async () => dispatch({ type: 'newAgent' })),
     register('overlord.newSkill', async () => dispatch({ type: 'newSkill' })),
     register('overlord.importClaudeAi', async () => dispatch({ type: 'importClaudeAi' })),
-    register('overlord.connectConfigRepo', async () => overlord.sync.connectConfigRepo()),
+    // Turning sync on also sets up a new machine, so both commands do the same.
+    register('overlord.connectConfigRepo', async () => dispatch({ type: 'turnOnSync' })),
+    register('overlord.bootstrap', async () => dispatch({ type: 'turnOnSync' })),
+    register('overlord.syncNow', async () => dispatch({ type: 'syncNow' })),
     register('overlord.syncPush', async () => overlord.sync.push()),
     register('overlord.syncPull', async () => overlord.sync.pull()),
     register('overlord.importDotfiles', async () => overlord.sync.importDotfiles()),
-    register('overlord.bootstrap', async () => overlord.sync.bootstrap()),
     register('overlord.refresh', async () => overlord.refresh()),
     // Each window runs its own Overlord, so the one coming to the front points
-    // its Fleet at the session that belongs to it.
+    // its Fleet at the session that belongs to it and pulls config changes.
     vscode.window.onDidChangeWindowState((state) => {
       if (state.focused) {
-        overlord.runtime.places.windowFocused();
+        overlord.windowFocused();
       }
     }),
     vscode.workspace.onDidChangeConfiguration((event) => {

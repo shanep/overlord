@@ -4,6 +4,7 @@
 import type { LaunchProfile } from '../../shared/model.js';
 import type {
   ConfigState,
+  ConfigSyncStatus,
   PlanLimits,
   UsageStats,
   WorktreeSummary,
@@ -15,6 +16,7 @@ import type { ClaudePaths } from '../paths.js';
 import type { OverlordStore } from '../store/store.js';
 import type { ExecFunction as SurfacesExec, IsAlive } from '../surfaces/process.js';
 import type { Exec } from '../sync/exec.js';
+import type { FetchFunction } from '../sync/github.js';
 import type { WorktreeRegistry } from '../worktrees/registry.js';
 
 import type { AsyncValue } from './async-value.js';
@@ -38,6 +40,13 @@ export interface Caches {
   readonly usage: AsyncValue<UsageStats>;
   readonly plan: AsyncValue<PlanLimits | null>;
   readonly worktrees: AsyncValue<readonly WorktreeSummary[]>;
+}
+
+/** The background config sync, reached from actions and views. */
+interface ConfigSyncHandle {
+  readonly status: () => ConfigSyncStatus;
+  /** A full sync now: commit, pull, push and apply what came in. */
+  readonly syncNow: () => Promise<void>;
 }
 
 export interface Runtime {
@@ -69,6 +78,9 @@ export interface Runtime {
   readonly projects: ProjectIndex;
   readonly caches: Caches;
   readonly context: ContextViews;
+  readonly configSync: ConfigSyncHandle;
+  /** Calls the GitHub REST API. Tests pass a fake so nothing reaches the network. */
+  readonly fetch: FetchFunction;
   /** Sends a source.error to the bus, which also lands in the status error list. */
   readonly report: (source: string, message: string) => void;
   /** Asks the CLI for the plan limits /usage shows. Resolves to the raw reply. */

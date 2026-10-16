@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { validateSkillFile } from '../authoring/validate.js';
 import type { LiveProcess } from '../surfaces/live.js';
 
-import { defaultDelay } from './app.js';
+import { defaultDelay } from './app-deps.js';
 import { makeApp, makeEnv, writeText } from './test-helpers/fixtures.js';
 import {
   clearOtherCopy,

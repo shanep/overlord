@@ -138,7 +138,12 @@
       },
       {
         "command": "overlord.connectConfigRepo",
-        "title": "Connect Config Repo",
+        "title": "Turn On Config Sync",
+        "category": "Overlord"
+      },
+      {
+        "command": "overlord.syncNow",
+        "title": "Sync Config Now",
         "category": "Overlord"
       },
       {
@@ -329,12 +334,23 @@
         "overlord.configRepo.url": {
           "type": "string",
           "default": "",
-          "description": "Git URL of the config repo, for example git@github.com:shanep/claude-config.git."
+          "description": "Git URL of the config repo. Leave it empty and Turn On Config Sync signs in to GitHub, finds or creates a private claude-config repo and fills this in."
         },
         "overlord.configRepo.path": {
           "type": "string",
           "default": "~/.claude-config",
           "description": "Where the config repo is cloned."
+        },
+        "overlord.configSync.auto": {
+          "type": "boolean",
+          "default": true,
+          "description": "Once config sync is on, commit, pull and push the config repo in the background, the way Settings Sync does."
+        },
+        "overlord.configSync.intervalMinutes": {
+          "type": "number",
+          "default": 5,
+          "minimum": 1,
+          "description": "How often the background config sync checks the remote for changes from other machines. Local changes are pushed within a minute."
         }
       }
     }

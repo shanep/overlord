@@ -140,7 +140,9 @@ describe('OverlordApp', () => {
     });
     await app.start();
     await app.start();
-    expect(intervals.map((entry) => entry.ms)).toStrictEqual([30_000, 1000, 10_000, 60_000, 5000]);
+    expect(intervals.map((entry) => entry.ms)).toStrictEqual([
+      30_000, 1000, 10_000, 60_000, 5000, 60_000,
+    ]);
     const workspace = env.host.workspace ?? '';
     expect(watches.map((entry) => entry.file)).toStrictEqual([
       env.paths.userSettings,

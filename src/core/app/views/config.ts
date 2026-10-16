@@ -1,7 +1,7 @@
 // The config and sync view: every config item with its badge, and the state
 // of the config repo clone.
 
-import type { ConfigState } from '../../../shared/protocol.js';
+import type { ConfigState, ConfigSyncStatus } from '../../../shared/protocol.js';
 import type { ClaudePaths } from '../../paths.js';
 import type { Exec } from '../../sync/exec.js';
 import { pathExists, realpathOrSelf } from '../../sync/files.js';
@@ -17,10 +17,13 @@ export interface ConfigLoadDeps {
   readonly workspace: string | null;
 }
 
+export const IDLE_SYNC: ConfigSyncStatus = { state: 'idle', lastSyncAt: null, message: null };
+
 export function emptyConfig(repoDir: string | null): ConfigState {
   return {
     items: [],
     repo: { connected: false, remote: null, path: repoDir, ahead: 0, behind: 0, dirty: 0 },
+    sync: IDLE_SYNC,
   };
 }
 
@@ -60,5 +63,6 @@ export async function loadConfig(deps: ConfigLoadDeps): Promise<ConfigState> {
       behind: counts.behind,
       dirty: changes.length,
     },
+    sync: IDLE_SYNC,
   };
 }

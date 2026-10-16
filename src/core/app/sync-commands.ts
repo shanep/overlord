@@ -1,33 +1,51 @@
-// Config repo commands: connect a clone, push, pull, the one-time dot-files
-// import and new machine setup. Every step that changes files shows what it
-// will do first and asks.
+// Config repo commands: turn on sync (sign in to GitHub, find or create the
+// repo, clone it and set this machine up), push, pull and the one-time
+// dot-files import. Every step that changes files on this machine shows what
+// it will do first and asks.
 
-import { mkdir } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { bootstrapNewMachine } from '../sync/bootstrap.js';
-import { pathExists, readTextOrNull } from '../sync/files.js';
-import type { StatusEntry } from '../sync/git.js';
+import { listDir, readTextOrNull } from '../sync/files.js';
+import type { GitAuth, StatusEntry } from '../sync/git.js';
 import {
   aheadBehind,
   clone,
   commitAll,
+  hasCommits,
   pull,
   push,
   remoteUrl,
   statusPorcelain,
 } from '../sync/git.js';
+import {
+  CONFIG_REPO_NAME,
+  findOrCreateRepo,
+  gitHubAuthEnv,
+  isGitHubHttps,
+} from '../sync/github.js';
 import { planImportFromDotfiles } from '../sync/import-dotfiles.js';
 import { remoteSlug } from '../sync/layout.js';
+import { emptyManifest, writeManifest } from '../sync/manifest.js';
 import { scanForSecrets } from '../sync/secrets.js';
 
-import { confirmAndApply } from './apply-plan.js';
+import { changeCount, confirmAndApply } from './apply-plan.js';
+import type { HostPort } from './host-port.js';
 import { runMemorySync } from './memory.js';
 import type { Runtime } from './runtime.js';
 import { plural } from './text.js';
 import { configRepoDir, connectedRoot } from './views/config.js';
 
-export const NOT_CONNECTED = 'Connect a config repo first.';
+export const NOT_CONNECTED = 'Turn on config sync first.';
+export const SIGN_IN_MESSAGE = 'Config sync needs you to sign in to GitHub.';
+
+const README = `# Claude Code config
+
+Overlord keeps this repo in sync with ~/.claude on every machine it runs on.
+overlord.json lists each item and where it lands. Edit the files through
+~/.claude as usual; Overlord commits, pulls and pushes in the background.
+`;
 
 function repoDir(rt: Runtime): string {
   return configRepoDir(rt.host.settings.configRepoPath, rt.paths.home);
@@ -45,6 +63,23 @@ async function requireRoot(rt: Runtime): Promise<string | null> {
 function sameRepo(left: string, right: string): boolean {
   const slug = remoteSlug(left);
   return slug === null ? left === right : slug === remoteSlug(right);
+}
+
+/**
+ * Credentials for the config repo's remote: the editor's GitHub token for an
+ * https github.com URL, or the user's own git setup (SSH, a credential helper)
+ * for anything else. Null when GitHub needs a sign in that did not happen.
+ */
+export async function gitAuthFor(
+  host: HostPort,
+  url: string | null,
+  interactive: boolean,
+): Promise<{ readonly auth: GitAuth } | null> {
+  if (url === null || !isGitHubHttps(url)) {
+    return { auth: null };
+  }
+  const session = await host.gitHubSession(interactive);
+  return session === null ? null : { auth: gitHubAuthEnv(session.accessToken) };
 }
 
 /** The first changed file that looks like it holds a token, as a message. */
@@ -65,40 +100,99 @@ export async function secretInChanges(
 export class SyncCommands {
   constructor(private readonly rt: Runtime) {}
 
-  /** Clone the config repo, or adopt a clone that is already there. */
-  async connectConfigRepo(): Promise<void> {
+  /**
+   * The one step a machine needs, like turning on VS Code's Settings Sync.
+   * With no URL configured it signs in to GitHub through the editor, finds
+   * the user's claude-config repo or creates it private, and saves its URL.
+   * A new repo gets a starter manifest. An existing one is set up here after a
+   * dry run. From then on ConfigSync keeps it in step in the background.
+   */
+  async turnOn(): Promise<void> {
     const { host } = this.rt;
-    const entered = await host.inputBox({
-      prompt: 'Git URL of your config repo',
-      value: host.settings.configRepoUrl,
-    });
-    const url = entered?.trim() ?? '';
-    if (url === '') {
-      return;
-    }
     const dir = repoDir(this.rt);
-    const root = await connectedRoot(this.rt.exec, dir);
-    if (root !== null) {
-      const remote = await remoteUrl(this.rt.exec, root);
-      if (remote === null || !sameRepo(remote, url)) {
-        host.showError(
-          `${dir} holds a different repo. Change overlord.configRepo.path or move it.`,
-        );
-        return;
-      }
-      host.showInfo(`Connected to the clone in ${dir}.`);
-    } else if (await pathExists(dir)) {
-      host.showError(`${dir} exists and is not a git clone.`);
+    const root = (await connectedRoot(this.rt.exec, dir)) ?? (await this.cloneInto(dir));
+    if (root === null) {
       return;
-    } else {
-      if (!(await host.confirm(`Clone ${url} into ${dir}?`, 'Clone'))) {
-        return;
-      }
-      await mkdir(path.dirname(dir), { recursive: true });
-      await clone(this.rt.exec, url, dir);
-      host.showInfo(`Cloned the config repo into ${dir}.`);
     }
-    await this.rt.caches.config.refresh();
+    const url = await remoteUrl(this.rt.exec, root);
+    const configured = host.settings.configRepoUrl.trim();
+    if (url === null || (configured !== '' && !sameRepo(url, configured))) {
+      host.showError(`${dir} holds a different repo. Change overlord.configRepo.path or move it.`);
+      return;
+    }
+    if (configured === '') {
+      await host.saveSetting('configRepo.url', url);
+    }
+    if (!(await hasCommits(this.rt.exec, root))) {
+      await this.seed(root);
+    }
+    await this.setUpMachine(url, root);
+    await this.rt.configSync.syncNow();
+  }
+
+  /** Clones the configured repo, or the user's GitHub one, into dir. Null when that cannot happen. */
+  private async cloneInto(dir: string): Promise<string | null> {
+    const { host } = this.rt;
+    const entries = await listDir(dir);
+    if (entries.length > 0) {
+      host.showError(`${dir} exists and is not a git clone.`);
+      return null;
+    }
+    const url = await this.repoUrl();
+    if (url === null) {
+      return null;
+    }
+    const signIn = await gitAuthFor(host, url, true);
+    if (signIn === null) {
+      host.showError(SIGN_IN_MESSAGE);
+      return null;
+    }
+    await mkdir(path.dirname(dir), { recursive: true });
+    await clone(this.rt.exec, url, dir, signIn.auth);
+    return dir;
+  }
+
+  /** The configured URL, or the user's GitHub config repo, made when there is none. */
+  private async repoUrl(): Promise<string | null> {
+    const { host } = this.rt;
+    const configured = host.settings.configRepoUrl.trim();
+    if (configured !== '') {
+      return configured;
+    }
+    const session = await host.gitHubSession(true);
+    if (session === null) {
+      host.showError(SIGN_IN_MESSAGE);
+      return null;
+    }
+    const repo = await findOrCreateRepo(this.rt.fetch, session.accessToken, CONFIG_REPO_NAME);
+    host.showInfo(
+      repo.created
+        ? `Created the private repo ${repo.fullName} for your Claude config.`
+        : `Found your config repo ${repo.fullName}.`,
+    );
+    return repo.cloneUrl;
+  }
+
+  /** A first commit for an empty repo, so every machine has a manifest to read. */
+  private async seed(root: string): Promise<void> {
+    await writeManifest(root, emptyManifest());
+    await writeFile(path.join(root, 'README.md'), README);
+    await commitAll(this.rt.exec, root, `Start the config repo from ${this.rt.hostname}`);
+  }
+
+  /** Clone the repo's external repos and apply its manifest here, after a dry run. */
+  private async setUpMachine(url: string, root: string): Promise<void> {
+    const signIn = await gitAuthFor(this.rt.host, url, true);
+    const result = await bootstrapNewMachine({
+      repoUrl: url,
+      dest: root,
+      paths: this.rt.paths,
+      host: this.rt.hostname,
+      deps: { exec: this.rt.exec, auth: signIn?.auth ?? null },
+    });
+    if (changeCount(result.actions) > 0) {
+      await confirmAndApply(this.rt, result.actions, []);
+    }
   }
 
   async push(): Promise<void> {
@@ -125,7 +219,12 @@ export class SyncCommands {
     if (changes.length > 0) {
       await commitAll(this.rt.exec, root, `Update config from ${this.rt.hostname}`);
     }
-    await push(this.rt.exec, root);
+    const signIn = await gitAuthFor(this.rt.host, await remoteUrl(this.rt.exec, root), true);
+    if (signIn === null) {
+      this.rt.host.showError(SIGN_IN_MESSAGE);
+      return;
+    }
+    await push(this.rt.exec, root, 'origin', signIn.auth);
     this.rt.host.showInfo(`Pushed the config repo (${plural(changes.length, 'changed file')}).`);
     await this.rt.caches.config.refresh();
   }
@@ -138,7 +237,12 @@ export class SyncCommands {
     if (!(await this.rt.host.confirm('Pull the latest config from the remote?', 'Pull'))) {
       return;
     }
-    await pull(this.rt.exec, root);
+    const signIn = await gitAuthFor(this.rt.host, await remoteUrl(this.rt.exec, root), true);
+    if (signIn === null) {
+      this.rt.host.showError(SIGN_IN_MESSAGE);
+      return;
+    }
+    await pull(this.rt.exec, root, signIn.auth);
     await runMemorySync(this.rt, root);
     this.rt.host.showInfo('Pulled the config repo.');
     await this.rt.caches.config.refresh();
@@ -157,41 +261,6 @@ export class SyncCommands {
     const plan = await planImportFromDotfiles(folder, root, this.rt.paths, this.rt.hostname);
     const skipped = plan.skipped.map((entry) => `skipped ${entry.path}: ${entry.reason}`);
     await confirmAndApply(this.rt, plan.actions, skipped);
-    await this.rt.caches.config.refresh();
-  }
-
-  /** New machine setup: clone the repo and its externals, then apply the manifest. */
-  async bootstrap(): Promise<void> {
-    const { host } = this.rt;
-    const configured = host.settings.configRepoUrl.trim();
-    const entered =
-      configured === ''
-        ? await host.inputBox({ prompt: 'Git URL of your config repo', value: '' })
-        : configured;
-    const url = entered?.trim() ?? '';
-    if (url === '') {
-      return;
-    }
-    const destination = repoDir(this.rt);
-    if (
-      !(await host.confirm(
-        `Clone ${url} into ${destination} if needed and plan the setup?`,
-        'Continue',
-      ))
-    ) {
-      return;
-    }
-    const result = await bootstrapNewMachine({
-      repoUrl: url,
-      dest: destination,
-      paths: this.rt.paths,
-      host: this.rt.hostname,
-      deps: { exec: this.rt.exec },
-    });
-    const applied = await confirmAndApply(this.rt, result.actions, []);
-    if (applied?.failed === null) {
-      await runMemorySync(this.rt, destination);
-    }
     await this.rt.caches.config.refresh();
   }
 }

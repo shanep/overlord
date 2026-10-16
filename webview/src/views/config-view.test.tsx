@@ -6,7 +6,7 @@ import { configState } from '../../test/fixtures-tools.js';
 import { expectAccessible, FakeApi, first, renderView } from '../../test/render.js';
 
 import { isConfigStatus, STATUS_INFO, STATUS_ORDER } from './config-labels.js';
-import { canAdopt, ConfigView, groupItems } from './config-view.js';
+import { canAdopt, ConfigView, groupItems, syncLine } from './config-view.js';
 
 describe('groupItems', () => {
   it('groups by kind in a fixed order with names sorted', () => {
@@ -25,6 +25,23 @@ describe('groupItems', () => {
     const groups = groupItems(configState.items, 'secret');
     expect(groups).toHaveLength(1);
     expect(first(groups).items.map((item) => item.id)).toStrictEqual(['github']);
+  });
+});
+
+describe('syncLine', () => {
+  it('says what the sync is doing or did last', () => {
+    const minute = 60_000;
+    expect(syncLine({ state: 'idle', lastSyncAt: null, message: null }, 0)).toBe('Not synced yet.');
+    expect(syncLine({ state: 'idle', lastSyncAt: 0, message: null }, 5 * minute)).toBe(
+      'Synced 5m ago.',
+    );
+    expect(syncLine({ state: 'off', lastSyncAt: null, message: null }, 0)).toBe(
+      'Background sync is off (overlord.configSync.auto).',
+    );
+    expect(syncLine({ state: 'error', lastSyncAt: null, message: 'Boom.' }, 0)).toBe('Boom.');
+    expect(syncLine({ state: 'error', lastSyncAt: null, message: null }, 0)).toBe(
+      'The last sync failed.',
+    );
   });
 });
 
@@ -56,15 +73,13 @@ describe('ConfigView', () => {
 
   it('posts sync, authoring, open and adopt actions', async () => {
     const { getByRole, api } = renderView(<ConfigView state={configState} />);
-    await userEvent.click(getByRole('button', { name: 'Push' }));
-    await userEvent.click(getByRole('button', { name: 'Pull' }));
+    await userEvent.click(getByRole('button', { name: 'Sync now' }));
     await userEvent.click(getByRole('button', { name: 'New agent' }));
     await userEvent.click(getByRole('button', { name: 'New skill' }));
     await userEvent.click(getByRole('button', { name: '/Users/dev/.claude/skills/canvas' }));
     await userEvent.click(getByRole('button', { name: 'Adopt memory into repo' }));
     expect(api.actions()).toStrictEqual([
-      { type: 'syncPush' },
-      { type: 'syncPull' },
+      { type: 'syncNow' },
       { type: 'newAgent' },
       { type: 'newSkill' },
       { type: 'openFile', path: '/Users/dev/.claude/skills/canvas' },
@@ -73,12 +88,30 @@ describe('ConfigView', () => {
     expect(getByRole('button', { name: /^Adopt/u })).toBeDefined();
   });
 
-  it('disables sync without a connected repo', () => {
+  it('offers to turn sync on without a connected repo', async () => {
     const repo = { ...configState.repo, connected: false, remote: null, path: null };
-    const { getByRole, getByText } = renderView(<ConfigView state={{ ...configState, repo }} />);
-    expect(getByText('No config repo connected.')).toBeDefined();
-    expect(getByRole('button', { name: 'Push' })).toHaveProperty('disabled', true);
-    expect(getByRole('button', { name: 'Pull' })).toHaveProperty('disabled', true);
+    const { getByRole, getByText, queryByRole, api } = renderView(
+      <ConfigView state={{ ...configState, repo }} />,
+    );
+    expect(getByText(/^Config sync is off\./u)).toBeDefined();
+    expect(queryByRole('button', { name: 'Sync now' })).toBeNull();
+    await userEvent.click(getByRole('button', { name: 'Turn on sync' }));
+    expect(api.actions()).toStrictEqual([{ type: 'turnOnSync' }]);
+  });
+
+  it('shows where the background sync is', () => {
+    const syncing = { state: 'syncing', lastSyncAt: null, message: null } as const;
+    const { getByRole, getByText } = renderView(
+      <ConfigView state={{ ...configState, sync: syncing }} />,
+    );
+    expect(getByText('Syncing now.')).toBeDefined();
+    expect(getByRole('button', { name: 'Sync now' })).toHaveProperty('disabled', true);
+  });
+
+  it('marks a failed sync as an error', () => {
+    const failed = { state: 'error', lastSyncAt: null, message: 'Push failed.' } as const;
+    const { getByText } = renderView(<ConfigView state={{ ...configState, sync: failed }} />);
+    expect(getByText('Push failed.').className).toBe('error-text');
   });
 
   it('shows none for a connected repo with no remote or path', () => {

@@ -197,6 +197,7 @@ export const configState: ConfigState = {
     behind: 1,
     dirty: 3,
   },
+  sync: { state: 'idle', lastSyncAt: null, message: null },
 };
 
 export const usageState: UsageState = {

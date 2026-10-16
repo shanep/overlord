@@ -235,7 +235,7 @@ describe('adoptConfig', () => {
     expect(env.host.infos).toStrictEqual([
       'Only local-only items can be adopted.',
       'Only local-only items can be adopted.',
-      'Connect a config repo first.',
+      'Turn on config sync first.',
       'Overlord cannot adopt settings.json yet.',
     ]);
     expect(env.host.questions).toStrictEqual([]);

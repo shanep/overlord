@@ -234,6 +234,16 @@ export interface SessionsState {
   readonly projects: Readonly<Record<string, string>>;
 }
 
+/** Where the background config sync is. */
+export interface ConfigSyncStatus {
+  /** Off means overlord.configSync.auto is false. */
+  readonly state: 'off' | 'idle' | 'syncing' | 'error';
+  /** When the last sync finished cleanly, in epoch ms. */
+  readonly lastSyncAt: number | null;
+  /** What went wrong, when the state is error. */
+  readonly message: string | null;
+}
+
 export interface ConfigState {
   readonly items: readonly ConfigItem[];
   readonly repo: {
@@ -244,6 +254,7 @@ export interface ConfigState {
     readonly behind: number;
     readonly dirty: number;
   };
+  readonly sync: ConfigSyncStatus;
 }
 
 export interface UsageStats {
@@ -451,6 +462,8 @@ export type WebviewAction =
   | { readonly type: 'importClaudeAi' }
   | { readonly type: 'syncPush' }
   | { readonly type: 'syncPull' }
+  | { readonly type: 'turnOnSync' }
+  | { readonly type: 'syncNow' }
   | { readonly type: 'adoptConfig'; readonly itemId: string }
   | { readonly type: 'openFile'; readonly path: string }
   | { readonly type: 'openView'; readonly view: ViewId }

@@ -7,7 +7,7 @@ import type { ClaudePaths } from '../paths.js';
 import { summarizePlan, type Action } from './actions.js';
 import type { Exec } from './exec.js';
 import { listDir, pathExists, realpathOrSelf } from './files.js';
-import { clone, remoteUrl, repoRootOf } from './git.js';
+import { clone, remoteUrl, repoRootOf, type GitAuth } from './git.js';
 import { remoteSlug } from './layout.js';
 import { readManifest, type Manifest } from './manifest.js';
 import { checkoutOf, planApply } from './plan.js';
@@ -18,7 +18,8 @@ export interface BootstrapOptions {
   readonly dest: string;
   readonly paths: ClaudePaths;
   readonly host: string;
-  readonly deps: { readonly exec: Exec };
+  /** Credentials for cloning the config repo. Null leaves it to the user's git setup. */
+  readonly deps: { readonly exec: Exec; readonly auth?: GitAuth };
 }
 
 export interface BootstrapResult {
@@ -36,10 +37,15 @@ function sameRemote(a: string, b: string): boolean {
   return slugA === null ? a === b : slugA === remoteSlug(b);
 }
 
-async function ensureClone(exec: Exec, repoUrl: string, destination: string): Promise<boolean> {
+async function ensureClone(
+  exec: Exec,
+  repoUrl: string,
+  destination: string,
+  auth: GitAuth,
+): Promise<boolean> {
   const entries = await listDir(destination);
   if (entries.length === 0) {
-    await clone(exec, repoUrl, destination);
+    await clone(exec, repoUrl, destination, auth);
     return true;
   }
   // The folder itself must be the clone, not some folder inside another repo.
@@ -54,7 +60,7 @@ async function ensureClone(exec: Exec, repoUrl: string, destination: string): Pr
 
 export async function bootstrapNewMachine(options: BootstrapOptions): Promise<BootstrapResult> {
   const { exec } = options.deps;
-  const cloned = await ensureClone(exec, options.repoUrl, options.dest);
+  const cloned = await ensureClone(exec, options.repoUrl, options.dest, options.deps.auth ?? null);
   const read = await readManifest(options.dest);
   if (!read.ok) {
     throw new Error(`The config repo has no usable manifest: ${read.error}`);

@@ -1,4 +1,4 @@
-import { lstat, mkdir, readFile, readlink } from 'node:fs/promises';
+import { lstat, readFile, readlink } from 'node:fs/promises';
 import path from 'node:path';
 
 import { describe, expect, it } from 'vitest';
@@ -6,9 +6,16 @@ import { describe, expect, it } from 'vitest';
 import { encodeProjectDir } from '../paths.js';
 import type { Exec } from '../sync/exec.js';
 import type { StatusEntry } from '../sync/git.js';
-import { bareRemoteWith, git, isolatedExec, repoWith } from '../sync/test-helpers/fixtures.js';
+import type { FetchFunction } from '../sync/github.js';
+import {
+  bareRemoteWith,
+  git,
+  isolatedExec,
+  repoWith,
+  scratchDir,
+} from '../sync/test-helpers/fixtures.js';
 
-import { NOT_CONNECTED, secretInChanges } from './sync-commands.js';
+import { NOT_CONNECTED, secretInChanges, SIGN_IN_MESSAGE } from './sync-commands.js';
 import type { TestApp, TestEnv } from './test-helpers/fixtures.js';
 import {
   cloneConfigRepo,
@@ -50,68 +57,172 @@ describe('secretInChanges', () => {
   });
 });
 
-describe('connectConfigRepo', () => {
-  it('does nothing when cancelled or left blank', async () => {
-    const env = await makeEnv({ settings: { configRepoUrl: 'git@github.com:me/c.git' } });
-    const { app } = makeApp(env);
-    env.host.inputAnswers.push(null, ' '.repeat(3));
-    await app.sync.connectConfigRepo();
-    await app.sync.connectConfigRepo();
-    expect(env.host.inputs).toStrictEqual([
-      { prompt: 'Git URL of your config repo', value: 'git@github.com:me/c.git' },
-      { prompt: 'Git URL of your config repo', value: 'git@github.com:me/c.git' },
-    ]);
-    expect(env.host.questions).toStrictEqual([]);
-  });
+const SESSION = { accessToken: 'gho_token', account: 'me' };
 
-  it('clones after asking', async () => {
+interface FetchCall {
+  readonly method: string;
+  readonly url: string;
+  readonly body: unknown;
+}
+
+/** GitHub's API for a user called me, whose claude-config repo clones from `cloneUrl`. */
+function gitHub(cloneUrl: string, exists: boolean): { fetch: FetchFunction; calls: FetchCall[] } {
+  const calls: FetchCall[] = [];
+  const repo = { full_name: 'me/claude-config', clone_url: cloneUrl };
+  const fetch: FetchFunction = async (url, init) => {
+    const method = init.method ?? 'GET';
+    const body = typeof init.body === 'string' ? (JSON.parse(init.body) as unknown) : null;
+    calls.push({ method, url, body });
+    await Promise.resolve();
+    if (url.endsWith('/user')) {
+      return Response.json({ login: 'me' });
+    }
+    if (method === 'POST') {
+      return Response.json(repo, { status: 201 });
+    }
+    return exists ? Response.json(repo) : Response.json({ message: 'Not Found' }, { status: 404 });
+  };
+  return { fetch, calls };
+}
+
+async function emptyRemote(exec: Exec): Promise<string> {
+  const bare = path.join(await scratchDir(), 'claude-config.git');
+  await exec('git', ['init', '-q', '--bare', bare], {});
+  return bare;
+}
+
+describe('turnOn', () => {
+  it('signs in, creates the GitHub repo, seeds it and saves its URL', async () => {
     const env = await makeEnv();
     const exec = isolatedExec();
-    const remote = await bareRemoteWith(exec, { 'overlord.json': '{"version":1}\n' });
-    env.host.settings = { ...env.host.settings, configRepoPath: '~/nested/config' };
-    const { app } = gitApp(env, exec);
-    const dir = path.join(env.home, 'nested', 'config');
-    env.host.inputAnswers.push(remote, remote);
-    env.host.confirmAnswers.push(false, true);
-    await app.sync.connectConfigRepo();
-    await expect(lstat(dir)).rejects.toThrow();
-    await app.sync.connectConfigRepo();
-    expect(env.host.questions.map((question) => question.message)).toStrictEqual([
-      `Clone ${remote} into ${dir}?`,
-      `Clone ${remote} into ${dir}?`,
+    const remote = await emptyRemote(exec);
+    const github = gitHub(remote, false);
+    const { app } = makeApp(env, { deps: { exec, fetch: github.fetch } });
+    env.host.gitHubSignIns.push(SESSION);
+    await app.dispatch({ type: 'turnOnSync' }, {});
+    expect(env.host.errors).toStrictEqual([]);
+    expect(env.host.gitHubRequests[0]).toBe(true);
+    expect(github.calls.map((call) => `${call.method} ${call.url}`)).toStrictEqual([
+      'GET https://api.github.com/user',
+      'GET https://api.github.com/repos/me/claude-config',
+      'POST https://api.github.com/user/repos',
     ]);
-    expect(env.host.questions[0]?.action).toBe('Clone');
-    expect(env.host.infos).toStrictEqual([`Cloned the config repo into ${dir}.`]);
-    expect(await remoteOf(exec, dir)).toBe(remote);
+    expect(github.calls[2]?.body).toMatchObject({ name: 'claude-config', private: true });
+    expect(env.host.savedSettings).toStrictEqual([{ key: 'configRepo.url', value: remote }]);
+    expect(env.host.infos).toStrictEqual([
+      'Created the private repo me/claude-config for your Claude config.',
+      'Config synced.',
+    ]);
+    expect(await log(exec, remote)).toStrictEqual(['Start the config repo from test-host']);
+    const manifest = await git(exec, remote, ['show', 'HEAD:overlord.json']);
+    expect(JSON.parse(manifest)).toMatchObject({ version: 1, items: [] });
     expect(app.runtime.caches.config.peek().repo.connected).toBe(true);
   });
 
-  it('adopts an existing clone of the same repo, ssh or https', async () => {
+  it('stops when the GitHub sign in is cancelled', async () => {
     const env = await makeEnv();
     const exec = isolatedExec();
+    const github = gitHub('unused', false);
+    const { app } = makeApp(env, { deps: { exec, fetch: github.fetch } });
+    await app.dispatch({ type: 'turnOnSync' }, {});
+    expect(env.host.errors).toStrictEqual([SIGN_IN_MESSAGE]);
+    expect(github.calls).toStrictEqual([]);
+    await expect(lstat(path.join(env.home, '.claude-config'))).rejects.toThrow();
+  });
+
+  it('finds an existing repo, shows the plan and applies it after a yes', async () => {
+    const env = await makeEnv();
+    const exec = isolatedExec();
+    const manifest = {
+      version: 1,
+      items: [
+        {
+          id: 'claude-md',
+          kind: 'claude-md',
+          source: 'global/CLAUDE.md',
+          target: '~/.claude/CLAUDE.md',
+          mode: 'link',
+        },
+      ],
+    };
+    const remote = await bareRemoteWith(exec, {
+      'overlord.json': JSON.stringify(manifest),
+      'global/CLAUDE.md': '# shared\n',
+    });
+    const github = gitHub(remote, true);
+    const { app } = makeApp(env, { deps: { exec, fetch: github.fetch } });
+    env.host.gitHubSignedIn = SESSION;
+    env.host.confirmAnswers.push(false);
+    await app.dispatch({ type: 'turnOnSync' }, {});
+    await expect(lstat(env.paths.userClaudeMd)).rejects.toThrow();
+    expect(github.calls.map((call) => call.method)).toStrictEqual(['GET', 'GET']);
+    env.host.confirmAnswers.push(true);
+    await app.dispatch({ type: 'turnOnSync' }, {});
+    const repo = path.join(env.home, '.claude-config');
+    expect(await readlink(env.paths.userClaudeMd)).toBe(path.join(repo, 'global', 'CLAUDE.md'));
+    expect(github.calls).toHaveLength(2);
+    expect(env.host.infos).toStrictEqual([
+      'Found your config repo me/claude-config.',
+      'Config synced.',
+      'Applied 1 change.',
+      'Config synced.',
+    ]);
+    await expect(lstat(path.join(env.storageDir, 'memory-state.json'))).resolves.toBeDefined();
+  });
+
+  it('stops when a configured GitHub URL needs a sign in that does not happen', async () => {
+    const env = await makeEnv({ settings: { configRepoUrl: 'https://github.com/me/c.git' } });
+    const { app } = gitApp(env, isolatedExec());
+    await app.dispatch({ type: 'turnOnSync' }, {});
+    expect(env.host.gitHubRequests).toStrictEqual([true]);
+    expect(env.host.errors).toStrictEqual([SIGN_IN_MESSAGE]);
+    await expect(lstat(path.join(env.home, '.claude-config'))).rejects.toThrow();
+  });
+
+  it('uses a configured URL without asking GitHub', async () => {
+    const env = await makeEnv();
+    const exec = isolatedExec();
+    const remote = await bareRemoteWith(exec, { 'overlord.json': '{"version":1}\n' });
+    env.host.settings = { ...env.host.settings, configRepoUrl: remote };
+    const github = gitHub('unused', true);
+    const { app } = makeApp(env, { deps: { exec, fetch: github.fetch } });
+    await app.dispatch({ type: 'turnOnSync' }, {});
+    expect(env.host.errors).toStrictEqual([]);
+    expect(github.calls).toStrictEqual([]);
+    expect(env.host.gitHubRequests).toStrictEqual([]);
+    expect(env.host.savedSettings).toStrictEqual([]);
+    expect(await remoteOf(exec, path.join(env.home, '.claude-config'))).toBe(remote);
+  });
+
+  it('adopts an existing clone of the same repo, ssh or https', async () => {
+    const env = await makeEnv({
+      settings: { configRepoUrl: ' https://github.com/me/claude-config ' },
+    });
+    const real = isolatedExec();
+    // ssh that fails at once, so the sync after connecting never reaches GitHub.
+    const exec: Exec = async (command, args, options) =>
+      real(command, args, { ...options, env: { ...options.env, GIT_SSH_COMMAND: 'false' } });
     const repo = await cloneConfigRepo(env, exec);
     await git(exec, repo, ['remote', 'set-url', 'origin', 'git@github.com:me/claude-config.git']);
     const { app } = gitApp(env, exec);
-    env.host.inputAnswers.push(' https://github.com/me/claude-config ');
-    await app.sync.connectConfigRepo();
-    expect(env.host.infos).toStrictEqual([`Connected to the clone in ${repo}.`]);
+    await app.dispatch({ type: 'turnOnSync' }, {});
     expect(env.host.questions).toStrictEqual([]);
+    expect(env.host.savedSettings).toStrictEqual([]);
+    expect(env.host.errors).toHaveLength(1);
+    expect(env.host.errors[0]).toMatch(/fetch --quiet failed/u);
   });
 
   it('refuses a folder that holds another repo, no remote, or no repo', async () => {
-    const env = await makeEnv();
+    const env = await makeEnv({ settings: { configRepoUrl: '/some/other.git' } });
     const exec = isolatedExec();
     const repo = await cloneConfigRepo(env, exec);
     const { app } = gitApp(env, exec);
-    env.host.inputAnswers.push('/some/other.git');
-    await app.sync.connectConfigRepo();
+    await app.dispatch({ type: 'turnOnSync' }, {});
     await git(exec, repo, ['remote', 'remove', 'origin']);
-    env.host.inputAnswers.push('/some/other.git');
-    await app.sync.connectConfigRepo();
+    await app.dispatch({ type: 'turnOnSync' }, {});
     env.host.settings = { ...env.host.settings, configRepoPath: '~/plain' };
-    await mkdir(path.join(env.home, 'plain'));
-    env.host.inputAnswers.push('/some/other.git');
-    await app.sync.connectConfigRepo();
+    await writeText(path.join(env.home, 'plain', 'file.txt'), 'x\n');
+    await app.dispatch({ type: 'turnOnSync' }, {});
     expect(env.host.errors).toStrictEqual([
       `${repo} holds a different repo. Change overlord.configRepo.path or move it.`,
       `${repo} holds a different repo. Change overlord.configRepo.path or move it.`,
@@ -220,6 +331,31 @@ describe('push', () => {
   });
 });
 
+describe('push and pull over https to GitHub', () => {
+  it('needs a sign in, then hands git the token', async () => {
+    const env = await makeEnv();
+    const exec = isolatedExec();
+    const repo = await cloneConfigRepo(env, exec);
+    const remote = await remoteOf(exec, repo);
+    const github = 'https://github.com/me/claude-config.git';
+    await git(exec, repo, ['remote', 'set-url', 'origin', github]);
+    // Pushes go to the local remote, so the test never reaches GitHub.
+    await git(exec, repo, ['config', `url.${remote}.pushInsteadOf`, github]);
+    await writeText(path.join(repo, 'a.txt'), 'a\n');
+    const { app } = gitApp(env, exec);
+    env.host.confirmAnswers.push(true, true);
+    await app.dispatch({ type: 'syncPush' }, {});
+    await app.dispatch({ type: 'syncPull' }, {});
+    expect(env.host.errors).toStrictEqual([SIGN_IN_MESSAGE, SIGN_IN_MESSAGE]);
+    env.host.gitHubSignedIn = SESSION;
+    env.host.confirmAnswers.push(true);
+    await app.dispatch({ type: 'syncPush' }, {});
+    expect(env.host.infos).toStrictEqual(['Pushed the config repo (0 changed files).']);
+    expect(await log(exec, remote)).toStrictEqual(['Update config from test-host', 'first']);
+    expect(env.host.gitHubRequests).toStrictEqual([true, true, true]);
+  });
+});
+
 describe('pull', () => {
   it('needs a connected repo and a yes, then pulls', async () => {
     const env = await makeEnv();
@@ -294,60 +430,5 @@ describe('importDotfiles', () => {
     expect(await readlink(env.paths.userClaudeMd)).toBe(path.join(repo, 'global', 'CLAUDE.md'));
     expect(env.host.infos).toHaveLength(1);
     expect(env.host.infos[0]).toMatch(/^Applied \d+ changes\. Backup in ~\/\.claude\/backups\//u);
-  });
-});
-
-describe('bootstrap', () => {
-  it('asks for a URL when none is configured and stops on cancel or no', async () => {
-    const env = await makeEnv();
-    const exec = isolatedExec();
-    const { app } = gitApp(env, exec);
-    await app.sync.bootstrap();
-    env.host.inputAnswers.push('git@github.com:me/c.git');
-    await app.sync.bootstrap();
-    expect(env.host.inputs).toStrictEqual([
-      { prompt: 'Git URL of your config repo', value: '' },
-      { prompt: 'Git URL of your config repo', value: '' },
-    ]);
-    expect(env.host.questions).toStrictEqual([
-      {
-        message: `Clone git@github.com:me/c.git into ${path.join(env.home, '.claude-config')} if needed and plan the setup?`,
-        action: 'Continue',
-      },
-    ]);
-  });
-
-  it('clones the configured repo, shows the plan and applies it', async () => {
-    const env = await makeEnv();
-    const exec = isolatedExec();
-    const manifest = {
-      version: 1,
-      items: [
-        {
-          id: 'claude-md',
-          kind: 'claude-md',
-          source: 'global/CLAUDE.md',
-          target: '~/.claude/CLAUDE.md',
-          mode: 'link',
-        },
-      ],
-    };
-    const remote = await bareRemoteWith(exec, {
-      'overlord.json': JSON.stringify(manifest),
-      'global/CLAUDE.md': '# shared\n',
-    });
-    env.host.settings = { ...env.host.settings, configRepoUrl: remote };
-    const { app } = gitApp(env, exec);
-    env.host.confirmAnswers.push(true, false);
-    await app.sync.bootstrap();
-    await expect(lstat(env.paths.userClaudeMd)).rejects.toThrow();
-    await expect(lstat(path.join(env.storageDir, 'memory-state.json'))).rejects.toThrow();
-    env.host.confirmAnswers.push(true, true);
-    await app.sync.bootstrap();
-    const repo = path.join(env.home, '.claude-config');
-    expect(await readlink(env.paths.userClaudeMd)).toBe(path.join(repo, 'global', 'CLAUDE.md'));
-    expect(env.host.inputs).toStrictEqual([]);
-    expect(env.host.infos).toStrictEqual(['Applied 1 change.']);
-    await expect(lstat(path.join(env.storageDir, 'memory-state.json'))).resolves.toBeDefined();
   });
 });

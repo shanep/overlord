@@ -95,7 +95,8 @@ export function stateFor(rt: Runtime, view: ViewId, params: PanelParams): HostTo
       };
     }
     case 'config': {
-      return { type: 'state', view, state: rt.caches.config.value };
+      const state = { ...rt.caches.config.value, sync: rt.configSync.status() };
+      return { type: 'state', view, state };
     }
     case 'usage': {
       return { type: 'state', view, state: buildUsage(rt) };

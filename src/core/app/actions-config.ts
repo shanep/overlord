@@ -22,7 +22,14 @@ import { configRepoDir, connectedRoot } from './views/config.js';
 import { trackAdviceTaken } from './views/tuning.js';
 
 type ConfigActions =
-  'setKnob' | 'openKnobDocs' | 'importClaudeAi' | 'syncPush' | 'syncPull' | 'adoptConfig';
+  | 'setKnob'
+  | 'openKnobDocs'
+  | 'importClaudeAi'
+  | 'syncPush'
+  | 'syncPull'
+  | 'turnOnSync'
+  | 'syncNow'
+  | 'adoptConfig';
 
 type Layer = ActionMap['setKnob']['layer'];
 
@@ -148,6 +155,12 @@ export const configActions: ActionHandlers<ConfigActions> = {
   },
   syncPull: async ({ rt }) => {
     await new SyncCommands(rt).pull();
+  },
+  turnOnSync: async ({ rt }) => {
+    await new SyncCommands(rt).turnOn();
+  },
+  syncNow: async ({ rt }) => {
+    await rt.configSync.syncNow();
   },
   adoptConfig: async ({ rt }, action) => {
     await adopt(rt, action.itemId);

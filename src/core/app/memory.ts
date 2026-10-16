@@ -34,10 +34,15 @@ export async function memoryProjects(rt: Runtime): Promise<readonly MemoryProjec
   return [...byDir.values()];
 }
 
-/** Runs memory sync when the manifest turns it on. Null when it is off or there is no manifest. */
+/**
+ * Runs memory sync when the manifest turns it on. Null when it is off or there
+ * is no manifest. Quiet skips the warning, for the background sync that runs
+ * every few minutes and would otherwise repeat it.
+ */
 export async function runMemorySync(
   rt: Runtime,
   repoRoot: string,
+  options: { readonly quiet?: boolean } = {},
 ): Promise<MemorySyncResult | null> {
   const manifest = await readManifest(repoRoot);
   if (!manifest.ok || !manifest.manifest.memory.enabled) {
@@ -55,7 +60,7 @@ export async function runMemorySync(
     ),
   });
   const blocked = result.synced.reduce((total, project) => total + project.blocked.length, 0);
-  if (blocked > 0) {
+  if (blocked > 0 && options.quiet !== true) {
     rt.host.showWarning(
       `Kept ${plural(blocked, 'memory file')} out of the repo because they look like they hold secrets.`,
     );

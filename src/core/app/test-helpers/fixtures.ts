@@ -21,7 +21,7 @@ import { resolveClaudePaths, type ClaudePaths } from '../../paths.js';
 import type { Scheduler } from '../../store/store.js';
 import type { Exec, ExecOptions, ExecResult } from '../../sync/exec.js';
 import { bareRemoteWith, git } from '../../sync/test-helpers/fixtures.js';
-import type { AppDeps } from '../app.js';
+import type { AppDeps } from '../app-deps.js';
 import { OverlordApp } from '../app.js';
 import type { OverlordSettings } from '../host-port.js';
 import type { ClaudeCli } from '../runtime.js';

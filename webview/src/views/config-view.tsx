@@ -4,9 +4,11 @@
 import type { ReactElement } from 'react';
 
 import type { ConfigItem, ConfigKind, ConfigStatus } from '../../../src/shared/model.js';
-import type { ConfigState } from '../../../src/shared/protocol.js';
+import type { ConfigState, ConfigSyncStatus } from '../../../src/shared/protocol.js';
+import { useNow } from '../clock.js';
 import { Badge } from '../components/badge.js';
 import { EmptyState } from '../components/empty-state.js';
+import { formatAgo } from '../format.js';
 import { usePersistentState, usePostAction } from '../vscode-context.js';
 
 import {
@@ -45,56 +47,93 @@ function isStatusFilter(value: unknown): value is ConfigStatus | 'all' {
   return value === 'all' || isConfigStatus(value);
 }
 
-function RepoHeader(props: { readonly repo: ConfigState['repo'] }): ReactElement {
+/** One line on where the background sync is. */
+export function syncLine(sync: ConfigSyncStatus, now: number): string {
+  switch (sync.state) {
+    case 'syncing': {
+      return 'Syncing now.';
+    }
+    case 'error': {
+      return sync.message ?? 'The last sync failed.';
+    }
+    case 'off': {
+      return 'Background sync is off (overlord.configSync.auto).';
+    }
+    case 'idle': {
+      return sync.lastSyncAt === null
+        ? 'Not synced yet.'
+        : `Synced ${formatAgo(sync.lastSyncAt, now)}.`;
+    }
+  }
+}
+
+function RepoStats(props: { readonly state: ConfigState }): ReactElement {
+  const now = useNow();
+  const { repo, sync } = props.state;
+  return (
+    <dl className="stats">
+      <div className="stat">
+        <dt>Sync</dt>
+        <dd className={sync.state === 'error' ? 'error-text' : undefined}>{syncLine(sync, now)}</dd>
+      </div>
+      <div className="stat">
+        <dt>Remote</dt>
+        <dd className="mono">{repo.remote ?? 'none'}</dd>
+      </div>
+      <div className="stat">
+        <dt>Path</dt>
+        <dd className="mono">{repo.path ?? 'none'}</dd>
+      </div>
+      <div className="stat">
+        <dt>Ahead</dt>
+        <dd>{repo.ahead.toString()}</dd>
+      </div>
+      <div className="stat">
+        <dt>Behind</dt>
+        <dd>{repo.behind.toString()}</dd>
+      </div>
+      <div className="stat">
+        <dt>Changed files</dt>
+        <dd>{repo.dirty.toString()}</dd>
+      </div>
+    </dl>
+  );
+}
+
+function RepoHeader(props: { readonly state: ConfigState }): ReactElement {
   const post = usePostAction();
-  const { repo } = props;
+  const { repo, sync } = props.state;
   return (
     <div className="section">
       {repo.connected ? (
-        <dl className="stats">
-          <div className="stat">
-            <dt>Remote</dt>
-            <dd className="mono">{repo.remote ?? 'none'}</dd>
-          </div>
-          <div className="stat">
-            <dt>Path</dt>
-            <dd className="mono">{repo.path ?? 'none'}</dd>
-          </div>
-          <div className="stat">
-            <dt>Ahead</dt>
-            <dd>{repo.ahead.toString()}</dd>
-          </div>
-          <div className="stat">
-            <dt>Behind</dt>
-            <dd>{repo.behind.toString()}</dd>
-          </div>
-          <div className="stat">
-            <dt>Changed files</dt>
-            <dd>{repo.dirty.toString()}</dd>
-          </div>
-        </dl>
+        <RepoStats state={props.state} />
       ) : (
-        <p className="muted">No config repo connected.</p>
+        <p className="muted">
+          Config sync is off. Turning it on signs in to GitHub, finds your private claude-config
+          repo or creates one, and from then on keeps it in step with ~/.claude on every machine.
+        </p>
       )}
       <div className="toolbar">
-        <button
-          type="button"
-          disabled={!repo.connected}
-          onClick={() => {
-            post({ type: 'syncPush' });
-          }}
-        >
-          Push
-        </button>
-        <button
-          type="button"
-          disabled={!repo.connected}
-          onClick={() => {
-            post({ type: 'syncPull' });
-          }}
-        >
-          Pull
-        </button>
+        {repo.connected ? (
+          <button
+            type="button"
+            disabled={sync.state === 'syncing'}
+            onClick={() => {
+              post({ type: 'syncNow' });
+            }}
+          >
+            Sync now
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              post({ type: 'turnOnSync' });
+            }}
+          >
+            Turn on sync
+          </button>
+        )}
         <span className="spacer" />
         <button
           type="button"
@@ -219,7 +258,7 @@ export function ConfigView(props: { readonly state: ConfigState }): ReactElement
         <h1 id="config-title">Config and sync</h1>
         <span className="muted">{state.items.length.toString()} items</span>
       </header>
-      <RepoHeader repo={state.repo} />
+      <RepoHeader state={state} />
       <StatusLegend />
       <div className="toolbar">
         <label>

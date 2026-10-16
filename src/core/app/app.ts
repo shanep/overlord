@@ -2,41 +2,37 @@
 // dependencies (paths, bus, clock, exec, process checks, the SDK query, the
 // file system and the editor), so tests run it end to end with fakes.
 
-import os from 'node:os';
 import path from 'node:path';
 
 import type { FleetState, HostToWebview, ViewId, WebviewAction } from '../../shared/protocol.js';
-import { EventBus } from '../bus.js';
-import { createNodeFileSystem, type FileSystem } from '../context/fs.js';
+import type { EventBus } from '../bus.js';
 import { Launcher } from '../harness/launcher.js';
 import { mergeEnv } from '../harness/options.js';
-import type { PlanUsageFunction, QueryFunction } from '../harness/sdk-types.js';
 import { sdkPlanUsage, sdkQuery } from '../harness/sdk-types.js';
 import { socketPath } from '../hooks/socket-path.js';
-import { defaultClaudePaths, type ClaudePaths } from '../paths.js';
-import type { Scheduler } from '../store/store.js';
+import type { ClaudePaths } from '../paths.js';
 import { OverlordStore } from '../store/store.js';
-import { makeIsAlive, type IsAlive } from '../surfaces/process.js';
-import { createNodeExec, type Exec } from '../sync/exec.js';
-import type { WatchFactory } from '../transcripts/watcher.js';
 
 import { watchProjects } from './actions-projects.js';
 import { dispatch } from './actions.js';
+import type { AppDeps } from './app-deps.js';
+import { coreDeps, machineDeps } from './app-deps.js';
 import type { CacheRuntime } from './caches.js';
 import { createCaches } from './caches.js';
 import { ChangeHub } from './changes.js';
 import { cliLoader, executableFor } from './claude-bin.js';
+import { ConfigSync } from './config-sync.js';
 import type { AppError } from './errors.js';
 import { ErrorLog } from './errors.js';
-import type { HostPort, PanelParams } from './host-port.js';
+import type { PanelParams } from './host-port.js';
 import { BackgroundJobs, JOBS_REFRESH_MS } from './jobs.js';
 import { PermissionHub } from './permissions.js';
 import type { ActiveTerminal } from './places.js';
 import { PLACES_REFRESH_MS, SessionPlaces } from './places.js';
-import type { FileWatchFunction, IntervalFunction, KillFunction } from './process.js';
-import { defaultInterval, defaultKill, pollingFileWatch, toSurfacesExec } from './process.js';
+import type { FileWatchFunction, IntervalFunction } from './process.js';
+import { toSurfacesExec } from './process.js';
 import { createProjectIndex } from './projects.js';
-import type { ClaudeCli, Runtime } from './runtime.js';
+import type { Runtime } from './runtime.js';
 import { SetupCommands } from './setup.js';
 import { once, readLoginShellEnv } from './shell-env.js';
 import { Sources } from './sources.js';
@@ -55,90 +51,10 @@ import {
   WORKTREE_REFRESH_MS,
 } from './worktrees.js';
 
-export interface AppDeps {
-  readonly host: HostPort;
-  readonly paths?: ClaudePaths;
-  readonly bus?: EventBus;
-  readonly clock?: () => number;
-  /** Runs git and claude. Defaults to child_process.execFile with no shell. */
-  readonly exec?: Exec;
-  readonly isAlive?: IsAlive;
-  readonly kill?: KillFunction;
-  /** The Agent SDK query. Tests pass a fake so no real Claude session ever starts. */
-  readonly queryFunction?: QueryFunction;
-  /** Reads plan limits through the SDK. Tests pass a fake for the same reason. */
-  readonly planUsageFunction?: PlanUsageFunction;
-  readonly fs?: FileSystem;
-  readonly env?: Readonly<Record<string, string | undefined>>;
-  readonly hostname?: string;
-  readonly platform?: NodeJS.Platform;
-  readonly hookSocketPath?: string;
-  /** For the store's change notifications. */
-  readonly scheduler?: Scheduler;
-  readonly interval?: IntervalFunction;
-  readonly delay?: (ms: number) => Promise<void>;
-  readonly fileWatch?: FileWatchFunction;
-  /** Null turns the transcript watcher's fs.watch off and leaves its poll. */
-  readonly watchFactory?: WatchFactory | null;
-  /** This process's id, which marks the worktrees it holds. */
-  readonly pid?: number;
-  /** Where claude runs from outside a terminal. Tests pass a fake so no login shell starts. */
-  readonly claudeCli?: () => Promise<ClaudeCli>;
-}
-
 export const SESSIONS_REFRESH_MS = 30_000;
-const SETTINGS_POLL_MS = 2000;
 
 export function concurrencyFrom(value: number): number {
   return Number.isFinite(value) ? Math.max(1, Math.round(value)) : 1;
-}
-
-interface CoreDeps {
-  readonly env: Readonly<Record<string, string | undefined>>;
-  readonly clock: () => number;
-  readonly exec: Exec;
-  readonly platform: NodeJS.Platform;
-  readonly paths: ClaudePaths;
-  readonly bus: EventBus;
-}
-
-interface MachineDeps {
-  readonly isAlive: IsAlive;
-  readonly kill: KillFunction;
-  readonly hostname: string;
-  readonly fs: FileSystem;
-  readonly interval: IntervalFunction;
-  readonly delay: (ms: number) => Promise<void>;
-  readonly fileWatch: FileWatchFunction;
-}
-
-function coreDeps(deps: AppDeps): CoreDeps {
-  return {
-    env: deps.env ?? process.env,
-    clock: deps.clock ?? Date.now,
-    exec: deps.exec ?? createNodeExec(),
-    platform: deps.platform ?? process.platform,
-    paths: deps.paths ?? defaultClaudePaths(),
-    bus: deps.bus ?? new EventBus(),
-  };
-}
-
-export async function defaultDelay(ms: number): Promise<void> {
-  await new Promise<void>((resolve) => {
-    setTimeout(resolve, ms);
-  });
-}
-
-function machineDeps(deps: AppDeps): MachineDeps {
-  return {
-    isAlive: deps.isAlive ?? makeIsAlive(),
-    kill: deps.kill ?? defaultKill,
-    hostname: deps.hostname ?? os.hostname(),
-    fs: deps.fs ?? createNodeFileSystem(),
-    interval: deps.interval ?? defaultInterval,
-    delay: deps.delay ?? defaultDelay,
-    fileWatch: deps.fileWatch ?? pollingFileWatch(SETTINGS_POLL_MS),
-  };
 }
 
 export class OverlordApp {
@@ -147,6 +63,7 @@ export class OverlordApp {
   readonly setup: SetupCommands;
   readonly sync: SyncCommands;
   private readonly rt: Runtime;
+  private readonly configSync: ConfigSync;
   private readonly errors: ErrorLog;
   private readonly changes = new ChangeHub();
   private readonly sources: Sources;
@@ -269,6 +186,12 @@ export class OverlordApp {
       openTranscript: async (id: string): Promise<boolean> => this.sources.openTranscript(id),
       sessionBusy: (id: string): boolean => this.sources.sessionBusy(id),
       claudeCli: deps.claudeCli ?? cliLoader(host.settings, launchEnv, platform),
+      // The config sync is built below, once the runtime it needs exists.
+      configSync: {
+        status: () => this.configSync.status(),
+        syncNow: async (): Promise<void> => this.configSync.syncNow(),
+      },
+      fetch: machine.fetch,
     };
     const context = new ContextViews({ ...base, onUpdate: notify, onError: report });
     this.rt = { ...base, caches: createCaches(base), context };
@@ -294,6 +217,7 @@ export class OverlordApp {
       errors: (): readonly AppError[] => this.errors.list(),
     });
     this.sync = new SyncCommands(this.rt);
+    this.configSync = new ConfigSync(this.rt);
   }
 
   /** Starts every source. Calling it again, or after dispose, does nothing. */
@@ -329,7 +253,16 @@ export class OverlordApp {
         }),
       );
     }
-    this.cleanups.push(...(await watchProjects(this.rt, this.interval, this.fileWatch)));
+    this.cleanups.push(
+      ...(await watchProjects(this.rt, this.interval, this.fileWatch)),
+      this.configSync.start(this.interval),
+    );
+  }
+
+  /** The window came to the front: point the Fleet here and catch up on config changes. */
+  windowFocused(): void {
+    this.rt.places.windowFocused();
+    void this.configSync.windowFocused();
   }
 
   /** The port the local OTLP receiver listens on, or null when telemetry is off. */

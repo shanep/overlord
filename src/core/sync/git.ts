@@ -40,12 +40,28 @@ const GIT_ENV: Readonly<Record<string, string>> = {
   GIT_OPTIONAL_LOCKS: '0',
 };
 
-async function run(exec: Exec, args: readonly string[], timeoutMs: number): Promise<ExecResult> {
-  return exec('git', args, { timeoutMs, env: GIT_ENV });
+/**
+ * Extra variables for a network command, such as the ones gitHubAuthEnv makes.
+ * Null runs git with whatever credentials the user's own setup provides.
+ */
+export type GitAuth = Readonly<Record<string, string>> | null;
+
+async function run(
+  exec: Exec,
+  args: readonly string[],
+  timeoutMs: number,
+  auth: GitAuth = null,
+): Promise<ExecResult> {
+  return exec('git', args, { timeoutMs, env: { ...GIT_ENV, ...auth } });
 }
 
-async function runOk(exec: Exec, args: readonly string[], timeoutMs: number): Promise<string> {
-  const result = await run(exec, args, timeoutMs);
+async function runOk(
+  exec: Exec,
+  args: readonly string[],
+  timeoutMs: number,
+  auth: GitAuth = null,
+): Promise<string> {
+  const result = await run(exec, args, timeoutMs, auth);
   if (result.code !== 0) {
     throw new GitError(args, result);
   }
@@ -128,8 +144,20 @@ export async function aheadBehind(exec: Exec, root: string): Promise<AheadBehind
   return { ahead: Number(match[1]), behind: Number(match[2]), hasUpstream: true };
 }
 
-export async function clone(exec: Exec, url: string, destination: string): Promise<void> {
-  await runOk(exec, ['clone', '--', url, destination], NETWORK_TIMEOUT_MS);
+export async function clone(
+  exec: Exec,
+  url: string,
+  destination: string,
+  auth: GitAuth = null,
+): Promise<void> {
+  await runOk(exec, ['clone', '--', url, destination], NETWORK_TIMEOUT_MS, auth);
+}
+
+/** False for a clone of a repo with no commits yet, such as one just made on GitHub. */
+export async function hasCommits(exec: Exec, root: string): Promise<boolean> {
+  const args = ['-C', root, 'rev-parse', '--verify', '--quiet', 'HEAD'];
+  const result = await run(exec, args, LOCAL_TIMEOUT_MS);
+  return result.code === 0;
 }
 
 /** Stage everything and commit. Returns false when there was nothing to commit. */
@@ -143,16 +171,34 @@ export async function commitAll(exec: Exec, root: string, message: string): Prom
   return true;
 }
 
-export async function fetch(exec: Exec, root: string): Promise<void> {
-  await runOk(exec, ['-C', root, 'fetch', '--quiet'], NETWORK_TIMEOUT_MS);
+export async function fetch(exec: Exec, root: string, auth: GitAuth = null): Promise<void> {
+  await runOk(exec, ['-C', root, 'fetch', '--quiet'], NETWORK_TIMEOUT_MS, auth);
 }
 
 /** Push the current branch and set its upstream. */
-export async function push(exec: Exec, root: string, remote = 'origin'): Promise<void> {
-  await runOk(exec, ['-C', root, 'push', '-q', '-u', remote, 'HEAD'], NETWORK_TIMEOUT_MS);
+export async function push(
+  exec: Exec,
+  root: string,
+  remote = 'origin',
+  auth: GitAuth = null,
+): Promise<void> {
+  await runOk(exec, ['-C', root, 'push', '-q', '-u', remote, 'HEAD'], NETWORK_TIMEOUT_MS, auth);
 }
 
 /** Fast forward only, so a diverged config repo is reported instead of merged blindly. */
-export async function pull(exec: Exec, root: string): Promise<void> {
-  await runOk(exec, ['-C', root, 'pull', '-q', '--ff-only'], NETWORK_TIMEOUT_MS);
+export async function pull(exec: Exec, root: string, auth: GitAuth = null): Promise<void> {
+  await runOk(exec, ['-C', root, 'pull', '-q', '--ff-only'], NETWORK_TIMEOUT_MS, auth);
+}
+
+/**
+ * Replay local commits on top of the fetched upstream. A conflict aborts the
+ * rebase, leaves the clone as it was and returns false.
+ */
+export async function rebaseOntoUpstream(exec: Exec, root: string): Promise<boolean> {
+  const result = await run(exec, ['-C', root, 'rebase', '-q', '@{upstream}'], LOCAL_TIMEOUT_MS);
+  if (result.code === 0) {
+    return true;
+  }
+  await run(exec, ['-C', root, 'rebase', '--abort'], LOCAL_TIMEOUT_MS);
+  return false;
 }

@@ -53,6 +53,16 @@ export interface OverlordSettings {
   readonly claudePath: string;
   readonly configRepoUrl: string;
   readonly configRepoPath: string;
+  /** Commit, pull and push the config repo in the background once it is connected. */
+  readonly configSyncAuto: boolean;
+  /** How often the background sync checks the remote. */
+  readonly configSyncIntervalMinutes: number;
+}
+
+/** A GitHub sign-in from the editor's own account list. */
+export interface GitHubSession {
+  readonly accessToken: string;
+  readonly account: string;
 }
 
 export interface HostPort {
@@ -87,6 +97,14 @@ export interface HostPort {
   readonly ask: (message: string, actions: readonly string[]) => Promise<string | null>;
   /** A modal question with one action button. True only when that button was pressed. */
   readonly confirm: (message: string, actionLabel: string) => Promise<boolean>;
+  /**
+   * The editor's GitHub sign-in, the same one its GitHub and pull request
+   * support use. Interactive asks the user to sign in when there is none;
+   * otherwise null means not signed in or cancelled.
+   */
+  readonly gitHubSession: (interactive: boolean) => Promise<GitHubSession | null>;
+  /** Save an overlord.* setting for the user, across every workspace. */
+  readonly saveSetting: (key: string, value: string) => Promise<void>;
   /** VS Code SecretStorage, which is the OS keychain. */
   readonly secrets: SecretStore;
   readonly workspaceFolder: () => string | null;

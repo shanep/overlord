@@ -6,6 +6,7 @@ import * as vscode from 'vscode';
 
 import type {
   FilePickRequest,
+  GitHubSession,
   HostPort,
   InputRequest,
   OverlordSettings,
@@ -55,7 +56,30 @@ function readSettings(): OverlordSettings {
     claudePath: resolveClaude(config.get<string>('claudePath', 'claude')),
     configRepoUrl: config.get<string>('configRepo.url', ''),
     configRepoPath: expandHome(config.get<string>('configRepo.path', '~/.claude-config')),
+    configSyncAuto: config.get<boolean>('configSync.auto', true),
+    configSyncIntervalMinutes: config.get<number>('configSync.intervalMinutes', 5),
   };
+}
+
+// The scopes VS Code's built-in GitHub extension asks for when git needs to
+// sign in, so a user already signed in there is not asked again. `repo` is
+// what creating, cloning and pushing a private repo needs.
+const GITHUB_SCOPES = ['repo', 'workflow', 'user:email', 'read:user'];
+
+async function gitHubSession(interactive: boolean): Promise<GitHubSession | null> {
+  try {
+    const session = await vscode.authentication.getSession(
+      'github',
+      GITHUB_SCOPES,
+      interactive ? { createIfNone: true } : { silent: true },
+    );
+    return session === undefined
+      ? null
+      : { accessToken: session.accessToken, account: session.account.label };
+  } catch {
+    // Dismissing the sign in rejects instead of returning undefined.
+    return null;
+  }
 }
 
 /** How long to wait for VS Code to report a folder added to the workspace. */
@@ -200,6 +224,12 @@ export function createVscodeHostPort(options: VscodeHostPortOptions): HostPort {
     confirm: async (message: string, actionLabel: string): Promise<boolean> =>
       (await vscode.window.showWarningMessage(message, { modal: true }, actionLabel)) ===
       actionLabel,
+    gitHubSession,
+    saveSetting: async (key: string, value: string): Promise<void> => {
+      await vscode.workspace
+        .getConfiguration('overlord')
+        .update(key, value, vscode.ConfigurationTarget.Global);
+    },
     secrets: {
       get: async (name: string): Promise<string | undefined> => context.secrets.get(name),
       set: async (name: string, value: string): Promise<void> => {

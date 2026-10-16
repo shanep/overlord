@@ -4,6 +4,7 @@ import type { ViewId } from '../../../shared/protocol.js';
 import { createMemorySecretStore } from '../../sync/secrets.js';
 import type {
   FilePickRequest,
+  GitHubSession,
   HostPort,
   InputRequest,
   OverlordSettings,
@@ -23,6 +24,8 @@ const DEFAULT_SETTINGS: OverlordSettings = {
   claudePath: 'claude',
   configRepoUrl: '',
   configRepoPath: '~/.claude-config',
+  configSyncAuto: true,
+  configSyncIntervalMinutes: 5,
 };
 
 export interface FakeHostOptions {
@@ -59,6 +62,12 @@ export class FakeHost implements HostPort {
   readonly pickAnswers: (string | null)[] = [];
   readonly fileAnswers: (string | null)[] = [];
   readonly folderAnswers: (string | null)[] = [];
+  /** What gitHubSession returns. Null is signed out, and an interactive call then gets the queue. */
+  gitHubSignedIn: GitHubSession | null = null;
+  /** Sessions an interactive sign in hands out, in order. Empty means the user cancelled. */
+  readonly gitHubSignIns: GitHubSession[] = [];
+  readonly gitHubRequests: boolean[] = [];
+  readonly savedSettings: { readonly key: string; readonly value: string }[] = [];
   readonly secrets = createMemorySecretStore();
   readonly storageDir: string;
   readonly extensionPath: string;
@@ -158,6 +167,23 @@ export class FakeHost implements HostPort {
     this.questions.push({ message, action });
     await Promise.resolve();
     return this.confirmAnswers.shift() ?? false;
+  };
+
+  readonly gitHubSession = async (interactive: boolean): Promise<GitHubSession | null> => {
+    this.gitHubRequests.push(interactive);
+    await Promise.resolve();
+    if (this.gitHubSignedIn === null && interactive) {
+      this.gitHubSignedIn = this.gitHubSignIns.shift() ?? null;
+    }
+    return this.gitHubSignedIn;
+  };
+
+  readonly saveSetting = async (key: string, value: string): Promise<void> => {
+    this.savedSettings.push({ key, value });
+    await Promise.resolve();
+    if (key === 'configRepo.url') {
+      this.settings = { ...this.settings, configRepoUrl: value };
+    }
   };
 
   readonly workspaceFolder = (): string | null => this.workspace;
