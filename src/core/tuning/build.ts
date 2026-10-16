@@ -1,7 +1,7 @@
 // Turns the rules into the tips the view shows, with the measured impact of
 // the ones you track, and finds the tips a step taken from Overlord follows.
 
-import type { Tip, TipSession, TipSeverity } from '../../shared/tips.js';
+import type { Tip, TipSession, TipSeverity } from '../../shared/tuning.js';
 
 import { impactOf } from './impact.js';
 import type { SessionMeasure } from './measure.js';

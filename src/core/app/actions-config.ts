@@ -19,7 +19,7 @@ import { storagePath, writeImport } from './storage.js';
 import { NOT_CONNECTED, SyncCommands } from './sync-commands.js';
 import { plural } from './text.js';
 import { configRepoDir, connectedRoot } from './views/config.js';
-import { trackAdviceTaken } from './views/tips.js';
+import { trackAdviceTaken } from './views/tuning.js';
 
 type ConfigActions = 'setKnob' | 'importClaudeAi' | 'syncPush' | 'syncPull' | 'adoptConfig';
 

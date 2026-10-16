@@ -1,4 +1,4 @@
-// What the tips view shows: advice from the session transcripts, each with
+// What the Tuning view shows: advice from the session transcripts, each with
 // its pros and cons, and the skills and agents Overlord can write.
 
 export type TipSeverity = 'high' | 'medium' | 'low';
@@ -99,8 +99,8 @@ export interface Suggestion {
   readonly installed: boolean;
 }
 
-/** One session's numbers in the tips table. */
-export interface TipsSessionRow {
+/** One session's numbers in the Tuning view's session table. */
+export interface TuningSessionRow {
   readonly sessionId: string;
   readonly title: string;
   readonly updatedAt: number;
@@ -116,7 +116,7 @@ export interface TipsSessionRow {
   readonly tips: readonly string[];
 }
 
-export interface TipsState {
+export interface TuningState {
   readonly sessions: number;
   readonly totalUsd: number;
   readonly cacheReadUsd: number;
@@ -126,7 +126,7 @@ export interface TipsState {
   readonly tips: readonly Tip[];
   readonly suggestions: readonly Suggestion[];
   /** Most expensive first. */
-  readonly rows: readonly TipsSessionRow[];
+  readonly rows: readonly TuningSessionRow[];
   /** When the transcripts were last measured, or null before the first scan. */
   readonly scannedAt: number | null;
 }

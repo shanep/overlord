@@ -2,7 +2,7 @@
 // all, and at each session to list the ones that show the problem worst.
 // Thresholds are set so a tip only shows when it is worth acting on.
 
-import type { TipSeverity } from '../../shared/tips.js';
+import type { TipSeverity } from '../../shared/tuning.js';
 
 import type { TipTracking } from './impact.js';
 import type { SessionMeasure } from './measure.js';

@@ -190,7 +190,7 @@
         "icon": "$(comment-discussion)"
       },
       {
-        "command": "overlord.openTips",
+        "command": "overlord.openTuning",
         "title": "Tuning",
         "category": "Overlord",
         "icon": "$(tools)"

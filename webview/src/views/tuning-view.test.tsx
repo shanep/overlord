@@ -1,13 +1,13 @@
 import { fireEvent, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import type { ImpactMetric, TipImpact, TipsState } from '../../../src/shared/tips.js';
+import type { ImpactMetric, TipImpact, TuningState } from '../../../src/shared/tuning.js';
 import { NOW } from '../../test/fixtures.js';
 import { expectAccessible, renderView } from '../../test/render.js';
 
-import { formatChange, formatImpactValue, VERDICT_INFO } from './tips-impact.js';
-import { SEVERITY_INFO } from './tips-lists.js';
-import { TipsView } from './tips-view.js';
+import { formatChange, formatImpactValue, VERDICT_INFO } from './tuning-impact.js';
+import { SEVERITY_INFO } from './tuning-lists.js';
+import { TuningView } from './tuning-view.js';
 
 const MINUTE = 60_000;
 const S1 = 'aaaaaaaa-1111-4111-8111-111111111111';
@@ -64,7 +64,7 @@ const IMPACT: TipImpact = {
   ],
 };
 
-const EMPTY: TipsState = {
+const EMPTY: TuningState = {
   sessions: 0,
   totalUsd: 0,
   cacheReadUsd: 0,
@@ -76,7 +76,7 @@ const EMPTY: TipsState = {
   scannedAt: null,
 };
 
-const STATE: TipsState = {
+const STATE: TuningState = {
   sessions: 2,
   totalUsd: 20,
   cacheReadUsd: 12,
@@ -161,9 +161,9 @@ const STATE: TipsState = {
   scannedAt: NOW - 5 * MINUTE,
 };
 
-describe('TipsView', () => {
+describe('TuningView', () => {
   it('shows the headline numbers, advice, suggestions and sessions, and passes axe', async () => {
-    const { getByRole, getByText, container } = renderView(<TipsView state={STATE} />);
+    const { getByRole, getByText, container } = renderView(<TuningView state={STATE} />);
     expect(getByText('Sessions', { selector: 'dt' }).nextElementSibling?.textContent).toBe('2');
     expect(getByText('Spend').nextElementSibling?.textContent).toBe('$20.00 est.');
     expect(getByText('Re-reading context').nextElementSibling?.textContent).toBe('60%');
@@ -227,7 +227,7 @@ describe('TipsView', () => {
   });
 
   it('posts rescan, create and open actions', () => {
-    const { getByRole, api } = renderView(<TipsView state={STATE} />);
+    const { getByRole, api } = renderView(<TuningView state={STATE} />);
     fireEvent.click(getByRole('button', { name: 'Rescan' }));
     fireEvent.click(getByRole('button', { name: 'Create' }));
     fireEvent.click(getByRole('button', { name: 'Create again' }));
@@ -238,7 +238,7 @@ describe('TipsView', () => {
     const table = getByRole('table', { name: 'Sessions by cost' });
     fireEvent.click(within(table).getByRole('button', { name: 'Small fix' }));
     expect(api.actions()).toStrictEqual([
-      { type: 'rescanTips' },
+      { type: 'rescanTuning' },
       { type: 'createSuggestion', suggestionId: 'handoff' },
       { type: 'createSuggestion', suggestionId: 'scout' },
       { type: 'trackTip', tipId: 'denials', on: true },
@@ -249,7 +249,7 @@ describe('TipsView', () => {
   });
 
   it('sorts sessions by any column', () => {
-    const { getByRole } = renderView(<TipsView state={STATE} />);
+    const { getByRole } = renderView(<TuningView state={STATE} />);
     const table = getByRole('table', { name: 'Sessions by cost' });
     const firstRow = (): string | null | undefined =>
       within(table).getAllByRole('row')[1]?.textContent;
@@ -274,7 +274,7 @@ describe('TipsView', () => {
   });
 
   it('says so before the first scan and when nothing stands out, and passes axe', async () => {
-    const { getByText, container } = renderView(<TipsView state={EMPTY} />);
+    const { getByText, container } = renderView(<TuningView state={EMPTY} />);
     expect(getByText(/^Not scanned yet/u)).toBeDefined();
     expect(getByText('Re-reading context').nextElementSibling?.textContent).toBe('n/a');
     expect(getByText('Nothing stands out. Your sessions look lean.')).toBeDefined();
@@ -284,7 +284,7 @@ describe('TipsView', () => {
   });
 
   it('shows how a tracked tip went, overall and week by week, and passes axe', async () => {
-    const { getByRole, container } = renderView(<TipsView state={STATE} />);
+    const { getByRole, container } = renderView(<TuningView state={STATE} />);
     const huge = getByRole('article', { name: 'Sessions grow huge without compacting' });
     const results = within(huge).getByRole('region', { name: /^Results since/u });
     expect(results.textContent).toContain(VERDICT_INFO.mixed.label);
@@ -315,7 +315,7 @@ describe('TipsView', () => {
   });
 
   it('shows n/a for a measure with nothing to compare', () => {
-    const blank: TipsState = {
+    const blank: TuningState = {
       ...STATE,
       tips: STATE.tips.slice(0, 1).map((tip) => ({
         ...tip,
@@ -327,7 +327,7 @@ describe('TipsView', () => {
         },
       })),
     };
-    const { getByRole } = renderView(<TipsView state={blank} />);
+    const { getByRole } = renderView(<TuningView state={blank} />);
     const row = within(getByRole('table', { name: 'Before and since' })).getAllByRole('row')[1];
     expect([...(row?.children ?? [])].map((cell) => cell.textContent)).toStrictEqual([
       'Sessions past 200K context',
@@ -338,14 +338,14 @@ describe('TipsView', () => {
   });
 
   it('leaves the comparison out until there is something to compare', () => {
-    const early: TipsState = {
+    const early: TuningState = {
       ...STATE,
       tips: STATE.tips.map((tip) => ({
         ...tip,
         impact: { ...IMPACT, verdict: 'early', sessionsAfter: 0, weeks: [] },
       })),
     };
-    const { getAllByRole, queryByRole } = renderView(<TipsView state={early} />);
+    const { getAllByRole, queryByRole } = renderView(<TuningView state={early} />);
     expect(getAllByRole('region', { name: /^Results since/u })[0]?.textContent).toContain(
       VERDICT_INFO.early.label,
     );

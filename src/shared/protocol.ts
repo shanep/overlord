@@ -20,7 +20,7 @@ import type {
   SessionSummary,
   ToolCall,
 } from './model.js';
-import type { TipsState } from './tips.js';
+import type { TuningState } from './tuning.js';
 
 export type ViewId =
   | 'fleet'
@@ -35,7 +35,7 @@ export type ViewId =
   | 'messages'
   | 'properties'
   | 'help'
-  | 'tips';
+  | 'tuning';
 
 export const VIEW_IDS: readonly ViewId[] = [
   'fleet',
@@ -50,7 +50,7 @@ export const VIEW_IDS: readonly ViewId[] = [
   'messages',
   'properties',
   'help',
-  'tips',
+  'tuning',
 ];
 
 export interface RateLimits {
@@ -389,7 +389,7 @@ interface ViewStateMap {
   readonly messages: MessagesState;
   readonly properties: PropertiesState;
   readonly help: HelpState;
-  readonly tips: TipsState;
+  readonly tuning: TuningState;
 }
 
 export type HostToWebview = {
@@ -436,7 +436,7 @@ export type WebviewAction =
   | { readonly type: 'newAgent' }
   | { readonly type: 'newSkill' }
   | { readonly type: 'rescanFrustration' }
-  | { readonly type: 'rescanTips' }
+  | { readonly type: 'rescanTuning' }
   | { readonly type: 'createSuggestion'; readonly suggestionId: string }
   | { readonly type: 'trackTip'; readonly tipId: string; readonly on: boolean }
   | { readonly type: 'setInboundPolicy'; readonly value: string | null }

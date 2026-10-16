@@ -1,4 +1,4 @@
-// Measures one session's transcript for the tips view: how big its context
+// Measures one session's transcript for the Tuning view: how big its context
 // got, where the money went, and the habits that waste tokens (huge tool
 // results, rereads, re-running the same command, denied tools). Only counts
 // and short labels are kept, never prompt or file text.

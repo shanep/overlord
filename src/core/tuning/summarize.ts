@@ -1,6 +1,6 @@
-// Turns the session measures into what the tips view shows.
+// Turns the session measures into what the Tuning view shows.
 
-import type { TipsSessionRow, TipsState } from '../../shared/tips.js';
+import type { TuningSessionRow, TuningState } from '../../shared/tuning.js';
 
 import { buildTips, tipsFor } from './build.js';
 import type { SessionMeasure } from './measure.js';
@@ -24,7 +24,7 @@ export interface SummaryInputs {
   readonly scannedAt: number | null;
 }
 
-export function summarize(inputs: SummaryInputs): TipsState {
+export function summarize(inputs: SummaryInputs): TuningState {
   // A session with no requests was opened and left, so it says nothing about habits.
   const measures = inputs.measures.filter((measure) => measure.requests > 0);
   const totals = totalsOf(measures, inputs.home);
@@ -35,7 +35,7 @@ export function summarize(inputs: SummaryInputs): TipsState {
     tracked: inputs.tracked,
     now: inputs.now,
   });
-  const rows: TipsSessionRow[] = measures
+  const rows: TuningSessionRow[] = measures
     .map((measure) => ({
       sessionId: measure.sessionId,
       title: measure.title,

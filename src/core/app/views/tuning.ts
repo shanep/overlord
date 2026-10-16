@@ -1,4 +1,4 @@
-// The tips view. Session measures live in an index file in the extension's
+// The Tuning view. Session measures live in an index file in the extension's
 // storage folder, so a rescan only reads transcripts that changed, and the
 // tips you are tracking live in a second file next to it. Building the state
 // is a synchronous read of both; a rescan runs in the background when the
@@ -7,20 +7,20 @@
 import { stat } from 'node:fs/promises';
 import path from 'node:path';
 
-import type { TipsState } from '../../../shared/tips.js';
-import type { AdviceStep } from '../../tips/build.js';
-import { tipsTakenBy } from '../../tips/build.js';
-import { scanInto } from '../../tips/scan.js';
-import type { TipsIndex } from '../../tips/store.js';
-import { loadIndex, saveIndex } from '../../tips/store.js';
-import type { SuggestionDefinition } from '../../tips/suggestions.js';
-import { nameOf, SUGGESTIONS } from '../../tips/suggestions.js';
-import { summarize } from '../../tips/summarize.js';
-import { loadTracked, saveTracked } from '../../tips/tracked.js';
+import type { TuningState } from '../../../shared/tuning.js';
+import type { AdviceStep } from '../../tuning/build.js';
+import { tipsTakenBy } from '../../tuning/build.js';
+import { scanInto } from '../../tuning/scan.js';
+import type { TuningIndex } from '../../tuning/store.js';
+import { loadIndex, saveIndex } from '../../tuning/store.js';
+import type { SuggestionDefinition } from '../../tuning/suggestions.js';
+import { nameOf, SUGGESTIONS } from '../../tuning/suggestions.js';
+import { summarize } from '../../tuning/summarize.js';
+import { loadTracked, saveTracked } from '../../tuning/tracked.js';
 import { messageOf } from '../errors.js';
 import type { Runtime } from '../runtime.js';
 
-export const EMPTY_TIPS: TipsState = {
+export const EMPTY_TUNING: TuningState = {
   sessions: 0,
   totalUsd: 0,
   cacheReadUsd: 0,
@@ -32,14 +32,14 @@ export const EMPTY_TIPS: TipsState = {
   scannedAt: null,
 };
 
-export const TIPS_FILE = 'tips.json';
-export const TRACKED_FILE = 'tips-tracked.json';
+export const TUNING_FILE = 'tuning.json';
+export const TRACKED_FILE = 'tuning-tracked.json';
 export const RESCAN_AFTER_MS = 60_000;
-const SOURCE = 'tips';
+const SOURCE = 'tuning';
 
 /** What the two files hold, loaded together so neither is ever seen without the other. */
 interface Saved {
-  readonly index: TipsIndex;
+  readonly index: TuningIndex;
   /** When tracking started, by tip id. */
   readonly tracked: Map<string, number>;
 }
@@ -122,7 +122,7 @@ function trackedFile(rt: Runtime): string {
 }
 
 function indexFile(rt: Runtime): string {
-  return path.join(rt.host.storageDir, TIPS_FILE);
+  return path.join(rt.host.storageDir, TUNING_FILE);
 }
 
 /** Reads both files once. A failed read is tried again next time. */
@@ -164,9 +164,9 @@ async function run(rt: Runtime, entry: Entry): Promise<void> {
   await entry.running;
 }
 
-function stateOf(rt: Runtime, entry: Entry): TipsState {
+function stateOf(rt: Runtime, entry: Entry): TuningState {
   if (entry.saved === null) {
-    return EMPTY_TIPS;
+    return EMPTY_TUNING;
   }
   const { index, tracked } = entry.saved;
   const items = [...index.entries.values()];
@@ -181,7 +181,7 @@ function stateOf(rt: Runtime, entry: Entry): TipsState {
   });
 }
 
-export function buildTips(rt: Runtime): TipsState {
+export function buildTuning(rt: Runtime): TuningState {
   const entry = entryFor(rt);
   const stale = entry.startedAt === null || rt.clock() - entry.startedAt >= RESCAN_AFTER_MS;
   if (stale && entry.running === null) {
@@ -193,7 +193,7 @@ export function buildTips(rt: Runtime): TipsState {
 }
 
 /** Scans now, or waits for the scan already running, and returns the new state. */
-export async function rescanTips(rt: Runtime): Promise<TipsState> {
+export async function rescanTuning(rt: Runtime): Promise<TuningState> {
   const entry = entryFor(rt);
   await run(rt, entry);
   return stateOf(rt, entry);

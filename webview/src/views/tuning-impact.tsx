@@ -10,7 +10,7 @@ import type {
   ImpactMetric,
   ImpactVerdict,
   TipImpact,
-} from '../../../src/shared/tips.js';
+} from '../../../src/shared/tuning.js';
 import { Badge } from '../components/badge.js';
 import { formatCompact, formatCost, formatDateTime, formatPercent } from '../format.js';
 import type { Tone } from '../labels.js';

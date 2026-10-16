@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { ImpactMetric } from '../../shared/tips.js';
+import type { ImpactMetric } from '../../shared/tuning.js';
 
 import type { MetricId, TipTracking } from './impact.js';
 import {

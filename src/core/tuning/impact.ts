@@ -11,7 +11,7 @@ import type {
   ImpactVerdict,
   ImpactWeek,
   TipImpact,
-} from '../../shared/tips.js';
+} from '../../shared/tuning.js';
 
 import type { SessionMeasure } from './measure.js';
 import { costTotal } from './measure.js';

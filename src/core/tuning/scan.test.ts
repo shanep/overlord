@@ -23,7 +23,7 @@ function text(records: readonly unknown[]): string {
 }
 
 async function makeHome(): Promise<Home> {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'overlord-tips-scan-'));
+  const root = await mkdtemp(path.join(os.tmpdir(), 'overlord-tuning-scan-'));
   onTestFinished(async () => {
     await rm(root, { recursive: true, force: true });
   });

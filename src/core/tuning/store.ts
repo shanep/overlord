@@ -1,4 +1,4 @@
-// The tips index: one measure per session transcript, with the file stamp it
+// The tuning index: one measure per session transcript, with the file stamp it
 // was taken from, so a rescan only reads transcripts that changed. It lives
 // in one JSON file in the extension's storage folder. Once a transcript is
 // gone its measure stays for a year, marked as history: the tips only look at
@@ -23,7 +23,7 @@ interface IndexEntry {
   readonly live: boolean;
 }
 
-export interface TipsIndex {
+export interface TuningIndex {
   /** Keyed by transcript path. */
   readonly entries: Map<string, IndexEntry>;
   scannedAt: number | null;
@@ -88,11 +88,11 @@ const fileSchema = z.object({
   ),
 });
 
-export function emptyIndex(): TipsIndex {
+export function emptyIndex(): TuningIndex {
   return { entries: new Map(), scannedAt: null };
 }
 
-function parseIndex(text: string): TipsIndex | null {
+function parseIndex(text: string): TuningIndex | null {
   let json: unknown;
   try {
     json = JSON.parse(text);
@@ -110,12 +110,12 @@ function parseIndex(text: string): TipsIndex | null {
 }
 
 /** The saved index. A missing, corrupt or older file starts empty, since it can be rebuilt. */
-export async function loadIndex(file: string): Promise<TipsIndex> {
+export async function loadIndex(file: string): Promise<TuningIndex> {
   const text = await readOptional(file);
   return (text === null ? null : parseIndex(text)) ?? emptyIndex();
 }
 
-export async function saveIndex(file: string, index: TipsIndex): Promise<void> {
+export async function saveIndex(file: string, index: TuningIndex): Promise<void> {
   const data: z.input<typeof fileSchema> = {
     version: 2,
     scannedAt: index.scannedAt,

@@ -52,7 +52,7 @@ const REQUIRED: Readonly<Record<ViewId, Readonly<Record<string, FieldKind>>>> = 
   messages: { messages: 'array', routes: 'array', inboundChoices: 'array', rules: 'array' },
   properties: { session: 'nullable-object', agents: 'array', pendingPermissions: 'array' },
   help: {},
-  tips: { tips: 'array', suggestions: 'array', rows: 'array', sessions: 'number' },
+  tuning: { tips: 'array', suggestions: 'array', rows: 'array', sessions: 'number' },
 };
 
 function fieldMatches(value: unknown, kind: FieldKind): boolean {

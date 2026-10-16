@@ -5,12 +5,12 @@
 import type { ReactElement } from 'react';
 import { useMemo } from 'react';
 
-import type { TipsState } from '../../../src/shared/tips.js';
+import type { TuningState } from '../../../src/shared/tuning.js';
 import { useNow } from '../clock.js';
 import { formatAgo, formatCompact, formatCost, formatDateTime, formatPercent } from '../format.js';
 import { usePostAction } from '../vscode-context.js';
 
-import { SuggestionList, TipList, TipsSessionTable } from './tips-lists.js';
+import { SuggestionList, TipList, TuningSessionTable } from './tuning-lists.js';
 
 function Stat(props: { readonly label: string; readonly value: string }): ReactElement {
   return (
@@ -40,7 +40,7 @@ function LastScanned(props: { readonly at: number | null }): ReactElement {
   );
 }
 
-export function TipsView(props: { readonly state: TipsState }): ReactElement {
+export function TuningView(props: { readonly state: TuningState }): ReactElement {
   const { state } = props;
   const post = usePostAction();
   const names = useMemo(
@@ -50,9 +50,9 @@ export function TipsView(props: { readonly state: TipsState }): ReactElement {
   const titles = useMemo(() => new Map(state.tips.map((tip) => [tip.id, tip.title])), [state.tips]);
   const reread = state.totalUsd === 0 ? null : state.cacheReadUsd / state.totalUsd;
   return (
-    <section aria-labelledby="tips-title">
+    <section aria-labelledby="tuning-title">
       <header className="view-header">
-        <h1 id="tips-title">Tuning</h1>
+        <h1 id="tuning-title">Tuning</h1>
         <dl className="stats">
           <Stat label="Sessions" value={state.sessions.toLocaleString('en-US')} />
           <Stat label="Spend" value={formatCost(state.totalUsd)} />
@@ -65,7 +65,7 @@ export function TipsView(props: { readonly state: TipsState }): ReactElement {
         <button
           type="button"
           onClick={() => {
-            post({ type: 'rescanTips' });
+            post({ type: 'rescanTuning' });
           }}
         >
           Rescan
@@ -79,7 +79,7 @@ export function TipsView(props: { readonly state: TipsState }): ReactElement {
       </p>
       <TipList tips={state.tips} names={names} />
       <SuggestionList suggestions={state.suggestions} />
-      <TipsSessionTable rows={state.rows} titles={titles} />
+      <TuningSessionTable rows={state.rows} titles={titles} />
     </section>
   );
 }

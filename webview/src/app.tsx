@@ -20,7 +20,7 @@ import { LauncherView } from './views/launcher-view.js';
 import { MessagesView } from './views/messages-view.js';
 import { PropertiesView } from './views/properties-view.js';
 import { SessionsView } from './views/sessions-view.js';
-import { TipsView } from './views/tips-view.js';
+import { TuningView } from './views/tuning-view.js';
 import { UsageView } from './views/usage-view.js';
 
 /** The view named by the root element's data-view attribute, if valid. */
@@ -29,7 +29,7 @@ export function readViewId(element: HTMLElement): ViewId | null {
   return isViewId(view) ? view : null;
 }
 
-type GlobalView = 'knobs' | 'config' | 'usage' | 'frustration' | 'tips' | 'help';
+type GlobalView = 'knobs' | 'config' | 'usage' | 'frustration' | 'tuning' | 'help';
 type GlobalMessage = Extract<HostToWebview, { readonly view: GlobalView }>;
 type SessionMessage = Exclude<HostToWebview, GlobalMessage>;
 
@@ -38,7 +38,7 @@ const GLOBAL_VIEWS: ReadonlySet<ViewId> = new Set<GlobalView>([
   'config',
   'usage',
   'frustration',
-  'tips',
+  'tuning',
   'help',
 ]);
 
@@ -62,8 +62,8 @@ function GlobalViewSwitch(props: { readonly message: GlobalMessage }): ReactElem
     case 'frustration': {
       return <FrustrationView state={message.state} />;
     }
-    case 'tips': {
-      return <TipsView state={message.state} />;
+    case 'tuning': {
+      return <TuningView state={message.state} />;
     }
     case 'help': {
       return <HelpView />;

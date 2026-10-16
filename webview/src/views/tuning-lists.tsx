@@ -1,9 +1,9 @@
-// The parts of the tips view: the advice cards, the skills and agents to
+// The parts of the Tuning view: the advice cards, the skills and agents to
 // add, and the per-session table.
 
 import type { ReactElement } from 'react';
 
-import type { Suggestion, Tip, TipSeverity, TipsSessionRow } from '../../../src/shared/tips.js';
+import type { Suggestion, Tip, TipSeverity, TuningSessionRow } from '../../../src/shared/tuning.js';
 import { Badge } from '../components/badge.js';
 import type { Column } from '../components/data-table.js';
 import { DataTable } from '../components/data-table.js';
@@ -17,7 +17,7 @@ import {
 import type { Tone } from '../labels.js';
 import { usePostAction } from '../vscode-context.js';
 
-import { TipResults } from './tips-impact.js';
+import { TipResults } from './tuning-impact.js';
 
 export const SEVERITY_INFO: Readonly<Record<TipSeverity, { label: string; tone: Tone }>> = {
   high: { label: 'High impact', tone: 'critical' },
@@ -183,8 +183,8 @@ export function SuggestionList(props: {
   readonly suggestions: readonly Suggestion[];
 }): ReactElement {
   return (
-    <section className="section" aria-labelledby="tips-suggestions">
-      <h2 id="tips-suggestions">Skills and agents to add</h2>
+    <section className="section" aria-labelledby="tuning-suggestions">
+      <h2 id="tuning-suggestions">Skills and agents to add</h2>
       <p className="muted">
         Each one takes over work your sessions keep doing by hand. Create asks where to save it and
         opens the file so you can review it.
@@ -198,7 +198,7 @@ export function SuggestionList(props: {
   );
 }
 
-function sessionColumns(titles: ReadonlyMap<string, string>): readonly Column<TipsSessionRow>[] {
+function sessionColumns(titles: ReadonlyMap<string, string>): readonly Column<TuningSessionRow>[] {
   return [
     {
       id: 'title',
@@ -261,13 +261,13 @@ function sessionColumns(titles: ReadonlyMap<string, string>): readonly Column<Ti
   ];
 }
 
-export function TipsSessionTable(props: {
-  readonly rows: readonly TipsSessionRow[];
+export function TuningSessionTable(props: {
+  readonly rows: readonly TuningSessionRow[];
   readonly titles: ReadonlyMap<string, string>;
 }): ReactElement {
   return (
-    <section className="section" aria-labelledby="tips-sessions">
-      <h2 id="tips-sessions">Sessions by cost</h2>
+    <section className="section" aria-labelledby="tuning-sessions">
+      <h2 id="tuning-sessions">Sessions by cost</h2>
       <DataTable
         caption="Sessions by cost"
         columns={sessionColumns(props.titles)}

@@ -7,11 +7,11 @@ import { describe, expect, it, onTestFinished } from 'vitest';
 import { loadTracked, saveTracked } from './tracked.js';
 
 async function temporaryFile(): Promise<string> {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'overlord-tips-tracked-'));
+  const root = await mkdtemp(path.join(os.tmpdir(), 'overlord-tuning-tracked-'));
   onTestFinished(async () => {
     await rm(root, { recursive: true, force: true });
   });
-  return path.join(root, 'tips-tracked.json');
+  return path.join(root, 'tuning-tracked.json');
 }
 
 describe('tracked tips', () => {

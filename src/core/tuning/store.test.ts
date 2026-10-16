@@ -8,11 +8,11 @@ import { emptyIndex, loadIndex, saveIndex } from './store.js';
 import { measureOf } from './test-helpers/fixtures.js';
 
 async function temporaryFile(): Promise<string> {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'overlord-tips-store-'));
+  const root = await mkdtemp(path.join(os.tmpdir(), 'overlord-tuning-store-'));
   onTestFinished(async () => {
     await rm(root, { recursive: true, force: true });
   });
-  return path.join(root, 'tips.json');
+  return path.join(root, 'tuning.json');
 }
 
 describe('tips index', () => {

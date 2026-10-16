@@ -1,17 +1,17 @@
-// Actions for the tips view.
+// Actions for the Tuning view.
 
 import { renderAgent, renderSkill } from '../authoring/render.js';
-import { isTipId } from '../tips/build.js';
-import { findSuggestion, nameOf } from '../tips/suggestions.js';
-import { plural } from '../tips/words.js';
+import { isTipId } from '../tuning/build.js';
+import { findSuggestion, nameOf } from '../tuning/suggestions.js';
+import { plural } from '../tuning/words.js';
 
 import type { ActionHandlers } from './action-types.js';
 import { saveAuthored } from './actions-authoring.js';
-import { refreshInstalled, rescanTips, setTipTracked, trackAdviceTaken } from './views/tips.js';
+import { refreshInstalled, rescanTuning, setTipTracked, trackAdviceTaken } from './views/tuning.js';
 
-export const tipsActions: ActionHandlers<'rescanTips' | 'createSuggestion' | 'trackTip'> = {
-  rescanTips: async ({ rt }) => {
-    const state = await rescanTips(rt);
+export const tuningActions: ActionHandlers<'rescanTuning' | 'createSuggestion' | 'trackTip'> = {
+  rescanTuning: async ({ rt }) => {
+    const state = await rescanTuning(rt);
     rt.host.showInfo(
       `Tuning rescan done: ${plural(state.sessions, 'session')}, ${plural(state.tips.length, 'tip')}.`,
     );

@@ -12,7 +12,7 @@ import { launchActions } from './actions-launch.js';
 import { messageActions } from './actions-messages.js';
 import { projectActions } from './actions-projects.js';
 import { sessionActions } from './actions-session.js';
-import { tipsActions } from './actions-tips.js';
+import { tuningActions } from './actions-tuning.js';
 import { worktreeActions } from './actions-worktrees.js';
 import { messageOf } from './errors.js';
 import type { PanelParams } from './host-port.js';
@@ -25,7 +25,7 @@ const HANDLERS: ActionHandlers<ActionType> = {
   ...authoringActions,
   ...frustrationActions,
   ...messageActions,
-  ...tipsActions,
+  ...tuningActions,
   ...worktreeActions,
   ...projectActions,
 };

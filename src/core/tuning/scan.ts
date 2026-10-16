@@ -8,7 +8,7 @@ import { scanSessions } from '../transcripts/scanner.js';
 import { listSubagentFiles } from '../transcripts/subagents.js';
 
 import { measureSession } from './measure.js';
-import type { FileStamp, TipsIndex } from './store.js';
+import type { FileStamp, TuningIndex } from './store.js';
 
 /** How long a measure outlives its transcript. */
 export const HISTORY_MS = 365 * 24 * 60 * 60_000;
@@ -36,7 +36,7 @@ async function measureFile(info: SessionFileInfo): Promise<ReturnType<typeof mea
   });
 }
 
-function markGone(index: TipsIndex, seen: ReadonlySet<string>, now: number): number {
+function markGone(index: TuningIndex, seen: ReadonlySet<string>, now: number): number {
   let changed = 0;
   for (const [file, entry] of index.entries) {
     if (seen.has(file)) {
@@ -55,7 +55,7 @@ function markGone(index: TipsIndex, seen: ReadonlySet<string>, now: number): num
 
 /** Updates `index` in place. Running it twice on the same files reads nothing the second time. */
 export async function scanInto(
-  index: TipsIndex,
+  index: TuningIndex,
   projectsDir: string,
   now: number,
 ): Promise<ScanResult> {
