@@ -248,19 +248,24 @@
           "group": "navigation@1"
         },
         {
-          "command": "overlord.openFleet",
+          "command": "overlord.openLauncher",
           "when": "view == overlord.fleet",
           "group": "navigation@2"
         },
         {
-          "command": "overlord.openSessions",
+          "command": "overlord.openFleet",
           "when": "view == overlord.fleet",
           "group": "navigation@3"
         },
         {
-          "command": "overlord.refresh",
+          "command": "overlord.openSessions",
           "when": "view == overlord.fleet",
           "group": "navigation@4"
+        },
+        {
+          "command": "overlord.refresh",
+          "when": "view == overlord.fleet",
+          "group": "navigation@5"
         }
       ],
       "commandPalette": [

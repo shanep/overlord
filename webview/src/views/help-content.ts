@@ -23,13 +23,19 @@ export const SIDEBAR_GROUPS: readonly SidebarGroup[] = [
   {
     title: 'Fleet',
     about:
-      'The live session list, docked at the top of the sidebar. Its title bar has four buttons.',
+      'The live session list, docked at the top of the sidebar. Its title bar has five buttons.',
     entries: [
       {
         name: 'New Claude Code session',
         icon: 'Sparkle',
         meaning:
           'Starts a claude session in the background with an editor tab attached, so closing the tab keeps it running.',
+      },
+      {
+        name: 'Launcher',
+        icon: 'Rocket',
+        meaning:
+          'Runs one prompt across several profiles at once, with a permission inbox and auto-approve rules.',
       },
       {
         name: 'Fleet (full view)',
@@ -73,6 +79,12 @@ export const SIDEBAR_GROUPS: readonly SidebarGroup[] = [
         meaning: 'Prompts where you swore at Claude or sounded fed up, by day and by session.',
       },
       {
+        name: 'Agent Messages',
+        icon: 'Speech bubbles',
+        meaning:
+          'Messages your sessions sent each other, the routes between them, and block rules.',
+      },
+      {
         name: 'Tips',
         icon: 'Light bulb',
         meaning:
@@ -86,22 +98,10 @@ export const SIDEBAR_GROUPS: readonly SidebarGroup[] = [
     about: 'Views about particular sessions and the agents inside them.',
     entries: [
       {
-        name: 'Launcher',
-        icon: 'Rocket',
-        meaning:
-          'Runs one prompt across several profiles at once, with a permission inbox and auto-approve rules.',
-      },
-      {
         name: 'Context Inspector',
         icon: 'Magnifying glass',
         meaning:
           'The system prompt, every memory file that loaded and why, and every file that did not load and why not.',
-      },
-      {
-        name: 'Agent Messages',
-        icon: 'Speech bubbles',
-        meaning:
-          'Messages your sessions sent each other, the routes between them, and block rules.',
       },
     ],
   },

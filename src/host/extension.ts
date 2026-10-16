@@ -31,13 +31,13 @@ const GLOBAL_VIEWS: readonly ViewEntry[] = [
 
 /** Views opened from buttons on the Fleet sidebar's title bar. */
 const FLEET_TITLE_VIEWS: readonly ViewEntry[] = [
+  ['overlord.openLauncher', 'launcher', 'Launcher', 'rocket'],
   ['overlord.openFleet', 'fleet', 'Fleet (full view)', 'pulse'],
   ['overlord.openSessions', 'sessions', 'All Sessions', 'list-unordered'],
 ];
 
 /** Views about particular sessions and agents. */
 const SESSION_VIEWS: readonly ViewEntry[] = [
-  ['overlord.openLauncher', 'launcher', 'Launcher', 'rocket'],
   ['overlord.openContext', 'context', 'Context Inspector', 'search'],
 ];
 
