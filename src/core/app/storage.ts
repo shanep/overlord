@@ -73,6 +73,7 @@ const projectsFileSchema = z.object({
     }),
   ),
   rules: z.array(z.object({ folder: z.string().min(1), projectId: z.string().min(1).nullable() })),
+  repos: z.array(z.string().min(1)).default([]),
 });
 
 /** Parsed file contents, or `fallback` when the file does not exist. */
@@ -147,10 +148,20 @@ export async function writeImport(file: string, stored: StoredImport): Promise<v
 }
 
 export async function readProjects(file: string): Promise<ProjectBook> {
-  const data = await readChecked(file, projectsFileSchema, { version: 1, projects: [], rules: [] });
-  return { projects: data.projects, rules: data.rules };
+  const data = await readChecked(file, projectsFileSchema, {
+    version: 1,
+    projects: [],
+    rules: [],
+    repos: [],
+  });
+  return { projects: data.projects, rules: data.rules, repos: data.repos };
 }
 
 export async function writeProjects(file: string, book: ProjectBook): Promise<void> {
-  await writeJson(file, { version: 1, projects: book.projects, rules: book.rules });
+  await writeJson(file, {
+    version: 1,
+    projects: book.projects,
+    rules: book.rules,
+    repos: book.repos,
+  });
 }

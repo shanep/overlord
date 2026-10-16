@@ -70,6 +70,25 @@ describe('ProjectIndex', () => {
     });
   });
 
+  it('remembers each repository once, so its project outlives its sessions', async () => {
+    const { index, file } = await harness();
+    await index.refresh(['/repo/src', '/notes']);
+    await index.refresh(['/repo']);
+    const { repos } = await readProjects(file);
+    expect(repos).toStrictEqual(['/repo']);
+    expect(index.view([]).projects).toStrictEqual([
+      { id: 'git:/repo', name: 'repo', kind: 'git', folder: '/repo' },
+    ]);
+  });
+
+  it('reports a repository it could not remember and still tells panels', async () => {
+    const { index, file, onChange, report } = await harness();
+    await writeText(file, '{');
+    await index.refresh(['/repo']);
+    expect(report).toHaveBeenCalledWith('projects', `${file} is not valid JSON`);
+    expect(onChange).toHaveBeenCalledTimes(1);
+  });
+
   it('maps a worktree through the registry without asking git', async () => {
     const { index, looked } = await harness();
     await index.refresh(['/wt/gone']);
@@ -111,7 +130,7 @@ describe('ProjectIndex', () => {
     const { index, file, onChange, report } = await harness();
     await index.load();
     expect(onChange).not.toHaveBeenCalled();
-    const book = { projects: [{ id: 'p1', name: 'Course', folder: null }], rules: [] };
+    const book = { projects: [{ id: 'p1', name: 'Course', folder: null }], rules: [], repos: [] };
     await writeProjects(file, book);
     await index.load();
     await index.load();
@@ -125,10 +144,14 @@ describe('ProjectIndex', () => {
 
   it('changes the book on disk, keeping what another window wrote', async () => {
     const { index, file, onChange } = await harness();
-    await writeProjects(file, { projects: [{ id: 'p1', name: 'One', folder: null }], rules: [] });
+    await writeProjects(file, {
+      projects: [{ id: 'p1', name: 'One', folder: null }],
+      rules: [],
+      repos: [],
+    });
     await index.update((book) => ({
+      ...book,
       projects: [...book.projects, { id: 'p2', name: 'Two', folder: null }],
-      rules: book.rules,
     }));
     const expected = {
       projects: [
@@ -136,6 +159,7 @@ describe('ProjectIndex', () => {
         { id: 'p2', name: 'Two', folder: null },
       ],
       rules: [],
+      repos: [],
     };
     expect(await readProjects(file)).toStrictEqual(expected);
     expect(index.book).toStrictEqual(expected);
@@ -146,12 +170,12 @@ describe('ProjectIndex', () => {
     const { index, file } = await harness();
     await writeText(file, '{');
     await expect(index.update((book) => book)).rejects.toThrow('not valid JSON');
-    await writeProjects(file, { projects: [], rules: [] });
+    await writeProjects(file, { projects: [], rules: [], repos: [] });
     await Promise.all(
       ['p1', 'p2'].map(async (id) =>
         index.update((book) => ({
+          ...book,
           projects: [...book.projects, { id, name: id, folder: null }],
-          rules: book.rules,
         })),
       ),
     );

@@ -19,7 +19,7 @@ import {
 const COURSE = { id: 'p1', name: 'Course', folder: null };
 
 function book(rules: ProjectBook['rules']): ProjectBook {
-  return { projects: [COURSE], rules };
+  return { projects: [COURSE], rules, repos: [] };
 }
 
 describe('isInside', () => {
@@ -123,6 +123,7 @@ describe('book changes', () => {
         { folder: '/b', projectId: 'p2' },
         { folder: '/c', projectId: null },
       ],
+      repos: [],
     };
     expect(removeProject(withRules, 'p1')).toStrictEqual({
       projects: [{ id: 'p2', name: 'Two', folder: null }],
@@ -130,6 +131,7 @@ describe('book changes', () => {
         { folder: '/b', projectId: 'p2' },
         { folder: '/c', projectId: null },
       ],
+      repos: [],
     });
   });
 });
@@ -140,6 +142,7 @@ describe('project folders', () => {
     expect(setProjectFolder(two, 'p2', '/two')).toStrictEqual({
       projects: [COURSE, { id: 'p2', name: 'Two', folder: '/two' }],
       rules: [],
+      repos: [],
     });
   });
 
@@ -172,7 +175,7 @@ describe('projectSummaries', () => {
 
   it('adds the parent folder to repositories that share a name', () => {
     const named = projectSummaries(
-      { projects: [{ id: 'p1', name: 'app', folder: null }], rules: [] },
+      { projects: [{ id: 'p1', name: 'app', folder: null }], rules: [], repos: [] },
       ['/work/app', '/play/app'],
     ).map((item) => item.name);
     expect(named).toStrictEqual(['app', 'app (work)', 'app (play)']);

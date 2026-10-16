@@ -72,6 +72,7 @@ function RowActions(props: {
     disabled = false,
   ): ReactElement => (
     <button
+      key={action}
       type="button"
       className="icon-button"
       tabIndex={tabIndex}
@@ -93,22 +94,18 @@ function RowActions(props: {
     );
   if (row.kind === 'project') {
     const { projectId, manualProjectId, projectFolder } = row;
-    const projectButton = (id: string, action: ProjectAction): ReactElement =>
-      iconButton(action, () => {
-        onProjectAction(id, action);
-      });
+    const buttons = (id: string | null, actions: readonly ProjectAction[]): ReactElement[] =>
+      id === null
+        ? []
+        : actions.map((action) =>
+            iconButton(action, () => {
+              onProjectAction(id, action);
+            }),
+          );
     return (
       <span className="actions">
-        {projectId === null || projectFolder === null
-          ? null
-          : projectButton(projectId, 'openFolder')}
-        {manualProjectId === null ? null : (
-          <>
-            {projectButton(manualProjectId, 'setFolder')}
-            {projectButton(manualProjectId, 'rename')}
-            {projectButton(manualProjectId, 'delete')}
-          </>
-        )}
+        {buttons(projectFolder === null ? null : projectId, ['newSession', 'openFolder'])}
+        {buttons(manualProjectId, ['setFolder', 'rename', 'delete'])}
       </span>
     );
   }

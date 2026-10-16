@@ -1,11 +1,13 @@
 // Keeps each session's project current for the fleet. Git runs once per new
 // session folder. A folder that turned out not to be a repository is checked
 // again now and then, so a later `git init` takes effect without a reload.
-// The hand made projects live in projects.json, which every window shares.
+// The hand made projects live in projects.json, which every window shares,
+// along with every repository a session has run in, so a project can still
+// be opened once its sessions are gone.
 
 import type { ProjectSummary, SessionProject } from '../../shared/protocol.js';
 import type { ProjectBook } from '../projects/book.js';
-import { EMPTY_BOOK, projectSummaries, resolveProject } from '../projects/book.js';
+import { EMPTY_BOOK, projectSummaries, rememberRepos, resolveProject } from '../projects/book.js';
 import type { WorktreeRegistry } from '../worktrees/registry.js';
 
 import { messageOf } from './errors.js';
@@ -148,8 +150,29 @@ export class ProjectIndex {
       this.roots.set(cwd, { root, checkedAt: now });
       this.checking.delete(cwd);
     }
+    const roots = found.flatMap(({ root }) => (root === null ? [] : [root]));
+    if (await this.remember(roots)) {
+      return;
+    }
     if (changed) {
       this.deps.onChange();
+    }
+  }
+
+  /**
+   * Keep repositories not yet in the book. True when the book changed, which
+   * already told the panels.
+   */
+  private async remember(roots: readonly string[]): Promise<boolean> {
+    if (rememberRepos(this.current, roots) === this.current) {
+      return false;
+    }
+    try {
+      await this.update((book) => rememberRepos(book, roots));
+      return true;
+    } catch (error: unknown) {
+      this.deps.report(SOURCE, messageOf(error));
+      return false;
     }
   }
 

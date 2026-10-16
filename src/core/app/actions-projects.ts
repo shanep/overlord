@@ -77,7 +77,7 @@ async function assign(rt: Runtime, target: Placed, projectId: string): Promise<v
 }
 
 /** The name typed for a project, or null when it was cancelled or left blank. */
-async function askName(rt: Runtime, value: string): Promise<string | null> {
+export async function askName(rt: Runtime, value: string): Promise<string | null> {
   const answer = await rt.host.inputBox({ prompt: 'Project name', value });
   const name = answer?.trim() ?? '';
   return name === '' ? null : name;
@@ -206,7 +206,11 @@ function manualName(rt: Runtime, projectId: string): string | null {
  * The folder picked for a project, or null when cancelled. The folders its
  * sessions run in come first, since one of them is the likely answer.
  */
-async function chooseFolder(rt: Runtime, projectId: string, name: string): Promise<string | null> {
+export async function chooseFolder(
+  rt: Runtime,
+  projectId: string,
+  name: string,
+): Promise<string | null> {
   const current = rt.projects.book.projects.find((item) => item.id === projectId)?.folder ?? null;
   const known = projectFolders(rt.projects.book, projectId).filter((item) => item !== current);
   const title = `Folder for ${name}`;
@@ -219,6 +223,24 @@ async function chooseFolder(rt: Runtime, projectId: string, name: string): Promi
   ];
   const picked = await rt.host.quickPick(items, title);
   return picked === BROWSE_ID ? rt.host.pickFolder(title) : picked;
+}
+
+/** The folder a project works in, or null after telling the user why there is none. */
+export async function folderOf(rt: Runtime, projectId: string): Promise<string | null> {
+  const project = fleetFor(rt).projects.find((item) => item.id === projectId);
+  if (project === undefined) {
+    rt.host.showInfo('That project is gone.');
+    return null;
+  }
+  if (project.folder === null) {
+    rt.host.showInfo(`Set a folder for ${project.name} first.`);
+    return null;
+  }
+  if ((await rt.fs.kind(project.folder)) !== 'directory') {
+    rt.host.showInfo(`${project.folder} is gone or is not a folder.`);
+    return null;
+  }
+  return project.folder;
 }
 
 export const projectActions: ActionHandlers<ProjectActions> = {
@@ -257,20 +279,10 @@ export const projectActions: ActionHandlers<ProjectActions> = {
     }
   },
   openProjectFolder: async ({ rt }, action) => {
-    const project = fleetFor(rt).projects.find((item) => item.id === action.projectId);
-    if (project === undefined) {
-      rt.host.showInfo('That project is gone.');
-      return;
+    const folder = await folderOf(rt, action.projectId);
+    if (folder !== null) {
+      await rt.host.showFolder(folder);
     }
-    if (project.folder === null) {
-      rt.host.showInfo(`Set a folder for ${project.name} first.`);
-      return;
-    }
-    if ((await rt.fs.kind(project.folder)) !== 'directory') {
-      rt.host.showInfo(`${project.folder} is gone or is not a folder.`);
-      return;
-    }
-    await rt.host.showFolder(project.folder);
   },
   setProjectFolder: async ({ rt }, action) => {
     const name = manualName(rt, action.projectId);

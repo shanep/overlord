@@ -93,6 +93,71 @@
   width: 100%;
 }
 
+/* The buttons stay on the filter's line, so the View menu always opens
+   from the right end of the toolbar. */
+.fleet .toolbar {
+  flex-wrap: nowrap;
+}
+
+.fleet .toolbar .filter {
+  min-width: 0;
+}
+
+.fleet .toolbar > button,
+.view-menu-button {
+  display: inline-flex;
+  flex: none;
+  gap: 4px;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.view-menu {
+  position: relative;
+  flex: none;
+}
+
+/* A dot on the View button while a choice hides rows. */
+.view-menu-button[data-hiding='true']::after {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--vscode-activityBarBadge-background, var(--ov-button));
+  content: '';
+}
+
+.view-menu-panel {
+  position: absolute;
+  z-index: 10;
+  top: calc(100% + 4px);
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: max-content;
+  padding: 8px 10px;
+  border: 1px solid var(--vscode-menu-border, var(--ov-border));
+  border-radius: 4px;
+  color: var(--vscode-menu-foreground, var(--ov-fg));
+  background: var(--vscode-menu-background, var(--ov-bg));
+  box-shadow: 0 2px 8px var(--vscode-widget-shadow, rgb(0 0 0 / 25%));
+}
+
+.view-menu-panel label {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.view-menu-keys {
+  margin: 2px 0 0;
+  white-space: nowrap;
+  padding-top: 6px;
+  border-top: 1px solid var(--vscode-menu-separatorBackground, var(--ov-border));
+  font-size: 0.9em;
+}
+
 /* ---- Session tree ------------------------------------------------------- */
 
 /* The title takes whatever width is left and truncates, so the numeric

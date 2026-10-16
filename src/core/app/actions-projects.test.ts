@@ -89,7 +89,7 @@ describe('moveSession', () => {
     // A repository is never unassigned, so it is not offered the never ask choice.
     await test.app.dispatch({ type: 'moveSession', sessionId: 's2' }, {});
     expect(test.env.host.picks[1]?.items.map((item) => item.id)).toStrictEqual(['new']);
-    expect(await book(test)).toStrictEqual({ projects: [], rules: [] });
+    expect(await book(test)).toStrictEqual({ projects: [], rules: [], repos: ['/repo'] });
   });
 
   it('moves a folder into a project and a repository back to its own', async () => {
@@ -121,7 +121,7 @@ describe('moveSession', () => {
   it('marks a folder never to ask about, and does nothing when the pick is cancelled', async () => {
     const test = await app(NOTES);
     await test.app.dispatch({ type: 'moveSession', sessionId: 's1' }, {});
-    expect(await book(test)).toStrictEqual({ projects: [], rules: [] });
+    expect(await book(test)).toStrictEqual({ projects: [], rules: [], repos: [] });
     test.env.host.pickAnswers.push('ignore');
     await test.app.dispatch({ type: 'moveSession', sessionId: 's1' }, {});
     expect(fleetFor(test.app.runtime).sessionProjects['s1']).toStrictEqual({
@@ -138,7 +138,7 @@ describe('newProject', () => {
     test.env.host.inputAnswers.push(null, ' '.repeat(3));
     await test.app.dispatch({ type: 'newProject', sessionId: 's1' }, {});
     await test.app.dispatch({ type: 'newProject', sessionId: 's1' }, {});
-    expect(await book(test)).toStrictEqual({ projects: [], rules: [] });
+    expect(await book(test)).toStrictEqual({ projects: [], rules: [], repos: [] });
   });
 });
 
@@ -184,7 +184,7 @@ describe('renameProject and deleteProject', () => {
       action: 'Delete',
     });
     expect(projectOf(test, 's1')).toBeNull();
-    expect(await book(test)).toStrictEqual({ projects: [], rules: [] });
+    expect(await book(test)).toStrictEqual({ projects: [], rules: [], repos: [] });
   });
 });
 

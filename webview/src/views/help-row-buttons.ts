@@ -28,6 +28,12 @@ export const ROW_BUTTONS: readonly RowButton[] = [
       'Puts every session in this folder in another project or a new one. For a folder with no git repository, it can also tell Overlord never to ask about it. The m key does the same.',
   },
   {
+    icon: 'newSession',
+    name: 'New session in project',
+    meaning:
+      "On a project's row, starts a Claude Code session in that project, in its own worktree when it is a git repository, without switching windows.",
+  },
+  {
     icon: 'openFolder',
     name: 'Open project folder',
     meaning:

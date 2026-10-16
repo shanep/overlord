@@ -27,11 +27,17 @@ See [PLAN.md](PLAN.md) for the full design and the decisions behind it.
   project on its own, and its worktrees count as the repo. A session in any other folder lands
   in Unassigned, and the window running it asks once whether to add it to a project, make a new
   one, or never ask about that folder again. The folder button on a project's row adds its folder
-  to the current window and shows it in the Explorer, so you can edit it like any other folder. A
-  project you made has no folder until you set one. Claude Code cannot join two conversations, so
-  the combine button on a session's row starts a new session instead. Its first message is a
-  digest of the sessions you pick: what you asked, the files they edited, the commits they made
-  and their last reply. Then Overlord offers to stop the ones still running.
+  to the current window and shows it in the Explorer, so you can edit it like any other folder, and
+  the sparkle next to it starts a new session in that project. A project you made has no folder
+  until you set one. Hide done, Group by project and Show working on live in the View menu above
+  the list. Claude Code cannot join two conversations, so the combine button on a session's row
+  starts a new session instead. Its first message is a digest of the sessions you pick: what you
+  asked, the files they edited, the commits they made and their last reply. Then Overlord offers
+  to stop the ones still running.
+- **Open a project**: **Open project** above the Fleet (or **Overlord: Open Project...**) lists
+  every project Overlord knows, including repositories whose sessions have aged out of the Fleet.
+  Pick one, or choose any folder, then start a Claude Code session there, open it in a new
+  window, or add it to this one.
 - **Agent detail**: the live feed of thinking and tool calls, a tool timeline, and token, cost
   and context charts.
 - **Session health**: Session Properties flags a session that is wearing out (a large context,

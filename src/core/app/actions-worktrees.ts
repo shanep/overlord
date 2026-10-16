@@ -7,7 +7,7 @@ import type { ActionHandlers } from './action-types.js';
 import { continueInFolder } from './relocate.js';
 import type { Runtime } from './runtime.js';
 import { plural } from './text.js';
-import { newSession, openWorktree } from './worktrees.js';
+import { newSession, openWorktree, STARTING } from './worktrees.js';
 
 type WorktreeActions =
   'newSession' | 'continueInFolder' | 'landWorktree' | 'discardWorktree' | 'openWorktree';
@@ -25,7 +25,7 @@ function summary(rt: Runtime, id: string): { readonly label: string; readonly lo
 }
 
 export const worktreeActions: ActionHandlers<WorktreeActions> = {
-  newSession: async ({ rt }) => newSession(rt),
+  newSession: async ({ rt }) => rt.host.withProgress(STARTING, async () => newSession(rt)),
   continueInFolder: async ({ rt }, action) => continueInFolder(rt, action.sessionId),
   landWorktree: async ({ rt }, action) => {
     const { label } = summary(rt, action.id);

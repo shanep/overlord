@@ -198,13 +198,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     register('overlord.enableTelemetry', async () => overlord.setup.enableTelemetry()),
     register('overlord.disableTelemetry', async () => overlord.setup.disableTelemetry()),
     // Each new session gets its own worktree, so sessions never share files.
-    // Starting it in the background takes a couple of seconds, so say so.
-    register('overlord.newClaudeSession', async () =>
-      vscode.window.withProgress(
-        { location: vscode.ProgressLocation.Notification, title: 'Starting Claude Code' },
-        async () => dispatch({ type: 'newSession' }),
-      ),
-    ),
+    register('overlord.newClaudeSession', async () => dispatch({ type: 'newSession' })),
+    register('overlord.openProject', async () => dispatch({ type: 'openProject' })),
     register('overlord.showProperties', (): void => {
       tabs.showActive();
     }),

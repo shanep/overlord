@@ -41,6 +41,8 @@ export class FakeHost implements HostPort {
   readonly opened: string[] = [];
   readonly external: string[] = [];
   readonly folders: string[] = [];
+  readonly windows: string[] = [];
+  readonly progress: string[] = [];
   readonly terminals: TerminalRequest[] = [];
   readonly shown: TerminalTarget[] = [];
   /** Session ids with a tab Overlord opened, which showTerminal finds. */
@@ -100,6 +102,16 @@ export class FakeHost implements HostPort {
   readonly showFolder = async (folder: string): Promise<void> => {
     this.folders.push(folder);
     await Promise.resolve();
+  };
+
+  readonly openWindow = async (folder: string): Promise<void> => {
+    this.windows.push(folder);
+    await Promise.resolve();
+  };
+
+  readonly withProgress = async <T>(title: string, task: () => Promise<T>): Promise<T> => {
+    this.progress.push(title);
+    return task();
   };
 
   readonly runInTerminal = (request: TerminalRequest): void => {

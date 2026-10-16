@@ -134,26 +134,28 @@ describe('projects file', () => {
   it('reads nothing as an empty book and reads back what it wrote', async () => {
     const env = await makeEnv();
     const file = storagePath(env.storageDir, 'projects');
-    expect(await readProjects(file)).toStrictEqual({ projects: [], rules: [] });
+    expect(await readProjects(file)).toStrictEqual({ projects: [], rules: [], repos: [] });
     const book = {
       projects: [{ id: 'p1', name: 'Course', folder: null }],
       rules: [
         { folder: '/notes', projectId: 'p1' },
         { folder: '/tmp', projectId: null },
       ],
+      repos: ['/repo'],
     };
     await writeProjects(file, book);
     expect(await readJson(file)).toStrictEqual({ version: 1, ...book });
     expect(await readProjects(file)).toStrictEqual(book);
   });
 
-  it('reads a project saved before projects had folders as having none', async () => {
+  it('reads a file saved before projects had folders or repositories as having none', async () => {
     const env = await makeEnv();
     const file = storagePath(env.storageDir, 'projects');
     await writeJson(file, { version: 1, projects: [{ id: 'p1', name: 'Course' }], rules: [] });
     expect(await readProjects(file)).toStrictEqual({
       projects: [{ id: 'p1', name: 'Course', folder: null }],
       rules: [],
+      repos: [],
     });
   });
 

@@ -150,6 +150,13 @@ export function createVscodeHostPort(options: VscodeHostPortOptions): HostPort {
       await vscode.commands.executeCommand('workbench.view.explorer');
       await vscode.commands.executeCommand('revealInExplorer', uri);
     },
+    openWindow: async (folder: string): Promise<void> => {
+      await vscode.commands.executeCommand('vscode.openFolder', vscode.Uri.file(folder), {
+        forceNewWindow: true,
+      });
+    },
+    withProgress: async <T>(title: string, task: () => Promise<T>): Promise<T> =>
+      vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title }, task),
     runInTerminal: (request: TerminalRequest): void => {
       // Claude sessions get a full editor tab, like the CLI in its own window.
       const terminal = vscode.window.createTerminal({

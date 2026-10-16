@@ -1,7 +1,7 @@
 // The buttons on Fleet rows: what each one is called and what its tooltip says.
 
 export type RowAction = 'open' | 'context' | 'interrupt' | 'stop' | 'move' | 'relocate' | 'combine';
-export type ProjectAction = 'openFolder' | 'setFolder' | 'rename' | 'delete';
+export type ProjectAction = 'newSession' | 'openFolder' | 'setFolder' | 'rename' | 'delete';
 
 export const ACTION_LABELS: Readonly<Record<RowAction | ProjectAction, string>> = {
   open: 'Agent view',
@@ -11,6 +11,7 @@ export const ACTION_LABELS: Readonly<Record<RowAction | ProjectAction, string>> 
   move: 'Move to project',
   relocate: 'Continue in folder',
   combine: 'Combine sessions',
+  newSession: 'New session in project',
   openFolder: 'Open project folder',
   setFolder: 'Set project folder',
   rename: 'Rename project',
@@ -26,6 +27,7 @@ const ACTION_TIPS: Readonly<Record<RowAction | ProjectAction, string>> = {
   move: 'Put this session in another project',
   relocate: 'Continue a copy of this session in another folder',
   combine: 'Start one new session from a digest of this and others',
+  newSession: 'Start Claude Code in this project, in its own worktree',
   openFolder: 'Reveal the folder this project works in',
   setFolder: 'Pick the folder this project works in',
   rename: 'Give this project a new name',

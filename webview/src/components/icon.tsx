@@ -38,6 +38,16 @@ const SHAPES = {
   rename: <path d="m10.5 3 2.5 2.5L6 12.5H3.5V10zM9 4.5 11.5 7" />,
   /** A bin: delete. */
   delete: <path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.7 8.5h5.6l.7-8.5" />,
+  /** A four point star: start a new Claude Code session, like VS Code's sparkle. */
+  newSession: <path d="M8 2c.5 3 1.5 5 6 6-4.5 1-5.5 3-6 6-.5-3-1.5-5-6-6 4.5-1 5.5-3 6-6z" />,
+  /** Sliders: choose what a list shows. */
+  sliders: (
+    <>
+      <path d="M2 4.5h12M2 11.5h12" />
+      <circle cx="5.5" cy="4.5" r="1.5" fill="currentColor" />
+      <circle cx="10.5" cy="11.5" r="1.5" fill="currentColor" />
+    </>
+  ),
   /** Stacked layers: running in the background. */
   layers: <path d="M2 6.5 8 3.5l6 3-6 3zM2 9.5l6 3 6-3" />,
   /** An hourglass: quiet with no window, so it leaves the fleet in time. */

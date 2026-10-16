@@ -52,6 +52,12 @@ function bodyRowTitles(): string[] {
     .map((row) => row.querySelector('.row-title')?.textContent ?? '');
 }
 
+/** Opens the View menu and clicks one of its choices. */
+async function choose(user: ReturnType<typeof userEvent.setup>, name: string): Promise<void> {
+  await user.click(screen.getByRole('button', { name: 'View' }));
+  await user.click(screen.getByRole('checkbox', { name }));
+}
+
 function grow(tokens: number): FleetState {
   return {
     ...fleetState,
@@ -320,7 +326,7 @@ describe('FleetView', () => {
     await user.type(screen.getByRole('searchbox', { name: 'Filter' }), 'docs');
     expect(bodyRowTitles()).toStrictEqual(['Write docs']);
     await user.clear(screen.getByRole('searchbox', { name: 'Filter' }));
-    await user.click(screen.getByRole('checkbox', { name: 'Hide done' }));
+    await choose(user, 'Hide done');
     expect(bodyRowTitles()).toStrictEqual(['Write docs', 'Refactor parser', 'Explore']);
     await user.type(screen.getByRole('searchbox', { name: 'Filter' }), 'nothing matches');
     expect(screen.queryByRole('treegrid')).toBeNull();
@@ -420,13 +426,14 @@ describe('FleetView grouped by project', () => {
         .queryAllByRole('button')
         .map((button) => button.getAttribute('aria-label') ?? '')
         .filter((name) => !/^(?:Collapse|Expand) /u.test(name));
-    expect(names('web')).toStrictEqual(['Open project folder web']);
+    expect(names('web')).toStrictEqual(['New session in project web', 'Open project folder web']);
     expect(names('Unassigned')).toStrictEqual([]);
     expect(names('Course')).toStrictEqual([
       'Set project folder Course',
       'Rename project Course',
       'Delete project Course',
     ]);
+    await user.click(screen.getByRole('button', { name: 'New session in project web' }));
     await user.click(screen.getByRole('button', { name: 'Open project folder web' }));
     await user.click(screen.getByRole('button', { name: 'Set project folder Course' }));
     await user.click(screen.getByRole('button', { name: 'Rename project Course' }));
@@ -437,6 +444,7 @@ describe('FleetView grouped by project', () => {
     await user.click(rowFor('Write docs'));
     await user.keyboard('m');
     expect(api.actions()).toStrictEqual([
+      { type: 'newProjectSession', projectId: 'git:/r/web' },
       { type: 'openProjectFolder', projectId: 'git:/r/web' },
       { type: 'setProjectFolder', projectId: 'm1' },
       { type: 'renameProject', projectId: 'm1' },
@@ -460,10 +468,52 @@ describe('FleetView grouped by project', () => {
     expect(api.actions()).toStrictEqual([{ type: 'openProjectFolder', projectId: 'm1' }]);
   });
 
+  it('opens a project from the toolbar', async () => {
+    const user = userEvent.setup();
+    const { api } = setup();
+    await user.click(screen.getByRole('button', { name: 'Open project' }));
+    expect(api.actions()).toStrictEqual([{ type: 'openProject' }]);
+  });
+
+  it('keeps the view choices in a menu that closes on Escape or a click outside', async () => {
+    const user = userEvent.setup();
+    const { container } = setup();
+    const view = screen.getByRole('button', { name: 'View' });
+    expect(view.getAttribute('aria-expanded')).toBe('false');
+    expect(screen.queryByRole('checkbox', { name: 'Hide done' })).toBeNull();
+    await user.click(view);
+    expect(view.getAttribute('aria-expanded')).toBe('true');
+    expect(
+      within(screen.getByRole('group', { name: 'View' }))
+        .getAllByRole('checkbox')
+        .map((box) => box.parentElement?.textContent),
+    ).toStrictEqual(['Hide done', 'Group by project', 'Show working on']);
+    await expectAccessible(container);
+    await user.click(screen.getByRole('checkbox', { name: 'Hide done' }));
+    await user.keyboard('a');
+    expect(screen.getByRole('group', { name: 'View' })).toBeDefined();
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('group', { name: 'View' })).toBeNull();
+    expect(document.activeElement).toBe(view);
+    await user.click(view);
+    await user.click(screen.getByRole('heading', { name: 'Fleet' }));
+    expect(screen.queryByRole('group', { name: 'View' })).toBeNull();
+    await user.click(view);
+    await user.click(view);
+    expect(screen.queryByRole('group', { name: 'View' })).toBeNull();
+  });
+
+  it('marks the View button while done sessions are hidden', () => {
+    setup(fleetState, new FakeApi({ 'fleet.groupByProject': false, 'fleet.hideDone': true }));
+    const view = screen.getByRole('button', { name: 'View' });
+    expect(view.dataset['hiding']).toBe('true');
+    expect(view.dataset['tip']).toBe('Choose what the list shows. Now: done hidden');
+  });
+
   it('turns grouping off and saves the choice', async () => {
     const user = userEvent.setup();
     const { api } = setup(projectFleet, new FakeApi());
-    await user.click(screen.getByRole('checkbox', { name: 'Group by project' }));
+    await choose(user, 'Group by project');
     expect(bodyRowTitles()[0]).toBe('Old run');
     expect(api.saved).toMatchObject({ 'fleet.groupByProject': false });
   });
@@ -476,7 +526,7 @@ describe('FleetView grouped by project', () => {
     );
     const { api } = setup({ ...projectFleet, sessions }, new FakeApi());
     expect(screen.getByText('Split the parser in two.')).toBeDefined();
-    await user.click(screen.getByRole('checkbox', { name: 'Show working on' }));
+    await choose(user, 'Show working on');
     expect(screen.queryByText('Split the parser in two.')).toBeNull();
     expect(api.saved).toMatchObject({ 'fleet.showSummary': false });
   });

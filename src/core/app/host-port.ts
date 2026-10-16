@@ -77,6 +77,10 @@ export interface HostPort {
    * show it in the Explorer. The window stays open, so its terminals keep running.
    */
   readonly showFolder: (folder: string) => Promise<void>;
+  /** Open a folder in a new window, or bring forward the window that has it open. */
+  readonly openWindow: (folder: string) => Promise<void>;
+  /** Run a task under a notification that says what is happening until it settles. */
+  readonly withProgress: <T>(title: string, task: () => Promise<T>) => Promise<T>;
   readonly runInTerminal: (request: TerminalRequest) => void;
   /**
    * Focus the terminal tab for a session: the tab Overlord opened for it, or

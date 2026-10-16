@@ -23,9 +23,11 @@ interface FolderRule {
 export interface ProjectBook {
   readonly projects: readonly ManualProject[];
   readonly rules: readonly FolderRule[];
+  /** Repositories sessions have run in, so their projects can be opened after the sessions go. */
+  readonly repos: readonly string[];
 }
 
-export const EMPTY_BOOK: ProjectBook = { projects: [], rules: [] };
+export const EMPTY_BOOK: ProjectBook = { projects: [], rules: [], repos: [] };
 
 const GIT_PREFIX = 'git:';
 
@@ -95,27 +97,24 @@ export function assignFolder(
 ): ProjectBook {
   const rules = withoutRule(book, folder);
   return {
-    projects: book.projects,
+    ...book,
     rules: projectId === automatic ? rules : [...rules, { folder, projectId }],
   };
 }
 
 /** Never ask about this folder or the folders under it. */
 export function ignoreFolder(book: ProjectBook, folder: string): ProjectBook {
-  return {
-    projects: book.projects,
-    rules: [...withoutRule(book, folder), { folder, projectId: null }],
-  };
+  return { ...book, rules: [...withoutRule(book, folder), { folder, projectId: null }] };
 }
 
 export function addProject(book: ProjectBook, project: ManualProject): ProjectBook {
-  return { projects: [...book.projects, project], rules: book.rules };
+  return { ...book, projects: [...book.projects, project] };
 }
 
 export function renameProject(book: ProjectBook, projectId: string, name: string): ProjectBook {
   return {
+    ...book,
     projects: book.projects.map((item) => (item.id === projectId ? { ...item, name } : item)),
-    rules: book.rules,
   };
 }
 
@@ -125,8 +124,8 @@ export function setProjectFolder(
   folder: string,
 ): ProjectBook {
   return {
+    ...book,
     projects: book.projects.map((item) => (item.id === projectId ? { ...item, folder } : item)),
-    rules: book.rules,
   };
 }
 
@@ -138,13 +137,21 @@ export function projectFolders(book: ProjectBook, projectId: string): readonly s
 /** Remove a project and its rules, so its folders go back to their repo or to Unassigned. */
 export function removeProject(book: ProjectBook, projectId: string): ProjectBook {
   return {
+    ...book,
     projects: book.projects.filter((item) => item.id !== projectId),
     rules: book.rules.filter((rule) => rule.projectId !== projectId),
   };
 }
 
+/** Remember repositories, keeping the ones already known in the order they were first seen. */
+export function rememberRepos(book: ProjectBook, roots: readonly string[]): ProjectBook {
+  const known = new Set(book.repos);
+  const added = [...new Set(roots)].filter((root) => !known.has(root));
+  return added.length === 0 ? book : { ...book, repos: [...book.repos, ...added] };
+}
+
 /**
- * Every hand made project, plus the git projects in use. Two projects with
+ * Every hand made project, plus the git projects in use or remembered. Two projects with
  * the same name get their parent folder added, so the list never shows twins.
  */
 export function projectSummaries(
@@ -157,7 +164,7 @@ export function projectSummaries(
     kind: 'manual',
     folder: item.folder,
   }));
-  const git = [...new Set(repoRoots)].map((root): ProjectSummary => ({
+  const git = [...new Set([...repoRoots, ...book.repos])].map((root): ProjectSummary => ({
     id: gitProjectId(root),
     name: path.basename(root),
     kind: 'git',

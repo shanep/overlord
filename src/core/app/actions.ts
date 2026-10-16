@@ -10,6 +10,7 @@ import { configActions } from './actions-config.js';
 import { connectorActions } from './actions-connectors.js';
 import { launchActions } from './actions-launch.js';
 import { messageActions } from './actions-messages.js';
+import { openProjectActions } from './actions-open-project.js';
 import { projectActions } from './actions-projects.js';
 import { reputationActions } from './actions-reputation.js';
 import { sessionActions } from './actions-session.js';
@@ -32,6 +33,7 @@ const HANDLERS: ActionHandlers<ActionType> = {
   ...worktreeActions,
   ...projectActions,
   ...combineActions,
+  ...openProjectActions,
 };
 
 function isActionType(value: string): value is ActionType {

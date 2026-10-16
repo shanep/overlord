@@ -12,6 +12,7 @@ import { useNow } from '../clock.js';
 import { ConfirmBar } from '../components/confirm-bar.js';
 import type { SortState } from '../components/data-table.js';
 import { EmptyState } from '../components/empty-state.js';
+import { Icon } from '../components/icon.js';
 import { isBoolean, isString, isStringArray } from '../guards.js';
 import { usePersistentState, usePostAction } from '../vscode-context.js';
 
@@ -33,6 +34,7 @@ import {
   sortTree,
 } from './fleet-rows.js';
 import { FleetTable } from './fleet-table.js';
+import { FleetViewMenu } from './fleet-view-menu.js';
 
 interface PendingConfirm {
   readonly kind: 'interrupt' | 'stop';
@@ -43,6 +45,7 @@ const NO_KEYS: readonly string[] = [];
 
 /** The host action each project row button posts. */
 const PROJECT_ACTIONS = {
+  newSession: 'newProjectSession',
   openFolder: 'openProjectFolder',
   setFolder: 'setProjectFolder',
   rename: 'renameProject',
@@ -275,41 +278,40 @@ export function FleetView(props: { readonly state: FleetState }): ReactElement {
             }}
           />
         </label>
-        <label data-tip="Leave out sessions that have finished">
-          <input
-            type="checkbox"
-            checked={preferences.hideDone}
-            onChange={(event) => {
-              preferences.setHideDone(event.target.checked);
-            }}
-          />
-          Hide done
-        </label>
-        <label data-tip="Nest sessions under the project they belong to">
-          <input
-            type="checkbox"
-            checked={preferences.grouped}
-            onChange={(event) => {
-              preferences.setGrouped(event.target.checked);
-            }}
-          />
-          Group by project
-        </label>
-        <label data-tip="Show a line under each session on what it is doing">
-          <input
-            type="checkbox"
-            checked={preferences.showSummary}
-            onChange={(event) => {
-              preferences.setShowSummary(event.target.checked);
-            }}
-          />
-          Show working on
-        </label>
-        <span className="spacer" />
-        <span className="muted fleet-keys">
-          <kbd>{'↑'}</kbd> <kbd>{'↓'}</kbd> move, <kbd>Enter</kbd> open, <kbd>k</kbd> interrupt,{' '}
-          <kbd>m</kbd> project
-        </span>
+        <button
+          type="button"
+          className="open-project"
+          data-tip="Pick a project to start a session in, open in a new window, or add to this one"
+          onClick={() => {
+            post({ type: 'openProject' });
+          }}
+        >
+          <Icon name="openFolder" />
+          <span className="toolbar-label">Open project</span>
+        </button>
+        <FleetViewMenu
+          hiding={preferences.hideDone ? ['done hidden'] : []}
+          choices={[
+            {
+              label: 'Hide done',
+              tip: 'Leave out sessions that have finished',
+              checked: preferences.hideDone,
+              onChange: preferences.setHideDone,
+            },
+            {
+              label: 'Group by project',
+              tip: 'Nest sessions under the project they belong to',
+              checked: preferences.grouped,
+              onChange: preferences.setGrouped,
+            },
+            {
+              label: 'Show working on',
+              tip: 'Show a line under each session on what it is doing',
+              checked: preferences.showSummary,
+              onChange: preferences.setShowSummary,
+            },
+          ]}
+        />
       </div>
       {confirm === null ? null : (
         <ConfirmBar

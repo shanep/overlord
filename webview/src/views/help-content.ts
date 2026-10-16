@@ -207,7 +207,7 @@ export const WORKFLOW: readonly WorkflowStep[] = [
   {
     title: 'Start the work',
     detail:
-      'For one session, click the sparkle and type to Claude in the tab that opens. For a batch, open the Launcher, write the prompt, tick one or more profiles (each one gets its own run), tick "Own git worktree" so parallel runs do not stomp on each other, set a budget if you want one, and click Launch.',
+      'For one session, click the sparkle and type to Claude in the tab that opens. To work in a project other than this window\'s, click Open project above the Fleet (or run "Overlord: Open Project..."), pick the project, then start a session there, open it in a new window, or add it to this one. The list holds every project Overlord has seen, even once its sessions are gone, and Choose a folder adds a new one. For a batch, open the Launcher, write the prompt, tick one or more profiles (each one gets its own run), tick "Own git worktree" so parallel runs do not stomp on each other, set a budget if you want one, and click Launch.',
   },
   {
     title: 'Watch the Fleet',
@@ -217,7 +217,7 @@ export const WORKFLOW: readonly WorkflowStep[] = [
   {
     title: 'Group by project',
     detail:
-      'Sessions sit under a row for their project, with its totals. A git repository is a project on its own, and its worktrees count as the repository. A session in any other folder lands in Unassigned with a No project badge, and the window running it asks once where it belongs: add it to a project, make a new one, or never ask about that folder. Click a project row or press Enter on it to fold it. Clear Group by project for the plain list.',
+      'Sessions sit under a row for their project, with its totals. A git repository is a project on its own, and its worktrees count as the repository. A session in any other folder lands in Unassigned with a No project badge, and the window running it asks once where it belongs: add it to a project, make a new one, or never ask about that folder. Click a project row or press Enter on it to fold it. The sparkle on a project row starts a new session in it. For the plain list, open the View menu above the Fleet and clear Group by project. The same menu has Hide done, which puts a dot on the View button while finished sessions are hidden.',
   },
   {
     title: 'Answer permissions',
@@ -227,7 +227,7 @@ export const WORKFLOW: readonly WorkflowStep[] = [
   {
     title: 'Dig in',
     detail:
-      "Under each session's title is a line on what it is working on: Claude Code's latest recap, or your last prompt when you asked for something after it. Uncheck Show working on to hide it. Click a row to jump to the session's terminal, or click its Agent view button for the live feed. Click its magnifying glass for the Context Inspector, which shows what is in its context and why. On a Claude Code tab, the info button opens its properties beside it.",
+      "Under each session's title is a line on what it is working on: Claude Code's latest recap, or your last prompt when you asked for something after it. Clear Show working on in the View menu to hide it. Click a row to jump to the session's terminal, or click its Agent view button for the live feed. Click its magnifying glass for the Context Inspector, which shows what is in its context and why. On a Claude Code tab, the info button opens its properties beside it.",
   },
   {
     title: 'Land the result',

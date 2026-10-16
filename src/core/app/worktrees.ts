@@ -25,6 +25,8 @@ import type { Runtime } from './runtime.js';
 /** How often finished worktrees are checked and the landed ones removed. */
 export const WORKTREE_REFRESH_MS = 60_000;
 const SOURCE = 'worktrees';
+/** Starting a session in the background takes a couple of seconds, so a notification says so. */
+export const STARTING = 'Starting Claude Code';
 
 export interface RegistryInputs {
   readonly paths: ClaudePaths;
@@ -181,9 +183,9 @@ export async function startSession(
   });
 }
 
-/** Starts a session in a new worktree of the workspace's repository. */
-export async function newSession(rt: Runtime): Promise<void> {
-  await startSession(rt, rt.host.workspaceFolder(), PLAIN_START);
+/** Starts a session in a new worktree of the folder's repository, the workspace's unless another is given. */
+export async function newSession(rt: Runtime, folder = rt.host.workspaceFolder()): Promise<void> {
+  await startSession(rt, folder, PLAIN_START);
 }
 
 /** Opens a new session in a worktree that is still around, to finish its work. */
