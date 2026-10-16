@@ -26,8 +26,8 @@ export interface LauncherDeps {
   readonly bus: EventBus;
   readonly broker: PermissionBroker;
   readonly worktrees?: WorktreeCreator | null;
-  /** The environment profiles are merged onto. Defaults to process.env. */
-  readonly baseEnv?: Readonly<Record<string, string | undefined>>;
+  /** Loads the environment profiles are merged onto. Defaults to process.env. */
+  readonly baseEnv?: () => Promise<Readonly<Record<string, string | undefined>>>;
   readonly executablePath?: string | null;
   readonly now?: () => number;
   readonly newId?: () => string;
@@ -207,11 +207,8 @@ export class Launcher {
 
   private async runSession(record: RunRecord): Promise<void> {
     const { spec } = record.run;
-    const settings = sessionSettings(
-      spec,
-      findProfile(spec, record.profiles),
-      this.deps.baseEnv ?? process.env,
-    );
+    const baseEnv = this.deps.baseEnv === undefined ? process.env : await this.deps.baseEnv();
+    const settings = sessionSettings(spec, findProfile(spec, record.profiles), baseEnv);
     const cwd = spec.worktree ? await this.createWorktree(record) : spec.cwd;
     if (record.stopRequested) {
       this.finish(record, 'stopped', null);

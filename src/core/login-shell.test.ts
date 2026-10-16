@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { loginShellLaunch, shellQuote } from './login-shell.js';
+import {
+  ENV_MARKER,
+  loginShellEnvLaunch,
+  loginShellLaunch,
+  parseShellEnv,
+  shellQuote,
+} from './login-shell.js';
 
 describe('shellQuote', () => {
   it('leaves safe words alone', () => {
@@ -62,5 +68,55 @@ describe('loginShellLaunch', () => {
         platform: 'win32',
       }),
     ).toStrictEqual({ shellPath: 'claude.exe', shellArgs: ['-p'] });
+  });
+});
+
+describe('loginShellEnvLaunch', () => {
+  it('prints the environment between markers from a login, interactive shell', () => {
+    expect(loginShellEnvLaunch({ shell: '/bin/zsh', platform: 'darwin' })).toStrictEqual({
+      shellPath: '/bin/zsh',
+      shellArgs: ['-l', '-i', '-c', `printf '%s' ${ENV_MARKER}; env -0; printf '%s' ${ENV_MARKER}`],
+    });
+  });
+
+  it('falls back to the default shell when SHELL is unset or empty', () => {
+    expect(loginShellEnvLaunch({ shell: undefined, platform: 'linux' })?.shellPath).toBe(
+      '/bin/bash',
+    );
+    expect(loginShellEnvLaunch({ shell: '', platform: 'darwin' })?.shellPath).toBe('/bin/zsh');
+  });
+
+  it('skips Windows, which already has the full environment', () => {
+    expect(loginShellEnvLaunch({ shell: 'cmd.exe', platform: 'win32' })).toBeNull();
+  });
+});
+
+function fenced(body: string): string {
+  return `banner\n${ENV_MARKER}${body}${ENV_MARKER}\nprompt`;
+}
+
+describe('parseShellEnv', () => {
+  it('reads NUL separated variables and ignores output around the markers', () => {
+    expect(parseShellEnv(fenced('PATH=/opt/bin:/bin\0EMPTY=\0MULTI=a\nb=c\0'))).toStrictEqual({
+      PATH: '/opt/bin:/bin',
+      EMPTY: '',
+      MULTI: 'a\nb=c',
+    });
+  });
+
+  it('drops variables that only describe the throwaway shell', () => {
+    expect(
+      // eslint-disable-next-line sonarjs/no-hardcoded-passwords -- PWD is the working directory
+      parseShellEnv(fenced('_=/usr/bin/env\0OLDPWD=/a\0PWD=/b\0SHLVL=2\0KEEP=1\0')),
+    ).toStrictEqual({ KEEP: '1' });
+  });
+
+  it('skips entries without a name', () => {
+    expect(parseShellEnv(fenced('=oops\0junk\0OK=1'))).toStrictEqual({ OK: '1' });
+  });
+
+  it('returns null when the markers are missing', () => {
+    expect(parseShellEnv('')).toBeNull();
+    expect(parseShellEnv(`${ENV_MARKER}PATH=/bin`)).toBeNull();
   });
 });

@@ -39,6 +39,7 @@ import {
 } from './process.js';
 import type { Runtime } from './runtime.js';
 import { SetupCommands } from './setup.js';
+import { once, readLoginShellEnv } from './shell-env.js';
 import { Sources } from './sources.js';
 import type { RunningItem } from './status.js';
 import { runningItems, statusLine } from './status.js';
@@ -179,13 +180,15 @@ export class OverlordApp {
       clock,
       onChange: notify,
     });
+    // Launched runs get the same PATH and variables as a terminal tab.
+    const launchEnv = once(async () => readLoginShellEnv(exec, env, platform));
     const launcher = new Launcher(
       {
         queryFunction: deps.queryFunction ?? sdkQuery,
         bus,
         broker: permissions.inbox,
         worktrees: new WorktreeManager(toHarnessExec(exec)),
-        baseEnv: env,
+        baseEnv: launchEnv,
         executablePath: executableFor(host.settings.claudePath),
         now: clock,
       },
@@ -213,7 +216,7 @@ export class OverlordApp {
       planUsage: async (): Promise<unknown> =>
         planUsageFunction({
           cwd: paths.home,
-          env: mergeEnv(env, {}),
+          env: mergeEnv(await launchEnv(), {}),
           executablePath: executableFor(host.settings.claudePath),
         }),
       notify,

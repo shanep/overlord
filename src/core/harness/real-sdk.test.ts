@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
-import { flush } from '../../../test/fake-claude/fake-query.js';
+import { flush, resolved } from '../../../test/fake-claude/fake-query.js';
 import type { PermissionRequest, ToolCall } from '../../shared/model.js';
 import { EventBus } from '../bus.js';
 
@@ -299,7 +299,8 @@ describe('real SDK against the fake Claude binary', () => {
           queryFunction: sdkQuery,
           bus: new EventBus(),
           broker: new PermissionInbox(),
-          baseEnv: { ...process.env, FAKE_CLAUDE_SCENARIO: scenario('success') },
+          baseEnv: async (): Promise<Readonly<Record<string, string | undefined>>> =>
+            resolved({ ...process.env, FAKE_CLAUDE_SCENARIO: scenario('success') }),
           executablePath: FAKE_CLAUDE,
         },
         1,

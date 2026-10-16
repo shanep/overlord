@@ -107,7 +107,8 @@ function setup(maxConcurrency = 2, extra: Partial<LauncherDeps> = {}): Setup {
       queryFunction: fakes.queryFunction,
       bus: new EventBus(),
       broker: new PermissionInbox(),
-      baseEnv: { PATH: '/bin', FROM_BASE: 'yes', UNSET: undefined },
+      baseEnv: async (): Promise<Readonly<Record<string, string | undefined>>> =>
+        resolved({ PATH: '/bin', FROM_BASE: 'yes', UNSET: undefined }),
       executablePath: '/fake.mjs',
       now: (): number => {
         clock += 10;
@@ -142,9 +143,9 @@ describe('Launcher basics', () => {
     const batchId = launcher.launch([spec('ok:1'), spec('error:0'), spec('ok:0')], []);
     expect(batchId).toBe('id-1');
     expect(launcher.runningCount).toBe(2);
-    expect(queries).toHaveLength(2);
     expect(launcher.runs().map((run) => run.state)).toStrictEqual(['running', 'running', 'queued']);
     await launcher.idle();
+    expect(queries).toHaveLength(3);
     const runs = launcher.runs();
     expect(runs.map((run) => run.state)).toStrictEqual(['done', 'failed', 'done']);
     expect(runs[0]).toStrictEqual({
@@ -231,8 +232,10 @@ describe('Launcher basics', () => {
   it('raises the limit and starts queued runs', async () => {
     const { launcher, queries } = setup(1);
     launcher.launch([spec('hang'), spec('hang')], []);
+    await flush();
     expect(queries).toHaveLength(1);
     launcher.setMaxConcurrency(2);
+    await flush();
     expect(queries).toHaveLength(2);
     expect(launcher.stopAll()).toBe(2);
     await launcher.idle();
@@ -253,6 +256,7 @@ describe('Launcher stopping', () => {
   it('stops queued and running runs', async () => {
     const { launcher, queries } = setup(1);
     launcher.launch([spec('hang'), spec('ok:0')], []);
+    await flush();
     const [first, second] = launcher.runs();
     expect(launcher.session(first?.id ?? '')).not.toBeNull();
     expect(launcher.session('nope')).toBeNull();
