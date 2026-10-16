@@ -39,14 +39,13 @@ describe('FleetTable', () => {
     expect(screen.getByRole('columnheader', { name: 'State' }).getAttribute('aria-sort')).toBe(
       'ascending',
     );
-    expect(screen.queryAllByRole('img')).toHaveLength(0);
-    const vscode = screen.getByText('VS Code');
-    expect(vscode.getAttribute('title')).toBe('Open in a terminal in this VS Code window');
-    expect(vscode.className).toBe('badge badge-good');
-    expect(screen.getByText('Background').getAttribute('title')).toBe(
-      'Running in the background with no terminal',
-    );
-    expect(screen.queryByText('Terminal')).toBeNull();
+    expect(grid.querySelectorAll('.sparkline [role="img"]')).toHaveLength(0);
+    const vscode = screen.getByRole('img', { name: 'VS Code' });
+    expect(vscode.getAttribute('title')).toBe('VS Code: Open in a terminal in this VS Code window');
+    expect(vscode.className).toBe('place place-good');
+    expect(vscode.closest('td')?.className).toBe('col-title');
+    expect(screen.getByRole('img', { name: 'Background' }).className).toBe('place place-neutral');
+    expect(screen.queryByRole('img', { name: 'Terminal' })).toBeNull();
   });
 });
 

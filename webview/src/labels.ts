@@ -26,6 +26,7 @@ export const SURFACES: readonly Surface[] = [
 
 export interface PlaceInfo {
   readonly label: string;
+  readonly icon: 'window' | 'prompt' | 'layers';
   readonly tone: Tone;
   /** Shown when you hover the badge. */
   readonly description: string;
@@ -34,16 +35,19 @@ export interface PlaceInfo {
 export const PLACE_INFO: Readonly<Record<SessionPlace, PlaceInfo>> = {
   vscode: {
     label: 'VS Code',
+    icon: 'window',
     tone: 'good',
     description: 'Open in a terminal in this VS Code window',
   },
   terminal: {
     label: 'Terminal',
+    icon: 'prompt',
     tone: 'neutral',
     description: 'Open in a terminal outside this VS Code window',
   },
   background: {
     label: 'Background',
+    icon: 'layers',
     tone: 'neutral',
     description: 'Running in the background with no terminal',
   },

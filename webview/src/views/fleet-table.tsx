@@ -7,7 +7,7 @@ import { useMemo } from 'react';
 import type { ChartTheme } from '../charts/chart-theme.js';
 import { EChart } from '../charts/chart.js';
 import { buildSparkline } from '../charts/sparkline.js';
-import { PlaceBadge, StateBadge, SurfaceBadge } from '../components/badge.js';
+import { PlaceMarker, StateBadge, SurfaceBadge } from '../components/badge.js';
 import type { SortState } from '../components/data-table.js';
 import { ariaSort, SortHeader } from '../components/data-table.js';
 import { Icon } from '../components/icon.js';
@@ -150,16 +150,11 @@ function FleetTableRow(props: FleetTableRowProps): ReactElement {
       </td>
       <td role="gridcell" className="col-surface">
         <SurfaceBadge surface={row.surface} />
-        {row.place === null ? null : (
-          <>
-            {' '}
-            <PlaceBadge place={row.place} />
-          </>
-        )}
       </td>
       <td role="gridcell" className="col-title" title={row.detail}>
         <span style={{ paddingLeft: `${(visible.depth * 1.2).toString()}em` }}>
           <Twisty visible={visible} onToggle={props.onToggle} />
+          {row.place === null ? null : <PlaceMarker place={row.place} />}
           <span className="row-title">{row.title}</span>
         </span>{' '}
         <span className="muted row-detail">{row.detail}</span>

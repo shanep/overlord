@@ -4,6 +4,8 @@ import type { SessionPlace, SessionState, Surface } from '../../../src/shared/mo
 import type { Tone } from '../labels.js';
 import { PLACE_INFO, STATE_INFO, SURFACE_LABELS } from '../labels.js';
 
+import { Icon } from './icon.js';
+
 export function Badge(props: {
   readonly label: string;
   readonly tone?: Tone;
@@ -33,8 +35,17 @@ export function SurfaceBadge(props: { readonly surface: Surface }): ReactElement
   return <Badge label={SURFACE_LABELS[props.surface]} tone="info" />;
 }
 
-/** Where a live session runs. Hover explains it. */
-export function PlaceBadge(props: { readonly place: SessionPlace }): ReactElement {
+/** Where a live session runs, as an icon. Hovering or a screen reader gives the words. */
+export function PlaceMarker(props: { readonly place: SessionPlace }): ReactElement {
   const info = PLACE_INFO[props.place];
-  return <Badge label={info.label} tone={info.tone} title={info.description} />;
+  return (
+    <span
+      className={`place place-${info.tone}`}
+      role="img"
+      aria-label={info.label}
+      title={`${info.label}: ${info.description}`}
+    >
+      <Icon name={info.icon} />
+    </span>
+  );
 }

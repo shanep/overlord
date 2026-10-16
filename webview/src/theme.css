@@ -670,6 +670,17 @@ details > summary {
   font-weight: 600;
 }
 
+.place {
+  display: inline-flex;
+  margin-right: 4px;
+  vertical-align: -3px;
+  color: var(--ov-muted);
+}
+
+.place-good {
+  color: var(--ov-green);
+}
+
 /* ---- Properties panel ---------------------------------------------------- */
 
 .props-group {
