@@ -58,8 +58,10 @@ describe('fleet view', () => {
       now: NOW,
       plan: null,
       places,
+      activeSessionId: 's1',
       jobs: [],
     });
+    expect(state.activeSessionId).toBe('s1');
     expect(state.sessions.map((item) => item.id)).toStrictEqual(['s1']);
     expect(state.pendingPermissions).toBe(pending);
     expect(state.rateLimits).toStrictEqual({ fiveHourPct: 0.8, sevenDayPct: null, resetsAt: null });
@@ -67,6 +69,7 @@ describe('fleet view', () => {
     expect(state.spendPerHourUsd).toBe(0);
     expect(state.agents).toStrictEqual([]);
     expect(sorted(Object.keys(state))).toStrictEqual([
+      'activeSessionId',
       'agents',
       'pendingPermissions',
       'places',
@@ -91,6 +94,7 @@ describe('fleet view', () => {
       now: NOW,
       plan: null,
       places: {},
+      activeSessionId: null,
       jobs,
     });
     const byId = new Map(state.sessions.map((item) => [item.id, item]));
@@ -132,8 +136,15 @@ describe('fleet view', () => {
       fetchedAt: NOW,
     };
     expect(
-      buildFleet({ store: fleetStore, pending: [], now: NOW, plan, places: {}, jobs: [] })
-        .rateLimits,
+      buildFleet({
+        store: fleetStore,
+        pending: [],
+        now: NOW,
+        plan,
+        places: {},
+        activeSessionId: null,
+        jobs: [],
+      }).rateLimits,
     ).toStrictEqual({
       fiveHourPct: 0.01,
       sevenDayPct: 0.45,

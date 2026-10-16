@@ -96,6 +96,7 @@ export interface FleetInputs {
   readonly now: number;
   readonly plan: PlanLimits | null;
   readonly places: Readonly<Record<string, SessionPlace>>;
+  readonly activeSessionId: string | null;
   readonly jobs: readonly BackgroundJob[];
 }
 
@@ -106,6 +107,7 @@ export function buildFleet(input: FleetInputs): FleetState {
     agents: base.agents,
     pendingPermissions: input.pending,
     places: input.places,
+    activeSessionId: input.activeSessionId,
     rateLimits: withPlanLimits(normalizeRateLimits(base.rateLimits), input.plan),
     spendPerHourUsd: base.spendPerHourUsd,
   };
@@ -118,6 +120,7 @@ export function fleetFor(rt: Runtime): FleetState {
     now: rt.clock(),
     plan: currentPlan(rt),
     places: rt.places.value,
+    activeSessionId: rt.places.activeSession(),
     jobs: rt.jobs.value,
   });
 }

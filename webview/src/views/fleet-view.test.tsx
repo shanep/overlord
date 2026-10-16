@@ -1,7 +1,7 @@
 import { act, render, screen, within } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import type { ReactElement } from 'react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import type { FleetState } from '../../../src/shared/protocol.js';
 import { fleetState, NOW, permission, session, usage } from '../../test/fixtures.js';
@@ -225,6 +225,26 @@ describe('FleetView', () => {
     screen.getByRole('button', { name: 'Agent view Write docs' }).focus();
     await user.keyboard('k');
     expect(screen.queryByRole('group', { name: 'Confirm' })).toBeNull();
+    expect(api.actions()).toStrictEqual([]);
+  });
+
+  it('follows the focused terminal without taking focus', () => {
+    const scroll = vi.spyOn(Element.prototype, 'scrollIntoView');
+    const api = new FakeApi();
+    const { rerender } = render(ui({ ...fleetState, activeSessionId: 's1' }, api));
+    expect(rowFor('Refactor parser').getAttribute('aria-selected')).toBe('true');
+    expect(scroll).toHaveBeenCalledTimes(1);
+    expect(scroll.mock.contexts[0]).toBe(rowFor('Refactor parser'));
+    expect(scroll).toHaveBeenCalledWith({ block: 'nearest' });
+    expect(document.activeElement).toBe(document.body);
+
+    rerender(ui({ ...fleetState, activeSessionId: 's2' }, api));
+    expect(rowFor('Write docs').getAttribute('aria-selected')).toBe('true');
+    expect(scroll).toHaveBeenCalledTimes(2);
+
+    rerender(ui({ ...fleetState, activeSessionId: null }, api));
+    expect(rowFor('Write docs').getAttribute('aria-selected')).toBe('true');
+    expect(scroll).toHaveBeenCalledTimes(2);
     expect(api.actions()).toStrictEqual([]);
   });
 

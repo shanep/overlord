@@ -31,6 +31,7 @@ import { ErrorLog } from './errors.js';
 import type { HostPort, PanelParams } from './host-port.js';
 import { BackgroundJobs, JOBS_REFRESH_MS } from './jobs.js';
 import { PermissionHub } from './permissions.js';
+import type { ActiveTerminal } from './places.js';
 import { PLACES_REFRESH_MS, SessionPlaces } from './places.js';
 import type { FileWatchFunction, IntervalFunction, KillFunction } from './process.js';
 import {
@@ -348,6 +349,11 @@ export class OverlordApp {
   /** Continues a session here, stopping a copy open in another terminal first. */
   async continueSession(sessionId: string): Promise<void> {
     await this.dispatch({ type: 'handoff', sessionId, kind: 'resume-local' }, {});
+  }
+
+  /** The host calls this when the focused terminal changes, so the fleet can follow it. */
+  setActiveTerminal(terminal: ActiveTerminal | null): void {
+    this.rt.places.setActiveTerminal(terminal);
   }
 
   /** Text for the status bar item. */

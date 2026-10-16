@@ -66,6 +66,8 @@ export function FleetView(props: { readonly state: FleetState }): ReactElement {
   const [confirm, setConfirm] = useState<PendingConfirm | null>(null);
   const selectedRef = useRef<HTMLTableRowElement>(null);
   const navigating = useRef(false);
+  /** The row key of the focused terminal's session, until that row is selected and scrolled to. */
+  const following = useRef<string | null>(null);
 
   const tree = useMemo(() => buildFleetTree(state), [state]);
   const history = useRowHistory(historySamples(tree), state);
@@ -78,10 +80,22 @@ export function FleetView(props: { readonly state: FleetState }): ReactElement {
     ? selected
     : (rows[0]?.row.key ?? null);
 
+  // Follow the focused terminal: select its session and bring the row into
+  // view, but leave keyboard focus in the terminal.
+  useEffect(() => {
+    if (state.activeSessionId !== null) {
+      following.current = `s:${state.activeSessionId}`;
+      setSelected(following.current);
+    }
+  }, [state.activeSessionId]);
+
   useEffect(() => {
     if (navigating.current) {
       navigating.current = false;
       selectedRef.current?.focus();
+    } else if (following.current === selectedKey) {
+      following.current = null;
+      selectedRef.current?.scrollIntoView({ block: 'nearest' });
     }
   }, [selectedKey]);
 

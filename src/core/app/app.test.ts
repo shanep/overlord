@@ -160,6 +160,19 @@ describe('OverlordApp', () => {
     expect(watches.every((entry) => entry.stopped)).toBe(true);
   });
 
+  it('points the fleet at the session in the focused terminal', async () => {
+    const env = await makeEnv();
+    const { app } = makeApp(env);
+    const active = (): string | null => {
+      const message = app.stateFor('fleet', {});
+      return message.view === 'fleet' ? message.state.activeSessionId : null;
+    };
+    expect(active()).toBeNull();
+    app.setActiveTerminal({ sessionId: 'abc', processId: 42 });
+    expect(active()).toBe('abc');
+    await app.dispose();
+  });
+
   it('drops a session from the fleet once it leaves the active window', async () => {
     const env = await makeEnv();
     const line = JSON.stringify({ ...userPrompt('u1', 0, 'hello'), sessionId: 'abc' });

@@ -102,7 +102,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     async (action, params) => overlord.dispatch(action, params),
   );
   panelHolder.current = panels;
-  const tabs = new CliTabs(panels);
+  const tabs = new CliTabs(panels, (target) => {
+    overlord.setActiveTerminal(target);
+  });
+  tabs.announceActive();
   tabsHolder.current = tabs;
 
   const status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 50);

@@ -23,6 +23,12 @@ export interface PlacesDeps {
   readonly report: (source: string, message: string) => void;
 }
 
+/** The focused terminal: the session Overlord opened it for, if any, and its shell pid. */
+export interface ActiveTerminal {
+  readonly sessionId: string | null;
+  readonly processId: number | null;
+}
+
 export const PLACES_REFRESH_MS = 5000;
 const PS_TIMEOUT_MS = 5000;
 const SOURCE = 'session places';
@@ -37,6 +43,7 @@ export class SessionPlaces {
   private parents: ReadonlyMap<number, number> = new Map();
   private treeKey = '';
   private running: Promise<void> | null = null;
+  private active: ActiveTerminal | null = null;
 
   constructor(private readonly deps: PlacesDeps) {}
 
@@ -48,6 +55,31 @@ export class SessionPlaces {
   /** The shell pid of the VS Code terminal the session runs in, or null. */
   terminalFor(sessionId: string): number | null {
     return this.placements.get(sessionId)?.terminal ?? null;
+  }
+
+  /** Remember the focused terminal, so the fleet can point at its session. */
+  setActiveTerminal(terminal: ActiveTerminal | null): void {
+    if (JSON.stringify(terminal) !== JSON.stringify(this.active)) {
+      this.active = terminal;
+      this.deps.onChange();
+    }
+  }
+
+  /** The session in the focused terminal, or null when it shows none Overlord knows. */
+  activeSession(): string | null {
+    const { active } = this;
+    if (active === null) {
+      return null;
+    }
+    if (active.sessionId !== null) {
+      return active.sessionId;
+    }
+    for (const [sessionId, placement] of this.placements) {
+      if (placement.terminal !== null && placement.terminal === active.processId) {
+        return sessionId;
+      }
+    }
+    return null;
   }
 
   /** Read the registry again. Calls made while one runs share it. */

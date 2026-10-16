@@ -191,7 +191,7 @@ function FleetHelp(): ReactElement {
     <Section
       id="help-fleet"
       title="The Fleet"
-      intro="Click a session to open it where it runs: its VS Code terminal tab, or a new tab attached to a background session. Anything else, and every subagent, opens the agent view. The buttons at the end of a row show up when you hover it or select it. Subagent rows only have Agent view. Interrupt and Stop are greyed out once a session has ended."
+      intro="Click a session to open it where it runs: its VS Code terminal tab, or a new tab attached to a background session. Anything else, and every subagent, opens the agent view. When you switch terminal tabs, the Fleet selects the session in the one you are on. The buttons at the end of a row show up when you hover it or select it. Subagent rows only have Agent view. Interrupt and Stop are greyed out once a session has ended."
     >
       <MeaningTable
         label="Fleet row buttons"

@@ -92,6 +92,27 @@ describe('SessionPlaces', () => {
     expect(PLACES_REFRESH_MS).toBe(5000);
   });
 
+  it('finds the session in the focused terminal', async () => {
+    const h = await setup('  11  10\n  10   1\n');
+    await register(h.sessionsDir, 11, 'here', 'interactive');
+    h.alive = new Set([11]);
+    h.terminals = [10, 20];
+    await h.places.refresh();
+    const before = h.changes;
+    expect(h.places.activeSession()).toBeNull();
+    h.places.setActiveTerminal({ sessionId: null, processId: 10 });
+    expect(h.places.activeSession()).toBe('here');
+    h.places.setActiveTerminal({ sessionId: null, processId: 10 });
+    expect(h.changes).toBe(before + 1);
+    h.places.setActiveTerminal({ sessionId: null, processId: 20 });
+    expect(h.places.activeSession()).toBeNull();
+    h.places.setActiveTerminal({ sessionId: 'opened', processId: 30 });
+    expect(h.places.activeSession()).toBe('opened');
+    h.places.setActiveTerminal(null);
+    expect(h.places.activeSession()).toBeNull();
+    expect(h.changes).toBe(before + 4);
+  });
+
   it('skips ps when only background sessions run', async () => {
     const h = await setup();
     await register(h.sessionsDir, 31, 'bg', 'bg');

@@ -1,7 +1,10 @@
 // Claude CLI tabs and the properties panel beside them. Each tab is tied to
-// the session it runs, and the panel follows whichever tab is active.
+// the session it runs, and the panel and the fleet follow whichever tab is
+// active.
 
 import * as vscode from 'vscode';
+
+import type { ActiveTerminal } from '../core/app/places.js';
 
 import type { PanelManager } from './panels.js';
 
@@ -14,7 +17,11 @@ export class CliTabs implements vscode.Disposable {
   private readonly sessions = new Map<vscode.Terminal, string>();
   private readonly subscriptions: readonly vscode.Disposable[];
 
-  constructor(private readonly panels: PanelManager) {
+  constructor(
+    private readonly panels: PanelManager,
+    /** Hears the session and shell pid of the active terminal, or null when none is active. */
+    private readonly onActive: (terminal: ActiveTerminal | null) => void,
+  ) {
     this.subscriptions = [
       vscode.window.onDidChangeActiveTerminal((terminal) => {
         this.follow(terminal);
@@ -31,6 +38,12 @@ export class CliTabs implements vscode.Disposable {
     this.sessions.set(terminal, sessionId);
     this.panels.open('properties', { sessionId }, BESIDE);
     this.setActiveContext(true);
+    this.announceActive();
+  }
+
+  /** Tells the fleet which terminal is active now, for example right after activation. */
+  announceActive(): void {
+    void this.reportActive(vscode.window.activeTerminal);
   }
 
   /** Focuses the newest tab Overlord opened for the session. False when none is open. */
@@ -58,7 +71,17 @@ export class CliTabs implements vscode.Disposable {
     this.panels.open('properties', { sessionId }, BESIDE);
   }
 
+  private async reportActive(terminal: vscode.Terminal | undefined): Promise<void> {
+    if (terminal === undefined) {
+      this.onActive(null);
+      return;
+    }
+    const processId = (await terminal.processId) ?? null;
+    this.onActive({ sessionId: this.sessions.get(terminal) ?? null, processId });
+  }
+
   private follow(terminal: vscode.Terminal | undefined): void {
+    void this.reportActive(terminal);
     const sessionId = terminal === undefined ? undefined : this.sessions.get(terminal);
     this.setActiveContext(sessionId !== undefined);
     if (sessionId !== undefined) {
