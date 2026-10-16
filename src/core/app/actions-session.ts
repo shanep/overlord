@@ -1,5 +1,5 @@
-// Actions on one session: open its panels, interrupt or stop it, attach a
-// terminal, change model or mode, and hand it off to another surface.
+// Actions on one session: open it where it runs or in its panels, interrupt
+// or stop it, change model or mode, and hand it off to another surface.
 // Sessions Overlord launched are driven through the SDK. Any other local
 // session can only be signalled, and only after the user agrees.
 
@@ -23,7 +23,6 @@ type SessionActions =
   | 'openFile'
   | 'interrupt'
   | 'stop'
-  | 'attach'
   | 'setModel'
   | 'setPermissionMode'
   | 'handoff';
@@ -119,15 +118,13 @@ async function openAgentPanel(rt: Runtime, sessionId: string, agentId: string): 
   rt.host.openPanel('agent', { sessionId, agentId });
 }
 
-/** A tab running `claude attach` for a background session, or `--resume` for any other. */
-async function attachTerminal(rt: Runtime, sessionId: string): Promise<void> {
+/** A tab running `claude attach` for a background session, tracked so a later open focuses it. */
+async function attachBackground(rt: Runtime, sessionId: string): Promise<void> {
   const live = await liveProcess(rt, sessionId);
-  const background = live?.kind === 'background';
-  const args = background ? ['attach', live.agentId ?? sessionId] : ['--resume', sessionId];
   rt.host.runInTerminal({
     name: `Claude ${shortId(sessionId)}`,
     command: rt.host.settings.claudePath,
-    args,
+    args: ['attach', live?.agentId ?? sessionId],
     cwd: cwdFor(rt, sessionId, live?.cwd ?? null),
     sessionId,
   });
@@ -144,7 +141,7 @@ export const sessionActions: ActionHandlers<SessionActions> = {
       return;
     }
     if (rt.places.value[sessionId] === 'background') {
-      await attachTerminal(rt, sessionId);
+      await attachBackground(rt, sessionId);
       return;
     }
     await openAgentPanel(rt, sessionId, sessionId);
@@ -178,9 +175,6 @@ export const sessionActions: ActionHandlers<SessionActions> = {
       return;
     }
     context.rt.launcher.stopRun(target.run.id);
-  },
-  attach: async ({ rt }, action) => {
-    await attachTerminal(rt, action.sessionId);
   },
   setModel: async ({ rt }, action) => {
     const target = sdkTarget(rt, action.sessionId);

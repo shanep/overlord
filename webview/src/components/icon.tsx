@@ -8,7 +8,6 @@ const SHAPES = {
   open: <path d="M9 3h4v4M13 3 7.5 8.5M12 9.5V13H3V4h3.5" />,
   interrupt: <path d="M6 4v8M10 4v8" />,
   stop: <rect x="4" y="4" width="8" height="8" rx="1" fill="currentColor" />,
-  attach: <path d="m3 5 3 3-3 3M8 11h5" />,
   /** A terminal window: the CLI in a VS Code terminal. */
   window: (
     <>

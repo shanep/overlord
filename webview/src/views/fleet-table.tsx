@@ -19,7 +19,7 @@ import type { RowHistory } from './fleet-history.js';
 import type { FleetRow, VisibleRow } from './fleet-rows.js';
 import { elapsedMs, rowCallsPerMinute } from './fleet-rows.js';
 
-export type RowAction = 'open' | 'interrupt' | 'stop' | 'attach';
+export type RowAction = 'open' | 'interrupt' | 'stop';
 
 const COLUMNS: readonly { readonly id: string; readonly label: string }[] = [
   { id: 'state', label: 'State' },
@@ -79,7 +79,6 @@ function RowActions(props: {
         <>
           {button('interrupt', 'Interrupt', !row.sessionActive)}
           {button('stop', 'Stop', !row.sessionActive)}
-          {button('attach', 'Attach', false)}
         </>
       ) : null}
     </span>

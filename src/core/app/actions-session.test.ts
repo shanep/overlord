@@ -216,14 +216,25 @@ describe('other local sessions', () => {
   });
 });
 
-describe('attach', () => {
-  it('attaches to a background agent by its agent id', async () => {
+describe('attaching a background session', () => {
+  it('starts in the folder the fleet knows when the registry has none', async () => {
+    const env = await makeEnv();
+    await registry(env, { pid: 123, sessionId: 'bg', kind: 'bg' });
+    const test = liveApp(env);
+    test.bus.emit('session.upserted', session('bg', { cwd: '/stored' }));
+    await test.app.dispatch({ type: 'openSession', sessionId: 'bg' }, {});
+    expect(env.host.terminals.map((terminal) => [terminal.args, terminal.cwd])).toStrictEqual([
+      [['attach', 'bg'], '/stored'],
+    ]);
+  });
+
+  it('attaches by the background agent id when claude agents knows it', async () => {
     const env = await makeEnv();
     await registry(env, { pid: 123, sessionId: 'bg', cwd: '/bg', kind: 'bg' });
     const agents = JSON.stringify([{ id: 'agent-7', sessionId: 'bg', kind: 'background' }]);
     const test = liveApp(env, agents);
     env.host.settings = { ...env.host.settings, claudePath: '/opt/claude' };
-    await test.app.dispatch({ type: 'attach', sessionId: 'bg' }, {});
+    await test.app.dispatch({ type: 'openSession', sessionId: 'bg' }, {});
     expect(env.host.terminals).toStrictEqual([
       {
         name: 'Claude bg',
@@ -233,33 +244,6 @@ describe('attach', () => {
         sessionId: 'bg',
       },
     ]);
-  });
-
-  it('attaches by session id when the background agent id is unknown', async () => {
-    const env = await makeEnv();
-    await registry(env, { pid: 123, sessionId: 'bg2', cwd: '/bg', kind: 'bg' });
-    const test = liveApp(env);
-    await test.app.dispatch({ type: 'attach', sessionId: 'bg2' }, {});
-    expect(env.host.terminals[0]?.args).toStrictEqual(['attach', 'bg2']);
-  });
-
-  it('resumes other sessions in the best known folder', async () => {
-    const env = await makeEnv({ workspace: true });
-    await registry(env, { pid: 123, sessionId: 'inter', cwd: '/inter', kind: 'interactive' });
-    const test = liveApp(env);
-    test.bus.emit('session.upserted', session('stored', { cwd: '/stored' }));
-    await test.app.dispatch({ type: 'attach', sessionId: 'inter' }, {});
-    await test.app.dispatch({ type: 'attach', sessionId: 'stored' }, {});
-    await test.app.dispatch({ type: 'attach', sessionId: 'gone' }, {});
-    env.host.workspace = null;
-    await test.app.dispatch({ type: 'attach', sessionId: 'gone' }, {});
-    expect(env.host.terminals.map((terminal) => [terminal.args, terminal.cwd])).toStrictEqual([
-      [['--resume', 'inter'], '/inter'],
-      [['--resume', 'stored'], '/stored'],
-      [['--resume', 'gone'], path.join(env.root, 'work')],
-      [['--resume', 'gone'], env.home],
-    ]);
-    expect(env.host.terminals[0]?.command).toBe('claude');
   });
 });
 

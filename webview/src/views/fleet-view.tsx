@@ -105,8 +105,6 @@ export function FleetView(props: { readonly state: FleetState }): ReactElement {
     setSelected(row.key);
     if (action === 'open') {
       post({ type: 'openAgent', sessionId: row.sessionId, agentId: row.agentId });
-    } else if (action === 'attach') {
-      post({ type: 'attach', sessionId: row.sessionId });
     } else {
       setConfirm({ kind: action, row });
     }

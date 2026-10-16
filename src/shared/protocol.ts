@@ -296,7 +296,6 @@ export type WebviewAction =
   | { readonly type: 'openContext'; readonly sessionId: string; readonly agentId: string | null }
   | { readonly type: 'interrupt'; readonly sessionId: string }
   | { readonly type: 'stop'; readonly sessionId: string }
-  | { readonly type: 'attach'; readonly sessionId: string }
   | { readonly type: 'setModel'; readonly sessionId: string; readonly model: string }
   | { readonly type: 'setPermissionMode'; readonly sessionId: string; readonly mode: string }
   | {
