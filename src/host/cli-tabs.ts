@@ -1,7 +1,8 @@
 // Claude CLI tabs. Each tab Overlord opens is tied to the session it runs, and
 // the active terminal is reported to the app, which works out its session
 // (a tab Overlord opened, a `claude attach` tab, or claude started by hand)
-// for the fleet and the Session Properties view in the sidebar.
+// for the fleet and the Session Properties view in the sidebar. A tab takes
+// the name its session has in the fleet and follows it when it changes.
 
 import * as vscode from 'vscode';
 
@@ -16,16 +17,28 @@ const ACTIVE_CONTEXT = 'overlord.cliTabActive';
 /** Workspace state key for the tabs Overlord opened, so a reload does not forget them. */
 const STORE_KEY = 'overlord.cliTabs';
 
+/** VS Code has no API to rename a terminal, only this command, and it renames the active one. */
+const RENAME_ACTIVE = 'workbench.action.terminal.renameWithArg';
+
+/** What a tab tells the app, and what it asks of it. */
+export interface CliTabHooks {
+  /** Hears the session and shell pid of the active terminal, or null when none is active. */
+  readonly onActive: (terminal: ActiveTerminal | null) => void;
+  /** Hears the session of a tab Overlord opened once that tab closes. */
+  readonly onClosed: (sessionId: string) => void;
+  /** The session's name in the fleet, or null when the fleet does not list it. */
+  readonly nameOf: (sessionId: string) => string | null;
+}
+
 export class CliTabs implements vscode.Disposable {
   private readonly sessions = new Map<vscode.Terminal, string>();
+  /** The name each tab was last given, since a terminal's name may not follow a rename. */
+  private readonly names = new Map<vscode.Terminal, string>();
   private readonly subscriptions: readonly vscode.Disposable[];
 
   constructor(
     private readonly properties: SidebarView,
-    /** Hears the session and shell pid of the active terminal, or null when none is active. */
-    private readonly onActive: (terminal: ActiveTerminal | null) => void,
-    /** Hears the session of a tab Overlord opened once that tab closes. */
-    private readonly onClosed: (sessionId: string) => void,
+    private readonly hooks: CliTabHooks,
     /** Where the tab list survives a window reload (the workspace state). */
     private readonly store: vscode.Memento,
   ) {
@@ -36,8 +49,9 @@ export class CliTabs implements vscode.Disposable {
       vscode.window.onDidCloseTerminal((terminal) => {
         const sessionId = this.sessions.get(terminal);
         this.sessions.delete(terminal);
+        this.names.delete(terminal);
         if (sessionId !== undefined) {
-          this.onClosed(sessionId);
+          this.hooks.onClosed(sessionId);
         }
         void this.forget(terminal);
         this.follow(vscode.window.activeTerminal);
@@ -73,6 +87,7 @@ export class CliTabs implements vscode.Disposable {
     void this.remember(terminal, sessionId);
     this.setActiveContext(true);
     this.announceActive();
+    this.syncName();
     this.properties.reveal();
   }
 
@@ -109,6 +124,25 @@ export class CliTabs implements vscode.Disposable {
     return newest !== undefined;
   }
 
+  /**
+   * Renames the active tab to its session's name in the fleet. VS Code can
+   * only rename the active terminal, so a tab in the background catches up
+   * when it is next focused. Call whenever the fleet changes.
+   */
+  syncName(): void {
+    const terminal = vscode.window.activeTerminal;
+    const sessionId = terminal === undefined ? undefined : this.sessions.get(terminal);
+    if (terminal === undefined || sessionId === undefined) {
+      return;
+    }
+    const name = this.hooks.nameOf(sessionId);
+    if (name === null || name === '' || name === (this.names.get(terminal) ?? terminal.name)) {
+      return;
+    }
+    this.names.set(terminal, name);
+    void vscode.commands.executeCommand(RENAME_ACTIVE, { name });
+  }
+
   /** Opens the Session Properties view, which already follows the active Claude tab. */
   showActive(): void {
     this.announceActive();
@@ -117,16 +151,17 @@ export class CliTabs implements vscode.Disposable {
 
   private async reportActive(terminal: vscode.Terminal | undefined): Promise<void> {
     if (terminal === undefined) {
-      this.onActive(null);
+      this.hooks.onActive(null);
       return;
     }
     const processId = (await terminal.processId) ?? null;
-    this.onActive({ sessionId: this.sessions.get(terminal) ?? null, processId });
+    this.hooks.onActive({ sessionId: this.sessions.get(terminal) ?? null, processId });
   }
 
   private follow(terminal: vscode.Terminal | undefined): void {
     void this.reportActive(terminal);
     this.setActiveContext(terminal !== undefined && this.sessions.has(terminal));
+    this.syncName();
   }
 
   private setActiveContext(active: boolean): void {
@@ -138,5 +173,6 @@ export class CliTabs implements vscode.Disposable {
       subscription.dispose();
     }
     this.sessions.clear();
+    this.names.clear();
   }
 }

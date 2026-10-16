@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { contextWindow, promptTokens, ZERO_USAGE } from './model.js';
+import { contextWindow, promptTokens, sessionName, ZERO_USAGE } from './model.js';
 
 describe('ZERO_USAGE', () => {
   it('has every counter at zero', () => {
@@ -60,5 +60,12 @@ describe('contextWindow', () => {
   it('is unknown without a model', () => {
     expect(contextWindow(null)).toBeNull();
     expect(contextWindow(null, 150_000)).toBeNull();
+  });
+});
+
+describe('sessionName', () => {
+  it('uses the title, or the folder until the session has one', () => {
+    expect(sessionName({ title: 'Fix the parser', cwd: '/repo' })).toBe('Fix the parser');
+    expect(sessionName({ title: '', cwd: '/repo' })).toBe('/repo');
   });
 });

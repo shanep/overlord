@@ -123,6 +123,11 @@ export interface SessionSummary {
   readonly lastPromptAt: number | null;
 }
 
+/** The name the fleet shows for a session, and its CLI tab takes: its title, or its folder until it has one. */
+export function sessionName(session: Pick<SessionSummary, 'title' | 'cwd'>): string {
+  return session.title === '' ? session.cwd : session.title;
+}
+
 /** A main thread or a subagent. The main thread has `parentAgentId` null and `id` equal to the session id. */
 export interface AgentNode {
   readonly id: string;

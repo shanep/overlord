@@ -5,7 +5,7 @@
 import path from 'node:path';
 
 import type { PermissionRequest, SessionPlace, SessionSummary } from '../../../shared/model.js';
-import { ZERO_USAGE } from '../../../shared/model.js';
+import { sessionName, ZERO_USAGE } from '../../../shared/model.js';
 import type { FleetState, PlanLimits, RateLimits } from '../../../shared/protocol.js';
 import type { OverlordStore } from '../../store/store.js';
 import type { BackgroundJob } from '../../surfaces/jobs.js';
@@ -204,4 +204,10 @@ export function fleetFor(rt: Runtime): FleetState {
     statuses: rt.places.statuses,
     projects: (sessions) => rt.projects.view(sessions),
   });
+}
+
+/** The name the fleet shows for a session, or null when the fleet does not list it. */
+export function fleetSessionName(rt: Runtime, sessionId: string): string | null {
+  const session = fleetFor(rt).sessions.find((candidate) => candidate.id === sessionId);
+  return session === undefined ? null : sessionName(session);
 }

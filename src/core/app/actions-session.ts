@@ -3,6 +3,8 @@
 // Sessions Overlord launched are driven through the SDK. Any other local
 // session can only be signalled, and only after the user agrees.
 
+import type { SessionSummary } from '../../shared/model.js';
+import { sessionName } from '../../shared/model.js';
 import type { HandoffKind, LaunchRun, SurfaceSession } from '../../shared/protocol.js';
 import { isViewId } from '../../shared/protocol.js';
 import { parsePermissionMode } from '../harness/events.js';
@@ -58,21 +60,27 @@ async function liveProcess(rt: Runtime, sessionId: string): Promise<LiveProcess 
   return table.processes.get(sessionId);
 }
 
-/** Where a terminal for this session should start. */
 const TAB_TITLE_CHARS = 40;
 
-/** Tab title for a handoff terminal, for example "Claude: Fix the parser". */
+/** Tab title for a handoff terminal that runs something else, for example "Claude teleport-local: Cloud fix". */
 export function terminalName(kind: HandoffKind, title: string): string {
   const short =
     title.length > TAB_TITLE_CHARS ? `${title.slice(0, TAB_TITLE_CHARS - 3)}...` : title;
-  return kind === 'resume-local' ? `Claude: ${short}` : `Claude ${kind}: ${short}`;
+  return `Claude ${kind}: ${short}`;
 }
 
+function fleetSession(rt: Runtime, sessionId: string): SessionSummary | undefined {
+  return rt.store.fleetState(rt.clock()).sessions.find((candidate) => candidate.id === sessionId);
+}
+
+/** Where a terminal for this session should start. */
 function cwdFor(rt: Runtime, sessionId: string, known: string | null): string {
-  const session = rt.store
-    .fleetState(rt.clock())
-    .sessions.find((candidate) => candidate.id === sessionId);
-  return known ?? session?.cwd ?? rt.host.workspaceFolder() ?? rt.paths.home;
+  return known ?? fleetSession(rt, sessionId)?.cwd ?? rt.host.workspaceFolder() ?? rt.paths.home;
+}
+
+/** A tab that runs the session itself takes the session's name in the fleet. */
+function tabName(rt: Runtime, session: SurfaceSession, cwd: string): string {
+  return sessionName(fleetSession(rt, session.id) ?? { title: session.title, cwd });
 }
 
 async function signal(
@@ -276,19 +284,16 @@ export const sessionActions: ActionHandlers<SessionActions> = {
       return;
     }
     if (action.kind === 'resume-local') {
-      await openClaudeTab(rt, {
-        name: terminalName(action.kind, session.title),
-        cwd,
-        resume: session.id,
-      });
+      await openClaudeTab(rt, { name: tabName(rt, session, cwd), cwd, resume: session.id });
       return;
     }
+    const tracked = TRACKED_HANDOFFS.has(action.kind);
     rt.host.runInTerminal({
-      name: terminalName(action.kind, session.title),
+      name: tracked ? tabName(rt, session, cwd) : terminalName(action.kind, session.title),
       command: command.command,
       args: command.args,
       cwd,
-      sessionId: TRACKED_HANDOFFS.has(action.kind) ? session.id : null,
+      sessionId: tracked ? session.id : null,
     });
   },
 };

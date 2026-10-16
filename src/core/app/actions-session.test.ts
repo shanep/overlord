@@ -363,12 +363,13 @@ describe('moving a live session here', () => {
 });
 
 describe('terminalName', () => {
-  it('names continue tabs after the session and cuts long titles', () => {
-    expect(terminalName('resume-local', 'Fix the parser')).toBe('Claude: Fix the parser');
+  it('names handoff tabs after the kind and session and cuts long titles', () => {
     expect(terminalName('teleport-local', 'Cloud fix')).toBe('Claude teleport-local: Cloud fix');
-    const long = terminalName('resume-local', 'x'.repeat(50));
-    expect(long).toBe(`Claude: ${'x'.repeat(37)}...`);
-    expect(terminalName('resume-local', 'y'.repeat(40))).toBe(`Claude: ${'y'.repeat(40)}`);
+    const long = terminalName('teleport-local', 'x'.repeat(50));
+    expect(long).toBe(`Claude teleport-local: ${'x'.repeat(37)}...`);
+    expect(terminalName('open-desktop', 'y'.repeat(40))).toBe(
+      `Claude open-desktop: ${'y'.repeat(40)}`,
+    );
   });
 });
 
@@ -382,7 +383,7 @@ describe('handoff', () => {
     expect(killed).toStrictEqual(['SIGTERM']);
     expect(env.host.terminals).toStrictEqual([
       {
-        name: 'Claude: Mine',
+        name: 'Mine',
         command: 'claude',
         args: ['--resume', 'local'],
         cwd: env.home,
@@ -391,7 +392,7 @@ describe('handoff', () => {
     ]);
     await test.app.dispatch({ type: 'handoff', sessionId: 'local', kind: 'remote-control' }, {});
     expect(env.host.terminals[1]).toMatchObject({
-      name: 'Claude remote-control: Mine',
+      name: 'Mine',
       args: ['--remote-control', 'Mine', '--resume', 'local'],
       sessionId: 'local',
     });

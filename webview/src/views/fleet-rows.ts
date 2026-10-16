@@ -8,6 +8,7 @@ import type {
   SessionSummary,
   Surface,
 } from '../../../src/shared/model.js';
+import { sessionName } from '../../../src/shared/model.js';
 import type { FleetState, ProjectSummary, SessionProject } from '../../../src/shared/protocol.js';
 import type { SortState } from '../components/data-table.js';
 import { plural } from '../format.js';
@@ -77,10 +78,6 @@ function isActive(state: SessionState): boolean {
   return state !== 'done' && state !== 'failed';
 }
 
-function sessionTitle(session: SessionSummary): string {
-  return session.title === '' ? session.cwd : session.title;
-}
-
 function sessionRow(
   session: SessionSummary,
   agents: readonly AgentNode[],
@@ -89,7 +86,7 @@ function sessionRow(
 ): FleetRow {
   const main = agents.find((agent) => agent.id === session.id);
   const busy = agents.find((agent) => agent.state === 'running' && agent.currentTool !== null);
-  const title = sessionTitle(session);
+  const title = sessionName(session);
   return {
     key: `s:${session.id}`,
     kind: 'session',

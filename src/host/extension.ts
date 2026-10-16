@@ -6,6 +6,7 @@ import * as vscode from 'vscode';
 import { OverlordApp } from '../core/app/app.js';
 import type { PanelParams } from '../core/app/host-port.js';
 import { parseTransferUri } from '../core/app/transfer.js';
+import { fleetSessionName } from '../core/app/views/fleet.js';
 import type { HostToWebview, ViewId, WebviewAction } from '../shared/protocol.js';
 
 import { CliTabs } from './cli-tabs.js';
@@ -107,14 +108,18 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     onAction,
   );
   propertiesHolder.current = propertiesSidebar;
-  // The fleet follows the focused tab, and a closed session tab lets go of its worktree.
+  // The fleet follows the focused tab, a closed session tab lets go of its
+  // worktree, and each tab takes its session's name in the fleet.
   const tabs = new CliTabs(
     propertiesSidebar,
-    (target) => {
-      overlord.setActiveTerminal(target);
-    },
-    (sessionId) => {
-      void overlord.sessionClosed(sessionId);
+    {
+      onActive: (target): void => {
+        overlord.setActiveTerminal(target);
+      },
+      onClosed: (sessionId): void => {
+        void overlord.sessionClosed(sessionId);
+      },
+      nameOf: (sessionId): string | null => fleetSessionName(overlord.runtime, sessionId),
     },
     context.workspaceState,
   );
@@ -133,6 +138,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     // not open once a process scan places them, so the properties view follows it.
     const sessionId = overlord.activeSession();
     propertiesSidebar.setParams(sessionId === null ? {} : { sessionId });
+    tabs.syncName();
   };
 
   const dispatch = async (action: WebviewAction): Promise<void> => {
