@@ -12,12 +12,14 @@ import type {
   EffectiveValue,
   FeedItem,
   KnobDefinition,
+  KnobKind,
   LaunchProfile,
   LaunchSpec,
   PermissionDecision,
   PermissionRequest,
   SessionPlace,
   SessionSummary,
+  SettingsFileSummary,
   ToolCall,
 } from './model.js';
 import type { TuningState } from './tuning.js';
@@ -131,6 +133,8 @@ export interface KnobsState {
   readonly catalog: readonly KnobDefinition[];
   readonly effective: readonly EffectiveValue[];
   readonly profiles: readonly LaunchProfile[];
+  /** The settings files behind the layers, highest precedence first. */
+  readonly files: readonly SettingsFileSummary[];
   /** Cached server feature flags, read-only. */
   readonly featureFlags: Readonly<Record<string, unknown>>;
 }
@@ -420,12 +424,14 @@ export type WebviewAction =
   | { readonly type: 'saveRule'; readonly rule: AutoApproveRule }
   | { readonly type: 'deleteRule'; readonly ruleId: string }
   | { readonly type: 'saveProfile'; readonly profile: LaunchProfile }
+  | { readonly type: 'deleteProfile'; readonly profileId: string }
   | {
       readonly type: 'setKnob';
       readonly key: string;
       readonly value: unknown;
       readonly layer: 'user' | 'project' | 'project-local';
     }
+  | { readonly type: 'openKnobDocs'; readonly key: string; readonly kind: KnobKind }
   | { readonly type: 'handoff'; readonly sessionId: string; readonly kind: HandoffKind }
   | { readonly type: 'importClaudeAi' }
   | { readonly type: 'syncPush' }

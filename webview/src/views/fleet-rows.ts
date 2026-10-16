@@ -10,6 +10,7 @@ import type {
 } from '../../../src/shared/model.js';
 import type { FleetState, ProjectSummary, SessionProject } from '../../../src/shared/protocol.js';
 import type { SortState } from '../components/data-table.js';
+import { plural } from '../format.js';
 import { isBoolean, isRecord, isString } from '../guards.js';
 import { PLACE_INFO, STATE_RANK, SURFACE_LABELS } from '../labels.js';
 import { cacheHitRatio, callsPerMinute, promptTokens } from '../metrics.js';
@@ -214,10 +215,6 @@ function mostUrgent(rows: readonly FleetRow[]): SessionState {
     }
   }
   return best;
-}
-
-function plural(count: number, noun: string): string {
-  return `${count.toString()} ${noun}${count === 1 ? '' : 's'}`;
 }
 
 /** What a project's row knows about the project itself. Unassigned has none of it. */

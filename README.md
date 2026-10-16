@@ -33,8 +33,11 @@ See [PLAN.md](PLAN.md) for the full design and the decisions behind it.
   and context charts.
 - **Context inspector**: the system prompt, every memory file that loaded (and why), and every
   file that did not load (and why not).
-- **Knobs**: 700+ settings, env vars and CLI flags pulled from the docs, with the effective value
-  and which layer set it.
+- **Knobs**: 700+ settings, env vars and CLI flags pulled from the docs, grouped into areas
+  like Permissions, Built-in tools and Sessions, with the effective value and which layer set
+  it. You can set or remove a key at the user, project or local layer, add your own env vars,
+  put CLI flags on a launch profile, and open each key's docs page. Filters narrow it to one
+  kind or to only what is set.
 - **Launcher**: run many prompts at once, across profiles, each in its own git worktree, with one
   permission inbox and auto-approve rules. Always allow on a pending request writes the rule for
   you: the exact command for Bash, or the whole tool otherwise.

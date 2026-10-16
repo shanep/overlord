@@ -133,7 +133,7 @@
   {
     "key": "ANTHROPIC_BETAS",
     "kind": "env",
-    "area": "other",
+    "area": "model",
     "valueType": "string[]",
     "defaultValue": null,
     "allowed": [],
@@ -145,7 +145,7 @@
   {
     "key": "ANTHROPIC_CUSTOM_HEADERS",
     "kind": "env",
-    "area": "other",
+    "area": "model",
     "valueType": "string",
     "defaultValue": null,
     "allowed": [],
@@ -409,7 +409,7 @@
   {
     "key": "ANTHROPIC_FEDERATION_RULE_ID",
     "kind": "env",
-    "area": "other",
+    "area": "auth",
     "valueType": "string",
     "defaultValue": null,
     "allowed": [],
@@ -481,7 +481,7 @@
   {
     "key": "ANTHROPIC_ORGANIZATION_ID",
     "kind": "env",
-    "area": "other",
+    "area": "auth",
     "valueType": "string",
     "defaultValue": null,
     "allowed": [],
@@ -553,7 +553,7 @@
   {
     "key": "ANTHROPIC_WORKSPACE_ID",
     "kind": "env",
-    "area": "other",
+    "area": "auth",
     "valueType": "string",
     "defaultValue": null,
     "allowed": [],
@@ -637,7 +637,7 @@
   {
     "key": "BETA_TRACING_ENDPOINT",
     "kind": "env",
-    "area": "other",
+    "area": "telemetry",
     "valueType": "string",
     "defaultValue": null,
     "allowed": [],
@@ -649,7 +649,7 @@
   {
     "key": "CCR_FORCE_BUNDLE",
     "kind": "env",
-    "area": "other",
+    "area": "sessions",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -745,7 +745,7 @@
   {
     "key": "CLAUDE_AUTO_BACKGROUND_TASKS",
     "kind": "env",
-    "area": "subagents",
+    "area": "sessions",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -889,7 +889,7 @@
   {
     "key": "CLAUDE_CODE_ARTIFACT_AUTO_OPEN",
     "kind": "env",
-    "area": "other",
+    "area": "tools",
     "valueType": "string",
     "defaultValue": null,
     "allowed": [],
@@ -901,7 +901,7 @@
   {
     "key": "CLAUDE_CODE_ARTIFACT_COMMENTS",
     "kind": "env",
-    "area": "other",
+    "area": "tools",
     "valueType": "string",
     "defaultValue": null,
     "allowed": [],
@@ -913,7 +913,7 @@
   {
     "key": "CLAUDE_CODE_ARTIFACT_COMMENTS_AUTOREACT",
     "kind": "env",
-    "area": "other",
+    "area": "tools",
     "valueType": "string",
     "defaultValue": null,
     "allowed": [],
@@ -925,7 +925,7 @@
   {
     "key": "CLAUDE_CODE_ARTIFACT_PUBLISH_EDITS",
     "kind": "env",
-    "area": "other",
+    "area": "tools",
     "valueType": "string",
     "defaultValue": null,
     "allowed": [],
@@ -937,7 +937,7 @@
   {
     "key": "CLAUDE_CODE_ATTRIBUTION_HEADER",
     "kind": "env",
-    "area": "other",
+    "area": "git",
     "valueType": "string",
     "defaultValue": null,
     "allowed": [],
@@ -949,7 +949,7 @@
   {
     "key": "CLAUDE_CODE_AUTO_BACKGROUND_WORKER_CHECKIN_SECONDS",
     "kind": "env",
-    "area": "other",
+    "area": "sessions",
     "valueType": "number",
     "defaultValue": null,
     "allowed": [],
@@ -1021,7 +1021,7 @@
   {
     "key": "CLAUDE_CODE_BG_TASKS_REPORT_RUNNING",
     "kind": "env",
-    "area": "other",
+    "area": "sessions",
     "valueType": "string",
     "defaultValue": null,
     "allowed": [],
@@ -1033,7 +1033,7 @@
   {
     "key": "CLAUDE_CODE_BRIDGE_SESSION_ID",
     "kind": "env",
-    "area": "bash",
+    "area": "sessions",
     "valueType": "string",
     "defaultValue": null,
     "allowed": [],
@@ -1045,7 +1045,7 @@
   {
     "key": "CLAUDE_CODE_BS_AS_CTRL_BACKSPACE",
     "kind": "env",
-    "area": "other",
+    "area": "ui",
     "valueType": "string",
     "defaultValue": null,
     "allowed": [],
@@ -1069,7 +1069,7 @@
   {
     "key": "CLAUDE_CODE_CHILD_SESSION",
     "kind": "env",
-    "area": "bash",
+    "area": "sessions",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -1105,7 +1105,7 @@
   {
     "key": "CLAUDE_CODE_CLIENT_KEY_PASSPHRASE",
     "kind": "env",
-    "area": "other",
+    "area": "auth",
     "valueType": "string",
     "defaultValue": null,
     "allowed": [],
@@ -1129,7 +1129,7 @@
   {
     "key": "CLAUDE_CODE_DEBUG_LOGS_DIR",
     "kind": "env",
-    "area": "other",
+    "area": "telemetry",
     "valueType": "string",
     "defaultValue": "~/.claude/debug/<session-id>.txt",
     "allowed": [],
@@ -1141,7 +1141,7 @@
   {
     "key": "CLAUDE_CODE_DEBUG_LOG_LEVEL",
     "kind": "env",
-    "area": "other",
+    "area": "telemetry",
     "valueType": "string",
     "defaultValue": null,
     "allowed": [],
@@ -1177,7 +1177,7 @@
   {
     "key": "CLAUDE_CODE_DISABLE_ADMIN_ENV_UNION",
     "kind": "env",
-    "area": "other",
+    "area": "policy",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -1225,7 +1225,7 @@
   {
     "key": "CLAUDE_CODE_DISABLE_ARTIFACT",
     "kind": "env",
-    "area": "other",
+    "area": "tools",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -1237,7 +1237,7 @@
   {
     "key": "CLAUDE_CODE_DISABLE_ATTACHMENTS",
     "kind": "env",
-    "area": "other",
+    "area": "tools",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -1273,7 +1273,7 @@
   {
     "key": "CLAUDE_CODE_DISABLE_BACKGROUND_TASKS",
     "kind": "env",
-    "area": "subagents",
+    "area": "sessions",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -1309,7 +1309,7 @@
   {
     "key": "CLAUDE_CODE_DISABLE_BG_EXIT_HANDOFF",
     "kind": "env",
-    "area": "subagents",
+    "area": "sessions",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -1345,7 +1345,7 @@
   {
     "key": "CLAUDE_CODE_DISABLE_CFC_PROMPT",
     "kind": "env",
-    "area": "plugins",
+    "area": "tools",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -1369,7 +1369,7 @@
   {
     "key": "CLAUDE_CODE_DISABLE_CRON",
     "kind": "env",
-    "area": "other",
+    "area": "tools",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -1393,7 +1393,7 @@
   {
     "key": "CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS",
     "kind": "env",
-    "area": "other",
+    "area": "model",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -1441,7 +1441,7 @@
   {
     "key": "CLAUDE_CODE_DISABLE_FILE_CHECKPOINTING",
     "kind": "env",
-    "area": "other",
+    "area": "tools",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -1453,7 +1453,7 @@
   {
     "key": "CLAUDE_CODE_DISABLE_FILE_MENTIONS",
     "kind": "env",
-    "area": "other",
+    "area": "tools",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -1645,7 +1645,7 @@
   {
     "key": "CLAUDE_CODE_DISABLE_STRUCTURED_OUTPUTS",
     "kind": "env",
-    "area": "other",
+    "area": "tools",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -1657,7 +1657,7 @@
   {
     "key": "CLAUDE_CODE_DISABLE_SUBSTITUTION_RM_PROMPT",
     "kind": "env",
-    "area": "other",
+    "area": "bash",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -1717,7 +1717,7 @@
   {
     "key": "CLAUDE_CODE_DISABLE_WEB_FETCH",
     "kind": "env",
-    "area": "other",
+    "area": "tools",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -1741,7 +1741,7 @@
   {
     "key": "CLAUDE_CODE_DISABLE_WORKFLOWS",
     "kind": "env",
-    "area": "other",
+    "area": "tools",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -1765,7 +1765,7 @@
   {
     "key": "CLAUDE_CODE_EMIT_SESSION_STATE_EVENTS",
     "kind": "env",
-    "area": "other",
+    "area": "sessions",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -1789,7 +1789,7 @@
   {
     "key": "CLAUDE_CODE_ENABLE_AWAY_SUMMARY",
     "kind": "env",
-    "area": "other",
+    "area": "sessions",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -1813,7 +1813,7 @@
   {
     "key": "CLAUDE_CODE_ENABLE_CFC",
     "kind": "env",
-    "area": "other",
+    "area": "tools",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -1837,7 +1837,7 @@
   {
     "key": "CLAUDE_CODE_ENABLE_FINE_GRAINED_TOOL_STREAMING",
     "kind": "env",
-    "area": "other",
+    "area": "network",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -1873,7 +1873,7 @@
   {
     "key": "CLAUDE_CODE_ENABLE_PROMPT_SUGGESTION",
     "kind": "env",
-    "area": "other",
+    "area": "ui",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -1885,7 +1885,7 @@
   {
     "key": "CLAUDE_CODE_ENABLE_TASKS",
     "kind": "env",
-    "area": "other",
+    "area": "tools",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -1909,7 +1909,7 @@
   {
     "key": "CLAUDE_CODE_ENABLE_TODO_TOOLS",
     "kind": "env",
-    "area": "model",
+    "area": "tools",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -1921,7 +1921,7 @@
   {
     "key": "CLAUDE_CODE_EXIT_AFTER_STOP_DELAY",
     "kind": "env",
-    "area": "other",
+    "area": "sessions",
     "valueType": "number",
     "defaultValue": null,
     "allowed": [],
@@ -1945,7 +1945,7 @@
   {
     "key": "CLAUDE_CODE_EXTRA_BODY",
     "kind": "env",
-    "area": "other",
+    "area": "model",
     "valueType": "string",
     "defaultValue": null,
     "allowed": [],
@@ -1957,7 +1957,7 @@
   {
     "key": "CLAUDE_CODE_FILE_READ_MAX_OUTPUT_TOKENS",
     "kind": "env",
-    "area": "other",
+    "area": "tools",
     "valueType": "number",
     "defaultValue": null,
     "allowed": [],
@@ -1969,7 +1969,7 @@
   {
     "key": "CLAUDE_CODE_FORCE_SESSION_PERSISTENCE",
     "kind": "env",
-    "area": "subagents",
+    "area": "sessions",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -2077,7 +2077,7 @@
   {
     "key": "CLAUDE_CODE_GLOB_HIDDEN",
     "kind": "env",
-    "area": "other",
+    "area": "tools",
     "valueType": "string",
     "defaultValue": null,
     "allowed": [],
@@ -2089,7 +2089,7 @@
   {
     "key": "CLAUDE_CODE_GLOB_NO_IGNORE",
     "kind": "env",
-    "area": "other",
+    "area": "tools",
     "valueType": "string",
     "defaultValue": null,
     "allowed": [],
@@ -2113,7 +2113,7 @@
   {
     "key": "CLAUDE_CODE_GOAL_CHECKIN_MINUTES",
     "kind": "env",
-    "area": "other",
+    "area": "sessions",
     "valueType": "string",
     "defaultValue": null,
     "allowed": [],
@@ -2137,7 +2137,7 @@
   {
     "key": "CLAUDE_CODE_HIDE_CWD",
     "kind": "env",
-    "area": "other",
+    "area": "ui",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -2233,7 +2233,7 @@
   {
     "key": "CLAUDE_CODE_MAX_OUTPUT_TOKENS",
     "kind": "env",
-    "area": "other",
+    "area": "model",
     "valueType": "number",
     "defaultValue": "32000",
     "allowed": [],
@@ -2293,7 +2293,7 @@
   {
     "key": "CLAUDE_CODE_MAX_TURNS",
     "kind": "env",
-    "area": "other",
+    "area": "sessions",
     "valueType": "string",
     "defaultValue": null,
     "allowed": [],
@@ -2305,7 +2305,7 @@
   {
     "key": "CLAUDE_CODE_MAX_WEB_SEARCHES_PER_SESSION",
     "kind": "env",
-    "area": "other",
+    "area": "tools",
     "valueType": "number",
     "defaultValue": "200",
     "allowed": [],
@@ -2401,7 +2401,7 @@
   {
     "key": "CLAUDE_CODE_NEW_INIT",
     "kind": "env",
-    "area": "other",
+    "area": "tools",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -2581,7 +2581,7 @@
   {
     "key": "CLAUDE_CODE_PACKAGE_MANAGER_AUTO_UPDATE",
     "kind": "env",
-    "area": "other",
+    "area": "updates",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -2593,7 +2593,7 @@
   {
     "key": "CLAUDE_CODE_PERFORCE_MODE",
     "kind": "env",
-    "area": "other",
+    "area": "git",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -2701,7 +2701,7 @@
   {
     "key": "CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS",
     "kind": "env",
-    "area": "subagents",
+    "area": "sessions",
     "valueType": "number",
     "defaultValue": "600000",
     "allowed": [],
@@ -2785,7 +2785,7 @@
   {
     "key": "CLAUDE_CODE_REMOTE",
     "kind": "env",
-    "area": "other",
+    "area": "sessions",
     "valueType": "string",
     "defaultValue": null,
     "allowed": [],
@@ -2797,7 +2797,7 @@
   {
     "key": "CLAUDE_CODE_REMOTE_SESSION_ID",
     "kind": "env",
-    "area": "other",
+    "area": "sessions",
     "valueType": "string",
     "defaultValue": null,
     "allowed": [],
@@ -2809,7 +2809,7 @@
   {
     "key": "CLAUDE_CODE_RESTRICTED",
     "kind": "env",
-    "area": "other",
+    "area": "sessions",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -2821,7 +2821,7 @@
   {
     "key": "CLAUDE_CODE_RESUME_INTERRUPTED_TURN",
     "kind": "env",
-    "area": "other",
+    "area": "sessions",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -2833,7 +2833,7 @@
   {
     "key": "CLAUDE_CODE_RESUME_INTERRUPTED_TURN_MAX_AGE_MS",
     "kind": "env",
-    "area": "other",
+    "area": "sessions",
     "valueType": "number",
     "defaultValue": null,
     "allowed": [],
@@ -2845,7 +2845,7 @@
   {
     "key": "CLAUDE_CODE_RESUME_PROMPT",
     "kind": "env",
-    "area": "other",
+    "area": "sessions",
     "valueType": "string",
     "defaultValue": "Continue from where you left off.",
     "allowed": [],
@@ -2893,7 +2893,7 @@
   {
     "key": "CLAUDE_CODE_SCRIPT_CAPS",
     "kind": "env",
-    "area": "other",
+    "area": "tools",
     "valueType": "string",
     "defaultValue": null,
     "allowed": [],
@@ -2941,7 +2941,7 @@
   {
     "key": "CLAUDE_CODE_SESSION_ID",
     "kind": "env",
-    "area": "bash",
+    "area": "sessions",
     "valueType": "string",
     "defaultValue": null,
     "allowed": [],
@@ -3097,7 +3097,7 @@
   {
     "key": "CLAUDE_CODE_SKIP_PROMPT_HISTORY",
     "kind": "env",
-    "area": "other",
+    "area": "sessions",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -3121,7 +3121,7 @@
   {
     "key": "CLAUDE_CODE_STARTUP_FAILURE_RESULTS",
     "kind": "env",
-    "area": "other",
+    "area": "sessions",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -3253,7 +3253,7 @@
   {
     "key": "CLAUDE_CODE_SYNTAX_HIGHLIGHT",
     "kind": "env",
-    "area": "other",
+    "area": "tools",
     "valueType": "string",
     "defaultValue": null,
     "allowed": [],
@@ -3265,7 +3265,7 @@
   {
     "key": "CLAUDE_CODE_TASK_LIST_ID",
     "kind": "env",
-    "area": "other",
+    "area": "sessions",
     "valueType": "string",
     "defaultValue": null,
     "allowed": [],
@@ -3457,7 +3457,7 @@
   {
     "key": "CLAUDE_CODE_WEBFETCH_DEADLINE_MS",
     "kind": "env",
-    "area": "other",
+    "area": "tools",
     "valueType": "number",
     "defaultValue": "300000",
     "allowed": [],
@@ -3469,7 +3469,7 @@
   {
     "key": "CLAUDE_CODE_WEB_SEARCH_REFILLS_PER_HOUR",
     "kind": "env",
-    "area": "other",
+    "area": "tools",
     "valueType": "number",
     "defaultValue": "100",
     "allowed": [],
@@ -3481,7 +3481,7 @@
   {
     "key": "CLAUDE_CODE_WORKER_CHECKIN_SCHEDULE",
     "kind": "env",
-    "area": "subagents",
+    "area": "sessions",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -3505,7 +3505,7 @@
   {
     "key": "CLAUDE_CODE_WORKFLOW_PREFIX_STAGGER_MS",
     "kind": "env",
-    "area": "subagents",
+    "area": "tools",
     "valueType": "number",
     "defaultValue": null,
     "allowed": [],
@@ -3517,7 +3517,7 @@
   {
     "key": "CLAUDE_CODE_YOU_SHOULD_KNOW_DEBUG",
     "kind": "env",
-    "area": "other",
+    "area": "telemetry",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -3541,7 +3541,7 @@
   {
     "key": "CLAUDE_DISABLE_ADOPT",
     "kind": "env",
-    "area": "other",
+    "area": "sessions",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -3565,7 +3565,7 @@
   {
     "key": "CLAUDE_ENABLE_BYTE_WATCHDOG",
     "kind": "env",
-    "area": "other",
+    "area": "network",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -3589,7 +3589,7 @@
   {
     "key": "CLAUDE_ENABLE_STREAM_WATCHDOG",
     "kind": "env",
-    "area": "other",
+    "area": "network",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -3613,7 +3613,7 @@
   {
     "key": "CLAUDE_JOB_DIR",
     "kind": "env",
-    "area": "other",
+    "area": "sessions",
     "valueType": "string",
     "defaultValue": null,
     "allowed": [],
@@ -3637,7 +3637,7 @@
   {
     "key": "CLAUDE_REMOTE_CONTROL_SESSION_NAME_PREFIX",
     "kind": "env",
-    "area": "other",
+    "area": "sessions",
     "valueType": "string",
     "defaultValue": null,
     "allowed": [],
@@ -3685,7 +3685,7 @@
   {
     "key": "DEBUG",
     "kind": "env",
-    "area": "other",
+    "area": "telemetry",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -3697,7 +3697,7 @@
   {
     "key": "DISABLE_AUTOUPDATER",
     "kind": "env",
-    "area": "other",
+    "area": "updates",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -3733,7 +3733,7 @@
   {
     "key": "DISABLE_COST_WARNINGS",
     "kind": "env",
-    "area": "other",
+    "area": "auth",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -3769,7 +3769,7 @@
   {
     "key": "DISABLE_EXTRA_USAGE_COMMAND",
     "kind": "env",
-    "area": "other",
+    "area": "auth",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -3793,7 +3793,7 @@
   {
     "key": "DISABLE_GROWTHBOOK",
     "kind": "env",
-    "area": "other",
+    "area": "updates",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -3805,7 +3805,7 @@
   {
     "key": "DISABLE_INSTALLATION_CHECKS",
     "kind": "env",
-    "area": "other",
+    "area": "updates",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -3817,7 +3817,7 @@
   {
     "key": "DISABLE_INSTALL_GITHUB_APP_COMMAND",
     "kind": "env",
-    "area": "other",
+    "area": "updates",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -3853,7 +3853,7 @@
   {
     "key": "DISABLE_LOGOUT_COMMAND",
     "kind": "env",
-    "area": "other",
+    "area": "auth",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -3937,7 +3937,7 @@
   {
     "key": "DISABLE_UPDATES",
     "kind": "env",
-    "area": "other",
+    "area": "updates",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -3949,7 +3949,7 @@
   {
     "key": "DISABLE_UPGRADE_COMMAND",
     "kind": "env",
-    "area": "other",
+    "area": "updates",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -3973,7 +3973,7 @@
   {
     "key": "ENABLE_BETA_TRACING_DETAILED",
     "kind": "env",
-    "area": "plugins",
+    "area": "telemetry",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -4105,7 +4105,7 @@
   {
     "key": "IS_DEMO",
     "kind": "env",
-    "area": "other",
+    "area": "ui",
     "valueType": "string",
     "defaultValue": null,
     "allowed": [],
@@ -4501,7 +4501,7 @@
   {
     "key": "TASK_MAX_OUTPUT_LENGTH",
     "kind": "env",
-    "area": "other",
+    "area": "tools",
     "valueType": "number",
     "defaultValue": null,
     "allowed": [],
@@ -4513,7 +4513,7 @@
   {
     "key": "USE_BUILTIN_RIPGREP",
     "kind": "env",
-    "area": "other",
+    "area": "tools",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -4765,7 +4765,7 @@
   {
     "key": "--add-dir",
     "kind": "flag",
-    "area": "other",
+    "area": "tools",
     "valueType": "string",
     "defaultValue": null,
     "allowed": [],
@@ -4921,7 +4921,7 @@
   {
     "key": "--betas",
     "kind": "flag",
-    "area": "other",
+    "area": "model",
     "valueType": "string",
     "defaultValue": null,
     "allowed": [],
@@ -4957,7 +4957,7 @@
   {
     "key": "--chrome",
     "kind": "flag",
-    "area": "other",
+    "area": "tools",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -4969,7 +4969,7 @@
   {
     "key": "--cloud",
     "kind": "flag",
-    "area": "other",
+    "area": "sessions",
     "valueType": "string",
     "defaultValue": null,
     "allowed": [],
@@ -4981,7 +4981,7 @@
   {
     "key": "--continue",
     "kind": "flag",
-    "area": "other",
+    "area": "sessions",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -5017,7 +5017,7 @@
   {
     "key": "--debug",
     "kind": "flag",
-    "area": "mcp",
+    "area": "telemetry",
     "valueType": "string",
     "defaultValue": null,
     "allowed": [],
@@ -5029,7 +5029,7 @@
   {
     "key": "--debug-file",
     "kind": "flag",
-    "area": "other",
+    "area": "telemetry",
     "valueType": "string",
     "defaultValue": null,
     "allowed": [],
@@ -5108,7 +5108,7 @@
   {
     "key": "--environment",
     "kind": "flag",
-    "area": "other",
+    "area": "sessions",
     "valueType": "string",
     "defaultValue": null,
     "allowed": [],
@@ -5156,7 +5156,7 @@
   {
     "key": "--fork-session",
     "kind": "flag",
-    "area": "other",
+    "area": "sessions",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -5180,7 +5180,7 @@
   {
     "key": "--from-pr",
     "kind": "flag",
-    "area": "ui",
+    "area": "git",
     "valueType": "number",
     "defaultValue": null,
     "allowed": [],
@@ -5216,7 +5216,7 @@
   {
     "key": "--include-partial-messages",
     "kind": "flag",
-    "area": "other",
+    "area": "sessions",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -5228,7 +5228,7 @@
   {
     "key": "--init",
     "kind": "flag",
-    "area": "plugins",
+    "area": "tools",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -5240,7 +5240,7 @@
   {
     "key": "--init-only",
     "kind": "flag",
-    "area": "plugins",
+    "area": "tools",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -5252,7 +5252,7 @@
   {
     "key": "--input-format",
     "kind": "flag",
-    "area": "other",
+    "area": "sessions",
     "valueType": "enum",
     "defaultValue": null,
     "allowed": [
@@ -5291,7 +5291,7 @@
   {
     "key": "--max-budget-usd",
     "kind": "flag",
-    "area": "other",
+    "area": "sessions",
     "valueType": "number",
     "defaultValue": null,
     "allowed": [],
@@ -5303,7 +5303,7 @@
   {
     "key": "--max-turns",
     "kind": "flag",
-    "area": "other",
+    "area": "sessions",
     "valueType": "number",
     "defaultValue": null,
     "allowed": [],
@@ -5351,7 +5351,7 @@
   {
     "key": "--no-chrome",
     "kind": "flag",
-    "area": "other",
+    "area": "tools",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -5363,7 +5363,7 @@
   {
     "key": "--no-session-persistence",
     "kind": "flag",
-    "area": "other",
+    "area": "sessions",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -5375,7 +5375,7 @@
   {
     "key": "--output-format",
     "kind": "flag",
-    "area": "other",
+    "area": "sessions",
     "valueType": "enum",
     "defaultValue": null,
     "allowed": [
@@ -5459,7 +5459,7 @@
   {
     "key": "--print",
     "kind": "flag",
-    "area": "subagents",
+    "area": "sessions",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -5471,7 +5471,7 @@
   {
     "key": "--prompt-suggestions",
     "kind": "flag",
-    "area": "other",
+    "area": "ui",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -5483,7 +5483,7 @@
   {
     "key": "--ref",
     "kind": "flag",
-    "area": "other",
+    "area": "sessions",
     "valueType": "string",
     "defaultValue": null,
     "allowed": [],
@@ -5495,7 +5495,7 @@
   {
     "key": "--remote",
     "kind": "flag",
-    "area": "other",
+    "area": "sessions",
     "valueType": "string",
     "defaultValue": null,
     "allowed": [],
@@ -5507,7 +5507,7 @@
   {
     "key": "--remote-control",
     "kind": "flag",
-    "area": "other",
+    "area": "sessions",
     "valueType": "string",
     "defaultValue": null,
     "allowed": [],
@@ -5519,7 +5519,7 @@
   {
     "key": "--remote-control-session-name-prefix",
     "kind": "flag",
-    "area": "other",
+    "area": "sessions",
     "valueType": "string",
     "defaultValue": null,
     "allowed": [],
@@ -5531,7 +5531,7 @@
   {
     "key": "--replay-user-messages",
     "kind": "flag",
-    "area": "other",
+    "area": "sessions",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -5543,7 +5543,7 @@
   {
     "key": "--restricted",
     "kind": "flag",
-    "area": "other",
+    "area": "sessions",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -5555,7 +5555,7 @@
   {
     "key": "--resume",
     "kind": "flag",
-    "area": "ui",
+    "area": "sessions",
     "valueType": "string",
     "defaultValue": null,
     "allowed": [],
@@ -5579,7 +5579,7 @@
   {
     "key": "--session-id",
     "kind": "flag",
-    "area": "other",
+    "area": "sessions",
     "valueType": "string",
     "defaultValue": null,
     "allowed": [],
@@ -5703,7 +5703,7 @@
   {
     "key": "--tools",
     "kind": "flag",
-    "area": "other",
+    "area": "tools",
     "valueType": "string",
     "defaultValue": null,
     "allowed": [],
@@ -5727,7 +5727,7 @@
   {
     "key": "--version",
     "kind": "flag",
-    "area": "other",
+    "area": "updates",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -5787,7 +5787,7 @@
   {
     "key": "allowAllClaudeAiMcps",
     "kind": "setting",
-    "area": "mcp",
+    "area": "policy",
     "valueType": "boolean",
     "defaultValue": "false",
     "allowed": [],
@@ -5799,7 +5799,7 @@
   {
     "key": "allowClaudeInChromeWithManagedMcp",
     "kind": "setting",
-    "area": "mcp",
+    "area": "policy",
     "valueType": "boolean",
     "defaultValue": "false",
     "allowed": [],
@@ -5811,7 +5811,7 @@
   {
     "key": "allowManagedHooksOnly",
     "kind": "setting",
-    "area": "plugins",
+    "area": "policy",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -5823,7 +5823,7 @@
   {
     "key": "allowManagedMcpServersOnly",
     "kind": "setting",
-    "area": "mcp",
+    "area": "policy",
     "valueType": "boolean",
     "defaultValue": "false",
     "allowed": [],
@@ -5835,7 +5835,7 @@
   {
     "key": "allowManagedPermissionRulesOnly",
     "kind": "setting",
-    "area": "permissions",
+    "area": "policy",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -5847,7 +5847,7 @@
   {
     "key": "allowedChannelPlugins",
     "kind": "setting",
-    "area": "plugins",
+    "area": "policy",
     "valueType": "json",
     "defaultValue": null,
     "allowed": [],
@@ -5883,7 +5883,7 @@
   {
     "key": "allowedProviders",
     "kind": "setting",
-    "area": "auth",
+    "area": "policy",
     "valueType": "string[]",
     "defaultValue": null,
     "allowed": [],
@@ -5948,7 +5948,7 @@
   {
     "key": "attribution",
     "kind": "setting",
-    "area": "other",
+    "area": "git",
     "valueType": "json",
     "defaultValue": null,
     "allowed": [],
@@ -5960,7 +5960,7 @@
   {
     "key": "attribution.commit",
     "kind": "setting",
-    "area": "other",
+    "area": "git",
     "valueType": "string",
     "defaultValue": null,
     "allowed": [],
@@ -5972,7 +5972,7 @@
   {
     "key": "attribution.pr",
     "kind": "setting",
-    "area": "other",
+    "area": "git",
     "valueType": "string",
     "defaultValue": null,
     "allowed": [],
@@ -5984,7 +5984,7 @@
   {
     "key": "attribution.sessionUrl",
     "kind": "setting",
-    "area": "other",
+    "area": "git",
     "valueType": "boolean",
     "defaultValue": "true",
     "allowed": [],
@@ -6032,7 +6032,7 @@
   {
     "key": "autoContinueAtUsageLimit",
     "kind": "setting",
-    "area": "ui",
+    "area": "auth",
     "valueType": "boolean",
     "defaultValue": "true",
     "allowed": [],
@@ -6143,7 +6143,7 @@
   {
     "key": "availableModelsMatch",
     "kind": "setting",
-    "area": "model",
+    "area": "policy",
     "valueType": "enum",
     "defaultValue": "prefix",
     "allowed": [
@@ -6158,7 +6158,7 @@
   {
     "key": "awaySummaryEnabled",
     "kind": "setting",
-    "area": "ui",
+    "area": "sessions",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -6230,7 +6230,7 @@
   {
     "key": "blockedMarketplaces",
     "kind": "setting",
-    "area": "plugins",
+    "area": "policy",
     "valueType": "string[]",
     "defaultValue": null,
     "allowed": [],
@@ -6242,7 +6242,7 @@
   {
     "key": "browserExternalPageTools",
     "kind": "setting",
-    "area": "other",
+    "area": "policy",
     "valueType": "string",
     "defaultValue": null,
     "allowed": [],
@@ -6254,7 +6254,7 @@
   {
     "key": "channelsEnabled",
     "kind": "setting",
-    "area": "plugins",
+    "area": "policy",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -6266,7 +6266,7 @@
   {
     "key": "claudeInChromeDefaultEnabled",
     "kind": "setting",
-    "area": "other",
+    "area": "tools",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -6278,7 +6278,7 @@
   {
     "key": "claudeMd",
     "kind": "setting",
-    "area": "memory",
+    "area": "policy",
     "valueType": "string",
     "defaultValue": null,
     "allowed": [],
@@ -6350,7 +6350,7 @@
   {
     "key": "crossSessionInbound",
     "kind": "setting",
-    "area": "subagents",
+    "area": "sessions",
     "valueType": "enum",
     "defaultValue": null,
     "allowed": [
@@ -6405,7 +6405,7 @@
   {
     "key": "deniedModels",
     "kind": "setting",
-    "area": "model",
+    "area": "policy",
     "valueType": "string[]",
     "defaultValue": null,
     "allowed": [],
@@ -6417,7 +6417,7 @@
   {
     "key": "desktopSessionCleanupPeriodDays",
     "kind": "setting",
-    "area": "telemetry",
+    "area": "sessions",
     "valueType": "number",
     "defaultValue": "0",
     "allowed": [],
@@ -6485,7 +6485,7 @@
   {
     "key": "disableArtifact",
     "kind": "setting",
-    "area": "ui",
+    "area": "tools",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -6511,7 +6511,7 @@
   {
     "key": "disableBrowserExternalNavigation",
     "kind": "setting",
-    "area": "other",
+    "area": "policy",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -6547,7 +6547,7 @@
   {
     "key": "disableCommandPluginSources",
     "kind": "setting",
-    "area": "plugins",
+    "area": "policy",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -6573,7 +6573,7 @@
   {
     "key": "disableDesktopLocalSessions",
     "kind": "setting",
-    "area": "ui",
+    "area": "policy",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -6585,7 +6585,7 @@
   {
     "key": "disableMobileSimulatorTools",
     "kind": "setting",
-    "area": "other",
+    "area": "policy",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -6597,7 +6597,7 @@
   {
     "key": "disableRemoteControl",
     "kind": "setting",
-    "area": "ui",
+    "area": "sessions",
     "valueType": "boolean",
     "defaultValue": "false",
     "allowed": [],
@@ -6609,7 +6609,7 @@
   {
     "key": "disableSideloadFlags",
     "kind": "setting",
-    "area": "subagents",
+    "area": "policy",
     "valueType": "boolean",
     "defaultValue": "false",
     "allowed": [],
@@ -6633,7 +6633,7 @@
   {
     "key": "disableWorkflows",
     "kind": "setting",
-    "area": "plugins",
+    "area": "tools",
     "valueType": "boolean",
     "defaultValue": "false",
     "allowed": [],
@@ -6713,7 +6713,7 @@
   {
     "key": "enableArtifact",
     "kind": "setting",
-    "area": "ui",
+    "area": "tools",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -6725,7 +6725,7 @@
   {
     "key": "enableWorkflows",
     "kind": "setting",
-    "area": "plugins",
+    "area": "tools",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -6873,7 +6873,7 @@
   {
     "key": "fileCheckpointingEnabled",
     "kind": "setting",
-    "area": "memory",
+    "area": "tools",
     "valueType": "boolean",
     "defaultValue": "true",
     "allowed": [],
@@ -6949,7 +6949,7 @@
   {
     "key": "forceRemoteSettingsRefresh",
     "kind": "setting",
-    "area": "other",
+    "area": "policy",
     "valueType": "boolean",
     "defaultValue": "false",
     "allowed": [],
@@ -6961,7 +6961,7 @@
   {
     "key": "gatewayInternalNetworks",
     "kind": "setting",
-    "area": "network",
+    "area": "policy",
     "valueType": "string[]",
     "defaultValue": null,
     "allowed": [],
@@ -7105,7 +7105,7 @@
   {
     "key": "managedMcpServers",
     "kind": "setting",
-    "area": "mcp",
+    "area": "policy",
     "valueType": "json",
     "defaultValue": null,
     "allowed": [],
@@ -7117,7 +7117,7 @@
   {
     "key": "managedSourcesBehavior",
     "kind": "setting",
-    "area": "other",
+    "area": "policy",
     "valueType": "enum",
     "defaultValue": "first-wins",
     "allowed": [
@@ -7162,7 +7162,7 @@
   {
     "key": "minimumVersion",
     "kind": "setting",
-    "area": "other",
+    "area": "updates",
     "valueType": "string",
     "defaultValue": null,
     "allowed": [],
@@ -7210,7 +7210,7 @@
   {
     "key": "modelPricing",
     "kind": "setting",
-    "area": "model",
+    "area": "policy",
     "valueType": "json",
     "defaultValue": null,
     "allowed": [],
@@ -7258,7 +7258,7 @@
   {
     "key": "parentSettingsBehavior",
     "kind": "setting",
-    "area": "other",
+    "area": "policy",
     "valueType": "enum",
     "defaultValue": "first-wins",
     "allowed": [
@@ -7415,7 +7415,7 @@
   {
     "key": "pluginSuggestionMarketplaces",
     "kind": "setting",
-    "area": "plugins",
+    "area": "policy",
     "valueType": "string[]",
     "defaultValue": null,
     "allowed": [],
@@ -7427,7 +7427,7 @@
   {
     "key": "pluginTrustMessage",
     "kind": "setting",
-    "area": "plugins",
+    "area": "policy",
     "valueType": "string",
     "defaultValue": null,
     "allowed": [],
@@ -7439,7 +7439,7 @@
   {
     "key": "policyHelper",
     "kind": "setting",
-    "area": "other",
+    "area": "policy",
     "valueType": "json",
     "defaultValue": null,
     "allowed": [],
@@ -7451,7 +7451,7 @@
   {
     "key": "policyHelper.path",
     "kind": "setting",
-    "area": "other",
+    "area": "policy",
     "valueType": "string",
     "defaultValue": null,
     "allowed": [],
@@ -7463,7 +7463,7 @@
   {
     "key": "policyHelper.refreshIntervalMs",
     "kind": "setting",
-    "area": "other",
+    "area": "policy",
     "valueType": "number",
     "defaultValue": null,
     "allowed": [],
@@ -7475,7 +7475,7 @@
   {
     "key": "policyHelper.timeoutMs",
     "kind": "setting",
-    "area": "network",
+    "area": "policy",
     "valueType": "number",
     "defaultValue": "10000",
     "allowed": [],
@@ -7487,7 +7487,7 @@
   {
     "key": "prStatusFooterEnabled",
     "kind": "setting",
-    "area": "other",
+    "area": "git",
     "valueType": "boolean",
     "defaultValue": "true",
     "allowed": [],
@@ -7499,7 +7499,7 @@
   {
     "key": "prUrlTemplate",
     "kind": "setting",
-    "area": "other",
+    "area": "git",
     "valueType": "string",
     "defaultValue": null,
     "allowed": [],
@@ -7594,7 +7594,7 @@
   {
     "key": "remote.defaultEnvironmentId",
     "kind": "setting",
-    "area": "ui",
+    "area": "sessions",
     "valueType": "string",
     "defaultValue": null,
     "allowed": [],
@@ -7606,7 +7606,7 @@
   {
     "key": "remoteControlAtStartup",
     "kind": "setting",
-    "area": "ui",
+    "area": "sessions",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -7618,7 +7618,7 @@
   {
     "key": "requiredMaximumVersion",
     "kind": "setting",
-    "area": "other",
+    "area": "policy",
     "valueType": "string",
     "defaultValue": null,
     "allowed": [],
@@ -7630,7 +7630,7 @@
   {
     "key": "requiredMinimumVersion",
     "kind": "setting",
-    "area": "other",
+    "area": "policy",
     "valueType": "string",
     "defaultValue": null,
     "allowed": [],
@@ -7714,7 +7714,7 @@
   {
     "key": "sandbox.bwrapPath",
     "kind": "setting",
-    "area": "bash",
+    "area": "policy",
     "valueType": "string",
     "defaultValue": null,
     "allowed": [],
@@ -7870,7 +7870,7 @@
   {
     "key": "sandbox.filesystem.allowManagedReadPathsOnly",
     "kind": "setting",
-    "area": "bash",
+    "area": "policy",
     "valueType": "boolean",
     "defaultValue": "false",
     "allowed": [],
@@ -8002,7 +8002,7 @@
   {
     "key": "sandbox.network.allowManagedDomainsOnly",
     "kind": "setting",
-    "area": "bash",
+    "area": "policy",
     "valueType": "boolean",
     "defaultValue": "false",
     "allowed": [],
@@ -8110,7 +8110,7 @@
   {
     "key": "sandbox.socatPath",
     "kind": "setting",
-    "area": "bash",
+    "area": "policy",
     "valueType": "string",
     "defaultValue": null,
     "allowed": [],
@@ -8218,7 +8218,7 @@
   {
     "key": "skipWebFetchPreflight",
     "kind": "setting",
-    "area": "telemetry",
+    "area": "tools",
     "valueType": "boolean",
     "defaultValue": null,
     "allowed": [],
@@ -8290,7 +8290,7 @@
   {
     "key": "sshHostAllowlist",
     "kind": "setting",
-    "area": "ui",
+    "area": "policy",
     "valueType": "string[]",
     "defaultValue": null,
     "allowed": [],
@@ -8314,7 +8314,7 @@
   {
     "key": "strictKnownMarketplaces",
     "kind": "setting",
-    "area": "plugins",
+    "area": "policy",
     "valueType": "string[]",
     "defaultValue": null,
     "allowed": [],
@@ -8326,7 +8326,7 @@
   {
     "key": "strictPluginOnlyCustomization",
     "kind": "setting",
-    "area": "plugins",
+    "area": "policy",
     "valueType": "json",
     "defaultValue": null,
     "allowed": [],
@@ -8338,7 +8338,7 @@
   {
     "key": "strictPluginOnlyCustomization.agents",
     "kind": "setting",
-    "area": "subagents",
+    "area": "policy",
     "valueType": "enum",
     "defaultValue": null,
     "allowed": [
@@ -8352,7 +8352,7 @@
   {
     "key": "strictPluginOnlyCustomization.hooks",
     "kind": "setting",
-    "area": "plugins",
+    "area": "policy",
     "valueType": "enum",
     "defaultValue": null,
     "allowed": [
@@ -8366,7 +8366,7 @@
   {
     "key": "strictPluginOnlyCustomization.mcp",
     "kind": "setting",
-    "area": "mcp",
+    "area": "policy",
     "valueType": "enum",
     "defaultValue": null,
     "allowed": [
@@ -8380,7 +8380,7 @@
   {
     "key": "strictPluginOnlyCustomization.skills",
     "kind": "setting",
-    "area": "plugins",
+    "area": "policy",
     "valueType": "enum",
     "defaultValue": null,
     "allowed": [
@@ -8457,7 +8457,7 @@
   {
     "key": "syntaxHighlightingDisabled",
     "kind": "setting",
-    "area": "ui",
+    "area": "tools",
     "valueType": "boolean",
     "defaultValue": "false",
     "allowed": [],
@@ -8699,7 +8699,7 @@
   {
     "key": "workflowKeywordTriggerEnabled",
     "kind": "setting",
-    "area": "plugins",
+    "area": "tools",
     "valueType": "boolean",
     "defaultValue": "true",
     "allowed": [],
@@ -8711,7 +8711,7 @@
   {
     "key": "workflowSizeGuideline",
     "kind": "setting",
-    "area": "plugins",
+    "area": "tools",
     "valueType": "enum",
     "defaultValue": "medium",
     "allowed": [
@@ -8806,7 +8806,7 @@
   {
     "key": "wslInheritsWindowsSettings",
     "kind": "setting",
-    "area": "other",
+    "area": "policy",
     "valueType": "boolean",
     "defaultValue": "false",
     "allowed": [],

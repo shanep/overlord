@@ -58,6 +58,8 @@ export interface OverlordSettings {
 export interface HostPort {
   readonly openPanel: (view: ViewId, params: PanelParams) => void;
   readonly openFile: (path: string) => Promise<void>;
+  /** Open a web page in the default browser. */
+  readonly openExternal: (url: string) => Promise<void>;
   /**
    * Add a folder to this window's workspace, unless it is there already, and
    * show it in the Explorer. The window stays open, so its terminals keep running.

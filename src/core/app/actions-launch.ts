@@ -3,7 +3,7 @@
 
 import type { LaunchProfile, LaunchSpec } from '../../shared/model.js';
 import { estimateBatch } from '../harness/estimate.js';
-import { saveProfile } from '../knobs/profiles.js';
+import { deleteProfile, saveProfile } from '../knobs/profiles.js';
 import { DEFAULT_PRICES } from '../transcripts/pricing.js';
 
 import type { ActionHandlers } from './action-types.js';
@@ -20,7 +20,8 @@ type LaunchActions =
   | 'stopAll'
   | 'saveRule'
   | 'deleteRule'
-  | 'saveProfile';
+  | 'saveProfile'
+  | 'deleteProfile';
 
 /** Batches estimated above this many dollars ask before they start. */
 export const CONFIRM_ABOVE_USD = 1;
@@ -119,6 +120,22 @@ export const launchActions: ActionHandlers<LaunchActions> = {
   },
   saveProfile: async ({ rt }, action) => {
     const result = await saveProfile(storagePath(rt.host.storageDir, 'profiles'), action.profile);
+    if (!result.ok) {
+      rt.host.showError(result.error);
+      return;
+    }
+    await rt.caches.profiles.refresh();
+  },
+  deleteProfile: async ({ rt }, action) => {
+    const profile = rt.caches.profiles.peek().find((item) => item.id === action.profileId);
+    const name = profile?.name ?? 'this profile';
+    if (!(await rt.host.confirm(`Delete the launch profile ${name}?`, 'Delete'))) {
+      return;
+    }
+    const result = await deleteProfile(
+      storagePath(rt.host.storageDir, 'profiles'),
+      action.profileId,
+    );
     if (!result.ok) {
       rt.host.showError(result.error);
       return;

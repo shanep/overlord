@@ -49,7 +49,12 @@ function toKnob(draft: KnobDraft): KnobDefinition {
   return {
     key: draft.key,
     kind: draft.kind,
-    area: classifyArea({ key: draft.key, topic: draft.topic, description: draft.description }),
+    area: classifyArea({
+      key: draft.key,
+      topic: draft.topic,
+      description: draft.description,
+      managedOnly: draft.managedOnly,
+    }),
     valueType: draft.typeInfo.valueType,
     defaultValue: draft.defaultValue,
     allowed: draft.typeInfo.allowed,

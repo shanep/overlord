@@ -116,6 +116,9 @@ export function createVscodeHostPort(options: VscodeHostPortOptions): HostPort {
       const document = await vscode.workspace.openTextDocument(vscode.Uri.file(file));
       await vscode.window.showTextDocument(document, { preview: false });
     },
+    openExternal: async (url: string): Promise<void> => {
+      await vscode.env.openExternal(vscode.Uri.parse(url));
+    },
     showFolder: async (folder: string): Promise<void> => {
       const uri = vscode.Uri.file(folder);
       await addToWorkspace(uri);

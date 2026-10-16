@@ -131,6 +131,11 @@ export function formatValue(value: unknown): string {
   return JSON.stringify(value);
 }
 
+/** "1 key", "3 keys": a count with its noun, plural with s. */
+export function plural(count: number, noun: string): string {
+  return `${count.toString()} ${noun}${count === 1 ? '' : 's'}`;
+}
+
 /** Cut text to `max` characters with a trailing ellipsis. */
 export function truncate(text: string, max: number): string {
   return text.length <= max ? text : `${text.slice(0, Math.max(0, max - 1))}…`;

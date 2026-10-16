@@ -89,6 +89,30 @@ describe('setKnob', () => {
   });
 });
 
+describe('setKnob for keys outside the catalog', () => {
+  it('writes and removes your own env var under env', async () => {
+    const env = await makeEnv();
+    const { app } = makeApp(env);
+    await app.dispatch({ type: 'setKnob', key: 'env.MY_VAR', value: 'x', layer: 'user' }, {});
+    expect(await readJson(env.paths.userSettings)).toStrictEqual({ env: { MY_VAR: 'x' } });
+    await app.dispatch({ type: 'setKnob', key: 'env.MY_VAR', value: null, layer: 'user' }, {});
+    expect(await readJson(env.paths.userSettings)).toStrictEqual({ env: {} });
+  });
+});
+
+describe('openKnobDocs', () => {
+  it('opens the catalog docs page and nothing else', async () => {
+    const env = await makeEnv();
+    const { app } = makeApp(env);
+    await app.dispatch({ type: 'openKnobDocs', key: 'model', kind: 'setting' }, {});
+    expect(env.host.external).toHaveLength(1);
+    expect(env.host.external[0]).toMatch(/^https:\/\/code\.claude\.com\/docs\//u);
+    await app.dispatch({ type: 'openKnobDocs', key: 'model', kind: 'flag' }, {});
+    expect(env.host.external).toHaveLength(1);
+    expect(env.host.infos).toStrictEqual(['No docs page is known for model.']);
+  });
+});
+
 describe('importClaudeAi', () => {
   it('does nothing when cancelled', async () => {
     const env = await makeEnv();

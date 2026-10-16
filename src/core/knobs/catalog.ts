@@ -4,9 +4,9 @@
 
 import { z } from 'zod';
 
+import { KNOB_AREAS } from '../../shared/knob-areas.js';
 import type { KnobDefinition, KnobKind } from '../../shared/model.js';
 
-import { KNOB_AREAS } from './areas.js';
 import generated from './catalog.generated.json';
 
 const knobSchema = z.object({

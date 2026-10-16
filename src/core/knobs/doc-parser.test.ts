@@ -306,7 +306,7 @@ describe('parseSettingsPage', () => {
     });
     expect(knobs[2]).toMatchObject({
       key: 'forceLoginMethod',
-      area: 'auth',
+      area: 'policy',
       valueType: 'enum',
       allowed: ['claudeai', 'console'],
       defaultValue: 'claudeai',
@@ -463,7 +463,7 @@ describe('parseCliPage', () => {
     expect(knobs[0]).toStrictEqual({
       key: '--continue',
       kind: 'flag',
-      area: 'other',
+      area: 'sessions',
       valueType: 'boolean',
       defaultValue: null,
       allowed: [],

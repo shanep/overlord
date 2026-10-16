@@ -164,6 +164,24 @@ button.danger {
   background: var(--ov-red);
 }
 
+button.press[aria-pressed='true'] {
+  color: var(--ov-button-fg);
+  background: var(--ov-button);
+}
+
+button.area-toggle {
+  padding: 0;
+  border: none;
+  color: inherit;
+  background: none;
+  font: inherit;
+  font-weight: inherit;
+}
+
+.area-heading {
+  margin: 0;
+}
+
 button.link-button {
   padding: 0;
   border: none;

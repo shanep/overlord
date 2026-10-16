@@ -5,7 +5,7 @@ import path from 'node:path';
 
 import { z } from 'zod';
 
-import { loadCatalog } from '../knobs/catalog.js';
+import { findKnob, loadCatalog } from '../knobs/catalog.js';
 import type { JsonValue } from '../knobs/json.js';
 import { writeSetting } from '../knobs/write.js';
 import { importClaudeAiExport } from '../surfaces/claude-ai-export.js';
@@ -21,7 +21,8 @@ import { plural } from './text.js';
 import { configRepoDir, connectedRoot } from './views/config.js';
 import { trackAdviceTaken } from './views/tuning.js';
 
-type ConfigActions = 'setKnob' | 'importClaudeAi' | 'syncPush' | 'syncPull' | 'adoptConfig';
+type ConfigActions =
+  'setKnob' | 'openKnobDocs' | 'importClaudeAi' | 'syncPush' | 'syncPull' | 'adoptConfig';
 
 type Layer = ActionMap['setKnob']['layer'];
 
@@ -111,6 +112,15 @@ export const configActions: ActionHandlers<ConfigActions> = {
     } else {
       rt.host.showError(`The value for ${action.key} is not plain JSON.`);
     }
+  },
+  openKnobDocs: async ({ rt }, action) => {
+    // Only catalog doc links open, so a webview can never send the browser anywhere else.
+    const knob = findKnob(loadCatalog(), action.kind, action.key);
+    if (knob === undefined) {
+      rt.host.showInfo(`No docs page is known for ${action.key}.`);
+      return;
+    }
+    await rt.host.openExternal(knob.docUrl);
   },
   importClaudeAi: async ({ rt }) => {
     const picked = await rt.host.pickFile({

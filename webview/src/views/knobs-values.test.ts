@@ -1,22 +1,30 @@
 import { describe, expect, it } from 'vitest';
 
 import type { EffectiveValue, KnobDefinition } from '../../../src/shared/model.js';
-import { knobDefinitions } from '../../test/fixtures-context.js';
+import { knobDefinitions, knobsState } from '../../test/fixtures-context.js';
 
+import { knobEntries } from './knobs-match.js';
+import type { AreaGroup, KnobFilter } from './knobs-values.js';
 import {
+  defaultLayer,
   displayValue,
   editorText,
   formatEnv,
-  groupByArea,
+  groupEntries,
   isEditableLayer,
+  isKindFilter,
   isPermissionMode,
+  isRetired,
   matchesQuery,
   nullIfEmpty,
   parseArgs,
   parseEnv,
   parseKnobInput,
+  parseKnobValue,
+  selectOptions,
   splitList,
   startText,
+  startTextAt,
 } from './knobs-values.js';
 
 const base: KnobDefinition = {
@@ -118,35 +126,144 @@ describe('displayValue', () => {
   });
 });
 
-describe('matchesQuery and groupByArea', () => {
-  it('matches key, description or area without case', () => {
+const ALL: KnobFilter = { query: '', kind: 'all', onlySet: false, showRetired: false };
+
+function groupsFor(filter: Partial<KnobFilter>): AreaGroup[] {
+  const entries = knobEntries(knobsState.catalog, knobsState.effective, knobsState.profiles);
+  return groupEntries(entries, { ...ALL, ...filter });
+}
+
+describe('matchesQuery and groupEntries', () => {
+  it('matches every word against key, description, area or area title without case', () => {
     expect(matchesQuery(base, '')).toBe(true);
     expect(matchesQuery(base, ' KNOB ')).toBe(true);
     expect(matchesQuery(base, 'MISC')).toBe(true);
-    expect(matchesQuery(base, 'k')).toBe(true);
-    expect(matchesQuery(base, 'zzz')).toBe(false);
+    expect(matchesQuery(base, 'k knob')).toBe(true);
+    expect(matchesQuery(base, 'knob zzz')).toBe(false);
+    expect(matchesQuery({ ...base, area: 'bash' }, 'sandbox')).toBe(true);
   });
 
-  it('groups by area with areas and keys sorted', () => {
-    const groups = groupByArea(knobDefinitions, '');
+  it('groups in area order with settings, then env vars, then flags, by key', () => {
+    const groups = groupsFor({});
     expect(groups.map((group) => group.area)).toStrictEqual([
-      'bash',
       'model',
-      'permissions',
       'thinking',
+      'permissions',
+      'bash',
+      'sessions',
+      'ui',
     ]);
-    expect(groups[1]?.knobs.map((knob) => knob.key)).toStrictEqual(['env', 'model']);
-    expect(groups[2]?.knobs.map((knob) => knob.key)).toStrictEqual([
+    expect(groups[0]).toMatchObject({ title: 'Model and output', setCount: 2 });
+    expect(groups[2]?.entries.map((entry) => entry.definition.key)).toStrictEqual([
       'additionalDirectories',
+      'permissions',
       'permissions.defaultMode',
     ]);
   });
 
-  it('drops areas with no match', () => {
-    expect(groupByArea(knobDefinitions, 'shell').map((group) => group.area)).toStrictEqual([
-      'bash',
+  it('sorts kinds before keys and unknown areas last by name', () => {
+    const extra: KnobDefinition[] = [
+      { ...base, key: 'a', kind: 'flag', area: 'zeta' },
+      { ...base, key: 'b', kind: 'setting', area: 'zeta' },
+      { ...base, key: 'c', kind: 'env', area: 'alpha' },
+    ];
+    const groups = groupEntries(knobEntries(extra, [], []), ALL);
+    expect(groups.map((group) => [group.area, group.title, group.summary])).toStrictEqual([
+      ['alpha', 'alpha', ''],
+      ['zeta', 'zeta', ''],
     ]);
-    expect(groupByArea(knobDefinitions, 'nothing here')).toStrictEqual([]);
+    expect(groups[1]?.entries.map((entry) => entry.definition.key)).toStrictEqual(['b', 'a']);
+  });
+
+  it('filters by kind, what is set, removed keys and text', () => {
+    expect(groupsFor({ kind: 'flag' }).map((group) => group.area)).toStrictEqual([
+      'sessions',
+      'ui',
+    ]);
+    expect(
+      groupsFor({ onlySet: true }).flatMap((group) =>
+        group.entries.map((entry) => entry.definition.key),
+      ),
+    ).toStrictEqual(['env', 'model', 'permissions', 'BASH_MAX_OUTPUT_LENGTH', '--verbose']);
+    expect(groupsFor({ showRetired: true }).at(-1)?.area).toBe('other');
+    expect(groupsFor({ query: 'shell' }).map((group) => group.area)).toStrictEqual(['bash']);
+    expect(groupsFor({ query: 'nothing here' })).toStrictEqual([]);
+  });
+
+  it('shows a removed key that is still set', () => {
+    const set = [{ key: 'env.OLD_SWITCH', value: '1', layer: 'user' as const, chain: [] }];
+    const entries = knobEntries(knobDefinitions, set, []);
+    expect(groupEntries(entries, ALL).at(-1)?.area).toBe('other');
+  });
+
+  it('knows removed keys and kind filter values', () => {
+    expect(isRetired({ ...base, description: 'Removed in v2. Gone.' })).toBe(true);
+    expect(isRetired({ ...base, description: 'Deprecated; use x.' })).toBe(true);
+    expect(isRetired({ ...base, description: 'Sets a thing. Removed in v2.' })).toBe(false);
+    expect(
+      ['all', 'setting', 'env', 'flag', 'nope', 3].map((item) => isKindFilter(item)),
+    ).toStrictEqual([true, true, true, true, false, false]);
+  });
+});
+
+describe('editing helpers', () => {
+  it('offers env spellings for env switches', () => {
+    expect(selectOptions({ ...base, valueType: 'boolean' })).toStrictEqual(['true', 'false']);
+    expect(selectOptions({ ...base, kind: 'env', valueType: 'boolean' })).toStrictEqual([
+      '1',
+      '0',
+      'true',
+      'false',
+    ]);
+    expect(selectOptions({ ...base, valueType: 'enum', allowed: ['x'] })).toStrictEqual(['x']);
+  });
+
+  it('starts an unset env switch on 1 and keeps its own spelling', () => {
+    const definition: KnobDefinition = { ...base, kind: 'env', valueType: 'boolean' };
+    expect(startText(definition)).toBe('1');
+    expect(startText(definition, effective('false'))).toBe('false');
+  });
+
+  it('starts on the value the chosen layer holds, else the effective value', () => {
+    const value: EffectiveValue = {
+      key: 'k',
+      value: 'top',
+      layer: 'project',
+      chain: [
+        { layer: 'project', value: 'top', file: null },
+        { layer: 'user', value: 'mine', file: null },
+      ],
+    };
+    expect(startTextAt(base, value, 'user')).toBe('mine');
+    expect(startTextAt(base, value, 'project-local')).toBe('top');
+    expect(startTextAt({ ...base, defaultValue: 'd' }, undefined, 'user')).toBe('d');
+    const object = { ...value, value: { a: 1 } };
+    expect(startTextAt({ ...base, valueType: 'json' }, object, 'project-local')).toBe('');
+  });
+
+  it('starts on the winning layer when Overlord can write it', () => {
+    expect(defaultLayer()).toBe('user');
+    expect(defaultLayer({ ...effective(1), layer: 'project-local' })).toBe('project-local');
+    expect(defaultLayer({ ...effective(1), layer: 'managed' })).toBe('user');
+    expect(defaultLayer({ ...effective(1), layer: 'env' })).toBe('user');
+  });
+
+  it('writes env values as checked strings and settings as typed values', () => {
+    const env: KnobDefinition = { ...base, kind: 'env', valueType: 'number' };
+    expect(parseKnobValue(env, ' 12 ')).toStrictEqual({ ok: true, value: '12' });
+    expect(parseKnobValue(env, 'x')).toStrictEqual({ ok: false, error: 'Enter a number.' });
+    expect(parseKnobValue({ ...base, valueType: 'number' }, '12')).toStrictEqual({
+      ok: true,
+      value: 12,
+    });
+  });
+
+  it('never puts the redaction mask in the editor or back in a file', () => {
+    expect(editorText('string', '<redacted>')).toBe('');
+    expect(parseKnobValue({ ...base, valueType: 'json' }, '{"KEY":"<redacted>"}')).toStrictEqual({
+      ok: false,
+      error: 'Replace <redacted> with the real value, or edit the file.',
+    });
   });
 });
 

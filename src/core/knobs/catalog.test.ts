@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
+import { KNOB_AREAS } from '../../shared/knob-areas.js';
 import type { KnobDefinition } from '../../shared/model.js';
 
-import { KNOB_AREAS } from './areas.js';
 import {
   catalogAreas,
   catalogEnvKeys,

@@ -250,6 +250,12 @@ describe('knobs view', () => {
     expect(model?.value).toBe('sonnet');
     expect(model?.layer).toBe('project');
     expect(data.effective.find((item) => item.key === 'env.CLAUDE_CODE_X')?.value).toBe('1');
+    expect(data.files.map((file) => [file.layer, file.exists, file.keys])).toStrictEqual([
+      ['managed', false, 0],
+      ['project-local', false, 0],
+      ['project', true, 1],
+      ['user', true, 2],
+    ]);
     expect(data.featureFlags).toStrictEqual({ cachedGrowthBookFeatures: { flag: true } });
     expect(report).not.toHaveBeenCalled();
   });
@@ -260,7 +266,13 @@ describe('knobs view', () => {
     await writeText(env.paths.claudeJson, '{bad');
     const report = vi.fn<(source: string, message: string) => void>();
     const data = await loadKnobs({ paths: env.paths, env: {}, workspace: null, report });
-    expect(data).toStrictEqual({ effective: [], featureFlags: {} });
+    expect(data.effective).toStrictEqual([]);
+    expect(data.featureFlags).toStrictEqual({});
+    expect(data.files.map((file) => [file.layer, file.exists, file.keys])).toStrictEqual([
+      ['managed', false, 0],
+      ['user', true, 0],
+    ]);
+    expect(data.files[1]?.error).toContain('Invalid JSON');
     expect(report).toHaveBeenCalledTimes(2);
     expect(report.mock.calls.map((call) => call[0])).toStrictEqual(['knobs', 'knobs']);
     expect(String(report.mock.calls[0]?.[1])).toContain('Invalid JSON');
@@ -289,13 +301,15 @@ describe('knobs view', () => {
         extraArgs: [],
       },
     ];
-    const state = buildKnobs({ effective: [], featureFlags: { a: 1 } }, profiles);
+    const files = [{ layer: 'user' as const, file: '/u.json', exists: true, keys: 2, error: null }];
+    const state = buildKnobs({ effective: [], files, featureFlags: { a: 1 } }, profiles);
     expect(state.catalog).toBe(loadCatalog());
     expect(state.catalog.length).toBeGreaterThan(100);
     expect(state.profiles).toBe(profiles);
     expect(state.featureFlags).toStrictEqual({ a: 1 });
     expect(state.effective).toStrictEqual([]);
-    expect(EMPTY_KNOBS).toStrictEqual({ effective: [], featureFlags: {} });
+    expect(state.files).toBe(files);
+    expect(EMPTY_KNOBS).toStrictEqual({ effective: [], files: [], featureFlags: {} });
   });
 });
 

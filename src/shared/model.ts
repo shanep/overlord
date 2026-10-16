@@ -251,6 +251,17 @@ export interface EffectiveValue {
   }[];
 }
 
+/** One settings file Claude Code reads, for the Knobs view's file list. */
+export interface SettingsFileSummary {
+  readonly layer: SettingsLayer;
+  readonly file: string;
+  readonly exists: boolean;
+  /** How many dotted keys the file sets. */
+  readonly keys: number;
+  /** Why the file could not be read, or null. */
+  readonly error: string | null;
+}
+
 // ---- Config inventory and sync -----------------------------------------
 
 export type ConfigKind =

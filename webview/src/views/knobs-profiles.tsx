@@ -69,7 +69,11 @@ const TEXT_FIELDS: readonly { readonly field: TextField; readonly label: string 
   { field: 'args', label: 'Extra args' },
 ];
 
-function ProfileForm(props: { readonly profile: LaunchProfile }): ReactElement {
+function ProfileForm(props: {
+  readonly profile: LaunchProfile;
+  /** False for a new profile that only lives in this form so far. */
+  readonly saved: boolean;
+}): ReactElement {
   const { profile } = props;
   const post = usePostAction();
   const [draft, setDraft] = useState<ProfileDraft>(() => toDraft(profile));
@@ -123,7 +127,18 @@ function ProfileForm(props: { readonly profile: LaunchProfile }): ReactElement {
         }}
       >
         Save profile
-      </button>
+      </button>{' '}
+      {props.saved ? (
+        <button
+          type="button"
+          className="danger"
+          onClick={() => {
+            post({ type: 'deleteProfile', profileId: profile.id });
+          }}
+        >
+          Delete profile
+        </button>
+      ) : null}
     </fieldset>
   );
 }
@@ -151,7 +166,7 @@ export function ProfilesEditor(props: {
         <p className="muted">No profiles yet.</p>
       ) : null}
       {[...props.profiles, ...pending].map((profile) => (
-        <ProfileForm key={profile.id} profile={profile} />
+        <ProfileForm key={profile.id} profile={profile} saved={known.has(profile.id)} />
       ))}
     </section>
   );

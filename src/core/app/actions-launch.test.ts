@@ -1,3 +1,6 @@
+import { mkdir } from 'node:fs/promises';
+import path from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import type { LaunchProfile, LaunchSpec, PermissionDecision } from '../../shared/model.js';
@@ -204,5 +207,30 @@ describe('profiles', () => {
     expect(env.host.errors).toHaveLength(1);
     expect(env.host.errors[0]).toMatch(/^Invalid profile: /u);
     expect(app.runtime.caches.profiles.peek()).toStrictEqual([]);
+  });
+
+  it('deletes a profile only after a yes', async () => {
+    const env = await makeEnv();
+    const { app } = makeApp(env);
+    await app.dispatch({ type: 'saveProfile', profile: PROFILE }, {});
+    await app.dispatch({ type: 'deleteProfile', profileId: PROFILE.id }, {});
+    expect(env.host.questions).toStrictEqual([
+      { message: `Delete the launch profile ${PROFILE.name}?`, action: 'Delete' },
+    ]);
+    expect(app.runtime.caches.profiles.peek()).toStrictEqual([PROFILE]);
+    env.host.confirmAnswers.push(true);
+    await app.dispatch({ type: 'deleteProfile', profileId: PROFILE.id }, {});
+    expect(app.runtime.caches.profiles.peek()).toStrictEqual([]);
+    expect(env.host.errors).toStrictEqual([]);
+  });
+
+  it('names an unknown profile generically and shows a failed write', async () => {
+    const env = await makeEnv();
+    const { app } = makeApp(env);
+    env.host.confirmAnswers.push(true);
+    await mkdir(path.join(env.storageDir, 'profiles.json'), { recursive: true });
+    await app.dispatch({ type: 'deleteProfile', profileId: 'gone' }, {});
+    expect(env.host.questions[0]?.message).toBe('Delete the launch profile this profile?');
+    expect(env.host.errors).toHaveLength(1);
   });
 });

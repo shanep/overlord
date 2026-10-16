@@ -1,7 +1,9 @@
-// cspell:ignore xyzzy ultracode notif
+// cspell:ignore xyzzy ultracode notif autoupdater
 import { describe, expect, it } from 'vitest';
 
-import { appliesAtFor, classifyArea, KNOB_AREAS, type KnobArea } from './areas.js';
+import { KNOB_AREAS, type KnobArea } from '../../shared/knob-areas.js';
+
+import { appliesAtFor, classifyArea } from './areas.js';
 
 function areaOf(key: string, topic = '', description = ''): KnobArea {
   return classifyArea({ key, topic, description });
@@ -13,17 +15,22 @@ describe('KNOB_AREAS', () => {
       'model',
       'thinking',
       'context',
-      'caching',
-      'subagents',
-      'bash',
-      'mcp',
-      'telemetry',
       'memory',
+      'caching',
       'permissions',
-      'auth',
-      'ui',
-      'network',
+      'bash',
+      'tools',
+      'mcp',
       'plugins',
+      'subagents',
+      'sessions',
+      'git',
+      'ui',
+      'auth',
+      'network',
+      'telemetry',
+      'updates',
+      'policy',
       'other',
     ]);
   });
@@ -127,8 +134,42 @@ describe('classifyArea', () => {
     ['--ide', 'ui'],
     ['autoConnectIde', 'ui'],
     ['autoInstallIdeExtension', 'ui'],
+    ['CLAUDE_CODE_DISABLE_WEB_FETCH', 'tools'],
+    ['CLAUDE_CODE_MAX_WEB_SEARCHES_PER_SESSION', 'tools'],
+    ['CLAUDE_CODE_GLOB_HIDDEN', 'tools'],
+    ['enableArtifact', 'tools'],
+    ['--chrome', 'tools'],
+    ['--continue', 'sessions'],
+    ['--output-format', 'sessions'],
+    ['--max-budget-usd', 'sessions'],
+    ['CLAUDE_CODE_RESUME_PROMPT', 'sessions'],
+    ['remoteControlAtStartup', 'sessions'],
+    ['attribution.commit', 'git'],
+    ['prUrlTemplate', 'git'],
+    ['CLAUDE_CODE_PERFORCE_MODE', 'git'],
+    ['DISABLE_AUTOUPDATER', 'updates'],
+    ['minimumVersion', 'updates'],
+    ['--version', 'updates'],
+    ['requiredMinimumVersion', 'policy'],
+    ['policyHelper.path', 'policy'],
+    ['DEBUG', 'telemetry'],
+    ['--debug-file', 'telemetry'],
+    ['CLAUDE_ENABLE_STREAM_WATCHDOG', 'network'],
+    ['IS_DEMO', 'ui'],
+    ['CLAUDE_CODE_MAX_OUTPUT_TOKENS', 'model'],
+    ['DISABLE_COST_WARNINGS', 'auth'],
+    ['CLAUDE_CODE_DISABLE_SUBSTITUTION_RM_PROMPT', 'bash'],
   ])('puts %s in %s', (key, area) => {
     expect(areaOf(key)).toBe(area);
+  });
+
+  it('puts every managed only key in policy, whatever its name', () => {
+    expect(classifyArea({ key: 'model', topic: '', description: '', managedOnly: true })).toBe(
+      'policy',
+    );
+    expect(classifyArea({ key: 'model', topic: '', description: '', managedOnly: false })).toBe(
+      'model',
+    );
   });
 
   it('does not read "ide" inside a longer word', () => {
@@ -141,8 +182,8 @@ describe('classifyArea', () => {
 
   it('prefers the key over the topic and the topic over the description', () => {
     expect(areaOf('promptCacheTtl', 'Model and responses')).toBe('caching');
-    expect(areaOf('attribution', 'Model and responses', 'Runs bash')).toBe('model');
-    expect(areaOf('attribution', '', 'Runs bash commands')).toBe('bash');
+    expect(areaOf('xyzzy', 'Model and responses', 'Runs bash')).toBe('model');
+    expect(areaOf('xyzzy', '', 'Runs bash commands')).toBe('bash');
   });
 
   it.each([

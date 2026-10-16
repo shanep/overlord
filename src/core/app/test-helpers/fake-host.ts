@@ -35,6 +35,7 @@ export interface FakeHostOptions {
 export class FakeHost implements HostPort {
   readonly panels: { readonly view: ViewId; readonly params: PanelParams }[] = [];
   readonly opened: string[] = [];
+  readonly external: string[] = [];
   readonly folders: string[] = [];
   readonly terminals: TerminalRequest[] = [];
   readonly shown: TerminalTarget[] = [];
@@ -77,6 +78,11 @@ export class FakeHost implements HostPort {
 
   readonly openFile = async (file: string): Promise<void> => {
     this.opened.push(file);
+    await Promise.resolve();
+  };
+
+  readonly openExternal = async (url: string): Promise<void> => {
+    this.external.push(url);
     await Promise.resolve();
   };
 

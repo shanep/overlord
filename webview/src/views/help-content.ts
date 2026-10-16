@@ -59,7 +59,7 @@ export const SIDEBAR_GROUPS: readonly SidebarGroup[] = [
         name: 'Knobs',
         icon: 'Gear',
         meaning:
-          'Every setting, env var and CLI flag from the docs, with its effective value and the layer that set it.',
+          'Every setting, env var and CLI flag from the docs, grouped by area, with its effective value and the layer that set it. Set or remove a key at any layer you can write, add your own env vars, and add CLI flags to launch profiles. Tabs hold the launch profiles and the cached feature flags.',
       },
       {
         name: 'Config and Sync',

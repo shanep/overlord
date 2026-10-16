@@ -1,43 +1,9 @@
-// cspell:ignore ultracode cach retr notif keybind
+// cspell:ignore ultracode cach retr notif keybind imum
 // Keyword rules that put every knob in one area of the Knobs view, and the one
 // table that says where a change to a knob takes effect.
 
+import type { KnobArea } from '../../shared/knob-areas.js';
 import type { AppliesAt, KnobKind } from '../../shared/model.js';
-
-export type KnobArea =
-  | 'model'
-  | 'thinking'
-  | 'context'
-  | 'caching'
-  | 'subagents'
-  | 'bash'
-  | 'mcp'
-  | 'telemetry'
-  | 'memory'
-  | 'permissions'
-  | 'auth'
-  | 'ui'
-  | 'network'
-  | 'plugins'
-  | 'other';
-
-export const KNOB_AREAS: readonly KnobArea[] = [
-  'model',
-  'thinking',
-  'context',
-  'caching',
-  'subagents',
-  'bash',
-  'mcp',
-  'telemetry',
-  'memory',
-  'permissions',
-  'auth',
-  'ui',
-  'network',
-  'plugins',
-  'other',
-];
 
 interface AreaRule {
   readonly area: KnobArea;
@@ -71,6 +37,38 @@ const AREA_RULES: readonly AreaRule[] = [
   { area: 'ui', pattern: /color|verbose|picker|tips|keybind|(?:^|[_-])ide(?:[_-]|$)/iu },
   { area: 'ui', pattern: /Ide(?:[A-Z]|$)/u },
   { area: 'plugins', pattern: /plugin|marketplace|skill|hook|channel/iu },
+  // Areas added after the first set. They come last so they only take keys the
+  // older rules left in other.
+  {
+    area: 'policy',
+    pattern:
+      /policy|managed|required(?:Min|Max)imumVersion|parentSettings|remoteSettings|wslInherits|admin_?env/iu,
+  },
+  { area: 'updates', pattern: /update|upgrade|install|version|growthbook|release_?channel/iu },
+  {
+    area: 'git',
+    pattern: /attribution|(?:^|[_-])pr(?:[_-]|$)|pr(?:Url|Status)|commit|co_?authored|perforce/iu,
+  },
+  { area: 'tools', pattern: /web_?(?:fetch|search)/iu },
+  { area: 'network', pattern: /watchdog|streaming/iu },
+  { area: 'ui', pattern: /demo|hide_?cwd|quiet|prompt_?suggestion|backspace/iu },
+  { area: 'bash', pattern: /rm_?prompt/iu },
+  {
+    area: 'auth',
+    pattern: /organization|workspace_?id|federation|client_?key|logout|cost|usage/iu,
+  },
+  { area: 'sessions', pattern: /session|resume|continue|remote|cloud|ccr|background|bg_|job/iu },
+  { area: 'sessions', pattern: /adopt|away|history|fork|exit_?after|goal|worker|restricted/iu },
+  {
+    area: 'sessions',
+    pattern: /print|(?:input|output)[_-]format|replay|partial|ref$|environment|task_?list/iu,
+  },
+  { area: 'sessions', pattern: /turns|max[_-]?budget/iu },
+  { area: 'tools', pattern: /glob|file_?read|attachment|file_?mention|checkpoint|cron|workflow/iu },
+  { area: 'tools', pattern: /artifact|chrome|cfc|browser|simulator|ripgrep|tasks?(?:[_-]|$)/iu },
+  { area: 'tools', pattern: /tools|structured_?output|syntax|init|script_?caps|add-dir/iu },
+  { area: 'telemetry', pattern: /debug|log_?level|logs_?dir|tracing|you_?should_?know/iu },
+  { area: 'model', pattern: /max_?output_?tokens|betas?|extra_?body|custom_?headers/iu },
 ];
 
 /** The settings reference groups keys by topic. Used when no keyword matches the key. */
@@ -95,12 +93,17 @@ function matchRules(text: string): KnobArea | null {
 
 export interface AreaInput {
   readonly key: string;
+  /** Only managed policy can set the key, so it belongs with the other admin keys. */
+  readonly managedOnly?: boolean | undefined;
   /** The settings reference topic, or "" when the page has none. */
   readonly topic: string;
   readonly description: string;
 }
 
 export function classifyArea(input: AreaInput): KnobArea {
+  if (input.managedOnly === true) {
+    return 'policy';
+  }
   const fromKey = matchRules(input.key);
   if (fromKey !== null) {
     return fromKey;

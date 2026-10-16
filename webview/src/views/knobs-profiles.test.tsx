@@ -97,6 +97,17 @@ describe('ProfilesEditor', () => {
     expect(api.actions()).toStrictEqual([{ type: 'saveProfile', profile: deep }]);
   });
 
+  it('deletes a saved profile and offers no delete for a new one', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(1000);
+    const { api } = renderView(<ProfilesEditor profiles={knobsState.profiles} />);
+    await userEvent.click(within(form('Deep')).getByRole('button', { name: 'Delete profile' }));
+    expect(api.actions()).toStrictEqual([{ type: 'deleteProfile', profileId: 'p2' }]);
+    await userEvent.click(screen.getByRole('button', { name: 'New profile' }));
+    expect(
+      within(form('New profile')).queryByRole('button', { name: 'Delete profile' }),
+    ).toBeNull();
+  });
+
   it('adds a blank profile that saves once it has a name', async () => {
     vi.spyOn(Date, 'now').mockReturnValue(1000);
     const { api } = renderView(<ProfilesEditor profiles={[]} />);
