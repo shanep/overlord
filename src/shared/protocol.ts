@@ -16,6 +16,7 @@ import type {
   LaunchSpec,
   PermissionDecision,
   PermissionRequest,
+  SessionPlace,
   SessionSummary,
   ToolCall,
 } from './model.js';
@@ -57,6 +58,8 @@ export interface FleetState {
   readonly sessions: readonly SessionSummary[];
   readonly agents: readonly AgentNode[];
   readonly pendingPermissions: readonly PermissionRequest[];
+  /** Where each session with a live process runs, by session id. */
+  readonly places: Readonly<Record<string, SessionPlace>>;
   readonly rateLimits: RateLimits;
   /** Spend per hour over the last hour, all sessions. */
   readonly spendPerHourUsd: number;

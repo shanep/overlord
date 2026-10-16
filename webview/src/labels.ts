@@ -1,6 +1,6 @@
 // Display names for enum values from the shared model.
 
-import type { SessionState, Surface } from '../../src/shared/model.js';
+import type { SessionPlace, SessionState, Surface } from '../../src/shared/model.js';
 
 export type Tone = 'neutral' | 'info' | 'good' | 'warning' | 'critical';
 
@@ -23,6 +23,31 @@ export const SURFACES: readonly Surface[] = [
   'cloud',
   'claude-ai',
 ];
+
+export interface PlaceInfo {
+  readonly label: string;
+  readonly tone: Tone;
+  /** Shown when you hover the badge. */
+  readonly description: string;
+}
+
+export const PLACE_INFO: Readonly<Record<SessionPlace, PlaceInfo>> = {
+  vscode: {
+    label: 'VS Code',
+    tone: 'good',
+    description: 'Open in a terminal in this VS Code window',
+  },
+  terminal: {
+    label: 'Terminal',
+    tone: 'neutral',
+    description: 'Open in a terminal outside this VS Code window',
+  },
+  background: {
+    label: 'Background',
+    tone: 'neutral',
+    description: 'Running in the background with no terminal',
+  },
+};
 
 export interface StateInfo {
   readonly label: string;

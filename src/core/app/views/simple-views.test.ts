@@ -45,15 +45,18 @@ describe('fleet view', () => {
     bus.emit('permission.requested', permissionRequest('stale'));
     bus.emit('rateLimits.updated', { fiveHourPct: 80, sevenDayPct: null, resetsAt: null });
     const pending = [permissionRequest('live')];
-    const state = buildFleet(fleetStore, pending, NOW, null);
+    const places = { s1: 'vscode' as const };
+    const state = buildFleet({ store: fleetStore, pending, now: NOW, plan: null, places });
     expect(state.sessions.map((item) => item.id)).toStrictEqual(['s1']);
     expect(state.pendingPermissions).toBe(pending);
     expect(state.rateLimits).toStrictEqual({ fiveHourPct: 0.8, sevenDayPct: null, resetsAt: null });
+    expect(state.places).toBe(places);
     expect(state.spendPerHourUsd).toBe(0);
     expect(state.agents).toStrictEqual([]);
     expect(sorted(Object.keys(state))).toStrictEqual([
       'agents',
       'pendingPermissions',
+      'places',
       'rateLimits',
       'sessions',
       'spendPerHourUsd',
@@ -78,7 +81,9 @@ describe('fleet view', () => {
       ],
       fetchedAt: NOW,
     };
-    expect(buildFleet(fleetStore, [], NOW, plan).rateLimits).toStrictEqual({
+    expect(
+      buildFleet({ store: fleetStore, pending: [], now: NOW, plan, places: {} }).rateLimits,
+    ).toStrictEqual({
       fiveHourPct: 0.01,
       sevenDayPct: 0.45,
       resetsAt: 9,

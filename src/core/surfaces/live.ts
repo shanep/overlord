@@ -220,7 +220,7 @@ function newer(a: RegistryEntry, b: RegistryEntry): RegistryEntry {
 
 // Several registry files can name one session (a resume under a new pid
 // while the old file lingers). The live one wins, then the newest.
-function pickRegistry(
+export function pickRegistry(
   entries: readonly RegistryEntry[],
   isAlive: IsAlive,
 ): Map<string, RegistryEntry> {

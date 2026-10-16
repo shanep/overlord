@@ -3,6 +3,7 @@
 
 import type {
   AgentNode,
+  SessionPlace,
   SessionState,
   SessionSummary,
   Surface,
@@ -10,7 +11,7 @@ import type {
 import type { FleetState } from '../../../src/shared/protocol.js';
 import type { SortState } from '../components/data-table.js';
 import { isBoolean, isRecord, isString } from '../guards.js';
-import { STATE_RANK, SURFACE_LABELS } from '../labels.js';
+import { PLACE_INFO, STATE_RANK, SURFACE_LABELS } from '../labels.js';
 import { cacheHitRatio, callsPerMinute, promptTokens } from '../metrics.js';
 
 export interface FleetRow {
@@ -23,6 +24,8 @@ export interface FleetRow {
   readonly sessionActive: boolean;
   readonly state: SessionState;
   readonly surface: Surface;
+  /** Where the session's process runs, null for agents and sessions with no live process. */
+  readonly place: SessionPlace | null;
   readonly title: string;
   readonly detail: string;
   readonly model: string | null;
@@ -61,7 +64,11 @@ function sessionTitle(session: SessionSummary): string {
   return session.title === '' ? session.cwd : session.title;
 }
 
-function sessionRow(session: SessionSummary, agents: readonly AgentNode[]): FleetRow {
+function sessionRow(
+  session: SessionSummary,
+  agents: readonly AgentNode[],
+  place: SessionPlace | null,
+): FleetRow {
   const main = agents.find((agent) => agent.id === session.id);
   const busy = agents.find((agent) => agent.state === 'running' && agent.currentTool !== null);
   const title = sessionTitle(session);
@@ -74,6 +81,7 @@ function sessionRow(session: SessionSummary, agents: readonly AgentNode[]): Flee
     sessionActive: isActive(session.state),
     state: session.state,
     surface: session.surface,
+    place,
     title,
     detail: session.cwd,
     model: session.model,
@@ -100,6 +108,7 @@ function agentRow(agent: AgentNode, session: FleetRow): FleetRow {
     sessionActive: session.sessionActive,
     state: agent.state,
     surface: session.surface,
+    place: null,
     title: agent.agentType,
     detail: agent.description,
     model: agent.model,
@@ -135,8 +144,12 @@ function agentNodes(level: readonly AgentNode[], context: TreeContext): FleetNod
   return nodes;
 }
 
-function sessionNode(session: SessionSummary, agents: readonly AgentNode[]): FleetNode {
-  const row = sessionRow(session, agents);
+function sessionNode(
+  session: SessionSummary,
+  agents: readonly AgentNode[],
+  place: SessionPlace | null,
+): FleetNode {
+  const row = sessionRow(session, agents, place);
   const subagents = agents.filter((agent) => agent.id !== session.id);
   const ids = new Set(subagents.map((agent) => agent.id));
   const roots = subagents.filter(
@@ -155,8 +168,13 @@ export function buildFleetTree(state: FleetState): FleetNode[] {
     sessionNode(
       session,
       state.agents.filter((agent) => agent.sessionId === session.id),
+      state.places[session.id] ?? null,
     ),
   );
+}
+
+function placeLabel(row: FleetRow): string {
+  return row.place === null ? '' : PLACE_INFO[row.place].label;
 }
 
 export function elapsedMs(row: FleetRow, now: number): number {
@@ -171,7 +189,7 @@ type Sorter = (row: FleetRow, now: number) => number | string;
 
 const SORTERS: Readonly<Record<string, Sorter>> = {
   state: (row) => STATE_RANK[row.state],
-  surface: (row) => SURFACE_LABELS[row.surface],
+  surface: (row) => `${SURFACE_LABELS[row.surface]} ${placeLabel(row)}`,
   title: (row) => row.title.toLowerCase(),
   model: (row) => row.model ?? '',
   effort: (row) => row.effort ?? '',
@@ -222,6 +240,7 @@ export function rowMatches(row: FleetRow, needle: string): boolean {
     row.model ?? '',
     row.state,
     SURFACE_LABELS[row.surface],
+    placeLabel(row),
     row.currentTool ?? '',
   ]
     .join(' ')

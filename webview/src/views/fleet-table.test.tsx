@@ -40,6 +40,13 @@ describe('FleetTable', () => {
       'ascending',
     );
     expect(screen.queryAllByRole('img')).toHaveLength(0);
+    const vscode = screen.getByText('VS Code');
+    expect(vscode.getAttribute('title')).toBe('Open in a terminal in this VS Code window');
+    expect(vscode.className).toBe('badge badge-good');
+    expect(screen.getByText('Background').getAttribute('title')).toBe(
+      'Running in the background with no terminal',
+    );
+    expect(screen.queryByText('Terminal')).toBeNull();
   });
 });
 

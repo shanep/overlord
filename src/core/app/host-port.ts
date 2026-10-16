@@ -52,6 +52,8 @@ export interface HostPort {
   readonly openPanel: (view: ViewId, params: PanelParams) => void;
   readonly openFile: (path: string) => Promise<void>;
   readonly runInTerminal: (request: TerminalRequest) => void;
+  /** Process ids of the shells behind this window's open terminals. */
+  readonly terminalPids: () => Promise<readonly number[]>;
   /** The picked file or folder path, or null when cancelled. */
   readonly pickFile: (request: FilePickRequest) => Promise<string | null>;
   readonly pickFolder: (title: string) => Promise<string | null>;

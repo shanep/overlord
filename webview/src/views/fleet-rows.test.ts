@@ -55,6 +55,7 @@ describe('buildFleetTree', () => {
       sessionActive: true,
       state: 'running',
       surface: 'cli',
+      place: 'vscode',
       title: 'Refactor parser',
       detail: '/Users/dev/repos/s1',
       model: 'claude-opus-4-7',
@@ -82,6 +83,7 @@ describe('buildFleetTree', () => {
       title: 'Explore',
       detail: 'Find parser tests',
       surface: 'cli',
+      place: null,
       currentTool: 'Grep',
       toolCalls: 12,
       effort: null,
@@ -222,6 +224,12 @@ describe('filterTree', () => {
     expect(rowMatches(row, 'edit')).toBe(true);
     expect(rowMatches(row, 'zzz')).toBe(false);
     expect(rowMatches({ ...row, model: null, currentTool: null }, 'refactor')).toBe(true);
+  });
+
+  it('matches on where the session runs', () => {
+    expect(rowMatches(firstRow(tree), 'vs code')).toBe(true);
+    expect(rowMatches({ ...firstRow(tree), place: null }, 'vs code')).toBe(false);
+    expect(keys(filterTree(tree, { text: 'background', hideDone: false }))).toStrictEqual(['s:s2']);
   });
 });
 

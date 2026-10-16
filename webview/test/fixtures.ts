@@ -135,6 +135,7 @@ export const fleetState: FleetState = {
     agent({ id: 's2', sessionId: 's2', toolCallCount: 3 }),
   ],
   pendingPermissions: [permission],
+  places: { s1: 'vscode', s2: 'background' },
   rateLimits: { fiveHourPct: 0.64, sevenDayPct: 0.2, resetsAt: NOW + 90 * MINUTE },
   spendPerHourUsd: 3.5,
 };

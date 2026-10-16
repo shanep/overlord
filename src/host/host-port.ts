@@ -88,6 +88,10 @@ export function createVscodeHostPort(options: VscodeHostPortOptions): HostPort {
         options.onSessionTerminal(terminal, request.sessionId);
       }
     },
+    terminalPids: async (): Promise<readonly number[]> => {
+      const pids = await Promise.all(vscode.window.terminals.map(async (item) => item.processId));
+      return pids.filter((pid) => pid !== undefined);
+    },
     pickFile: async (request: FilePickRequest): Promise<string | null> => {
       const filters: Record<string, string[]> = {};
       for (const [label, extensions] of Object.entries(request.filters)) {

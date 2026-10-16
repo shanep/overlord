@@ -5,7 +5,7 @@
 import os from 'node:os';
 import path from 'node:path';
 
-import type { HostToWebview, ViewId, WebviewAction } from '../../shared/protocol.js';
+import type { FleetState, HostToWebview, ViewId, WebviewAction } from '../../shared/protocol.js';
 import { EventBus } from '../bus.js';
 import { createNodeFileSystem, type FileSystem } from '../context/fs.js';
 import { findOnPath } from '../find-on-path.js';
@@ -30,6 +30,7 @@ import type { AppError } from './errors.js';
 import { ErrorLog } from './errors.js';
 import type { HostPort, PanelParams } from './host-port.js';
 import { PermissionHub } from './permissions.js';
+import { PLACES_REFRESH_MS, SessionPlaces } from './places.js';
 import type { FileWatchFunction, IntervalFunction, KillFunction } from './process.js';
 import {
   defaultInterval,
@@ -47,9 +48,8 @@ import { runningItems, statusLine } from './status.js';
 import { SyncCommands } from './sync-commands.js';
 import { installTransferSkill } from './transfer.js';
 import { ContextViews } from './views/context.js';
-import { buildFleet } from './views/fleet.js';
+import { fleetFor } from './views/fleet.js';
 import { stateFor } from './views/state.js';
-import { currentPlan } from './views/usage.js';
 
 export interface AppDeps {
   readonly host: HostPort;
@@ -209,13 +209,22 @@ export class OverlordApp {
       concurrencyFrom(host.settings.maxConcurrency),
     );
     const planUsageFunction = deps.planUsageFunction ?? sdkPlanUsage;
+    const surfacesExec = toSurfacesExec(exec);
+    const places = new SessionPlaces({
+      paths,
+      exec: surfacesExec,
+      isAlive: machine.isAlive,
+      terminalPids: host.terminalPids,
+      onChange: notify,
+      report,
+    });
     const base: CacheRuntime = {
       paths: this.paths,
       host,
       bus,
       clock,
       exec,
-      surfacesExec: toSurfacesExec(exec),
+      surfacesExec,
       isAlive: machine.isAlive,
       kill: machine.kill,
       delay: machine.delay,
@@ -226,6 +235,7 @@ export class OverlordApp {
       store,
       launcher,
       permissions,
+      places,
       report,
       planUsage: async (): Promise<unknown> => {
         const usageEnv = await launchEnv();
@@ -279,7 +289,11 @@ export class OverlordApp {
       this.interval(() => {
         void this.rt.caches.sessions.refresh();
       }, SESSIONS_REFRESH_MS),
+      this.interval(() => {
+        void this.rt.places.refresh();
+      }, PLACES_REFRESH_MS),
     );
+    await this.rt.places.refresh();
     for (const file of this.settingsFiles()) {
       this.cleanups.push(
         this.fileWatch(file, () => {
@@ -349,6 +363,7 @@ export class OverlordApp {
       caches.config.refresh(),
       caches.usage.refresh(),
       caches.plan.refresh(),
+      this.rt.places.refresh(),
     ]);
     this.rt.context.clear();
   }
@@ -382,13 +397,8 @@ export class OverlordApp {
     return [this.paths.userSettings, ...project];
   }
 
-  private fleet(): ReturnType<typeof buildFleet> {
-    return buildFleet(
-      this.rt.store,
-      this.rt.permissions.list(),
-      this.rt.clock(),
-      currentPlan(this.rt),
-    );
+  private fleet(): FleetState {
+    return fleetFor(this.rt);
   }
 
   private async teardown(): Promise<void> {

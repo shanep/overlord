@@ -8,6 +8,12 @@ export type Surface =
 
 export type SessionState = 'running' | 'waiting' | 'idle' | 'done' | 'failed' | 'unknown';
 
+/**
+ * Where a live Claude Code process runs: a terminal in this VS Code window,
+ * a terminal anywhere else, or in the background with no terminal at all.
+ */
+export type SessionPlace = 'vscode' | 'terminal' | 'background';
+
 export type PermissionMode =
   'default' | 'acceptEdits' | 'plan' | 'auto' | 'dontAsk' | 'bypassPermissions' | 'manual';
 

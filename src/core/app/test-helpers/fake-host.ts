@@ -35,6 +35,8 @@ export class FakeHost implements HostPort {
   readonly panels: { readonly view: ViewId; readonly params: PanelParams }[] = [];
   readonly opened: string[] = [];
   readonly terminals: TerminalRequest[] = [];
+  /** What terminalPids reports. */
+  shellPids: readonly number[] = [];
   readonly infos: string[] = [];
   readonly warnings: string[] = [];
   readonly errors: string[] = [];
@@ -73,6 +75,11 @@ export class FakeHost implements HostPort {
 
   readonly runInTerminal = (request: TerminalRequest): void => {
     this.terminals.push(request);
+  };
+
+  readonly terminalPids = async (): Promise<readonly number[]> => {
+    await Promise.resolve();
+    return this.shellPids;
   };
 
   readonly pickFile = async (request: FilePickRequest): Promise<string | null> => {

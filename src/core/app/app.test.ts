@@ -123,7 +123,7 @@ describe('OverlordApp', () => {
     });
     await app.start();
     await app.start();
-    expect(intervals.map((entry) => entry.ms)).toStrictEqual([30_000]);
+    expect(intervals.map((entry) => entry.ms)).toStrictEqual([30_000, 5000]);
     const workspace = env.host.workspace ?? '';
     expect(watches.map((entry) => entry.file)).toStrictEqual([
       env.paths.userSettings,
@@ -135,6 +135,9 @@ describe('OverlordApp', () => {
     ]);
     intervals[0]?.callback();
     await waitFor(() => calls.some((call) => call.args.includes('agents')));
+    const placesRefresh = vi.spyOn(app.runtime.places, 'refresh');
+    intervals[1]?.callback();
+    expect(placesRefresh).toHaveBeenCalledTimes(1);
     const status = await app.setup.status();
     expect(status).toStrictEqual({
       hooksInstalled: false,
@@ -146,7 +149,7 @@ describe('OverlordApp', () => {
     await Promise.all([app.dispose(), app.dispose()]);
     await app.dispose();
     expect(storeDispose).toHaveBeenCalledTimes(1);
-    expect(intervals[0]?.stopped).toBe(true);
+    expect(intervals.every((entry) => entry.stopped)).toBe(true);
     expect(watches.every((entry) => entry.stopped)).toBe(true);
   });
 

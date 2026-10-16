@@ -14,6 +14,7 @@ import type { Exec } from '../sync/exec.js';
 import type { AsyncValue } from './async-value.js';
 import type { HostPort } from './host-port.js';
 import type { PermissionHub } from './permissions.js';
+import type { SessionPlaces } from './places.js';
 import type { KillFunction } from './process.js';
 import type { Draft } from './storage.js';
 import type { ContextViews } from './views/context.js';
@@ -48,6 +49,8 @@ export interface Runtime {
   readonly store: OverlordStore;
   readonly launcher: Launcher;
   readonly permissions: PermissionHub;
+  /** Where each live session runs, for the fleet. */
+  readonly places: SessionPlaces;
   readonly caches: Caches;
   readonly context: ContextViews;
   /** Sends a source.error to the bus, which also lands in the status error list. */

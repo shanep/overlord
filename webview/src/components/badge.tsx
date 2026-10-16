@@ -1,8 +1,8 @@
 import type { ReactElement } from 'react';
 
-import type { SessionState, Surface } from '../../../src/shared/model.js';
+import type { SessionPlace, SessionState, Surface } from '../../../src/shared/model.js';
 import type { Tone } from '../labels.js';
-import { STATE_INFO, SURFACE_LABELS } from '../labels.js';
+import { PLACE_INFO, STATE_INFO, SURFACE_LABELS } from '../labels.js';
 
 export function Badge(props: {
   readonly label: string;
@@ -31,4 +31,10 @@ export function StateBadge(props: { readonly state: SessionState }): ReactElemen
 
 export function SurfaceBadge(props: { readonly surface: Surface }): ReactElement {
   return <Badge label={SURFACE_LABELS[props.surface]} tone="info" />;
+}
+
+/** Where a live session runs. Hover explains it. */
+export function PlaceBadge(props: { readonly place: SessionPlace }): ReactElement {
+  const info = PLACE_INFO[props.place];
+  return <Badge label={info.label} tone={info.tone} title={info.description} />;
 }

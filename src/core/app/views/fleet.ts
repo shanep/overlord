@@ -1,9 +1,12 @@
 // The fleet view: the store's sessions and agents, the pending permissions
 // from both sources, and rate limits as 0 to 1 fractions.
 
-import type { PermissionRequest } from '../../../shared/model.js';
+import type { PermissionRequest, SessionPlace } from '../../../shared/model.js';
 import type { FleetState, PlanLimits, RateLimits } from '../../../shared/protocol.js';
 import type { OverlordStore } from '../../store/store.js';
+import type { Runtime } from '../runtime.js';
+
+import { currentPlan } from './usage.js';
 
 /** The harness reports fractions; anything over 1 is a percentage and gets scaled down. */
 export function toFraction(value: number | null): number | null {
@@ -36,18 +39,32 @@ export function withPlanLimits(limits: RateLimits, plan: PlanLimits | null): Rat
   };
 }
 
-export function buildFleet(
-  store: OverlordStore,
-  pending: readonly PermissionRequest[],
-  now: number,
-  plan: PlanLimits | null,
-): FleetState {
-  const base = store.fleetState(now);
+export interface FleetInputs {
+  readonly store: OverlordStore;
+  readonly pending: readonly PermissionRequest[];
+  readonly now: number;
+  readonly plan: PlanLimits | null;
+  readonly places: Readonly<Record<string, SessionPlace>>;
+}
+
+export function buildFleet(input: FleetInputs): FleetState {
+  const base = input.store.fleetState(input.now);
   return {
     sessions: base.sessions,
     agents: base.agents,
-    pendingPermissions: pending,
-    rateLimits: withPlanLimits(normalizeRateLimits(base.rateLimits), plan),
+    pendingPermissions: input.pending,
+    places: input.places,
+    rateLimits: withPlanLimits(normalizeRateLimits(base.rateLimits), input.plan),
     spendPerHourUsd: base.spendPerHourUsd,
   };
+}
+
+export function fleetFor(rt: Runtime): FleetState {
+  return buildFleet({
+    store: rt.store,
+    pending: rt.permissions.list(),
+    now: rt.clock(),
+    plan: currentPlan(rt),
+    places: rt.places.value,
+  });
 }
