@@ -67,9 +67,22 @@ export type QueryFunction = (
   options: QueryOptions,
 ) => SessionQuery;
 
+/**
+ * What the CLI loads when run from the terminal. Without these the SDK sends
+ * an empty system prompt, so a launched run gets none of Claude Code's own
+ * instructions. The setting sources are spelled out so a change to the SDK's
+ * default cannot drop CLAUDE.md, permissions or hooks.
+ */
+const CLI_DEFAULTS = {
+  systemPrompt: { type: 'preset', preset: 'claude_code' },
+  settingSources: ['user', 'project', 'local'],
+} as const satisfies Options;
+
 export function toSdkOptions(options: QueryOptions): Options {
   const { canUseTool } = options;
   return {
+    systemPrompt: { ...CLI_DEFAULTS.systemPrompt },
+    settingSources: [...CLI_DEFAULTS.settingSources],
     cwd: options.cwd,
     sessionId: options.sessionId,
     env: { ...options.env },

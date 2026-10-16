@@ -31,9 +31,16 @@ describe('toSdkOptions', () => {
     const base = options();
     const sdk = toSdkOptions(base);
     expect(Object.keys(sdk).toSorted((left, right) => left.localeCompare(right))).toStrictEqual(
-      ['abortController', 'canUseTool', 'cwd', 'env', 'extraArgs', 'sessionId'].toSorted(
-        (left, right) => left.localeCompare(right),
-      ),
+      [
+        'abortController',
+        'canUseTool',
+        'cwd',
+        'env',
+        'extraArgs',
+        'sessionId',
+        'settingSources',
+        'systemPrompt',
+      ].toSorted((left, right) => left.localeCompare(right)),
     );
     expect(sdk.cwd).toBe('/repo');
     expect(sdk.sessionId).toBe('sid');
@@ -60,6 +67,12 @@ describe('toSdkOptions', () => {
     expect(sdk.extraArgs).toStrictEqual({ debug: null });
     expect(sdk.maxBudgetUsd).toBe(3);
     expect(sdk.pathToClaudeCodeExecutable).toBe('/bin/fake.mjs');
+  });
+
+  it('starts runs with the same prompt and settings as the CLI', () => {
+    const sdk = toSdkOptions(options());
+    expect(sdk.systemPrompt).toStrictEqual({ type: 'preset', preset: 'claude_code' });
+    expect(sdk.settingSources).toStrictEqual(['user', 'project', 'local']);
   });
 
   it('allows bypassPermissions explicitly', () => {
