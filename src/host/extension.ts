@@ -11,6 +11,7 @@ import type { HostToWebview, ViewId, WebviewAction } from '../shared/protocol.js
 import { CliTabs } from './cli-tabs.js';
 import { createVscodeHostPort, terminalLaunch } from './host-port.js';
 import { FleetSidebar, PanelManager } from './panels.js';
+import { reloadOnUpdate } from './self-update.js';
 
 let app: OverlordApp | null = null;
 
@@ -119,6 +120,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     panels,
     tabs,
     status,
+    reloadOnUpdate(context, overlord.paths),
     vscode.window.registerWebviewViewProvider(
       FleetSidebar.viewType,
       new FleetSidebar(

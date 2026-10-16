@@ -59,6 +59,17 @@ npm run build
 
 Press F5 in VS Code to run the extension in a development host.
 
+To install the committed build into your own VS Code and reload onto it:
+
+```sh
+npm run install:local
+```
+
+It builds `HEAD` in a temporary worktree, installs the package, and waits
+until a window reloads. Installed copies watch their own bundle and reload the
+window when a new one lands, so there is no Reload Window to press. The first
+install over a copy older than this needs one reload by hand.
+
 ## Testing
 
 ```sh
