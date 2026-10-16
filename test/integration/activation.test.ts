@@ -18,15 +18,31 @@ function tabLabels(): string[] {
   return vscode.window.tabGroups.all.flatMap((group) => group.tabs.map((tab) => tab.label));
 }
 
-/** A stand-in claude that records its arguments and then waits on stdin. */
+/**
+ * A stand-in claude that adds one tab separated line of arguments per call
+ * and then waits on stdin. Overlord also polls claude agents, so a call can
+ * land on either side of the launch.
+ */
 function stubClaude(): { readonly bin: string; readonly argsFile: string } {
   const dir = mkdtempSync(path.join(os.tmpdir(), 'overlord-stub-'));
   const bin = path.join(dir, 'claude');
   const argsFile = path.join(dir, 'args');
-  writeFileSync(bin, `#!/bin/sh\nprintf '%s\\n' "$@" > '${argsFile}'\nexec cat\n`, {
-    mode: 0o755,
-  });
+  const record = `printf '%s\\t' "$@" >> '${argsFile}'\nprintf '\\n' >> '${argsFile}'`;
+  writeFileSync(bin, `#!/bin/sh\n${record}\nexec cat\n`, { mode: 0o755 });
   return { bin, argsFile };
+}
+
+/** Each call the stub recorded, as its arguments. */
+function stubCalls(argsFile: string): string[][] {
+  try {
+    const text = readFileSync(argsFile, 'utf8');
+    return text
+      .split('\n')
+      .filter((line) => line !== '')
+      .map((line) => line.split('\t').slice(0, -1));
+  } catch {
+    return [];
+  }
 }
 
 describe('Overlord extension', () => {
@@ -93,15 +109,11 @@ describe('Overlord extension', () => {
       );
       assert.ok(cli !== undefined, 'the CLI is an editor tab');
       await vscode.commands.executeCommand('overlord.showProperties');
-      await waitFor(() => {
-        try {
-          return readFileSync(stub.argsFile, 'utf8').length > 0;
-        } catch {
-          return false;
-        }
-      });
-      const args = readFileSync(stub.argsFile, 'utf8').trim().split('\n');
-      assert.equal(args[0], '--session-id');
+      const launch = (): string[] | undefined =>
+        stubCalls(stub.argsFile).find((call) => call[0] === '--session-id');
+      await waitFor(() => launch() !== undefined);
+      const args = launch();
+      assert.ok(args, `claude calls were: ${JSON.stringify(stubCalls(stub.argsFile))}`);
       assert.match(args[1] ?? '', /^[0-9a-f]{8}-[0-9a-f]{4}-/u);
       terminal.dispose();
     } finally {
