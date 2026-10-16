@@ -15,7 +15,8 @@ playwright-report/
 .vscode-test/
 *.tsbuildinfo
 
-# Caches
+# Caches, kept per worktree since node_modules is often a shared symlink
+.cache/
 .eslintcache
 .cspellcache
 .vite/

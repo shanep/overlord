@@ -2,6 +2,8 @@ import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
+  // Worktrees share one node_modules, so Vite's cache lives in each checkout instead.
+  cacheDir: '.cache/vite',
   test: {
     projects: [
       {
