@@ -12,6 +12,7 @@ interface State {
   readonly errors: string[];
   readonly kept: (readonly string[])[];
   changes: number;
+  statusChanges: number;
   terminals: readonly number[] | Error;
   alive: ReadonlySet<number>;
 }
@@ -28,6 +29,7 @@ async function setup(psOut = ''): Promise<Harness> {
     errors: [],
     kept: [],
     changes: 0,
+    statusChanges: 0,
     terminals: [],
     alive: new Set(),
   };
@@ -53,6 +55,9 @@ async function setup(psOut = ''): Promise<Harness> {
     },
     onChange: (): void => {
       state.changes += 1;
+    },
+    onStatus: (): void => {
+      state.statusChanges += 1;
     },
     report: (source: string, message: string): void => {
       state.errors.push(`${source}: ${message}`);
@@ -108,7 +113,45 @@ describe('SessionPlaces', () => {
       ['elsewhere', 'here'],
     ]);
     expect(h.errors).toStrictEqual([]);
-    expect(PLACES_REFRESH_MS).toBe(5000);
+    expect(PLACES_REFRESH_MS).toBe(1000);
+  });
+
+  it('keeps the busy or idle status each live session reports, and says when one changes', async () => {
+    const h = await setup();
+    const status = async (pid: number, sessionId: string, value: string | null): Promise<void> => {
+      await writeJson(path.join(h.sessionsDir, `${String(pid)}.json`), {
+        pid,
+        sessionId,
+        kind: 'bg',
+        ...(value === null ? {} : { status: value }),
+      });
+    };
+    await status(11, 'busy-one', 'busy');
+    await status(21, 'idle-one', 'idle');
+    await status(31, 'odd', 'thinking');
+    await status(61, 'asking', 'waiting');
+    await status(41, 'quiet', null);
+    await status(51, 'dead', 'busy');
+    h.alive = new Set([11, 21, 31, 41, 61]);
+    await h.places.refresh();
+    expect(h.places.statuses).toStrictEqual({
+      'busy-one': 'busy',
+      'idle-one': 'idle',
+      asking: 'waiting',
+    });
+    expect(h.statusChanges).toBe(1);
+    await h.places.refresh();
+    expect(h.statusChanges).toBe(1);
+    const changes = h.changes;
+    await status(11, 'busy-one', 'idle');
+    await h.places.refresh();
+    expect(h.places.statuses).toStrictEqual({
+      'busy-one': 'idle',
+      'idle-one': 'idle',
+      asking: 'waiting',
+    });
+    expect(h.statusChanges).toBe(2);
+    expect(h.changes).toBe(changes + 1);
   });
 
   it('finds the session in the focused terminal', async () => {

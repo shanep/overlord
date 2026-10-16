@@ -211,15 +211,18 @@ export class OverlordApp {
     );
     const planUsageFunction = deps.planUsageFunction ?? sdkPlanUsage;
     const surfacesExec = toSurfacesExec(exec);
+    // What the background sources call when something changed or failed.
+    const events = { onChange: notify, report };
     const places = new SessionPlaces({
+      ...events,
+      // Jobs is built below, and this only runs after start.
+      onStatus: (): void => void this.rt.jobs.refresh(),
       paths,
       exec: surfacesExec,
       isAlive: machine.isAlive,
       terminalPids: host.terminalPids,
       // Sources is built below, and the keeps here and in jobs only run after start.
       keep: async (sessionIds): Promise<void> => this.sources.keepViewed(sessionIds),
-      onChange: notify,
-      report,
     });
     const jobs = new BackgroundJobs({
       exec: surfacesExec,
@@ -227,14 +230,9 @@ export class OverlordApp {
       claudeBin: async (): Promise<string> =>
         executableFor(host.settings.claudePath, await launchEnv(), platform) ?? 'claude',
       keep: async (ids, finished): Promise<void> => this.sources.keepTranscripts(ids, finished),
-      onChange: notify,
-      report,
+      ...events,
     });
-    const projects = createProjectIndex(host.storageDir, worktrees, {
-      clock,
-      onChange: notify,
-      report,
-    });
+    const projects = createProjectIndex(host.storageDir, worktrees, { ...events, clock });
     const base: CacheRuntime = {
       paths: this.paths,
       host,

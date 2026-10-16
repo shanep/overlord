@@ -9,6 +9,7 @@ import { ZERO_USAGE } from '../../../shared/model.js';
 import type { FleetState, PlanLimits, RateLimits } from '../../../shared/protocol.js';
 import type { OverlordStore } from '../../store/store.js';
 import type { BackgroundJob } from '../../surfaces/jobs.js';
+import type { RegistryStatus } from '../places.js';
 import type { ProjectView, SessionFolder } from '../projects.js';
 import type { Runtime } from '../runtime.js';
 
@@ -100,6 +101,33 @@ export function withJobStates(
   return [...marked, ...bare];
 }
 
+/**
+ * A transcript lags the session: it says nothing while a permission prompt
+ * waits, and a job's state is only as fresh as the last `claude agents` call.
+ * So a pending permission or Claude Code's own waiting means waiting, its
+ * busy means running, and its idle ends a running state the transcript has
+ * not ended yet.
+ */
+export function withLiveStates(
+  sessions: readonly SessionSummary[],
+  statuses: Readonly<Record<string, RegistryStatus>>,
+  pending: readonly PermissionRequest[],
+): readonly SessionSummary[] {
+  const asking = new Set(pending.map((request) => request.sessionId));
+  return sessions.map((session) => {
+    const status = statuses[session.id];
+    let { state } = session;
+    if (asking.has(session.id) || status === 'waiting') {
+      state = 'waiting';
+    } else if (status === 'busy') {
+      state = 'running';
+    } else if (status === 'idle' && state === 'running') {
+      state = 'idle';
+    }
+    return state === session.state ? session : { ...session, state };
+  });
+}
+
 export interface FleetInputs {
   readonly store: OverlordStore;
   readonly pending: readonly PermissionRequest[];
@@ -112,6 +140,8 @@ export interface FleetInputs {
   /** This window's workspace folder, whose session is highlighted when no terminal says otherwise. */
   readonly workspaceFolder: string | null;
   readonly jobs: readonly BackgroundJob[];
+  /** Busy, idle or waiting from Claude Code's session registry, by session id. */
+  readonly statuses: Readonly<Record<string, RegistryStatus>>;
   /** The projects, and the project of each session whose folder has been checked. */
   readonly projects: (sessions: readonly SessionFolder[]) => ProjectView;
 }
@@ -140,7 +170,11 @@ export function windowSession(
 
 export function buildFleet(input: FleetInputs): FleetState {
   const base = input.store.fleetState(input.now);
-  const sessions = withJobStates(base.sessions, input.jobs);
+  const sessions = withLiveStates(
+    withJobStates(base.sessions, input.jobs),
+    input.statuses,
+    input.pending,
+  );
   const projects = input.projects(sessions);
   return {
     sessions,
@@ -167,6 +201,7 @@ export function fleetFor(rt: Runtime): FleetState {
     activeVersion: rt.places.activeVersion,
     workspaceFolder: rt.host.workspaceFolder(),
     jobs: rt.jobs.value,
+    statuses: rt.places.statuses,
     projects: (sessions) => rt.projects.view(sessions),
   });
 }

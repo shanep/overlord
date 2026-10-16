@@ -140,7 +140,7 @@ describe('OverlordApp', () => {
     });
     await app.start();
     await app.start();
-    expect(intervals.map((entry) => entry.ms)).toStrictEqual([30_000, 5000, 10_000, 60_000, 5000]);
+    expect(intervals.map((entry) => entry.ms)).toStrictEqual([30_000, 1000, 10_000, 60_000, 5000]);
     const workspace = env.host.workspace ?? '';
     expect(watches.map((entry) => entry.file)).toStrictEqual([
       env.paths.userSettings,
@@ -295,6 +295,21 @@ describe('OverlordApp', () => {
     expect(app.activeSession()).toBeNull();
     app.setActiveTerminal({ sessionId: 'opened-here', processId: 4242 });
     expect(app.activeSession()).toBe('opened-here');
+  });
+
+  it('reads background jobs again as soon as a session goes busy or idle', async () => {
+    const env = await makeEnv();
+    const { app } = makeApp(env, { deps: { isAlive: (pid) => pid === 123 } });
+    await writeJson(path.join(env.paths.sessionsDir, '123.json'), {
+      pid: 123,
+      sessionId: 'job',
+      kind: 'bg',
+      status: 'busy',
+    });
+    const jobsRefresh = vi.spyOn(app.runtime.jobs, 'refresh');
+    await app.runtime.places.refresh();
+    expect(app.runtime.places.statuses).toStrictEqual({ job: 'busy' });
+    expect(jobsRefresh).toHaveBeenCalledTimes(1);
   });
 
   it('watches only user settings without a workspace', async () => {

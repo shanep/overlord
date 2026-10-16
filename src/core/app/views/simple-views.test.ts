@@ -23,6 +23,7 @@ import {
   normalizeRateLimits,
   toFraction,
   withJobStates,
+  withLiveStates,
   windowSession,
   withPlanLimits,
 } from './fleet.js';
@@ -71,10 +72,47 @@ describe('fleet view', () => {
       workspaceFolder: '/repos/app',
       jobs: [],
       projects: noProjects,
+      statuses: {},
     };
     expect(buildFleet(inputs).activeSessionId).toBe('mine');
     expect(buildFleet(inputs).activeVersion).toBe(3);
     expect(buildFleet({ ...inputs, activeSessionId: 'tab' }).activeSessionId).toBe('tab');
+  });
+
+  it('lets a pending permission, then Claude Code busy or idle, beat the transcript', () => {
+    const sessions = [
+      session('asked', { state: 'running' }),
+      session('working', { state: 'waiting' }),
+      session('stopped', { state: 'running' }),
+      session('blocked', { state: 'waiting' }),
+      session('quiet', { state: 'idle' }),
+      session('unlisted', { state: 'running' }),
+      session('prompted', { state: 'running' }),
+    ];
+    const live = withLiveStates(
+      sessions,
+      {
+        asked: 'busy',
+        working: 'busy',
+        stopped: 'idle',
+        blocked: 'idle',
+        quiet: 'idle',
+        prompted: 'waiting',
+      },
+      [permissionRequest('p1', { sessionId: 'asked' })],
+    );
+    expect(live.map((item) => item.state)).toStrictEqual([
+      'waiting',
+      'running',
+      'idle',
+      'waiting',
+      'idle',
+      'running',
+      'waiting',
+    ]);
+    // Rows whose state stays the same are the same objects, so nothing re-renders for them.
+    expect(live[4]).toBe(sessions[4]);
+    expect(live[5]).toBe(sessions[5]);
   });
 
   it('turns percentages into fractions and leaves fractions and nulls alone', () => {
@@ -108,6 +146,7 @@ describe('fleet view', () => {
       workspaceFolder: null,
       jobs: [],
       projects: noProjects,
+      statuses: {},
     });
     expect(state.activeSessionId).toBe('s1');
     expect(state.sessions.map((item) => item.id)).toStrictEqual(['s1']);
@@ -150,6 +189,7 @@ describe('fleet view', () => {
       workspaceFolder: null,
       jobs,
       projects: noProjects,
+      statuses: {},
     });
     const byId = new Map(state.sessions.map((item) => [item.id, item]));
     expect(byId.get('live')?.state).toBe('running');
@@ -203,6 +243,7 @@ describe('fleet view', () => {
         workspaceFolder: null,
         jobs: [],
         projects: noProjects,
+        statuses: {},
       }).rateLimits,
     ).toStrictEqual({
       fiveHourPct: 0.01,
