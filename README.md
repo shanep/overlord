@@ -159,10 +159,11 @@ The git hooks only look at what changed, so they stay quick:
 
 - pre-commit (a few seconds): typecheck, lint and format on staged files, and the tests
   related to them.
-- pre-push (under 10 seconds for a small change): `npm run check:fast`, which runs the tests
-  affected since `origin/master`.
+- pre-push (well under a minute for a small change): `npm run check:fast`, which lints the
+  files and runs the tests affected since `origin/master`. A change to the ESLint, TypeScript
+  or package setup lints everything.
 
-Lint in the hooks uses a cache, so a type change in one file can hide an error in another
+The hooks only lint what changed, so a type change in one file can hide an error in another
 until CI's full lint catches it.
 
 None of the tests call the Claude API. Sessions run against a fake Claude binary in
