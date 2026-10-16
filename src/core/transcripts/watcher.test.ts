@@ -376,6 +376,34 @@ describe('TranscriptWatcher', () => {
     expect(names(events).at(-1)).toBe('session.removed');
   });
 
+  it('holds finished sessions past the idle window but not the active one', async () => {
+    await writeFile(
+      layout.transcriptPath,
+      jsonl([
+        userPrompt('u1', 0, 'hi'),
+        assistant({ uuid: 'a1', at: 1, messageId: 'm1', content: [text('done')] }),
+      ]),
+    );
+    const quiet = new Date(Date.now() - 11 * 60_000);
+    await utimes(layout.transcriptPath, quiet, quiet);
+    clock = Date.now();
+    const watcher = make({ activeWindowMs: 30 * 60_000, idleWindowMs: 10 * 60_000 });
+    await watcher.refresh();
+    expect(watcher.sessionIds()).toStrictEqual([]);
+
+    await watcher.keep([], [SESSION]);
+    expect(watcher.sessionIds()).toStrictEqual([SESSION]);
+    events.length = 0;
+    await watcher.keep([], [SESSION]);
+    expect(events).toStrictEqual([]);
+
+    const old = new Date(Date.now() - 31 * 60_000);
+    await utimes(layout.transcriptPath, old, old);
+    await watcher.refresh();
+    expect(watcher.sessionIds()).toStrictEqual([]);
+    expect(names(events).at(-1)).toBe('session.removed');
+  });
+
   it('keeps a session that is mid-turn past the idle window', async () => {
     await writeFile(layout.transcriptPath, jsonl([userPrompt('u1', 0, 'working')]));
     const quiet = new Date(Date.now() - 11 * 60_000);

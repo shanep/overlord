@@ -166,8 +166,10 @@ describe('fleet view', () => {
     expect(withJobStates(sessions, [])).toBe(sessions);
     const job = { sessionId: 'a', name: 'A', cwd: '/w', startedAt: 5, state: 'done' as const };
     expect(withJobStates(sessions, [job])[0]).toBe(sessions[0]);
-    expect(withJobStates([], [job])).toStrictEqual([
-      session('a', { title: 'A', cwd: '/w', state: 'done', startedAt: 5, updatedAt: 5 }),
+    // A finished job with no transcript never got a prompt or aged out, so it gets no row.
+    expect(withJobStates([], [job])).toStrictEqual([]);
+    expect(withJobStates([], [{ ...job, state: 'waiting' }])).toStrictEqual([
+      session('a', { title: 'A', cwd: '/w', state: 'waiting', startedAt: 5, updatedAt: 5 }),
     ]);
   });
 

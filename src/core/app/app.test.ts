@@ -222,11 +222,13 @@ describe('OverlordApp', () => {
     await app.dispose();
   });
 
-  it('keeps waiting and finished background jobs in the fleet until Claude Code forgets them', async () => {
+  it('keeps a waiting background job until Claude Code forgets it and a finished one through the active window', async () => {
     const env = await makeEnv();
     const line = JSON.stringify({ ...userPrompt('u1', 0, 'hello'), sessionId: 'abc' });
     await writeText(path.join(env.paths.projectsDir, '-work', 'abc.jsonl'), `${line}\n`);
-    const now = Date.now() + (env.host.settings.activeWindowMinutes + 1) * 60_000;
+    const { activeWindowMinutes, idleMinutes } = env.host.settings;
+    let now = Date.now() + (idleMinutes + 1) * 60_000;
+    // A stopped job that never got a prompt has no transcript and no row.
     let jobs: unknown[] = [
       { sessionId: 'abc', kind: 'background', state: 'done', name: 'Ran' },
       { sessionId: 'gone', kind: 'background', state: 'stopped', name: 'Gone' },
@@ -245,7 +247,10 @@ describe('OverlordApp', () => {
         ? message.state.sessions.map((item) => `${item.id} ${item.state}`)
         : [];
     };
-    expect(fleet().toSorted((a, b) => a.localeCompare(b))).toStrictEqual(['abc done', 'gone done']);
+    expect(fleet()).toStrictEqual(['abc done']);
+    now = Date.now() + (activeWindowMinutes + 1) * 60_000;
+    await app.refresh();
+    expect(fleet()).toStrictEqual([]);
     // A job asking a question stays in the fleet as waiting however long it waits.
     jobs = [{ sessionId: 'abc', kind: 'background', state: 'blocked', name: 'Ran' }];
     await app.refresh();

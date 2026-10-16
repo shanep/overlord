@@ -225,7 +225,8 @@ export class OverlordApp {
       claudeBin: async (): Promise<string> =>
         executableFor(host.settings.claudePath, await launchEnv(), platform) ?? 'claude',
       // Sources is built below, and this only runs after start.
-      keep: async (sessionIds): Promise<void> => this.sources.keepTranscripts(sessionIds),
+      keep: async (sessionIds, finished): Promise<void> =>
+        this.sources.keepTranscripts(sessionIds, finished),
       onChange: notify,
       report,
     });

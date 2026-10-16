@@ -1,7 +1,8 @@
 // Background jobs whose state the fleet cannot read from a transcript. A job
 // blocked on the user looks idle in its transcript, and a finished one looks
 // the same. `claude agents --json --all` knows the difference and keeps a
-// finished job until the user deletes it, so the fleet follows its list.
+// finished job until the user deletes it. The fleet takes each job's state
+// from that list but lets a finished one age out with the active window.
 // It also calls a job done after each turn while its process still runs
 // and a tab may be attached, so a done job with a pid is only idle.
 

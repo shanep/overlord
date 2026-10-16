@@ -4,9 +4,14 @@ import type { ExecFunction } from '../surfaces/process.js';
 
 import { BackgroundJobs } from './jobs.js';
 
+interface Kept {
+  readonly held: readonly string[];
+  readonly finished: readonly string[];
+}
+
 interface State {
   readonly calls: string[][];
-  readonly kept: (readonly string[])[];
+  readonly kept: Kept[];
   readonly errors: string[];
   changes: number;
   reply: unknown[] | Error;
@@ -28,9 +33,9 @@ function setup(): State & { readonly jobs: BackgroundJobs } {
       await Promise.resolve();
       return '/bin/claude';
     },
-    keep: async (sessionIds): Promise<void> => {
+    keep: async (held, finished): Promise<void> => {
       await Promise.resolve();
-      state.kept.push(sessionIds);
+      state.kept.push({ held, finished });
     },
     onChange: (): void => {
       state.changes += 1;
@@ -44,18 +49,21 @@ function setup(): State & { readonly jobs: BackgroundJobs } {
 
 const DONE = { sessionId: 'd', kind: 'background', state: 'done', name: 'Done', startedAt: 5 };
 const WORKING = { sessionId: 'w', kind: 'background', state: 'working', startedAt: 6 };
+const BLOCKED = { sessionId: 'b', kind: 'background', state: 'blocked', startedAt: 7 };
 
 describe('BackgroundJobs', () => {
   it('asks claude for every job and keeps the finished ones, telling others only on change', async () => {
     const h = setup();
-    h.reply = [DONE, WORKING];
+    h.reply = [DONE, WORKING, BLOCKED];
     expect(h.jobs.value).toStrictEqual([]);
     await h.jobs.refresh();
     expect(h.calls).toStrictEqual([['/bin/claude', 'agents', '--json', '--all']]);
     expect(h.jobs.value).toStrictEqual([
       { sessionId: 'd', name: 'Done', cwd: null, startedAt: 5, state: 'done' },
+      { sessionId: 'b', name: null, cwd: null, startedAt: 7, state: 'waiting' },
     ]);
-    expect(h.kept).toStrictEqual([['d']]);
+    // Only the job waiting on the user is held for good; the finished one ages out.
+    expect(h.kept).toStrictEqual([{ held: ['b'], finished: ['d'] }]);
     expect(h.changes).toBe(1);
 
     await h.jobs.refresh();
@@ -65,7 +73,10 @@ describe('BackgroundJobs', () => {
     h.reply = [WORKING];
     await h.jobs.refresh();
     expect(h.jobs.value).toStrictEqual([]);
-    expect(h.kept).toStrictEqual([['d'], []]);
+    expect(h.kept).toStrictEqual([
+      { held: ['b'], finished: ['d'] },
+      { held: [], finished: [] },
+    ]);
     expect(h.changes).toBe(2);
     expect(h.errors).toStrictEqual([]);
   });

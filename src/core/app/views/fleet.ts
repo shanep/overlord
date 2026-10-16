@@ -72,7 +72,9 @@ function jobSession(job: BackgroundJob): SessionSummary {
 
 /**
  * A transcript cannot tell a job waiting on the user or a finished one from
- * an idle session, so Claude Code's job state wins. Jobs with no transcript still get a row.
+ * an idle session, so Claude Code's job state wins. A waiting or failed job
+ * with no transcript still gets a row. A finished one does not: it either
+ * never got a prompt or aged out of the fleet, so there is nothing to show.
  */
 export function withJobStates(
   sessions: readonly SessionSummary[],
@@ -89,7 +91,9 @@ export function withJobStates(
       : { ...session, state: job.state };
   });
   const known = new Set(sessions.map((session) => session.id));
-  const bare = jobs.filter((job) => !known.has(job.sessionId)).map((job) => jobSession(job));
+  const bare = jobs
+    .filter((job) => job.state !== 'done' && !known.has(job.sessionId))
+    .map((job) => jobSession(job));
   return [...marked, ...bare];
 }
 

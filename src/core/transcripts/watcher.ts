@@ -85,6 +85,11 @@ function changed(session: TrackedSession, key: string, value: unknown): boolean 
   return true;
 }
 
+function sameIds(current: ReadonlySet<string>, next: readonly string[]): boolean {
+  const ids = new Set(next);
+  return ids.size === current.size && [...ids].every((id) => current.has(id));
+}
+
 interface Batch {
   readonly tools: Map<string, ToolCall>;
   readonly requests: Map<string, ApiRequest>;
@@ -136,8 +141,10 @@ export class TranscriptWatcher {
   private readonly tracked = new Map<string, TrackedSession>();
   /** Sessions opened from a list view, tailed even outside the active window. */
   private readonly pinned = new Set<string>();
-  /** Sessions held from outside (background jobs that wait or finished), replaced whole by keep(). */
+  /** Sessions held from outside (background jobs waiting on the user), replaced whole by keep(). */
   private kept: ReadonlySet<string> = new Set();
+  /** Finished background jobs, held past the idle window but not past the active one. */
+  private finished: ReadonlySet<string> = new Set();
   /** Sessions dropped as idle, with the mtime they had then. A newer write brings them back. */
   private readonly settled = new Map<string, number>();
   private timer: NodeJS.Timeout | null = null;
@@ -196,14 +203,14 @@ export class TranscriptWatcher {
 
   /**
    * Tail exactly these sessions however old or idle they are, in place of
-   * the ones kept before. A session no longer kept leaves on the next cycle
-   * unless the windows still hold it.
+   * the ones kept before, and the finished ones until the active window lets
+   * them go. A session no longer kept leaves on the next cycle unless the
+   * windows still hold it.
    */
-  async keep(sessionIds: readonly string[]): Promise<void> {
-    const next = new Set(sessionIds);
-    const differs =
-      next.size !== this.kept.size || [...next].some((sessionId) => !this.kept.has(sessionId));
-    this.kept = next;
+  async keep(sessionIds: readonly string[], finished: readonly string[] = []): Promise<void> {
+    const differs = !sameIds(this.kept, sessionIds) || !sameIds(this.finished, finished);
+    this.kept = new Set(sessionIds);
+    this.finished = new Set(finished);
     if (differs) {
       await this.refresh();
     }
@@ -305,10 +312,14 @@ export class TranscriptWatcher {
       await this.poll(info, now);
       return true;
     }
-    if (
-      now - info.mtimeMs > this.activeWindowMs ||
-      this.settled.get(info.sessionId) === info.mtimeMs
-    ) {
+    if (now - info.mtimeMs > this.activeWindowMs) {
+      return false;
+    }
+    if (this.finished.has(info.sessionId)) {
+      await this.poll(info, now);
+      return true;
+    }
+    if (this.settled.get(info.sessionId) === info.mtimeMs) {
       return false;
     }
     this.settled.delete(info.sessionId);

@@ -42,6 +42,7 @@ export class Sources {
   private watcher: TranscriptWatcher | null = null;
   /** Session ids to hold in the fleet, kept here too in case they arrive before the watcher. */
   private kept: readonly string[] = [];
+  private finished: readonly string[] = [];
   private hooks: HookServer | null = null;
   private offInstructions: (() => void) | null = null;
   private receiver: OtlpReceiver | null = null;
@@ -75,14 +76,21 @@ export class Sources {
       });
       this.watcher = watcher;
       await watcher.start();
-      await watcher.keep(this.kept);
+      await watcher.keep(this.kept, this.finished);
     });
   }
 
-  /** Holds these sessions' transcripts in the fleet however long they have been quiet. */
-  async keepTranscripts(sessionIds: readonly string[]): Promise<void> {
+  /**
+   * Holds these sessions' transcripts in the fleet however long they have
+   * been quiet, and the finished ones until the active window passes.
+   */
+  async keepTranscripts(
+    sessionIds: readonly string[],
+    finished: readonly string[] = [],
+  ): Promise<void> {
     this.kept = sessionIds;
-    await this.watcher?.keep(sessionIds);
+    this.finished = finished;
+    await this.watcher?.keep(sessionIds, finished);
   }
 
   async refreshWatcher(): Promise<void> {

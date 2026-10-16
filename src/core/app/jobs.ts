@@ -11,8 +11,11 @@ export interface JobsDeps {
   readonly exec: ExecFunction;
   /** The claude binary, looked up on each read so a settings change takes effect. */
   readonly claudeBin: () => Promise<string>;
-  /** Holds these sessions' transcripts in the fleet past the idle and active windows. */
-  readonly keep: (sessionIds: readonly string[]) => Promise<void>;
+  /**
+   * Holds the first sessions' transcripts in the fleet past the idle and
+   * active windows, and the finished ones past the idle window only.
+   */
+  readonly keep: (sessionIds: readonly string[], finished: readonly string[]) => Promise<void>;
   readonly onChange: () => void;
   readonly report: (source: string, message: string) => void;
 }
@@ -60,7 +63,11 @@ export class BackgroundJobs {
       return;
     }
     this.current = next;
-    await this.deps.keep(next.map((job) => job.sessionId));
+    // A job that needs the user stays until they deal with it. A finished one
+    // leaves with the active window like any other quiet session.
+    const ids = (done: boolean): string[] =>
+      next.filter((job) => (job.state === 'done') === done).map((job) => job.sessionId);
+    await this.deps.keep(ids(false), ids(true));
     this.deps.onChange();
   }
 }
