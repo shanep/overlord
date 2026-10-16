@@ -28,7 +28,8 @@ export const SIDEBAR_GROUPS: readonly SidebarGroup[] = [
       {
         name: 'New Claude Code session',
         icon: 'Sparkle',
-        meaning: 'Opens the claude CLI as an editor tab in your workspace folder.',
+        meaning:
+          'Starts a claude session in the background with an editor tab attached, so closing the tab keeps it running.',
       },
       {
         name: 'Fleet (full view)',

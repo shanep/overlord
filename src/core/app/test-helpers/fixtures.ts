@@ -24,6 +24,7 @@ import { bareRemoteWith, git } from '../../sync/test-helpers/fixtures.js';
 import type { AppDeps } from '../app.js';
 import { OverlordApp } from '../app.js';
 import type { OverlordSettings } from '../host-port.js';
+import type { ClaudeCli } from '../runtime.js';
 
 import { FakeHost } from './fake-host.js';
 
@@ -202,6 +203,10 @@ export function makeApp(env: TestEnv, options: AppOptions = {}): TestApp {
       };
     },
     watchFactory: null,
+    claudeCli: async (): Promise<ClaudeCli> => {
+      await Promise.resolve();
+      return { bin: 'claude', env: {} };
+    },
     ...options.deps,
   });
   onTestFinished(async () => {

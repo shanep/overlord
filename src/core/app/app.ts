@@ -8,7 +8,6 @@ import path from 'node:path';
 import type { FleetState, HostToWebview, ViewId, WebviewAction } from '../../shared/protocol.js';
 import { EventBus } from '../bus.js';
 import { createNodeFileSystem, type FileSystem } from '../context/fs.js';
-import { findOnPath } from '../find-on-path.js';
 import { Launcher } from '../harness/launcher.js';
 import { mergeEnv } from '../harness/options.js';
 import type { PlanUsageFunction, QueryFunction } from '../harness/sdk-types.js';
@@ -25,6 +24,7 @@ import { dispatch } from './actions.js';
 import type { CacheRuntime } from './caches.js';
 import { createCaches } from './caches.js';
 import { ChangeHub } from './changes.js';
+import { cliLoader, executableFor } from './claude-bin.js';
 import type { AppError } from './errors.js';
 import { ErrorLog } from './errors.js';
 import type { HostPort, PanelParams } from './host-port.js';
@@ -34,7 +34,7 @@ import type { ActiveTerminal } from './places.js';
 import { PLACES_REFRESH_MS, SessionPlaces } from './places.js';
 import type { FileWatchFunction, IntervalFunction, KillFunction } from './process.js';
 import { defaultInterval, defaultKill, pollingFileWatch, toSurfacesExec } from './process.js';
-import type { Runtime } from './runtime.js';
+import type { ClaudeCli, Runtime } from './runtime.js';
 import { SetupCommands } from './setup.js';
 import { once, readLoginShellEnv } from './shell-env.js';
 import { Sources } from './sources.js';
@@ -80,28 +80,12 @@ export interface AppDeps {
   readonly watchFactory?: WatchFactory | null;
   /** This process's id, which marks the worktrees it holds. */
   readonly pid?: number;
+  /** Where claude runs from outside a terminal. Tests pass a fake so no login shell starts. */
+  readonly claudeCli?: () => Promise<ClaudeCli>;
 }
 
 export const SESSIONS_REFRESH_MS = 30_000;
 const SETTINGS_POLL_MS = 2000;
-
-/**
- * The binary SDK runs use. The host only searched the editor's PATH, so a bare
- * name is looked up again on the login shell's. A bare `claude` found nowhere
- * leaves the SDK to its bundled CLI.
- */
-export function executableFor(
-  claudePath: string,
-  env: Readonly<Record<string, string | undefined>>,
-  platform: NodeJS.Platform,
-): string | null {
-  const name = claudePath.trim() === '' ? 'claude' : claudePath.trim();
-  const found = findOnPath({ name, pathValue: env['PATH'], platform });
-  if (found !== null) {
-    return found;
-  }
-  return name === 'claude' ? null : name;
-}
 
 export function concurrencyFrom(value: number): number {
   return Number.isFinite(value) ? Math.max(1, Math.round(value)) : 1;
@@ -277,6 +261,7 @@ export class OverlordApp {
       // Sources is built below, and this only runs after construction.
       openTranscript: async (sessionId: string): Promise<boolean> =>
         this.sources.openTranscript(sessionId),
+      claudeCli: deps.claudeCli ?? cliLoader(host.settings, launchEnv, platform),
     };
     const context = new ContextViews({ ...base, onUpdate: notify, onError: report });
     this.rt = { ...base, caches: createCaches(base), context };

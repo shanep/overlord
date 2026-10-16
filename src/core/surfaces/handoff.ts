@@ -20,6 +20,30 @@ export interface HandoffOptions {
 
 const DEFAULT_BIN = 'claude';
 
+/**
+ * `claude --bg` args: a new idle session, or one continued under its own id.
+ * A background session gets its environment from Claude Code's background
+ * service, not from the caller, so variables go in as settings instead.
+ */
+export function backgroundArgs(
+  resume: string | null,
+  env: Readonly<Record<string, string>>,
+): readonly string[] {
+  const settings = Object.keys(env).length === 0 ? [] : ['--settings', JSON.stringify({ env })];
+  const session = resume === null ? [] : ['--resume', resume];
+  return ['--bg', ...settings, ...session];
+}
+
+// `claude --bg` prints "backgrounded · 8c3efb13 (idle ...)" and then hints.
+// eslint-disable-next-line no-control-regex -- strips terminal color codes
+const ANSI = /\u001B\[[\d;]*m/gu;
+const BACKGROUNDED = /backgrounded\s+\S\s+([\da-f]{8})\b/u;
+
+/** The short id `claude --bg` reports for the session it started, or null. */
+export function backgroundedId(output: string): string | null {
+  return BACKGROUNDED.exec(output.replaceAll(ANSI, ''))?.[1] ?? null;
+}
+
 export function resumeLocal(sessionId: string, claudeBin = DEFAULT_BIN): HandoffCommand {
   return {
     command: claudeBin,

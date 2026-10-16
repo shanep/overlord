@@ -12,6 +12,7 @@ import type { LiveProcess } from '../surfaces/live.js';
 import { buildLiveProcessTable } from '../surfaces/live.js';
 
 import type { ActionContext, ActionHandlers } from './action-types.js';
+import { openClaudeTab } from './claude-tabs.js';
 import type { Runtime } from './runtime.js';
 import { shortId } from './text.js';
 import { clearOtherCopy } from './transfer.js';
@@ -92,10 +93,7 @@ async function signal(
 export const IN_LAUNCHER = 'This session is running in the Overlord launcher. Stop the run first.';
 
 /** Handoffs whose terminal runs this same session, so its properties can follow it. */
-const TRACKED_HANDOFFS: ReadonlySet<HandoffKind> = new Set<HandoffKind>([
-  'resume-local',
-  'remote-control',
-]);
+const TRACKED_HANDOFFS: ReadonlySet<HandoffKind> = new Set<HandoffKind>(['remote-control']);
 
 /** No other process may hold the session when Overlord resumes it. */
 async function readyToResume(rt: Runtime, session: SurfaceSession): Promise<boolean> {
@@ -222,6 +220,14 @@ export const sessionActions: ActionHandlers<SessionActions> = {
       return;
     }
     if (action.kind === 'resume-local' && !(await readyToResume(rt, session))) {
+      return;
+    }
+    if (action.kind === 'resume-local') {
+      await openClaudeTab(rt, {
+        name: terminalName(action.kind, session.title),
+        cwd,
+        resume: session.id,
+      });
       return;
     }
     rt.host.runInTerminal({

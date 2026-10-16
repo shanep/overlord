@@ -5,6 +5,7 @@ import path from 'node:path';
 import { beforeEach, describe, expect, it, onTestFinished } from 'vitest';
 
 import { fakeQueries, resultMessage } from '../../../test/fake-claude/fake-query.js';
+import type { Exec } from '../sync/exec.js';
 import { SETUP_SCRIPT } from '../worktrees/setup.js';
 import {
   commitFile,
@@ -26,15 +27,30 @@ import { tidyWorktrees, worktreeRoot } from './worktrees.js';
 
 const PID = 4242;
 
+/** Stands in for claude. By default a background start fails, so tabs run claude themselves. */
+const noClaude: Exec = async () => {
+  await Promise.resolve();
+  return { code: 1, stdout: '', stderr: 'claude does not run in tests' };
+};
+
 let world: GitWorld;
 
-async function setup(workspace: 'repo' | 'plain' | 'none' = 'repo'): Promise<TestApp> {
+async function setup(
+  workspace: 'repo' | 'plain' | 'none' = 'repo',
+  claude: Exec = noClaude,
+): Promise<TestApp> {
   const env: TestEnv = await makeEnv({ workspace: workspace === 'plain' });
   if (workspace === 'repo') {
     env.host.workspace = world.repo;
   }
   const test = makeApp(env, {
-    deps: { exec: testExec, isAlive: (pid) => pid === PID, pid: PID },
+    deps: {
+      // Real git for the worktrees, but never the real claude.
+      exec: async (command, args, options) =>
+        command === 'claude' ? claude(command, args, options) : testExec(command, args, options),
+      isAlive: (pid) => pid === PID,
+      pid: PID,
+    },
     queries: fakeQueries((query) => {
       query.emit(resultMessage());
     }),
@@ -104,6 +120,39 @@ describe('worktrees in the app', { timeout: 30_000 }, () => {
   });
 
   describe('new sessions', () => {
+    it('run in the background in their worktree, with its variables as settings', async () => {
+      const started: (readonly string[])[] = [];
+      const test = await setup('repo', async (_command, args) => {
+        await Promise.resolve();
+        if (args.includes('--bg')) {
+          started.push(args);
+          return { code: 0, stdout: 'backgrounded \u00B7 8c3efb13 (idle)\n', stderr: '' };
+        }
+        const listed = [{ id: '8c3efb13', sessionId: '8c3efb13-full', kind: 'background' }];
+        return { code: 0, stdout: JSON.stringify(listed), stderr: '' };
+      });
+      await test.app.dispatch({ type: 'newSession' }, {});
+      const terminal = lastTerminal(test);
+      expect(terminal).toMatchObject({ args: ['attach', '8c3efb13'], sessionId: '8c3efb13-full' });
+      expect(terminal.cwd.startsWith(worktreeRoot(test.env.paths))).toBe(true);
+      expect(started[0]?.slice(0, 2)).toStrictEqual(['--bg', '--settings']);
+      const settings: unknown = JSON.parse(started[0]?.[2] ?? '{}');
+      expect(settings).toMatchObject({ env: { OVERLORD_SLOT: '0' } });
+      const [worktree] = await summaries(test);
+      expect(test.app.runtime.sessionWorktrees.get('8c3efb13-full')).toBe(worktree?.id);
+    });
+
+    it('open the tab even when Claude Code does not list the background session yet', async () => {
+      const test = await setup('repo', async (_command, args) => {
+        await Promise.resolve();
+        const stdout = args.includes('--bg') ? 'backgrounded \u00B7 8c3efb13 (idle)\n' : '[]';
+        return { code: 0, stdout, stderr: '' };
+      });
+      await test.app.dispatch({ type: 'newSession' }, {});
+      expect(lastTerminal(test)).toMatchObject({ args: ['attach', '8c3efb13'], sessionId: null });
+      expect(test.app.runtime.sessionWorktrees.size).toBe(0);
+    });
+
     it('open in their own worktree and go away once closed with nothing left', async () => {
       const test = await setup();
       await test.app.dispatch({ type: 'newSession' }, {});

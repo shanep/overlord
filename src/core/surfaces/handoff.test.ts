@@ -4,6 +4,8 @@ import type { Surface } from '../../shared/model.js';
 import type { HandoffKind, SurfaceSession } from '../../shared/protocol.js';
 
 import {
+  backgroundArgs,
+  backgroundedId,
   buildHandoff,
   handoffsFor,
   openDesktop,
@@ -33,6 +35,29 @@ const ALL_KINDS: readonly HandoffKind[] = [
   'start-cloud',
   'remote-control',
 ];
+
+describe('background sessions', () => {
+  it('starts a new session or continues one under its own id', () => {
+    expect(backgroundArgs(null, {})).toStrictEqual(['--bg']);
+    expect(backgroundArgs('abc-123', {})).toStrictEqual(['--bg', '--resume', 'abc-123']);
+    expect(backgroundArgs(null, { OVERLORD_SLOT: '2' })).toStrictEqual([
+      '--bg',
+      '--settings',
+      '{"env":{"OVERLORD_SLOT":"2"}}',
+    ]);
+  });
+
+  it('reads the short id claude --bg prints, with or without color', () => {
+    expect(backgroundedId('backgrounded \u00B7 8c3efb13 (idle)\n  claude attach 8c3efb13')).toBe(
+      '8c3efb13',
+    );
+    const bold = '\u001B[1m';
+    const plain = '\u001B[22m';
+    const colored = `${bold}backgrounded${plain} \u00B7 \u001B[36mab12cd34\u001B[39m`;
+    expect(backgroundedId(colored)).toBe('ab12cd34');
+    expect(backgroundedId('note: nothing started')).toBeNull();
+  });
+});
 
 describe('single builders', () => {
   it('resumeLocal', () => {

@@ -11,9 +11,13 @@ See [PLAN.md](PLAN.md) for the full design and the decisions behind it.
 ## What it does
 
 - **Claude Code in a tab**: **Overlord: New Claude Code Session** (or the sparkle button in the
-  Overlord sidebar) opens the real `claude` CLI as an editor tab in your workspace folder. With
-  the official Claude Code extension installed, it connects to VS Code on its own, so diffs open
-  in the editor and Claude sees your selection. Resume, attach and handoffs open the same way.
+  Overlord sidebar) starts a `claude` session in the background, in its own worktree of your
+  workspace repo (see [Worktrees](#worktrees)), and attaches an editor tab to it. Closing the tab
+  leaves the session running in the background instead of asking to terminate it, and clicking it in
+  the Fleet attaches a new tab. Continue here works the same way. If Claude Code cannot start a
+  background session, the tab runs `claude` itself, and with the official Claude Code extension
+  installed it connects to VS Code on its own, so diffs open in the editor and Claude sees your
+  selection.
 - **Fleet**: every session, subagent and background task with live state, tokens, cost, cache
   hit ratio and the tool it is running right now. An icon shows where each session runs (a VS
   Code terminal, another terminal or the background). Click a session to jump to its terminal

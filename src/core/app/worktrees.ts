@@ -16,6 +16,7 @@ import type { Exec } from '../sync/exec.js';
 import { NotARepoError, WorktreeGit } from '../worktrees/git.js';
 import { type Lease, WorktreeRegistry } from '../worktrees/registry.js';
 
+import { openClaudeTab } from './claude-tabs.js';
 import { messageOf } from './errors.js';
 import type { Runtime } from './runtime.js';
 
@@ -96,16 +97,17 @@ export async function tidyWorktrees(rt: Runtime): Promise<void> {
   await rt.caches.worktrees.refresh();
 }
 
-function openSession(rt: Runtime, lease: Lease, sessionId: string): void {
-  rt.sessionWorktrees.set(sessionId, lease.entry.id);
-  rt.host.runInTerminal({
+async function openSession(rt: Runtime, lease: Lease, newId: string): Promise<void> {
+  const sessionId = await openClaudeTab(rt, {
     name: 'Claude Code',
-    command: rt.host.settings.claudePath,
-    args: ['--session-id', sessionId],
     cwd: lease.entry.path,
-    sessionId,
+    resume: null,
     env: lease.env,
+    newId,
   });
+  if (sessionId !== null) {
+    rt.sessionWorktrees.set(sessionId, lease.entry.id);
+  }
   void rt.caches.worktrees.refresh();
 }
 
@@ -116,19 +118,20 @@ function openSession(rt: Runtime, lease: Lease, sessionId: string): void {
  */
 export async function newSession(rt: Runtime): Promise<void> {
   const folder = rt.host.workspaceFolder();
-  const sessionId = randomUUID();
+  // The worktree takes this id, and so does the session when claude runs in the tab itself.
+  const id = randomUUID();
   if (folder !== null) {
     try {
       const lease = await rt.worktrees.acquire({
         cwd: folder,
-        id: sessionId,
+        id,
         kind: 'session',
         label: `Session in ${path.basename(folder)}`,
       });
       for (const warning of lease.warnings) {
         rt.host.showWarning(warning);
       }
-      openSession(rt, lease, sessionId);
+      await openSession(rt, lease, id);
       return;
     } catch (error: unknown) {
       if (!(error instanceof NotARepoError)) {
@@ -136,18 +139,17 @@ export async function newSession(rt: Runtime): Promise<void> {
       }
     }
   }
-  rt.host.runInTerminal({
+  await openClaudeTab(rt, {
     name: 'Claude Code',
-    command: rt.host.settings.claudePath,
-    args: ['--session-id', sessionId],
     cwd: folder ?? rt.paths.home,
-    sessionId,
+    resume: null,
+    newId: id,
   });
 }
 
 /** Opens a new session in a worktree that is still around, to finish its work. */
 export async function openWorktree(rt: Runtime, id: string): Promise<void> {
-  openSession(rt, await rt.worktrees.hold(id), randomUUID());
+  await openSession(rt, await rt.worktrees.hold(id), randomUUID());
 }
 
 /** A session tab closed. Its worktree goes too when everything in it has landed. */

@@ -74,4 +74,11 @@ export interface Runtime {
   readonly notify: () => void;
   /** Loads a session's transcript into the store, even an old one. True when it was found. */
   readonly openTranscript: (sessionId: string) => Promise<boolean>;
+  /** The claude binary and the login shell's environment, for running the CLI outside a terminal. */
+  readonly claudeCli: () => Promise<ClaudeCli>;
+}
+
+export interface ClaudeCli {
+  readonly bin: string;
+  readonly env: Readonly<Record<string, string>>;
 }

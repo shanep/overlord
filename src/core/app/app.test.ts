@@ -13,7 +13,8 @@ import { encodeMessage } from '../hooks/protocol.js';
 import type { ExecResult } from '../sync/exec.js';
 import { userPrompt } from '../transcripts/test-helpers/fixtures.js';
 
-import { concurrencyFrom, executableFor, OverlordApp, SESSIONS_REFRESH_MS } from './app.js';
+import { concurrencyFrom, OverlordApp, SESSIONS_REFRESH_MS } from './app.js';
+import { cliLoader, executableFor } from './claude-bin.js';
 import { FakeHost } from './test-helpers/fake-host.js';
 import {
   makeApp,
@@ -84,6 +85,22 @@ describe('helpers', () => {
   it('passes other names and paths through as given', () => {
     expect(executableFor(' /opt/claude ', {}, 'darwin')).toBe('/opt/claude');
     expect(executableFor('claude-dev', { PATH: '/nowhere' }, 'linux')).toBe('claude-dev');
+  });
+
+  it('resolves the CLI against the login environment with the current setting', async () => {
+    const settings = { claudePath: 'claude' };
+    const load = cliLoader(
+      settings,
+      async () => {
+        await Promise.resolve();
+        return { PATH: '/nowhere', GONE: undefined };
+      },
+      'linux',
+    );
+    expect(await load()).toStrictEqual({ bin: 'claude', env: { PATH: '/nowhere' } });
+    settings.claudePath = '/opt/claude';
+    const changed = await load();
+    expect(changed.bin).toBe('/opt/claude');
   });
 
   it('keeps concurrency a whole number of at least one', () => {
