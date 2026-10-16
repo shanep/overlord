@@ -756,6 +756,81 @@ details > summary {
   margin-bottom: 6px;
 }
 
+/* Flow diagrams on the help page: boxes and arrows in theme colors. */
+
+.flow {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 8px 0 16px;
+}
+
+.flow text {
+  font-family: var(--ov-font);
+  font-size: 13px;
+  fill: var(--ov-fg);
+}
+
+.flow .flow-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.flow .flow-code {
+  font-family: var(--ov-mono);
+  font-size: 12px;
+}
+
+.flow .flow-label {
+  font-size: 12px;
+  fill: var(--ov-muted);
+}
+
+.flow .flow-heading {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  fill: var(--ov-muted);
+}
+
+.flow-box rect {
+  fill: var(--ov-panel);
+  stroke: var(--ov-border);
+  stroke-width: 1.5;
+}
+
+.flow-start rect {
+  stroke: var(--ov-focus);
+}
+
+.flow-good rect {
+  stroke: var(--ov-green);
+}
+
+.flow-warn rect {
+  stroke: var(--ov-yellow);
+}
+
+.flow-side rect {
+  stroke: var(--ov-muted);
+  stroke-dasharray: 5 3;
+}
+
+.flow-arrow {
+  fill: none;
+  stroke: var(--ov-muted);
+  stroke-width: 1.5;
+}
+
+.flow-dashed {
+  stroke-dasharray: 5 4;
+}
+
+.flow-head {
+  fill: var(--ov-muted);
+}
+
 /* The VS Code screen map on the help page. Everything draws from the theme
    tokens, so it follows light, dark and high contrast themes. */
 

@@ -1,5 +1,5 @@
 // The help page: what every icon and badge means, where each view lives, and
-// how a day with Overlord usually goes, and a map of where Overlord can grow. Badges render with the real
+// how a day with Overlord usually goes, how a session lives and ends, and a map of where Overlord can grow. Badges render with the real
 // components, so the page cannot drift from what the other views show.
 
 import type { ReactElement, ReactNode } from 'react';
@@ -23,6 +23,7 @@ import {
   WORKFLOW,
 } from './help-content.js';
 import { ExtendSection } from './help-extend.js';
+import { SessionsSection } from './help-sessions.js';
 import { HANDOFF_LABELS } from './sessions-view.js';
 
 const STATES: readonly SessionState[] = ['running', 'waiting', 'idle', 'done', 'failed', 'unknown'];
@@ -286,6 +287,7 @@ export function HelpView(): ReactElement {
         launch a batch of prompts and watch them side by side.
       </p>
       <WorkflowSection />
+      <SessionsSection />
       <Section
         id="help-sidebar"
         title="The sidebar"
