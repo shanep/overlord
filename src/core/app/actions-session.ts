@@ -14,6 +14,7 @@ import { buildLiveProcessTable } from '../surfaces/live.js';
 import type { ActionContext, ActionHandlers } from './action-types.js';
 import type { Runtime } from './runtime.js';
 import { shortId } from './text.js';
+import { clearOtherCopy } from './transfer.js';
 
 type SessionActions =
   | 'openAgent'
@@ -86,6 +87,17 @@ async function signal(
   if (await rt.host.confirm(question, kind.verb)) {
     rt.kill(live.pid, kind.signal);
   }
+}
+
+export const IN_LAUNCHER = 'This session is running in the Overlord launcher. Stop the run first.';
+
+/** No other process may hold the session when Overlord resumes it. */
+async function readyToResume(rt: Runtime, session: SurfaceSession): Promise<boolean> {
+  if (sdkTarget(rt, session.id) !== null) {
+    rt.host.showInfo(IN_LAUNCHER);
+    return false;
+  }
+  return clearOtherCopy(rt, await liveProcess(rt, session.id), session.title);
 }
 
 export const sessionActions: ActionHandlers<SessionActions> = {
@@ -183,6 +195,9 @@ export const sessionActions: ActionHandlers<SessionActions> = {
       rt.host.showWarning(
         `Cannot continue "${session.title}": its folder ${cwd} no longer exists.`,
       );
+      return;
+    }
+    if (action.kind === 'resume-local' && !(await readyToResume(rt, session))) {
       return;
     }
     rt.host.runInTerminal({

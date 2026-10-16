@@ -27,7 +27,8 @@
   ],
   "main": "./dist/extension.cjs",
   "activationEvents": [
-    "onStartupFinished"
+    "onStartupFinished",
+    "onUri"
   ],
   "contributes": {
     "commands": [
@@ -36,6 +37,11 @@
         "title": "New Claude Code Session",
         "category": "Overlord",
         "icon": "$(sparkle)"
+      },
+      {
+        "command": "overlord.installTransferSkill",
+        "title": "Add /overlord Command to Claude Code",
+        "category": "Overlord"
       },
       {
         "command": "overlord.openFleet",

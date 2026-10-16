@@ -38,6 +38,8 @@ export interface Runtime {
   readonly surfacesExec: SurfacesExec;
   readonly isAlive: IsAlive;
   readonly kill: KillFunction;
+  /** Waits ms milliseconds. Tests pass one that returns at once. */
+  readonly delay: (ms: number) => Promise<void>;
   readonly env: Readonly<Record<string, string | undefined>>;
   readonly hostname: string;
   readonly platform: NodeJS.Platform;

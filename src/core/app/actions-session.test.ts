@@ -7,7 +7,7 @@ import type { WebviewAction } from '../../shared/protocol.js';
 import { isWebviewToHost } from '../../shared/protocol.js';
 import type { ExecResult } from '../sync/exec.js';
 
-import { NOT_LOCAL, SDK_ONLY, sdkTarget, terminalName } from './actions-session.js';
+import { IN_LAUNCHER, NOT_LOCAL, SDK_ONLY, sdkTarget, terminalName } from './actions-session.js';
 import type { TestApp, TestEnv } from './test-helpers/fixtures.js';
 import {
   makeApp,
@@ -40,6 +40,26 @@ function liveApp(env: TestEnv, agentsJson = '[]'): TestApp {
       (call): ExecResult | undefined => (call.args[0] === 'agents' ? ok(agentsJson) : undefined),
     ],
   });
+}
+
+/** A live pid 123 that exits once it gets SIGTERM, as the real CLI does. */
+function movableApp(env: TestEnv): { readonly test: TestApp; readonly killed: NodeJS.Signals[] } {
+  const killed: NodeJS.Signals[] = [];
+  const test = makeApp(env, {
+    deps: {
+      isAlive: (pid) => pid === 123 && killed.length === 0,
+      kill: (_pid, signal): void => {
+        killed.push(signal);
+      },
+      delay: async (): Promise<void> => {
+        await Promise.resolve();
+      },
+    },
+    responders: [
+      (call): ExecResult | undefined => (call.args[0] === 'agents' ? ok('[]') : undefined),
+    ],
+  });
+  return { test, killed };
 }
 
 async function launched(test: TestApp): Promise<string> {
@@ -237,6 +257,35 @@ describe('attach', () => {
   });
 });
 
+describe('moving a live session here', () => {
+  it('asks first, and leaves the other copy alone when told no', async () => {
+    const env = await makeEnv();
+    await registry(env, { pid: 123, sessionId: 'live', cwd: env.home, name: 'Busy' });
+    const { test, killed } = movableApp(env);
+    await test.app.continueSession('live');
+    expect(env.host.questions).toStrictEqual([
+      {
+        message:
+          '"Busy" is still open in another terminal (pid 123). Stop it there and continue it here?',
+        action: 'Move here',
+      },
+    ]);
+    expect(killed).toStrictEqual([]);
+    expect(env.host.terminals).toStrictEqual([]);
+  });
+
+  it('will not resume a session Overlord is running in the launcher', async () => {
+    const env = await makeEnv();
+    const test = makeApp(env);
+    const sessionId = await launched(test);
+    await registry(env, { pid: 999, sessionId, cwd: env.home });
+    await test.app.runtime.caches.sessions.refresh();
+    await test.app.continueSession(sessionId);
+    expect(env.host.terminals).toStrictEqual([]);
+    expect(env.host.infos).toStrictEqual([IN_LAUNCHER]);
+  });
+});
+
 describe('terminalName', () => {
   it('names continue tabs after the session and cuts long titles', () => {
     expect(terminalName('resume-local', 'Fix the parser')).toBe('Claude: Fix the parser');
@@ -251,8 +300,10 @@ describe('handoff', () => {
   it('runs the handoff command for a session in the list', async () => {
     const env = await makeEnv();
     await registry(env, { pid: 123, sessionId: 'local', cwd: env.home, name: 'Mine' });
-    const test = liveApp(env);
+    const { test, killed } = movableApp(env);
+    env.host.confirmAnswers.push(true);
     await test.app.dispatch({ type: 'handoff', sessionId: 'local', kind: 'resume-local' }, {});
+    expect(killed).toStrictEqual(['SIGTERM']);
     expect(env.host.terminals).toStrictEqual([
       { name: 'Claude: Mine', command: 'claude', args: ['--resume', 'local'], cwd: env.home },
     ]);
@@ -298,7 +349,8 @@ describe('handoff', () => {
   it('uses the session cwd fallback for rows without one', async () => {
     const env = await makeEnv();
     await registry(env, { pid: 123, sessionId: 'nocwd' });
-    const test = liveApp(env);
+    const { test } = movableApp(env);
+    env.host.confirmAnswers.push(true);
     await test.app.dispatch({ type: 'handoff', sessionId: 'nocwd', kind: 'resume-local' }, {});
     expect(env.host.terminals[0]?.cwd).toBe(env.home);
   });

@@ -5,6 +5,7 @@ import * as vscode from 'vscode';
 
 import { OverlordApp } from '../core/app/app.js';
 import type { RunningItem } from '../core/app/status.js';
+import { parseTransferUri } from '../core/app/transfer.js';
 import type { HostToWebview, ViewId, WebviewAction } from '../shared/protocol.js';
 
 import { createVscodeHostPort } from './host-port.js';
@@ -146,9 +147,26 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         panels.open('agent', { sessionId, agentId });
       }
     }),
-    register('overlord.setup', async () => {
+    register('overlord.setup', async (): Promise<void> => {
       await overlord.setup.installHooks();
       await overlord.setup.enableTelemetry();
+      await overlord.installTransferSkill(vscode.env.uriScheme);
+    }),
+    register('overlord.installTransferSkill', async (): Promise<void> =>
+      overlord.installTransferSkill(vscode.env.uriScheme),
+    ),
+    // vscode://shanep.overlord/continue?session=<id>, opened by the /overlord skill.
+    vscode.window.registerUriHandler({
+      handleUri: async (uri: vscode.Uri): Promise<void> => {
+        const sessionId = parseTransferUri(uri.path, uri.query);
+        if (sessionId === null) {
+          void vscode.window.showWarningMessage(
+            `Overlord does not know the link ${uri.toString()}.`,
+          );
+          return;
+        }
+        await overlord.continueSession(sessionId);
+      },
     }),
     register('overlord.installHooks', async (): Promise<void> => overlord.setup.installHooks()),
     register('overlord.uninstallHooks', async () => overlord.setup.uninstallHooks()),

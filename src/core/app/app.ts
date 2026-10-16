@@ -42,6 +42,7 @@ import { Sources } from './sources.js';
 import type { RunningItem } from './status.js';
 import { runningItems, statusLine } from './status.js';
 import { SyncCommands } from './sync-commands.js';
+import { installTransferSkill } from './transfer.js';
 import { ContextViews } from './views/context.js';
 import { buildFleet } from './views/fleet.js';
 import { stateFor } from './views/state.js';
@@ -65,6 +66,7 @@ export interface AppDeps {
   /** For the store's change notifications. */
   readonly scheduler?: Scheduler;
   readonly interval?: IntervalFunction;
+  readonly delay?: (ms: number) => Promise<void>;
   readonly fileWatch?: FileWatchFunction;
   /** Null turns the transcript watcher's fs.watch off and leaves its poll. */
   readonly watchFactory?: WatchFactory | null;
@@ -98,6 +100,7 @@ interface MachineDeps {
   readonly hostname: string;
   readonly fs: FileSystem;
   readonly interval: IntervalFunction;
+  readonly delay: (ms: number) => Promise<void>;
   readonly fileWatch: FileWatchFunction;
 }
 
@@ -112,6 +115,12 @@ function coreDeps(deps: AppDeps): CoreDeps {
   };
 }
 
+export async function defaultDelay(ms: number): Promise<void> {
+  await new Promise<void>((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
 function machineDeps(deps: AppDeps): MachineDeps {
   return {
     isAlive: deps.isAlive ?? makeIsAlive(),
@@ -119,6 +128,7 @@ function machineDeps(deps: AppDeps): MachineDeps {
     hostname: deps.hostname ?? os.hostname(),
     fs: deps.fs ?? createNodeFileSystem(),
     interval: deps.interval ?? defaultInterval,
+    delay: deps.delay ?? defaultDelay,
     fileWatch: deps.fileWatch ?? pollingFileWatch(SETTINGS_POLL_MS),
   };
 }
@@ -186,6 +196,7 @@ export class OverlordApp {
       surfacesExec: toSurfacesExec(exec),
       isAlive: machine.isAlive,
       kill: machine.kill,
+      delay: machine.delay,
       env,
       hostname: machine.hostname,
       platform,
@@ -268,6 +279,16 @@ export class OverlordApp {
 
   async dispatch(action: WebviewAction, params: PanelParams): Promise<void> {
     await dispatch(this.rt, action, params);
+  }
+
+  /** Adds the /overlord command to Claude Code, after asking. */
+  async installTransferSkill(uriScheme: string): Promise<void> {
+    await installTransferSkill(this.rt, uriScheme);
+  }
+
+  /** Continues a session here, stopping a copy open in another terminal first. */
+  async continueSession(sessionId: string): Promise<void> {
+    await this.dispatch({ type: 'handoff', sessionId, kind: 'resume-local' }, {});
   }
 
   /** Text for the status bar item. */
