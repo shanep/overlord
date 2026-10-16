@@ -50,6 +50,10 @@ async function setup(
         command === 'claude' ? claude(command, args, options) : testExec(command, args, options),
       isAlive: (pid) => pid === PID,
       pid: PID,
+      // Polls for a background session return at once instead of sleeping.
+      delay: async (): Promise<void> => {
+        await Promise.resolve();
+      },
     },
     queries: fakeQueries((query) => {
       query.emit(resultMessage());
@@ -142,14 +146,16 @@ describe('worktrees in the app', { timeout: 30_000 }, () => {
       expect(test.app.runtime.sessionWorktrees.get('8c3efb13-full')).toBe(worktree?.id);
     });
 
-    it('open the tab even when Claude Code does not list the background session yet', async () => {
+    it('open no tab, and say so, when the background session never shows up', async () => {
+      // An attach tab would exit at once ("No job matching") and vanish, so none opens.
       const test = await setup('repo', async (_command, args) => {
         await Promise.resolve();
         const stdout = args.includes('--bg') ? 'backgrounded \u00B7 8c3efb13 (idle)\n' : '[]';
         return { code: 0, stdout, stderr: '' };
       });
       await test.app.dispatch({ type: 'newSession' }, {});
-      expect(lastTerminal(test)).toMatchObject({ args: ['attach', '8c3efb13'], sessionId: null });
+      expect(test.env.host.terminals).toStrictEqual([]);
+      expect(test.env.host.warnings.at(-1)).toContain('did not become ready');
       expect(test.app.runtime.sessionWorktrees.size).toBe(0);
     });
 

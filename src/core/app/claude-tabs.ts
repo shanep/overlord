@@ -13,9 +13,13 @@ import type { Runtime } from './runtime.js';
 
 /** A cold start of the background service takes several seconds. */
 const BACKGROUND_TIMEOUT_MS = 30_000;
-/** A new session can take a moment to show up in `claude agents`. */
-const LOOKUP_TRIES = 3;
-const LOOKUP_DELAY_MS = 500;
+/**
+ * A new session can take a couple of seconds to show up in `claude agents`,
+ * and `claude attach` exits at once ("No job matching ...") until it does,
+ * which closes the tab. So wait for it, for up to 15 seconds.
+ */
+export const READY_TRIES = 30;
+export const READY_DELAY_MS = 500;
 const SOURCE = 'claude tab';
 
 export interface ClaudeTab {
@@ -33,23 +37,21 @@ function firstLine(text: string): string {
   return text.trim().split('\n', 1).join('');
 }
 
-/** The full session id behind the short one `claude --bg` printed, or null when unknown. */
-async function sessionIdFor(
+/**
+ * Waits until `claude agents` lists the session `claude --bg` started, so a
+ * tab can attach to it. Resolves to its full session id, or null when it
+ * never shows up.
+ */
+async function waitUntilListed(
   rt: Runtime,
   short: string,
-  resume: string | null,
+  claudeBin: string,
 ): Promise<string | null> {
-  if (resume?.startsWith(short) === true) {
-    return resume;
-  }
-  for (let attempt = 0; attempt < LOOKUP_TRIES; attempt += 1) {
+  for (let attempt = 0; attempt < READY_TRIES; attempt += 1) {
     if (attempt > 0) {
-      await rt.delay(LOOKUP_DELAY_MS);
+      await rt.delay(READY_DELAY_MS);
     }
-    const agents = await readClaudeAgents(rt.surfacesExec, {
-      claudeBin: rt.host.settings.claudePath,
-      includeCompleted: true,
-    });
+    const agents = await readClaudeAgents(rt.surfacesExec, { claudeBin, includeCompleted: true });
     const found = agents.items.find((agent) => agent.id === short);
     if (found !== undefined) {
       return found.sessionId;
@@ -59,8 +61,9 @@ async function sessionIdFor(
 }
 
 /**
- * Starts the session in the background and attaches a tab to it. Resolves to
- * the session id (null when Claude Code does not list it yet), or undefined,
+ * Starts the session in the background and attaches a tab to it once Claude
+ * Code lists it. Resolves to the session id, null when the session started
+ * but never became ready (no tab, and a message saying so), or undefined,
  * with nothing opened, when the session could not start.
  */
 async function openAttached(rt: Runtime, tab: ClaudeTab): Promise<string | null | undefined> {
@@ -79,7 +82,15 @@ async function openAttached(rt: Runtime, tab: ClaudeTab): Promise<string | null 
     );
     return undefined;
   }
-  const sessionId = await sessionIdFor(rt, short, tab.resume);
+  const listed = await waitUntilListed(rt, short, cli.bin);
+  if (listed === null) {
+    // Attaching now would only flash a tab that closes, so say what happened instead.
+    const message = `Claude Code started session ${short} but it did not become ready. Open it from the Fleet in a moment.`;
+    rt.report(SOURCE, message);
+    rt.host.showWarning(message);
+    return null;
+  }
+  const sessionId = tab.resume?.startsWith(short) === true ? tab.resume : listed;
   rt.host.runInTerminal({
     name: tab.name,
     command: rt.host.settings.claudePath,
