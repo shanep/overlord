@@ -420,6 +420,11 @@ describe('SessionAccumulator', () => {
     accumulator.ingest(record(recap(1000, 'Built the panel. (disable recaps in /config)')));
     accumulator.ingest(record(recap(5000, 'Landed it.\n\nneeds input: remove the worktree?')));
     accumulator.ingest(record(recap(6000, ' (disable recaps in /config)')));
+    // A recap with no text or no usable time is skipped.
+    accumulator.ingest(record({ type: 'system', subtype: 'away_summary', timestamp: iso(7000) }));
+    accumulator.ingest(
+      record({ type: 'system', subtype: 'away_summary', content: 'Late', timestamp: 'never' }),
+    );
     accumulator.ingest(record({ type: 'last-prompt', lastPrompt: 'Add a summary' }));
     expect(accumulator.summary(T0)).toMatchObject({
       recap: { text: 'Landed it.\n\nneeds input: remove the worktree?', at: T0 + 5000 },

@@ -98,6 +98,14 @@ describe('PropertiesView', () => {
     expect(screen.queryByRole('region', { name: 'Working on' })).toBeNull();
   });
 
+  it('shows the recap alone when there is no last prompt', () => {
+    const base = full.session ?? session({ id: 's1' });
+    renderView(<PropertiesView state={{ ...full, session: { ...base, lastPrompt: null } }} />);
+    expect(group('Working on').textContent).toBe(
+      'Working onSplit the parser in two.\n\nneeds input: keep the old one?Recap 5m ago',
+    );
+  });
+
   it('lists the session properties by group', () => {
     renderView(<PropertiesView state={full} />);
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Refactor parser');

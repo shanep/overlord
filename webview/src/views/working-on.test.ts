@@ -20,5 +20,9 @@ describe('workingOn', () => {
     expect(workingOn(session({ id: 's', ...asked, lastPromptAt: null }))).toBe(
       'Asked: Add a summary',
     );
+    // A prompt with no time cannot be newer than the recap.
+    expect(workingOn(session({ id: 's', recap, ...asked, lastPromptAt: null }))).toBe(
+      'Built the panel. needs input: land it?',
+    );
   });
 });
