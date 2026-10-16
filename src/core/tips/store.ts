@@ -1,8 +1,9 @@
 // The tips index: one measure per session transcript, with the file stamp it
 // was taken from, so a rescan only reads transcripts that changed. It lives
-// in one JSON file in the extension's storage folder. Unlike the frustration
-// counts, a measure is dropped once its transcript is gone, since tips are
-// about how sessions run now.
+// in one JSON file in the extension's storage folder. Once a transcript is
+// gone its measure stays for a year, marked as history: the tips only look at
+// live sessions, since they are about how sessions run now, but tracking the
+// impact of a tip compares against sessions Claude Code has since deleted.
 
 import { z } from 'zod';
 
@@ -18,6 +19,8 @@ export interface FileStamp {
 interface IndexEntry {
   readonly stamp: FileStamp;
   readonly measure: SessionMeasure;
+  /** False once the transcript is gone. */
+  readonly live: boolean;
 }
 
 export interface TipsIndex {
@@ -39,6 +42,7 @@ const measureSchema = z.object({
   sessionId: z.string(),
   title: z.string(),
   cwd: z.string().nullable(),
+  startedAt: z.number(),
   updatedAt: z.number(),
   prompts: count,
   requests: count,
@@ -72,13 +76,14 @@ const measureSchema = z.object({
 
 const fileSchema = z.object({
   // Bump when the measure changes meaning, so old entries are measured again.
-  version: z.literal(1),
+  version: z.literal(2),
   scannedAt: z.number().nullable(),
   entries: z.record(
     z.string(),
     z.object({
       stamp: z.object({ mtimeMs: z.number(), size: z.number() }),
       measure: measureSchema,
+      live: z.boolean(),
     }),
   ),
 });
@@ -112,7 +117,7 @@ export async function loadIndex(file: string): Promise<TipsIndex> {
 
 export async function saveIndex(file: string, index: TipsIndex): Promise<void> {
   const data: z.input<typeof fileSchema> = {
-    version: 1,
+    version: 2,
     scannedAt: index.scannedAt,
     entries: Object.fromEntries(index.entries),
   };

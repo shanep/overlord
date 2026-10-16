@@ -19,6 +19,7 @@ import { storagePath, writeImport } from './storage.js';
 import { NOT_CONNECTED, SyncCommands } from './sync-commands.js';
 import { plural } from './text.js';
 import { configRepoDir, connectedRoot } from './views/config.js';
+import { trackAdviceTaken } from './views/tips.js';
 
 type ConfigActions = 'setKnob' | 'importClaudeAi' | 'syncPush' | 'syncPull' | 'adoptConfig';
 
@@ -103,6 +104,10 @@ export const configActions: ActionHandlers<ConfigActions> = {
       }
       await rt.caches.knobs.refresh();
       rt.context.clear();
+      // An unset knob comes through as undefined, and clearing one is not taking advice.
+      if (json.value !== undefined) {
+        await trackAdviceTaken(rt, { kind: 'knob', key: action.key });
+      }
     } else {
       rt.host.showError(`The value for ${action.key} is not plain JSON.`);
     }

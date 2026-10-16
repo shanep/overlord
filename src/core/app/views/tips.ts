@@ -1,19 +1,22 @@
 // The tips view. Session measures live in an index file in the extension's
-// storage folder, so a rescan only reads transcripts that changed. Building
-// the state is a synchronous read of that index; a rescan runs in the
-// background when the last one started more than a minute ago, and the panels
-// re-render after.
+// storage folder, so a rescan only reads transcripts that changed, and the
+// tips you are tracking live in a second file next to it. Building the state
+// is a synchronous read of both; a rescan runs in the background when the
+// last one started more than a minute ago, and the panels re-render after.
 
 import { stat } from 'node:fs/promises';
 import path from 'node:path';
 
 import type { TipsState } from '../../../shared/tips.js';
+import type { AdviceStep } from '../../tips/build.js';
+import { tipsTakenBy } from '../../tips/build.js';
 import { scanInto } from '../../tips/scan.js';
 import type { TipsIndex } from '../../tips/store.js';
 import { loadIndex, saveIndex } from '../../tips/store.js';
 import type { SuggestionDefinition } from '../../tips/suggestions.js';
 import { nameOf, SUGGESTIONS } from '../../tips/suggestions.js';
 import { summarize } from '../../tips/summarize.js';
+import { loadTracked, saveTracked } from '../../tips/tracked.js';
 import { messageOf } from '../errors.js';
 import type { Runtime } from '../runtime.js';
 
@@ -30,11 +33,20 @@ export const EMPTY_TIPS: TipsState = {
 };
 
 export const TIPS_FILE = 'tips.json';
+export const TRACKED_FILE = 'tips-tracked.json';
 export const RESCAN_AFTER_MS = 60_000;
 const SOURCE = 'tips';
 
+/** What the two files hold, loaded together so neither is ever seen without the other. */
+interface Saved {
+  readonly index: TipsIndex;
+  /** When tracking started, by tip id. */
+  readonly tracked: Map<string, number>;
+}
+
 interface Entry {
-  index: TipsIndex | null;
+  saved: Saved | null;
+  loading: Promise<Saved> | null;
   installed: ReadonlySet<string>;
   running: Promise<void> | null;
   startedAt: number | null;
@@ -48,7 +60,13 @@ function entryFor(rt: Runtime): Entry {
   if (found !== undefined) {
     return found;
   }
-  const fresh: Entry = { index: null, installed: new Set(), running: null, startedAt: null };
+  const fresh: Entry = {
+    saved: null,
+    loading: null,
+    installed: new Set(),
+    running: null,
+    startedAt: null,
+  };
   entries.set(rt, fresh);
   return fresh;
 }
@@ -99,18 +117,41 @@ export async function refreshInstalled(rt: Runtime): Promise<void> {
   rt.notify();
 }
 
+function trackedFile(rt: Runtime): string {
+  return path.join(rt.host.storageDir, TRACKED_FILE);
+}
+
+function indexFile(rt: Runtime): string {
+  return path.join(rt.host.storageDir, TIPS_FILE);
+}
+
+/** Reads both files once. A failed read is tried again next time. */
+async function load(rt: Runtime, entry: Entry): Promise<Saved> {
+  entry.loading ??= Promise.all([loadIndex(indexFile(rt)), loadTracked(trackedFile(rt))]).then(
+    ([index, tracked]) => {
+      entry.saved = { index, tracked };
+      return entry.saved;
+    },
+    (error: unknown) => {
+      entry.loading = null;
+      throw error;
+    },
+  );
+  return entry.loading;
+}
+
 async function scan(rt: Runtime, entry: Entry): Promise<void> {
-  const file = path.join(rt.host.storageDir, TIPS_FILE);
-  if (entry.index === null) {
-    entry.index = await loadIndex(file);
+  const first = entry.saved === null;
+  const { index } = await load(rt, entry);
+  if (first) {
     // Show the saved measures while the scan runs.
     rt.notify();
   }
-  const result = await scanInto(entry.index, rt.paths.projectsDir, rt.clock());
+  const result = await scanInto(index, rt.paths.projectsDir, rt.clock());
   entry.installed = await installedSuggestions(rt);
   // Nothing new means nothing to write, so an empty home leaves no file behind.
   if (result.filesRead > 0 || result.filesGone > 0) {
-    await saveIndex(file, entry.index);
+    await saveIndex(indexFile(rt), index);
   }
   rt.notify();
 }
@@ -124,14 +165,19 @@ async function run(rt: Runtime, entry: Entry): Promise<void> {
 }
 
 function stateOf(rt: Runtime, entry: Entry): TipsState {
-  if (entry.index === null) {
+  if (entry.saved === null) {
     return EMPTY_TIPS;
   }
+  const { index, tracked } = entry.saved;
+  const items = [...index.entries.values()];
   return summarize({
-    measures: [...entry.index.entries.values()].map((item) => item.measure),
+    measures: items.filter((item) => item.live).map((item) => item.measure),
+    history: items.filter((item) => !item.live).map((item) => item.measure),
+    tracked,
+    now: rt.clock(),
     installed: entry.installed,
     home: rt.paths.home,
-    scannedAt: entry.index.scannedAt,
+    scannedAt: index.scannedAt,
   });
 }
 
@@ -151,4 +197,36 @@ export async function rescanTips(rt: Runtime): Promise<TipsState> {
   const entry = entryFor(rt);
   await run(rt, entry);
   return stateOf(rt, entry);
+}
+
+/** Starts tracking a tip from now, or stops when `on` is false. */
+export async function setTipTracked(rt: Runtime, tipId: string, on: boolean): Promise<void> {
+  const { tracked } = await load(rt, entryFor(rt));
+  if (on) {
+    tracked.set(tipId, rt.clock());
+  } else {
+    tracked.delete(tipId);
+  }
+  await saveTracked(trackedFile(rt), tracked);
+  rt.notify();
+}
+
+/**
+ * Starts tracking the tips this step follows, so taking advice from Overlord
+ * measures itself without a separate click. Only tips the view shows right
+ * now count, and one already tracked keeps its start.
+ */
+export async function trackAdviceTaken(rt: Runtime, step: AdviceStep): Promise<void> {
+  const entry = entryFor(rt);
+  const { tracked } = await load(rt, entry);
+  const shown = new Set(stateOf(rt, entry).tips.map((tip) => tip.id));
+  const fresh = tipsTakenBy(step).filter((id) => shown.has(id) && !tracked.has(id));
+  if (fresh.length === 0) {
+    return;
+  }
+  for (const id of fresh) {
+    tracked.set(id, rt.clock());
+  }
+  await saveTracked(trackedFile(rt), tracked);
+  rt.notify();
 }

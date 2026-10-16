@@ -7,7 +7,14 @@ import type { TipsState } from '../../../shared/tips.js';
 import type { TestApp, TestEnv } from '../test-helpers/fixtures.js';
 import { makeApp, makeEnv, NOW, waitFor, writeText } from '../test-helpers/fixtures.js';
 
-import { buildTips, EMPTY_TIPS, RESCAN_AFTER_MS, rescanTips, TIPS_FILE } from './tips.js';
+import {
+  buildTips,
+  EMPTY_TIPS,
+  RESCAN_AFTER_MS,
+  rescanTips,
+  TIPS_FILE,
+  TRACKED_FILE,
+} from './tips.js';
 
 const S1 = 'aaaaaaaa-1111-4111-8111-111111111111';
 
@@ -63,6 +70,10 @@ function clockedApp(env: TestEnv): Clocked {
   };
 }
 
+function trackedSince(state: TipsState): number | undefined {
+  return state.tips.find((tip) => tip.id === 'huge-context')?.impact?.trackedSince;
+}
+
 /** Waits until the check passes and the scan that got there has finished writing. */
 async function settled(test: TestApp, check: (state: TipsState) => boolean): Promise<TipsState> {
   await waitFor((): boolean => check(buildTips(test.app.runtime)));
@@ -81,7 +92,7 @@ describe('buildTips', () => {
     expect(state.rows.map((row) => row.sessionId)).toStrictEqual([S1]);
     expect(notified()).toBeGreaterThanOrEqual(2);
     const saved: unknown = JSON.parse(await readFile(path.join(env.storageDir, TIPS_FILE), 'utf8'));
-    expect(saved).toMatchObject({ version: 1, scannedAt: NOW });
+    expect(saved).toMatchObject({ version: 2, scannedAt: NOW });
   });
 
   it('writes nothing for an empty home', async () => {
@@ -93,7 +104,7 @@ describe('buildTips', () => {
     expect(test.app.errorList()).toStrictEqual([]);
   });
 
-  it('loads the saved index in a new app, and forgets a deleted transcript', async () => {
+  it('loads the saved index in a new app, and keeps a deleted transcript as history', async () => {
     const env = await makeEnv();
     const file = await transcript(env, S1, [request('m1', 10)]);
     await settled(clockedApp(env).test, (next) => next.sessions === 1);
@@ -101,8 +112,10 @@ describe('buildTips', () => {
     await rm(file);
     const state = await rescanTips(test.app.runtime);
     expect(state.sessions).toBe(0);
-    const saved: unknown = JSON.parse(await readFile(path.join(env.storageDir, TIPS_FILE), 'utf8'));
-    expect(saved).toHaveProperty('entries', {});
+    const saved = JSON.parse(await readFile(path.join(env.storageDir, TIPS_FILE), 'utf8')) as {
+      entries: Record<string, { live: boolean }>;
+    };
+    expect(Object.values(saved.entries).map((entry) => entry.live)).toStrictEqual([false]);
   });
 
   it('rescans only after a minute', async () => {
@@ -178,5 +191,65 @@ describe('tips actions', () => {
     const { app } = makeApp(env);
     await app.dispatch({ type: 'createSuggestion', suggestionId: 'handoff' }, {});
     expect(env.host.opened).toStrictEqual([]);
+  });
+
+  it('tracks a tip from now, keeps it in a new app, and stops', async () => {
+    const env = await makeEnv();
+    await transcript(env, S1, [request('m1', 300_000)]);
+    const { test } = clockedApp(env);
+    await rescanTips(test.app.runtime);
+    await test.app.dispatch({ type: 'trackTip', tipId: 'huge-context', on: true }, {});
+    expect(trackedSince(buildTips(test.app.runtime))).toBe(NOW);
+    const saved: unknown = JSON.parse(
+      await readFile(path.join(env.storageDir, TRACKED_FILE), 'utf8'),
+    );
+    expect(saved).toStrictEqual({ version: 1, tips: { 'huge-context': { since: NOW } } });
+    const again = clockedApp(env).test;
+    expect(trackedSince(await rescanTips(again.app.runtime))).toBe(NOW);
+    await again.app.dispatch({ type: 'trackTip', tipId: 'huge-context', on: false }, {});
+    expect(trackedSince(buildTips(again.app.runtime))).toBeUndefined();
+  });
+
+  it('refuses to track an unknown tip', async () => {
+    const env = await makeEnv();
+    const { app } = makeApp(env);
+    await app.dispatch({ type: 'trackTip', tipId: 'nope', on: true }, {});
+    expect(env.host.errors).toStrictEqual(['There is no tip called nope.']);
+  });
+
+  it('starts tracking a shown tip when its knob is set from Overlord', async () => {
+    const env = await makeEnv();
+    await transcript(env, S1, [request('m1', 300_000)]);
+    const { test, advance } = clockedApp(env);
+    await rescanTips(test.app.runtime);
+    const knob = async (value: unknown): Promise<void> => {
+      await test.app.dispatch(
+        { type: 'setKnob', key: 'autoCompactWindow', value, layer: 'user' },
+        {},
+      );
+    };
+    // Clearing a knob is not taking the advice.
+    await knob(null);
+    expect(buildTips(test.app.runtime).tips.map((tip) => tip.impact)).toStrictEqual([null]);
+    await knob(300_000);
+    advance(1000);
+    // Setting it again keeps the first start.
+    await knob(250_000);
+    const [tip] = buildTips(test.app.runtime).tips;
+    expect(tip?.impact?.trackedSince).toBe(NOW);
+  });
+
+  it('starts tracking the tips a created suggestion helps with', async () => {
+    const env = await makeEnv();
+    await transcript(env, S1, [request('m1', 300_000)]);
+    const { test } = clockedApp(env);
+    await rescanTips(test.app.runtime);
+    env.host.pickAnswers.push('user');
+    // The scout agent does not help with huge contexts, so nothing starts.
+    await test.app.dispatch({ type: 'createSuggestion', suggestionId: 'scout' }, {});
+    expect(buildTips(test.app.runtime).tips[0]?.impact).toBeNull();
+    env.host.pickAnswers.push('user');
+    await test.app.dispatch({ type: 'createSuggestion', suggestionId: 'handoff' }, {});
+    expect(buildTips(test.app.runtime).tips[0]?.impact?.trackedSince).toBe(NOW);
   });
 });

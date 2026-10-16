@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { summarize } from './summarize.js';
 import { HOME, measureOf } from './test-helpers/fixtures.js';
 
+const NONE = { history: [], tracked: new Map<string, number>(), now: 0 };
+
 describe('summarize', () => {
   it('drops sessions with no requests and sorts rows by cost', () => {
     const cheap = measureOf({ sessionId: 'cheap', title: 'Cheap' });
@@ -18,6 +20,9 @@ describe('summarize', () => {
     const empty = measureOf({ sessionId: 'empty', requests: 0 });
     const state = summarize({
       measures: [cheap, empty, dear],
+      history: [],
+      tracked: new Map(),
+      now: 2000,
       installed: new Set(['handoff']),
       home: HOME,
       scannedAt: 9,
@@ -50,7 +55,13 @@ describe('summarize', () => {
   });
 
   it('is empty with no sessions', () => {
-    const state = summarize({ measures: [], installed: new Set(), home: HOME, scannedAt: null });
+    const state = summarize({
+      ...NONE,
+      measures: [],
+      installed: new Set(),
+      home: HOME,
+      scannedAt: null,
+    });
     expect(state).toMatchObject({ sessions: 0, averageContext: 0, largestContext: 0, rows: [] });
   });
 
@@ -58,7 +69,13 @@ describe('summarize', () => {
     const measures = Array.from({ length: 205 }, (_, n) =>
       measureOf({ sessionId: `s${n.toString()}`, subagentUsd: n }),
     );
-    const state = summarize({ measures, installed: new Set(), home: HOME, scannedAt: null });
+    const state = summarize({
+      ...NONE,
+      measures,
+      installed: new Set(),
+      home: HOME,
+      scannedAt: null,
+    });
     expect(state.rows).toHaveLength(200);
     expect(state.rows[0]?.sessionId).toBe('s204');
     expect(state.sessions).toBe(205);

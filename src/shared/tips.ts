@@ -11,6 +11,56 @@ export interface TipSession {
   readonly detail: string;
 }
 
+/** How a measured number is shown. */
+export type ImpactFormat = 'tokens' | 'usd' | 'percent' | 'per100';
+
+/** Which way a number moved, judged by whether lower is better. */
+export type ImpactDirection = 'better' | 'worse' | 'same';
+
+/**
+ * The overall answer. `early` until enough sessions ran after tracking
+ * started, `no-baseline` when nothing ran in the weeks before to compare with.
+ */
+export type ImpactVerdict = 'better' | 'worse' | 'mixed' | 'same' | 'early' | 'no-baseline';
+
+/** One number compared before and after a tip was taken up. Lower is better for all of them. */
+export interface ImpactMetric {
+  readonly id: string;
+  readonly label: string;
+  /** The habit the tip is about, the cost, or a side effect its cons warn about. */
+  readonly role: 'target' | 'cost' | 'side-effect';
+  /** Why a side effect is worth watching, empty for the others. */
+  readonly why: string;
+  readonly format: ImpactFormat;
+  readonly before: number | null;
+  readonly after: number | null;
+  /** (after - before) / before, or null when that cannot be worked out. */
+  readonly change: number | null;
+  /** Null when either side has no data. */
+  readonly direction: ImpactDirection | null;
+}
+
+/** One week since tracking started. */
+export interface ImpactWeek {
+  readonly start: number;
+  readonly sessions: number;
+  /** One value per metric, in the same order as `TipImpact.metrics`. */
+  readonly values: readonly (number | null)[];
+}
+
+/** What changed since you started following a tip. */
+export interface TipImpact {
+  readonly trackedSince: number;
+  readonly verdict: ImpactVerdict;
+  /** One or two sentences that say what moved. */
+  readonly summary: string;
+  readonly sessionsBefore: number;
+  readonly sessionsAfter: number;
+  readonly metrics: readonly ImpactMetric[];
+  /** Oldest first, at most the last few weeks. */
+  readonly weeks: readonly ImpactWeek[];
+}
+
 /** One piece of advice, backed by numbers from the session transcripts. */
 export interface Tip {
   readonly id: string;
@@ -30,6 +80,8 @@ export interface Tip {
   readonly cons: readonly string[];
   /** When the advice is not worth following. */
   readonly skipWhen: string;
+  /** The measured effect since you started following it, or null when you are not tracking it. */
+  readonly impact: TipImpact | null;
 }
 
 /** A skill or agent Overlord can write for you, with why it would help. */

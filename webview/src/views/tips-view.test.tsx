@@ -1,16 +1,68 @@
 import { fireEvent, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import type { TipsState } from '../../../src/shared/tips.js';
+import type { ImpactMetric, TipImpact, TipsState } from '../../../src/shared/tips.js';
 import { NOW } from '../../test/fixtures.js';
 import { expectAccessible, renderView } from '../../test/render.js';
 
+import { formatChange, formatImpactValue, VERDICT_INFO } from './tips-impact.js';
 import { SEVERITY_INFO } from './tips-lists.js';
 import { TipsView } from './tips-view.js';
 
 const MINUTE = 60_000;
 const S1 = 'aaaaaaaa-1111-4111-8111-111111111111';
 const S2 = 'bbbbbbbb-2222-4222-8222-222222222222';
+
+const WEEK = 7 * 24 * 60 * MINUTE;
+
+const TARGET: ImpactMetric = {
+  id: 'largeShare',
+  label: 'Sessions past 200K context',
+  role: 'target',
+  why: '',
+  format: 'percent',
+  before: 0.5,
+  after: 0.1,
+  change: -0.8,
+  direction: 'better',
+};
+
+const IMPACT: TipImpact = {
+  trackedSince: NOW - 2 * WEEK,
+  verdict: 'mixed',
+  summary: 'Sessions past 200K context fell 80% over 6 sessions since you started.',
+  sessionsBefore: 9,
+  sessionsAfter: 6,
+  metrics: [
+    TARGET,
+    {
+      id: 'costPerPrompt',
+      label: 'Cost per prompt',
+      role: 'cost',
+      why: '',
+      format: 'usd',
+      before: 0.5,
+      after: 0.48,
+      change: -0.04,
+      direction: 'same',
+    },
+    {
+      id: 'extraReads',
+      label: 'Rereads per 100 tool calls',
+      role: 'side-effect',
+      why: 'After a compaction Claude may reread files.',
+      format: 'per100',
+      before: 2,
+      after: 3,
+      change: 0.5,
+      direction: 'worse',
+    },
+  ],
+  weeks: [
+    { start: NOW - 2 * WEEK, sessions: 4, values: [0.25, 0.5, 2.5] },
+    { start: NOW - WEEK, sessions: 2, values: [0, 0.4, null] },
+  ],
+};
 
 const EMPTY: TipsState = {
   sessions: 0,
@@ -42,6 +94,7 @@ const STATE: TipsState = {
       pros: ['Compaction happens on its own.'],
       cons: ['The summary can drop details you still needed.'],
       skipWhen: 'Leave it large for big refactors.',
+      impact: IMPACT,
     },
     {
       id: 'denials',
@@ -54,6 +107,7 @@ const STATE: TipsState = {
       pros: ['Fewer interruptions.'],
       cons: ['A broad rule removes a check.'],
       skipWhen: 'Keep denying pushes.',
+      impact: null,
     },
   ],
   suggestions: [
@@ -177,6 +231,8 @@ describe('TipsView', () => {
     fireEvent.click(getByRole('button', { name: 'Rescan' }));
     fireEvent.click(getByRole('button', { name: 'Create' }));
     fireEvent.click(getByRole('button', { name: 'Create again' }));
+    fireEvent.click(getByRole('button', { name: 'Track from now' }));
+    fireEvent.click(getByRole('button', { name: 'Stop tracking' }));
     const huge = getByRole('article', { name: 'Sessions grow huge without compacting' });
     fireEvent.click(within(huge).getByRole('button', { name: 'Vault report' }));
     const table = getByRole('table', { name: 'Sessions by cost' });
@@ -185,6 +241,8 @@ describe('TipsView', () => {
       { type: 'rescanTips' },
       { type: 'createSuggestion', suggestionId: 'handoff' },
       { type: 'createSuggestion', suggestionId: 'scout' },
+      { type: 'trackTip', tipId: 'denials', on: true },
+      { type: 'trackTip', tipId: 'huge-context', on: false },
       { type: 'openAgent', sessionId: S1, agentId: S1 },
       { type: 'openAgent', sessionId: S2, agentId: S2 },
     ]);
@@ -223,5 +281,92 @@ describe('TipsView', () => {
     expect(getByText('No sessions measured yet.')).toBeDefined();
     expect(SEVERITY_INFO.low.tone).toBe('info');
     await expectAccessible(container);
+  });
+
+  it('shows how a tracked tip went, overall and week by week, and passes axe', async () => {
+    const { getByRole, container } = renderView(<TipsView state={STATE} />);
+    const huge = getByRole('article', { name: 'Sessions grow huge without compacting' });
+    const results = within(huge).getByRole('region', { name: /^Results since/u });
+    expect(results.textContent).toContain(VERDICT_INFO.mixed.label);
+    expect(results.textContent).toContain(IMPACT.summary);
+    const rows = within(within(results).getByRole('table', { name: 'Before and since' }))
+      .getAllByRole('row')
+      .slice(1)
+      .map((row) => row.textContent);
+    expect(rows).toStrictEqual([
+      'Sessions past 200K context50%10%-80%, better',
+      'Cost per prompt$0.50 est.$0.48 est.-4%, about the same',
+      'Rereads per 100 tool calls2.03.0+50%, worse',
+    ]);
+    const weeks = within(within(results).getByRole('table', { name: 'Week by week' }))
+      .getAllByRole('row')
+      .slice(1)
+      .map((row) => row.textContent);
+    expect(weeks).toStrictEqual([
+      '30 days before950%$0.50 est.2.0',
+      expect.stringContaining('425%$0.50 est.2.5'),
+      expect.stringContaining('20%$0.40 est.n/a'),
+    ]);
+    const denials = getByRole('article', { name: 'Tool calls keep getting denied' });
+    expect(within(denials).getByRole('region', { name: 'Results' }).textContent).toContain(
+      'Taking this advice?',
+    );
+    await expectAccessible(container);
+  });
+
+  it('shows n/a for a measure with nothing to compare', () => {
+    const blank: TipsState = {
+      ...STATE,
+      tips: STATE.tips.slice(0, 1).map((tip) => ({
+        ...tip,
+        impact: {
+          ...IMPACT,
+          verdict: 'same',
+          metrics: [{ ...TARGET, before: null, change: null, direction: null }],
+          weeks: [],
+        },
+      })),
+    };
+    const { getByRole } = renderView(<TipsView state={blank} />);
+    const row = within(getByRole('table', { name: 'Before and since' })).getAllByRole('row')[1];
+    expect([...(row?.children ?? [])].map((cell) => cell.textContent)).toStrictEqual([
+      'Sessions past 200K context',
+      'n/a',
+      '10%',
+      'n/a',
+    ]);
+  });
+
+  it('leaves the comparison out until there is something to compare', () => {
+    const early: TipsState = {
+      ...STATE,
+      tips: STATE.tips.map((tip) => ({
+        ...tip,
+        impact: { ...IMPACT, verdict: 'early', sessionsAfter: 0, weeks: [] },
+      })),
+    };
+    const { getAllByRole, queryByRole } = renderView(<TipsView state={early} />);
+    expect(getAllByRole('region', { name: /^Results since/u })[0]?.textContent).toContain(
+      VERDICT_INFO.early.label,
+    );
+    expect(queryByRole('table', { name: 'Before and since' })).toBeNull();
+    expect(queryByRole('table', { name: 'Week by week' })).toBeNull();
+  });
+});
+
+describe('impact formatting', () => {
+  it('formats each kind of value', () => {
+    expect(formatImpactValue(null, 'usd')).toBe('n/a');
+    expect(formatImpactValue(250_000, 'tokens')).toBe('250K');
+    expect(formatImpactValue(0.25, 'percent')).toBe('25%');
+    expect(formatImpactValue(1.25, 'per100')).toBe('1.3');
+  });
+
+  it('says which way a change went', () => {
+    expect(formatChange({ ...TARGET, direction: null })).toBe('n/a');
+    expect(formatChange({ ...TARGET, change: null, direction: 'worse' })).toBe(
+      'up from none, worse',
+    );
+    expect(formatChange(TARGET)).toBe('-80%, better');
   });
 });

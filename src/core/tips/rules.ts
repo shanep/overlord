@@ -1,16 +1,15 @@
-// The tips. Each rule looks at the totals to decide whether it applies at
+// The tip rules. Each looks at the totals to decide whether it applies at
 // all, and at each session to list the ones that show the problem worst.
 // Thresholds are set so a tip only shows when it is worth acting on.
 
-import type { Tip, TipSession, TipSeverity } from '../../shared/tips.js';
+import type { TipSeverity } from '../../shared/tips.js';
 
+import type { TipTracking } from './impact.js';
 import type { SessionMeasure } from './measure.js';
 import { costTotal } from './measure.js';
 import type { Totals } from './totals.js';
 import { LARGE_CONTEXT, LONG_SESSION_PROMPTS, sessionUsd } from './totals.js';
 import { percent, plural, tokens, usd } from './words.js';
-
-const SESSIONS_PER_TIP = 5;
 
 export interface TipRule {
   readonly id: string;
@@ -23,6 +22,10 @@ export interface TipRule {
   /** What following the advice gives up, so the choice is an informed one. */
   readonly cons: readonly string[];
   readonly skipWhen: string;
+  /** What to compare once you start following it. */
+  readonly track: TipTracking;
+  /** Knobs the advice says to set. Setting one from Overlord starts tracking the tip. */
+  readonly knobs?: readonly string[];
   /** What the transcripts show, or null when the tip does not apply. */
   readonly finding: (totals: Totals) => string | null;
   /** True when this session shows the problem. */
@@ -71,6 +74,13 @@ export const RULES: readonly TipRule[] = [
       '/clear and a new session drop everything Claude learned along the way: the decisions, the dead ends and the files it read. Getting back costs a rebuild, and Claude can repeat a mistake it had already ruled out.',
       '/compact keeps a summary, but a summary loses detail such as exact error text or why an approach failed.',
     ],
+    track: {
+      target: 'averageContext',
+      watch: [
+        { metric: 'extraReads', why: 'A fresh session reads the files again.' },
+        { metric: 'failures', why: 'Claude can repeat a mistake it had already ruled out.' },
+      ],
+    },
     skipWhen:
       'Keep going in the long session while you are in the middle of hard debugging or a design that took many turns to reach. Write a handoff note first as a safety net, and start fresh once that task is done.',
     finding: (t) =>
@@ -98,6 +108,11 @@ export const RULES: readonly TipRule[] = [
       'Auto compaction picks the moment, sometimes in the middle of a task, and the summary can drop details you still needed.',
       'After a compaction Claude may reread files to get them back, which eats into the savings.',
     ],
+    knobs: ['autoCompactWindow'],
+    track: {
+      target: 'largeShare',
+      watch: [{ metric: 'extraReads', why: 'After a compaction Claude may reread files.' }],
+    },
     skipWhen:
       'Leave the window large for work that needs a lot in view at once, such as a refactor across many files. You can set autoCompactWindow per project instead of for every session.',
     finding: (t) =>
@@ -124,6 +139,10 @@ export const RULES: readonly TipRule[] = [
       'Compacting before a break gives up detail you may want when you come back.',
       'If you come back before the cache expires, the rewrite never happens, so the compaction was for nothing.',
     ],
+    track: {
+      target: 'idleUsd',
+      watch: [{ metric: 'extraReads', why: 'Coming back to a summary means reading files again.' }],
+    },
     skipWhen:
       'Skip it for short breaks. The cache lasts at least 5 minutes after the last request, so picking up again soon costs nothing extra.',
     finding: (t) =>
@@ -151,6 +170,11 @@ export const RULES: readonly TipRule[] = [
       'A smaller model can miss subtle problems in a review or a tricky investigation, and a wrong summary costs more than the tokens it saved.',
       'The setting applies to every subagent without its own model, including ones you count on for careful work.',
     ],
+    knobs: ['CLAUDE_CODE_SUBAGENT_MODEL'],
+    track: {
+      target: 'premiumShare',
+      watch: [{ metric: 'failures', why: 'A smaller model can get things wrong more often.' }],
+    },
     skipWhen:
       'Keep Opus for subagents that review code, plan designs or debug. Set model: opus in those agents and let the cheaper default cover the rest.',
     finding: (t) =>
@@ -178,6 +202,16 @@ export const RULES: readonly TipRule[] = [
       'A filter can hide the line that mattered, such as a warning above the error you grepped for, and then Claude guesses or runs the command again.',
       'BASH_MAX_OUTPUT_LENGTH cuts output off at a fixed size without knowing what is important.',
     ],
+    knobs: ['BASH_MAX_OUTPUT_LENGTH'],
+    track: {
+      target: 'bigResults',
+      watch: [
+        {
+          metric: 'repeats',
+          why: 'A filter that hides the line that mattered means running again.',
+        },
+      ],
+    },
     skipWhen:
       'Let the full output through when you do not know yet what you are looking for, such as the first run of an unfamiliar failure. Saving it to a file keeps it available either way.',
     finding: (t) =>
@@ -204,6 +238,7 @@ export const RULES: readonly TipRule[] = [
       'In the background you do not watch progress as it happens, and an agent adds a little startup time.',
       'Stopping a retry loop to diagnose takes a turn that feels slower in the moment.',
     ],
+    track: { target: 'repeats', watch: [] },
     skipWhen:
       'A quick command you rerun after each small edit, such as one test or a build that takes seconds, is fine to run directly.',
     finding: (t) =>
@@ -229,6 +264,10 @@ export const RULES: readonly TipRule[] = [
     cons: [
       'Related tasks share a lot: the files, the conventions and the gotchas found along the way. A new session has to learn them again unless they are in CLAUDE.md or a handoff note.',
     ],
+    track: {
+      target: 'longShare',
+      watch: [{ metric: 'extraReads', why: 'Each new session learns the same files again.' }],
+    },
     skipWhen:
       'Stay in one session when the tasks build on each other, such as fixing a bug and then the tests it broke. Split when the next task is unrelated.',
     finding: (t) =>
@@ -254,6 +293,10 @@ export const RULES: readonly TipRule[] = [
       'Every allow rule is a command Claude can run without asking. A broad rule, such as all of Bash, removes a check you may want.',
       'The auto mode classifier denies things for a reason. Allowing around it defeats the point of auto mode.',
     ],
+    track: {
+      target: 'denials',
+      watch: [{ metric: 'failures', why: 'Commands that run without asking can still fail.' }],
+    },
     skipWhen:
       'Keep denying commands that change shared state: pushes, deletes, deploys, and anything touching production or the network.',
     finding: (t) =>
@@ -277,6 +320,10 @@ export const RULES: readonly TipRule[] = [
     cons: [
       'After an edit, a reread is how Claude sees the current file. Cutting it risks edits made against a stale copy.',
     ],
+    track: {
+      target: 'extraReads',
+      watch: [{ metric: 'failures', why: 'Edits made against a stale copy fail.' }],
+    },
     skipWhen:
       'A reread after the file changed (an edit, a formatter or a git operation) is worth it.',
     finding: (t) =>
@@ -300,6 +347,12 @@ export const RULES: readonly TipRule[] = [
     cons: [
       'CLAUDE.md loads into every session, so each line costs tokens on every request. Instructions also go stale when the project changes.',
     ],
+    track: {
+      target: 'failures',
+      watch: [
+        { metric: 'averageContext', why: 'Every line in CLAUDE.md is sent with each request.' },
+      ],
+    },
     skipWhen:
       'Some failures are the point: a failing test or a type error is how Claude finds the problem. Only setup mistakes and wrong commands are waste.',
     finding: (t) =>
@@ -325,6 +378,7 @@ export const RULES: readonly TipRule[] = [
     cons: [
       'Work that spans several repos has no single right folder, so some cd commands or absolute paths cannot be avoided.',
     ],
+    track: { target: 'cdShare', watch: [] },
     skipWhen:
       'Starting in your home folder is fine for quick questions that are not about one project.',
     finding: (t) =>
@@ -337,51 +391,6 @@ export const RULES: readonly TipRule[] = [
       `${m.cdCommands.toLocaleString('en-US')} of ${plural(m.bashCommands, 'command')} start with cd`,
   },
 ];
-
-const SEVERITY_ORDER: Readonly<Record<TipSeverity, number>> = { high: 0, medium: 1, low: 2 };
-
-function worstSessions(rule: TipRule, measures: readonly SessionMeasure[]): TipSession[] {
-  return measures
-    .filter((measure) => rule.flags(measure))
-    .toSorted((left, right) => rule.metric(right) - rule.metric(left))
-    .slice(0, SESSIONS_PER_TIP)
-    .map((measure) => ({
-      sessionId: measure.sessionId,
-      title: measure.title,
-      detail: rule.detail(measure),
-    }));
-}
-
-/** The tips that apply, most severe first, keeping rule order within a severity. */
-export function buildTips(totals: Totals, measures: readonly SessionMeasure[]): Tip[] {
-  const tips: Tip[] = [];
-  for (const rule of RULES) {
-    const finding = rule.finding(totals);
-    if (finding !== null) {
-      tips.push({
-        id: rule.id,
-        severity: rule.severity,
-        title: rule.title,
-        finding,
-        advice: rule.advice,
-        sessions: worstSessions(rule, measures),
-        fixes: rule.fixes,
-        pros: rule.pros,
-        cons: rule.cons,
-        skipWhen: rule.skipWhen,
-      });
-    }
-  }
-  return tips.toSorted(
-    (left, right) => SEVERITY_ORDER[left.severity] - SEVERITY_ORDER[right.severity],
-  );
-}
-
-/** Ids of the applied tips that flag this session. */
-export function tipsFor(measure: SessionMeasure, tips: readonly Tip[]): string[] {
-  const applied = new Set(tips.map((tip) => tip.id));
-  return RULES.filter((rule) => applied.has(rule.id) && rule.flags(measure)).map((rule) => rule.id);
-}
 
 /** Share of a session's cost that went to cache reads. */
 export function cacheReadShare(measure: SessionMeasure): number {

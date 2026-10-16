@@ -56,6 +56,7 @@ describe('measureSession', () => {
       sessionId: SESSION,
       title: 'Session aaaaaaaa',
       cwd: null,
+      startedAt: 42,
       updatedAt: 42,
       prompts: 0,
       requests: 0,
@@ -104,6 +105,7 @@ describe('measureSession', () => {
     expect(result.prompts).toBe(1);
     expect(result.title).toBe('Fix the build');
     expect(result.cwd).toBe('/work/demo');
+    expect(result.startedAt).toBe(Date.parse('2026-10-01T12:00:00.000Z'));
     expect(result.updatedAt).toBe(Date.parse('2026-10-01T12:00:03.000Z'));
   });
 

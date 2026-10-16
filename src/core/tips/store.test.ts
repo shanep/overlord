@@ -24,21 +24,22 @@ describe('tips index', () => {
     const file = await temporaryFile();
     const index = emptyIndex();
     const measure = measureOf({ spawns: { Explore: 2 }, topRepeat: { command: 'ls', runs: 3 } });
-    index.entries.set('/p/s.jsonl', { stamp: { mtimeMs: 5, size: 9 }, measure });
+    index.entries.set('/p/s.jsonl', { stamp: { mtimeMs: 5, size: 9 }, measure, live: false });
     index.scannedAt = 77;
     await saveIndex(file, index);
-    expect(JSON.parse(await readFile(file, 'utf8'))).toMatchObject({ version: 1, scannedAt: 77 });
+    expect(JSON.parse(await readFile(file, 'utf8'))).toMatchObject({ version: 2, scannedAt: 77 });
     const loaded = await loadIndex(file);
     expect(loaded.scannedAt).toBe(77);
     expect(loaded.entries.get('/p/s.jsonl')).toStrictEqual({
       stamp: { mtimeMs: 5, size: 9 },
       measure,
+      live: false,
     });
   });
 
   it('starts over from bad JSON, a wrong shape or an older version', async () => {
     const file = await temporaryFile();
-    for (const text of ['{oops', '{"version":1}', '{"version":0,"scannedAt":null,"entries":{}}']) {
+    for (const text of ['{oops', '{"version":2}', '{"version":1,"scannedAt":null,"entries":{}}']) {
       await writeFile(file, text);
       expect(await loadIndex(file)).toStrictEqual(emptyIndex());
     }

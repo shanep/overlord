@@ -2,15 +2,22 @@
 
 import type { TipsSessionRow, TipsState } from '../../shared/tips.js';
 
+import { buildTips, tipsFor } from './build.js';
 import type { SessionMeasure } from './measure.js';
-import { buildTips, cacheReadShare, tipsFor } from './rules.js';
+import { cacheReadShare } from './rules.js';
 import { buildSuggestions } from './suggestions.js';
 import { sessionUsd, totalsOf } from './totals.js';
 
 const MAX_ROWS = 200;
 
 export interface SummaryInputs {
+  /** Sessions whose transcript is still on disk. */
   readonly measures: readonly SessionMeasure[];
+  /** Sessions whose transcript Claude Code has since deleted. */
+  readonly history: readonly SessionMeasure[];
+  /** When you started following each tracked tip, by tip id. */
+  readonly tracked: ReadonlyMap<string, number>;
+  readonly now: number;
   /** Ids of suggestions already saved as a skill or agent. */
   readonly installed: ReadonlySet<string>;
   readonly home: string;
@@ -21,7 +28,13 @@ export function summarize(inputs: SummaryInputs): TipsState {
   // A session with no requests was opened and left, so it says nothing about habits.
   const measures = inputs.measures.filter((measure) => measure.requests > 0);
   const totals = totalsOf(measures, inputs.home);
-  const tips = buildTips(totals, measures);
+  const tips = buildTips({
+    totals,
+    live: measures,
+    all: [...measures, ...inputs.history],
+    tracked: inputs.tracked,
+    now: inputs.now,
+  });
   const rows: TipsSessionRow[] = measures
     .map((measure) => ({
       sessionId: measure.sessionId,

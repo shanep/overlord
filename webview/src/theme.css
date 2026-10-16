@@ -1088,3 +1088,27 @@ details > summary {
 .tradeoffs li {
   margin-bottom: 4px;
 }
+
+.tip-impact {
+  margin: 8px 0;
+  padding-top: 6px;
+  border-top: 1px solid var(--ov-border);
+}
+
+.tip-impact h4 {
+  margin: 0;
+  margin-right: auto;
+  font-size: 0.95em;
+}
+
+.tip-impact table {
+  margin: 6px 0;
+}
+
+.impact-better {
+  color: var(--ov-green);
+}
+
+.impact-worse {
+  color: var(--ov-red);
+}

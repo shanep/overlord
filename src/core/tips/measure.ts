@@ -32,6 +32,8 @@ export interface SessionMeasure {
   readonly sessionId: string;
   readonly title: string;
   readonly cwd: string | null;
+  /** Epoch ms of the first record. */
+  readonly startedAt: number;
   /** Epoch ms of the last record. */
   readonly updatedAt: number;
   readonly prompts: number;
@@ -223,6 +225,7 @@ function firstUsage(record: AssistantRecord, seen: Set<string>): Usage | null {
 class MainTally {
   title: string | null = null;
   cwd: string | null = null;
+  firstAt: number | null = null;
   lastAt: number | null = null;
   requests = 0;
   peakContext = 0;
@@ -260,6 +263,7 @@ class MainTally {
   private base(record: BaseRecord): void {
     this.cwd ??= record.cwd ?? null;
     const at = parseTimestamp(record.timestamp);
+    this.firstAt ??= at;
     this.lastAt = at ?? this.lastAt;
     if (record.type === 'system') {
       this.compactions += record.subtype === 'compact_boundary' ? 1 : 0;
@@ -409,6 +413,7 @@ export function measureSession(input: MeasureInput): SessionMeasure {
     sessionId: input.sessionId,
     title: oneLine(main.title ?? fallbackTitle, TITLE_CHARS),
     cwd: main.cwd,
+    startedAt: main.firstAt ?? input.fallbackAt,
     updatedAt: main.lastAt ?? input.fallbackAt,
     prompts: prompts.length,
     requests: main.requests,

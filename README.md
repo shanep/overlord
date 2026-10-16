@@ -48,6 +48,10 @@ See [PLAN.md](PLAN.md) for the full design and the decisions behind it.
   Each tip lists its pros and cons and when to skip it, since following one can mean giving up
   context a long session took hours to build. It also suggests skills and agents for work your
   sessions keep doing by hand, and **Create** writes one into `~/.claude` or the project.
+  **Track from now** on a tip compares the sessions you start after that with the 30 days
+  before, week by week, so you can see whether the advice made things better or worse. It
+  checks the habit the tip is about, the cost per prompt, and the side effects its cons warn
+  about. Setting a knob or creating a skill the tip names starts tracking on its own.
 - **Keep awake**: while Overlord is open the computer does not sleep, so agents keep working and
   the machine stays reachable remotely. The display still turns off. Turn it off with
   `overlord.keepAwake`.

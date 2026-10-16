@@ -10,6 +10,7 @@ export function measureOf(overrides: Partial<SessionMeasure> = {}): SessionMeasu
     sessionId: 'aaaaaaaa-1111-4111-8111-111111111111',
     title: 'Quiet session',
     cwd: '/work/demo',
+    startedAt: 500,
     updatedAt: 1000,
     prompts: 3,
     requests: 10,

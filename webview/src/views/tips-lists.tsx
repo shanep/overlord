@@ -17,6 +17,8 @@ import {
 import type { Tone } from '../labels.js';
 import { usePostAction } from '../vscode-context.js';
 
+import { TipResults } from './tips-impact.js';
+
 export const SEVERITY_INFO: Readonly<Record<TipSeverity, { label: string; tone: Tone }>> = {
   high: { label: 'High impact', tone: 'critical' },
   medium: { label: 'Medium impact', tone: 'warning' },
@@ -97,6 +99,7 @@ function TipCard(props: {
       <p>
         <strong>Skip it when:</strong> {tip.skipWhen}
       </p>
+      <TipResults tipId={tip.id} impact={tip.impact} />
       {fixes.length === 0 ? null : (
         <p className="muted">
           Would help:{' '}

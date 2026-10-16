@@ -6,7 +6,7 @@ import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { assistant, usage, userPrompt } from '../transcripts/test-helpers/fixtures.js';
 
-import { scanInto } from './scan.js';
+import { HISTORY_MS, scanInto } from './scan.js';
 import { emptyIndex } from './store.js';
 
 const S1 = 'aaaaaaaa-1111-4111-8111-111111111111';
@@ -81,16 +81,47 @@ describe('scanInto', () => {
     });
   });
 
-  it('forgets sessions whose transcript is gone', async () => {
+  it('keeps a gone transcript as history for a year, then forgets it', async () => {
     const home = await makeHome();
     const file = await home.transcript(S1, [REQUEST]);
     const index = emptyIndex();
     await scanInto(index, home.projectsDir, 10);
+    expect(index.entries.get(file)?.live).toBe(true);
     await rm(file);
     expect(await scanInto(index, home.projectsDir, 20)).toStrictEqual({
       filesRead: 0,
       filesGone: 1,
     });
+    expect(index.entries.get(file)?.live).toBe(false);
+    // Already history, so nothing changes.
+    expect(await scanInto(index, home.projectsDir, 30)).toStrictEqual({
+      filesRead: 0,
+      filesGone: 0,
+    });
+    const updatedAt = index.entries.get(file)?.measure.updatedAt ?? 0;
+    await scanInto(index, home.projectsDir, updatedAt + HISTORY_MS);
+    expect(index.entries.size).toBe(1);
+    expect(await scanInto(index, home.projectsDir, updatedAt + HISTORY_MS + 1)).toStrictEqual({
+      filesRead: 0,
+      filesGone: 1,
+    });
     expect(index.entries.size).toBe(0);
+  });
+
+  it('brings history back to life when its transcript returns unchanged', async () => {
+    const home = await makeHome();
+    const file = await home.transcript(S1, [REQUEST]);
+    const index = emptyIndex();
+    await scanInto(index, home.projectsDir, 10);
+    const entry = index.entries.get(file);
+    if (entry === undefined) {
+      throw new Error('not measured');
+    }
+    index.entries.set(file, { ...entry, live: false });
+    expect(await scanInto(index, home.projectsDir, 20)).toStrictEqual({
+      filesRead: 1,
+      filesGone: 0,
+    });
+    expect(index.entries.get(file)?.live).toBe(true);
   });
 });

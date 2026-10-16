@@ -435,6 +435,7 @@ export type WebviewAction =
   | { readonly type: 'rescanFrustration' }
   | { readonly type: 'rescanTips' }
   | { readonly type: 'createSuggestion'; readonly suggestionId: string }
+  | { readonly type: 'trackTip'; readonly tipId: string; readonly on: boolean }
   | { readonly type: 'setInboundPolicy'; readonly value: string | null }
   | { readonly type: 'newSession' }
   | { readonly type: 'landWorktree'; readonly id: string }

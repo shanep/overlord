@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
+import { buildTips, isTipId, tipsFor, tipsTakenBy } from './build.js';
 import type { SessionMeasure } from './measure.js';
 import type { TipRule } from './rules.js';
-import { buildTips, cacheReadShare, RULES, tipsFor } from './rules.js';
+import { cacheReadShare, RULES } from './rules.js';
 import { HOME, measureOf } from './test-helpers/fixtures.js';
 import { totalsOf } from './totals.js';
 
@@ -47,15 +48,42 @@ function finding(id: string, measures: readonly SessionMeasure[]): string | null
   return rule(id).finding(totalsOf(measures, HOME));
 }
 
+function tipsOf(
+  measures: readonly SessionMeasure[],
+  tracked: ReadonlyMap<string, number> = new Map(),
+): ReturnType<typeof buildTips> {
+  return buildTips({
+    totals: totalsOf(measures, HOME),
+    live: measures,
+    all: measures,
+    tracked,
+    now: 0,
+  });
+}
+
 describe('buildTips', () => {
   it('gives no tips for quiet sessions', () => {
-    expect(buildTips(totalsOf([QUIET], HOME), [QUIET])).toStrictEqual([]);
-    expect(buildTips(totalsOf([], HOME), [])).toStrictEqual([]);
+    expect(tipsOf([QUIET])).toStrictEqual([]);
+    expect(tipsOf([])).toStrictEqual([]);
+  });
+
+  it('keeps a tracked tip that no longer stands out, with its impact', () => {
+    const [tip, ...rest] = tipsOf([QUIET], new Map([['rereads', 100]]));
+    expect(rest).toStrictEqual([]);
+    expect(tip).toMatchObject({ id: 'rereads', sessions: [] });
+    expect(tip?.finding).toMatch(/^This no longer stands out/u);
+    expect(tip?.impact).toMatchObject({ trackedSince: 100, verdict: 'no-baseline' });
+  });
+
+  it('measures every rule against a target that is not just the cost', () => {
+    for (const each of RULES) {
+      expect([each.id, each.track.target]).not.toStrictEqual([each.id, 'costPerPrompt']);
+    }
   });
 
   it('gives every tip for noisy sessions, most severe first', () => {
     const measures = [NOISY, LONG, QUIET];
-    const tips = buildTips(totalsOf(measures, HOME), measures);
+    const tips = tipsOf(measures);
     expect(tips.map((tip) => [tip.id, tip.severity])).toStrictEqual([
       ['context-reread', 'high'],
       ['huge-context', 'high'],
@@ -172,7 +200,7 @@ describe('tradeoffs', () => {
       expect(item.skipWhen).not.toBe('');
     }
     const measures = [NOISY, LONG];
-    const [tip] = buildTips(totalsOf(measures, HOME), measures);
+    const [tip] = tipsOf(measures);
     expect(tip?.cons[0]).toMatch(/^\/clear and a new session drop everything Claude learned/u);
     expect(tip?.skipWhen).toMatch(/^Keep going in the long session/u);
   });
@@ -210,7 +238,7 @@ describe('session flags', () => {
 
   it('lists the tips that flag a session, among those that apply', () => {
     const measures = [NOISY, LONG];
-    const tips = buildTips(totalsOf(measures, HOME), measures);
+    const tips = tipsOf(measures);
     expect(tipsFor(NOISY, tips)).toHaveLength(11);
     expect(tipsFor(LONG, tips)).toStrictEqual(['long-sessions']);
     expect(tipsFor(NOISY, [])).toStrictEqual([]);
@@ -242,7 +270,7 @@ describe('session flags', () => {
     const measures = [1, 2, 3, 4, 5, 6].map((n) =>
       measureOf({ sessionId: `s${n.toString()}`, bigResults: n }),
     );
-    const [tip] = buildTips(totalsOf(measures, HOME), measures);
+    const [tip] = tipsOf(measures);
     expect(tip?.sessions.map((session) => session.sessionId)).toStrictEqual([
       's6',
       's5',
@@ -259,5 +287,17 @@ describe('cacheReadShare', () => {
     expect(
       cacheReadShare(measureOf({ cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 } })),
     ).toBe(0);
+  });
+});
+
+describe('tipsTakenBy and isTipId', () => {
+  it('finds the tips a knob or a suggestion follows', () => {
+    expect(tipsTakenBy({ kind: 'knob', key: 'autoCompactWindow' })).toStrictEqual(['huge-context']);
+    expect(tipsTakenBy({ kind: 'knob', key: 'model' })).toStrictEqual([]);
+    expect(tipsTakenBy({ kind: 'suggestion', id: 'ci-watch' })).toStrictEqual([
+      'repeated-commands',
+    ]);
+    expect(isTipId('rereads')).toBe(true);
+    expect(isTipId('nope')).toBe(false);
   });
 });
