@@ -45,6 +45,8 @@ export interface FleetRow {
   readonly needsProject: boolean;
   /** On the row of a project made by hand, its id, since only those can be renamed and deleted. */
   readonly manualProjectId: string | null;
+  /** On a project's row, the folder that opens in the window, or null while it has none. */
+  readonly projectFolder: string | null;
 }
 
 export interface FleetNode {
@@ -109,6 +111,7 @@ function sessionRow(
     projectId: project?.projectId ?? null,
     needsProject: project?.projectId === null && !project.ignored,
     manualProjectId: null,
+    projectFolder: null,
   };
 }
 
@@ -139,6 +142,7 @@ function agentRow(agent: AgentNode, session: FleetRow): FleetRow {
     projectId: session.projectId,
     needsProject: false,
     manualProjectId: null,
+    projectFolder: null,
   };
 }
 
@@ -210,6 +214,17 @@ function plural(count: number, noun: string): string {
   return `${count.toString()} ${noun}${count === 1 ? '' : 's'}`;
 }
 
+/** What a project's row knows about the project itself. Unassigned has none of it. */
+function projectFields(
+  project: ProjectSummary | null,
+): Pick<FleetRow, 'projectId' | 'manualProjectId' | 'projectFolder'> {
+  return {
+    projectId: project?.id ?? null,
+    manualProjectId: project?.kind === 'manual' ? project.id : null,
+    projectFolder: project?.folder ?? null,
+  };
+}
+
 /** A project's row: the most urgent state of its sessions and their totals. */
 function projectRow(project: ProjectSummary | null, nodes: readonly FleetNode[]): FleetRow {
   const rows = nodes.map((node) => node.row);
@@ -238,9 +253,8 @@ function projectRow(project: ProjectSummary | null, nodes: readonly FleetNode[])
     cacheHit: null,
     contextFill: null,
     costUsd: costs.length === 0 ? null : total(costs),
-    projectId: project?.id ?? null,
     needsProject: rows.some((row) => row.needsProject),
-    manualProjectId: project?.kind === 'manual' ? project.id : null,
+    ...projectFields(project),
   };
 }
 

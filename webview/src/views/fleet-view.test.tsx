@@ -415,19 +415,45 @@ describe('FleetView grouped by project', () => {
   it('posts project actions from row buttons and the m key', async () => {
     const user = userEvent.setup();
     const { api } = setup(projectFleet, new FakeApi());
-    expect(within(rowFor('web')).queryAllByRole('button', { name: /project/u })).toStrictEqual([]);
+    const names = (title: string): string[] =>
+      within(rowFor(title))
+        .queryAllByRole('button')
+        .map((button) => button.getAttribute('aria-label') ?? '')
+        .filter((name) => !/^(?:Collapse|Expand) /u.test(name));
+    expect(names('web')).toStrictEqual(['Open project folder web']);
+    expect(names('Unassigned')).toStrictEqual([]);
+    expect(names('Course')).toStrictEqual([
+      'Set project folder Course',
+      'Rename project Course',
+      'Delete project Course',
+    ]);
+    await user.click(screen.getByRole('button', { name: 'Open project folder web' }));
+    await user.click(screen.getByRole('button', { name: 'Set project folder Course' }));
     await user.click(screen.getByRole('button', { name: 'Rename project Course' }));
     await user.click(screen.getByRole('button', { name: 'Delete project Course' }));
     await user.click(screen.getByRole('button', { name: 'Move to project Write docs' }));
     await user.click(rowFor('Write docs'));
     await user.keyboard('m');
     expect(api.actions()).toStrictEqual([
+      { type: 'openProjectFolder', projectId: 'git:/r/web' },
+      { type: 'setProjectFolder', projectId: 'm1' },
       { type: 'renameProject', projectId: 'm1' },
       { type: 'deleteProject', projectId: 'm1' },
       { type: 'moveSession', sessionId: 's2' },
       { type: 'openSession', sessionId: 's2' },
       { type: 'moveSession', sessionId: 's2' },
     ]);
+  });
+
+  it('opens the folder of a project made by hand once it has one', async () => {
+    const user = userEvent.setup();
+    const projects = projectFleet.projects.map((item) =>
+      item.id === 'm1' ? { ...item, folder: '/class' } : item,
+    );
+    const { api } = setup({ ...projectFleet, projects }, new FakeApi());
+    await user.click(screen.getByRole('button', { name: 'Open project folder Course' }));
+    expect(screen.getByRole('button', { name: 'Set project folder Course' })).toBeDefined();
+    expect(api.actions()).toStrictEqual([{ type: 'openProjectFolder', projectId: 'm1' }]);
   });
 
   it('turns grouping off and saves the choice', async () => {

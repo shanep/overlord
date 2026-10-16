@@ -21,7 +21,7 @@ import type { FleetRow, VisibleRow } from './fleet-rows.js';
 import { elapsedMs, rowCallsPerMinute } from './fleet-rows.js';
 
 export type RowAction = 'open' | 'context' | 'interrupt' | 'stop' | 'move';
-export type ProjectAction = 'rename' | 'delete';
+export type ProjectAction = 'openFolder' | 'setFolder' | 'rename' | 'delete';
 
 const ACTION_LABELS: Readonly<Record<RowAction | ProjectAction, string>> = {
   open: 'Agent view',
@@ -29,6 +29,8 @@ const ACTION_LABELS: Readonly<Record<RowAction | ProjectAction, string>> = {
   interrupt: 'Interrupt',
   stop: 'Stop',
   move: 'Move to project',
+  openFolder: 'Open project folder',
+  setFolder: 'Set project folder',
   rename: 'Rename project',
   delete: 'Delete project',
 };
@@ -96,17 +98,21 @@ function RowActions(props: {
       disabled,
     );
   if (row.kind === 'project') {
-    const projectId = row.manualProjectId;
+    const { projectId, manualProjectId, projectFolder } = row;
+    const projectButton = (id: string, action: ProjectAction): ReactElement =>
+      iconButton(action, () => {
+        onProjectAction(id, action);
+      });
     return (
       <span className="actions">
-        {projectId === null ? null : (
+        {projectId === null || projectFolder === null
+          ? null
+          : projectButton(projectId, 'openFolder')}
+        {manualProjectId === null ? null : (
           <>
-            {iconButton('rename', () => {
-              onProjectAction(projectId, 'rename');
-            })}
-            {iconButton('delete', () => {
-              onProjectAction(projectId, 'delete');
-            })}
+            {projectButton(manualProjectId, 'setFolder')}
+            {projectButton(manualProjectId, 'rename')}
+            {projectButton(manualProjectId, 'delete')}
           </>
         )}
       </span>

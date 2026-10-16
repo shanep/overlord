@@ -64,7 +64,7 @@ export interface ProjectSummary {
   readonly id: string;
   readonly name: string;
   readonly kind: 'git' | 'manual';
-  /** The repository root of a git project, null for one made by hand. */
+  /** The repository root of a git project, or the folder set for one made by hand, else null. */
   readonly folder: string | null;
 }
 
@@ -444,7 +444,9 @@ export type WebviewAction =
   | { readonly type: 'moveSession'; readonly sessionId: string }
   | { readonly type: 'newProject'; readonly sessionId: string }
   | { readonly type: 'renameProject'; readonly projectId: string }
-  | { readonly type: 'deleteProject'; readonly projectId: string };
+  | { readonly type: 'deleteProject'; readonly projectId: string }
+  | { readonly type: 'openProjectFolder'; readonly projectId: string }
+  | { readonly type: 'setProjectFolder'; readonly projectId: string };
 
 export type WebviewToHost =
   | { readonly type: 'ready'; readonly view: ViewId }

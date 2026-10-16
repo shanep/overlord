@@ -1,7 +1,9 @@
 // Project actions: move a session's folder into a project, make a new
-// project, rename or delete one, and ask about sessions that are in none.
+// project, rename or delete one, open its folder in this window, and ask
+// about sessions that are in none.
 
 import { randomUUID } from 'node:crypto';
+import { stat } from 'node:fs/promises';
 import path from 'node:path';
 
 import type { SessionSummary } from '../../shared/model.js';
@@ -11,8 +13,10 @@ import {
   assignFolder,
   gitProjectId,
   ignoreFolder,
+  projectFolders,
   removeProject,
   renameProject,
+  setProjectFolder,
 } from '../projects/book.js';
 
 import type { ActionHandlers } from './action-types.js';
@@ -23,10 +27,18 @@ import { PROJECTS_REFRESH_MS } from './projects.js';
 import type { Runtime } from './runtime.js';
 import { fleetFor } from './views/fleet.js';
 
-type ProjectActions = 'moveSession' | 'newProject' | 'renameProject' | 'deleteProject';
+type ProjectActions =
+  | 'moveSession'
+  | 'newProject'
+  | 'renameProject'
+  | 'deleteProject'
+  | 'openProjectFolder'
+  | 'setProjectFolder';
 
 const NEW_ID = 'new';
 const IGNORE_ID = 'ignore';
+const BROWSE_ID = 'browse';
+export const BROWSE_LABEL = 'Choose a folder…';
 export const ADD_LABEL = 'Add to project…';
 export const NEW_LABEL = 'New project…';
 export const IGNORE_LABEL = 'Never ask for this folder';
@@ -79,7 +91,7 @@ async function createFor(rt: Runtime, target: Placed): Promise<void> {
   }
   const id = randomUUID();
   await rt.projects.update((book) =>
-    assignFolder(addProject(book, { id, name }), target.project.folder, id, null),
+    assignFolder(addProject(book, { id, name, folder: null }), target.project.folder, id, null),
   );
 }
 
@@ -191,6 +203,34 @@ function manualName(rt: Runtime, projectId: string): string | null {
   return rt.projects.book.projects.find((item) => item.id === projectId)?.name ?? null;
 }
 
+async function isFolder(folder: string): Promise<boolean> {
+  try {
+    const info = await stat(folder);
+    return info.isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The folder picked for a project, or null when cancelled. The folders its
+ * sessions run in come first, since one of them is the likely answer.
+ */
+async function chooseFolder(rt: Runtime, projectId: string, name: string): Promise<string | null> {
+  const current = rt.projects.book.projects.find((item) => item.id === projectId)?.folder ?? null;
+  const known = projectFolders(rt.projects.book, projectId).filter((item) => item !== current);
+  const title = `Folder for ${name}`;
+  if (known.length === 0) {
+    return rt.host.pickFolder(title);
+  }
+  const items: PickItem[] = [
+    ...known.map((folder) => ({ id: folder, label: path.basename(folder), description: folder })),
+    { id: BROWSE_ID, label: BROWSE_LABEL, description: '' },
+  ];
+  const picked = await rt.host.quickPick(items, title);
+  return picked === BROWSE_ID ? rt.host.pickFolder(title) : picked;
+}
+
 export const projectActions: ActionHandlers<ProjectActions> = {
   moveSession: async ({ rt }, action) => {
     const target = placed(rt, action.sessionId);
@@ -224,6 +264,33 @@ export const projectActions: ActionHandlers<ProjectActions> = {
     const message = `Delete the project "${name}"? Its sessions go back to their repository or to Unassigned.`;
     if (await rt.host.confirm(message, 'Delete')) {
       await rt.projects.update((book) => removeProject(book, action.projectId));
+    }
+  },
+  openProjectFolder: async ({ rt }, action) => {
+    const project = fleetFor(rt).projects.find((item) => item.id === action.projectId);
+    if (project === undefined) {
+      rt.host.showInfo('That project is gone.');
+      return;
+    }
+    if (project.folder === null) {
+      rt.host.showInfo(`Set a folder for ${project.name} first.`);
+      return;
+    }
+    if (!(await isFolder(project.folder))) {
+      rt.host.showInfo(`${project.folder} is gone or is not a folder.`);
+      return;
+    }
+    await rt.host.showFolder(project.folder);
+  },
+  setProjectFolder: async ({ rt }, action) => {
+    const name = manualName(rt, action.projectId);
+    if (name === null) {
+      rt.host.showInfo('A git project always opens its repository, so its folder is fixed.');
+      return;
+    }
+    const folder = await chooseFolder(rt, action.projectId, name);
+    if (folder !== null) {
+      await rt.projects.update((book) => setProjectFolder(book, action.projectId, folder));
     }
   },
 };

@@ -136,7 +136,7 @@ describe('projects file', () => {
     const file = storagePath(env.storageDir, 'projects');
     expect(await readProjects(file)).toStrictEqual({ projects: [], rules: [] });
     const book = {
-      projects: [{ id: 'p1', name: 'Course' }],
+      projects: [{ id: 'p1', name: 'Course', folder: null }],
       rules: [
         { folder: '/notes', projectId: 'p1' },
         { folder: '/tmp', projectId: null },
@@ -147,10 +147,24 @@ describe('projects file', () => {
     expect(await readProjects(file)).toStrictEqual(book);
   });
 
+  it('reads a project saved before projects had folders as having none', async () => {
+    const env = await makeEnv();
+    const file = storagePath(env.storageDir, 'projects');
+    await writeJson(file, { version: 1, projects: [{ id: 'p1', name: 'Course' }], rules: [] });
+    expect(await readProjects(file)).toStrictEqual({
+      projects: [{ id: 'p1', name: 'Course', folder: null }],
+      rules: [],
+    });
+  });
+
   it('rejects a file in the wrong shape', async () => {
     const env = await makeEnv();
     const file = storagePath(env.storageDir, 'projects');
-    await writeJson(file, { version: 1, projects: [{ id: '', name: 'x' }], rules: [] });
+    await writeJson(file, {
+      version: 1,
+      projects: [{ id: '', name: 'x', folder: null }],
+      rules: [],
+    });
     await expect(readProjects(file)).rejects.toThrow('not in the expected format');
   });
 });

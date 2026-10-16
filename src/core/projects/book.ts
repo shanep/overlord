@@ -10,6 +10,8 @@ import type { ProjectSummary, SessionProject } from '../../shared/protocol.js';
 export interface ManualProject {
   readonly id: string;
   readonly name: string;
+  /** The folder the fleet opens for this project, or null until the user sets one. */
+  readonly folder: string | null;
 }
 
 /** A folder the user placed by hand. A null project means never ask about it. */
@@ -117,6 +119,22 @@ export function renameProject(book: ProjectBook, projectId: string, name: string
   };
 }
 
+export function setProjectFolder(
+  book: ProjectBook,
+  projectId: string,
+  folder: string,
+): ProjectBook {
+  return {
+    projects: book.projects.map((item) => (item.id === projectId ? { ...item, folder } : item)),
+    rules: book.rules,
+  };
+}
+
+/** The folders placed in a project by hand, in the order they were placed. */
+export function projectFolders(book: ProjectBook, projectId: string): readonly string[] {
+  return book.rules.filter((rule) => rule.projectId === projectId).map((rule) => rule.folder);
+}
+
 /** Remove a project and its rules, so its folders go back to their repo or to Unassigned. */
 export function removeProject(book: ProjectBook, projectId: string): ProjectBook {
   return {
@@ -137,7 +155,7 @@ export function projectSummaries(
     id: item.id,
     name: item.name,
     kind: 'manual',
-    folder: null,
+    folder: item.folder,
   }));
   const git = [...new Set(repoRoots)].map((root): ProjectSummary => ({
     id: gitProjectId(root),

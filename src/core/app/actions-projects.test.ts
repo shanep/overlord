@@ -4,7 +4,13 @@ import type { SessionSummary } from '../../shared/model.js';
 import type { LaunchRun } from '../../shared/protocol.js';
 import type { ExecResult } from '../sync/exec.js';
 
-import { ADD_LABEL, checkProjects, IGNORE_LABEL, NEW_LABEL } from './actions-projects.js';
+import {
+  ADD_LABEL,
+  BROWSE_LABEL,
+  checkProjects,
+  IGNORE_LABEL,
+  NEW_LABEL,
+} from './actions-projects.js';
 import { readProjects, storagePath } from './storage.js';
 import type { TestApp } from './test-helpers/fixtures.js';
 import { makeApp, makeEnv, ok, session, settle, waitFor } from './test-helpers/fixtures.js';
@@ -33,6 +39,11 @@ async function app(...sessions: SessionSummary[]): Promise<TestApp> {
 
 async function book(test: TestApp): Promise<Awaited<ReturnType<typeof readProjects>>> {
   return readProjects(storagePath(test.env.storageDir, 'projects'));
+}
+
+async function courseFolder(test: TestApp): Promise<string | null | undefined> {
+  const { projects } = await book(test);
+  return projects[0]?.folder;
 }
 
 function projectOf(test: TestApp, sessionId: string): string | null | undefined {
@@ -157,7 +168,7 @@ describe('renameProject and deleteProject', () => {
     }
     expect(test.env.host.inputs.at(-1)).toStrictEqual({ prompt: 'Project name', value: 'Course' });
     const { projects } = await book(test);
-    expect(projects).toStrictEqual([{ id, name: 'Class' }]);
+    expect(projects).toStrictEqual([{ id, name: 'Class', folder: null }]);
   });
 
   it('deletes after a yes, and the sessions go back to Unassigned', async () => {
@@ -174,6 +185,83 @@ describe('renameProject and deleteProject', () => {
     });
     expect(projectOf(test, 's1')).toBeNull();
     expect(await book(test)).toStrictEqual({ projects: [], rules: [] });
+  });
+});
+
+describe('setProjectFolder', () => {
+  it('leaves a git project at its repository', async () => {
+    const test = await app(REPO);
+    await test.app.dispatch({ type: 'setProjectFolder', projectId: 'git:/repo' }, {});
+    expect(test.env.host.infos).toStrictEqual([
+      'A git project always opens its repository, so its folder is fixed.',
+    ]);
+    expect(test.env.host.picks).toStrictEqual([]);
+  });
+
+  it('offers the folders its sessions run in, then any folder', async () => {
+    const { test, id } = await withCourse();
+    await test.app.dispatch({ type: 'setProjectFolder', projectId: id }, {});
+    expect(test.env.host.picks).toStrictEqual([
+      {
+        placeholder: 'Folder for Course',
+        items: [
+          { id: '/notes', label: 'notes', description: '/notes' },
+          { id: 'browse', label: BROWSE_LABEL, description: '' },
+        ],
+      },
+    ]);
+    expect(await courseFolder(test)).toBeNull();
+    test.env.host.pickAnswers.push('/notes');
+    await test.app.dispatch({ type: 'setProjectFolder', projectId: id }, {});
+    expect(await courseFolder(test)).toBe('/notes');
+    test.env.host.pickAnswers.push('browse');
+    test.env.host.folderAnswers.push('/elsewhere');
+    await test.app.dispatch({ type: 'setProjectFolder', projectId: id }, {});
+    expect(test.env.host.folderPicks).toStrictEqual(['Folder for Course']);
+    expect(await courseFolder(test)).toBe('/elsewhere');
+    expect(fleetFor(test.app.runtime).projects.find((item) => item.id === id)?.folder).toBe(
+      '/elsewhere',
+    );
+  });
+
+  it('goes straight to the folder picker when no session folder is left to offer', async () => {
+    const { test, id } = await withCourse();
+    test.env.host.pickAnswers.push('/notes');
+    await test.app.dispatch({ type: 'setProjectFolder', projectId: id }, {});
+    await test.app.dispatch({ type: 'setProjectFolder', projectId: id }, {});
+    expect(test.env.host.picks).toHaveLength(1);
+    expect(test.env.host.folderPicks).toStrictEqual(['Folder for Course']);
+    expect(await courseFolder(test)).toBe('/notes');
+  });
+});
+
+describe('openProjectFolder', () => {
+  it('explains a project that is gone, has no folder yet, or whose folder was removed', async () => {
+    const { test, id } = await withCourse();
+    test.bus.emit('session.upserted', REPO);
+    await test.app.runtime.projects.refresh([REPO.cwd]);
+    for (const projectId of ['nobody', id, 'git:/repo']) {
+      await test.app.dispatch({ type: 'openProjectFolder', projectId }, {});
+    }
+    expect(test.env.host.infos).toStrictEqual([
+      'That project is gone.',
+      'Set a folder for Course first.',
+      '/repo is gone or is not a folder.',
+    ]);
+    expect(test.env.host.folders).toStrictEqual([]);
+  });
+
+  it('opens the folder in this window, and never a file as one', async () => {
+    const { test, id } = await withCourse();
+    const file = storagePath(test.env.storageDir, 'projects');
+    test.env.host.pickAnswers.push('browse', 'browse');
+    test.env.host.folderAnswers.push(file, test.env.storageDir);
+    await test.app.dispatch({ type: 'setProjectFolder', projectId: id }, {});
+    await test.app.dispatch({ type: 'openProjectFolder', projectId: id }, {});
+    expect(test.env.host.infos).toStrictEqual([`${file} is gone or is not a folder.`]);
+    await test.app.dispatch({ type: 'setProjectFolder', projectId: id }, {});
+    await test.app.dispatch({ type: 'openProjectFolder', projectId: id }, {});
+    expect(test.env.host.folders).toStrictEqual([test.env.storageDir]);
   });
 });
 

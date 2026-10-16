@@ -8,13 +8,15 @@ import {
   gitProjectId,
   ignoreFolder,
   isInside,
+  projectFolders,
   projectSummaries,
   removeProject,
   renameProject,
   resolveProject,
+  setProjectFolder,
 } from './book.js';
 
-const COURSE = { id: 'p1', name: 'Course' };
+const COURSE = { id: 'p1', name: 'Course', folder: null };
 
 function book(rules: ProjectBook['rules']): ProjectBook {
   return { projects: [COURSE], rules };
@@ -109,10 +111,10 @@ describe('book changes', () => {
   it('adds, renames and removes projects with their rules', () => {
     const added = addProject(EMPTY_BOOK, COURSE);
     expect(added.projects).toStrictEqual([COURSE]);
-    const two = addProject(added, { id: 'p2', name: 'Two' });
+    const two = addProject(added, { id: 'p2', name: 'Two', folder: null });
     expect(renameProject(two, 'p1', 'Class').projects).toStrictEqual([
-      { id: 'p1', name: 'Class' },
-      { id: 'p2', name: 'Two' },
+      { id: 'p1', name: 'Class', folder: null },
+      { id: 'p2', name: 'Two', folder: null },
     ]);
     const withRules = {
       projects: two.projects,
@@ -123,7 +125,7 @@ describe('book changes', () => {
       ],
     };
     expect(removeProject(withRules, 'p1')).toStrictEqual({
-      projects: [{ id: 'p2', name: 'Two' }],
+      projects: [{ id: 'p2', name: 'Two', folder: null }],
       rules: [
         { folder: '/b', projectId: 'p2' },
         { folder: '/c', projectId: null },
@@ -132,7 +134,34 @@ describe('book changes', () => {
   });
 });
 
+describe('project folders', () => {
+  it('sets the folder of one project only', () => {
+    const two = addProject(book([]), { id: 'p2', name: 'Two', folder: null });
+    expect(setProjectFolder(two, 'p2', '/two')).toStrictEqual({
+      projects: [COURSE, { id: 'p2', name: 'Two', folder: '/two' }],
+      rules: [],
+    });
+  });
+
+  it('lists the folders placed in a project, not in others or ignored', () => {
+    const rules = book([
+      { folder: '/a', projectId: 'p1' },
+      { folder: '/b', projectId: 'p2' },
+      { folder: '/c', projectId: null },
+      { folder: '/d', projectId: 'p1' },
+    ]);
+    expect(projectFolders(rules, 'p1')).toStrictEqual(['/a', '/d']);
+  });
+});
+
 describe('projectSummaries', () => {
+  it('gives a hand made project the folder set for it', () => {
+    const set = setProjectFolder(book([]), 'p1', '/course');
+    expect(projectSummaries(set, [])).toStrictEqual([
+      { id: 'p1', name: 'Course', kind: 'manual', folder: '/course' },
+    ]);
+  });
+
   it('lists hand made projects and each repository once', () => {
     expect(projectSummaries(book([]), ['/r/app', '/r/app', '/r/web'])).toStrictEqual([
       { id: 'p1', name: 'Course', kind: 'manual', folder: null },
@@ -142,10 +171,10 @@ describe('projectSummaries', () => {
   });
 
   it('adds the parent folder to repositories that share a name', () => {
-    const named = projectSummaries({ projects: [{ id: 'p1', name: 'app' }], rules: [] }, [
-      '/work/app',
-      '/play/app',
-    ]).map((item) => item.name);
+    const named = projectSummaries(
+      { projects: [{ id: 'p1', name: 'app', folder: null }], rules: [] },
+      ['/work/app', '/play/app'],
+    ).map((item) => item.name);
     expect(named).toStrictEqual(['app', 'app (work)', 'app (play)']);
   });
 });

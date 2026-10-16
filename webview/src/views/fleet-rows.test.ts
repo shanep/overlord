@@ -81,10 +81,16 @@ describe('buildFleetTree grouped by project', () => {
       manualProjectId: null,
       sessionActive: false,
     });
-    expect(course).toMatchObject({ title: 'Course', state: 'done', manualProjectId: 'm1' });
+    expect(course).toMatchObject({
+      title: 'Course',
+      state: 'done',
+      manualProjectId: 'm1',
+      projectFolder: null,
+    });
     expect(web).toMatchObject({
       title: 'web',
       detail: '/r/web',
+      projectFolder: '/r/web',
       state: 'running',
       tokensIn: 98_000,
       tokensOut: 3400,
@@ -173,6 +179,7 @@ describe('buildFleetTree', () => {
       projectId: null,
       needsProject: false,
       manualProjectId: null,
+      projectFolder: null,
     });
   });
 

@@ -149,6 +149,17 @@ export const ROW_BUTTONS: readonly RowButton[] = [
       'Puts every session in this folder in another project or a new one. For a folder with no git repository, it can also tell Overlord never to ask about it. The m key does the same.',
   },
   {
+    icon: 'openFolder',
+    name: 'Open project folder',
+    meaning:
+      "On a project's row, adds its folder to this window and shows it in the Explorer, so you can browse, search and edit it like any other folder. The window stays open, so its sessions keep running.",
+  },
+  {
+    icon: 'setFolder',
+    name: 'Set project folder',
+    meaning: 'On a project you made, picks the folder that Open project folder opens.',
+  },
+  {
     icon: 'rename',
     name: 'Rename project',
     meaning: 'On the row of a project you made, gives it a new name.',

@@ -58,6 +58,42 @@ function readSettings(): OverlordSettings {
   };
 }
 
+/** How long to wait for VS Code to report a folder added to the workspace. */
+const FOLDER_ADDED_MS = 5000;
+
+/** Resolves once the workspace folders change, or after FOLDER_ADDED_MS, whichever comes first. */
+async function foldersChanged(): Promise<void> {
+  let listener: vscode.Disposable | undefined;
+  let timer: NodeJS.Timeout | undefined;
+  try {
+    await new Promise<void>((resolve) => {
+      listener = vscode.workspace.onDidChangeWorkspaceFolders(() => {
+        resolve();
+      });
+      timer = setTimeout(resolve, FOLDER_ADDED_MS);
+    });
+  } finally {
+    clearTimeout(timer);
+    listener?.dispose();
+  }
+}
+
+/**
+ * Append the folder to the workspace, so the window's first folder stays put.
+ * Changing the first folder restarts every extension, Overlord included.
+ */
+async function addToWorkspace(uri: vscode.Uri): Promise<void> {
+  const folders = vscode.workspace.workspaceFolders ?? [];
+  if (folders.some((item) => item.uri.fsPath === uri.fsPath)) {
+    return;
+  }
+  const changed = foldersChanged();
+  if (!vscode.workspace.updateWorkspaceFolders(folders.length, 0, { uri })) {
+    throw new Error(`VS Code would not add ${uri.fsPath} to this window.`);
+  }
+  await changed;
+}
+
 export interface VscodeHostPortOptions {
   readonly context: vscode.ExtensionContext;
   readonly openPanel: (view: ViewId, params: PanelParams) => void;
@@ -79,6 +115,12 @@ export function createVscodeHostPort(options: VscodeHostPortOptions): HostPort {
     openFile: async (file: string): Promise<void> => {
       const document = await vscode.workspace.openTextDocument(vscode.Uri.file(file));
       await vscode.window.showTextDocument(document, { preview: false });
+    },
+    showFolder: async (folder: string): Promise<void> => {
+      const uri = vscode.Uri.file(folder);
+      await addToWorkspace(uri);
+      await vscode.commands.executeCommand('workbench.view.explorer');
+      await vscode.commands.executeCommand('revealInExplorer', uri);
     },
     runInTerminal: (request: TerminalRequest): void => {
       // Claude sessions get a full editor tab, like the CLI in its own window.

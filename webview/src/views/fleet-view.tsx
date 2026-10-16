@@ -41,6 +41,14 @@ interface PendingConfirm {
 
 const NO_KEYS: readonly string[] = [];
 
+/** The host action each project row button posts. */
+const PROJECT_ACTIONS = {
+  openFolder: 'openProjectFolder',
+  setFolder: 'setProjectFolder',
+  rename: 'renameProject',
+  delete: 'deleteProject',
+} as const satisfies Record<ProjectAction, string>;
+
 function useFleetPreferences(): {
   readonly sort: SortState;
   readonly setSort: (next: SortState) => void;
@@ -310,7 +318,7 @@ export function FleetView(props: { readonly state: FleetState }): ReactElement {
           }}
           onAction={onAction}
           onProjectAction={(projectId: string, action: ProjectAction) => {
-            post({ type: action === 'rename' ? 'renameProject' : 'deleteProject', projectId });
+            post({ type: PROJECT_ACTIONS[action], projectId });
           }}
         />
       )}

@@ -26,7 +26,9 @@ See [PLAN.md](PLAN.md) for the full design and the decisions behind it.
   the session that ran in that window's folder. Sessions are grouped by project. A git repo is a
   project on its own, and its worktrees count as the repo. A session in any other folder lands
   in Unassigned, and the window running it asks once whether to add it to a project, make a new
-  one, or never ask about that folder again.
+  one, or never ask about that folder again. The folder button on a project's row adds its folder
+  to the current window and shows it in the Explorer, so you can edit it like any other folder. A
+  project you made has no folder until you set one.
 - **Agent detail**: the live feed of thinking and tool calls, a tool timeline, and token, cost
   and context charts.
 - **Context inspector**: the system prompt, every memory file that loaded (and why), and every

@@ -26,6 +26,10 @@ const SHAPES = {
   prompt: <path d="m3 5 3 3-3 3M8 11h5" />,
   /** A folder with an arrow: move to another project. */
   move: <path d="M2 4.5h4l1.5 1.5H14v6.5H2zM7 9.5h4M9.5 8l1.5 1.5L9.5 11" />,
+  /** An open folder: show the project's folder in the Explorer. */
+  openFolder: <path d="M2 12.5V3.5h4L7.5 5H12v2M2 12.5 4 7h10.5l-2 5.5z" />,
+  /** A folder with a plus: choose the project's folder. */
+  setFolder: <path d="M2 4.5h4l1.5 1.5H14v6.5H2zM8 7.5v3.5M6.25 9.25h3.5" />,
   /** A pencil: rename. */
   rename: <path d="m10.5 3 2.5 2.5L6 12.5H3.5V10zM9 4.5 11.5 7" />,
   /** A bin: delete. */

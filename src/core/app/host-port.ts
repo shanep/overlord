@@ -58,6 +58,11 @@ export interface OverlordSettings {
 export interface HostPort {
   readonly openPanel: (view: ViewId, params: PanelParams) => void;
   readonly openFile: (path: string) => Promise<void>;
+  /**
+   * Add a folder to this window's workspace, unless it is there already, and
+   * show it in the Explorer. The window stays open, so its terminals keep running.
+   */
+  readonly showFolder: (folder: string) => Promise<void>;
   readonly runInTerminal: (request: TerminalRequest) => void;
   /**
    * Focus the terminal tab for a session: the tab Overlord opened for it, or

@@ -35,6 +35,7 @@ export interface FakeHostOptions {
 export class FakeHost implements HostPort {
   readonly panels: { readonly view: ViewId; readonly params: PanelParams }[] = [];
   readonly opened: string[] = [];
+  readonly folders: string[] = [];
   readonly terminals: TerminalRequest[] = [];
   readonly shown: TerminalTarget[] = [];
   /** Session ids with a tab Overlord opened, which showTerminal finds. */
@@ -76,6 +77,11 @@ export class FakeHost implements HostPort {
 
   readonly openFile = async (file: string): Promise<void> => {
     this.opened.push(file);
+    await Promise.resolve();
+  };
+
+  readonly showFolder = async (folder: string): Promise<void> => {
+    this.folders.push(folder);
     await Promise.resolve();
   };
 

@@ -65,7 +65,13 @@ const importFileSchema = z.object({
 
 const projectsFileSchema = z.object({
   version: z.literal(1),
-  projects: z.array(z.object({ id: z.string().min(1), name: z.string().min(1) })),
+  projects: z.array(
+    z.object({
+      id: z.string().min(1),
+      name: z.string().min(1),
+      folder: z.string().min(1).nullable().default(null),
+    }),
+  ),
   rules: z.array(z.object({ folder: z.string().min(1), projectId: z.string().min(1).nullable() })),
 });
 

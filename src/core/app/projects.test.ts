@@ -111,7 +111,7 @@ describe('ProjectIndex', () => {
     const { index, file, onChange, report } = await harness();
     await index.load();
     expect(onChange).not.toHaveBeenCalled();
-    const book = { projects: [{ id: 'p1', name: 'Course' }], rules: [] };
+    const book = { projects: [{ id: 'p1', name: 'Course', folder: null }], rules: [] };
     await writeProjects(file, book);
     await index.load();
     await index.load();
@@ -125,15 +125,15 @@ describe('ProjectIndex', () => {
 
   it('changes the book on disk, keeping what another window wrote', async () => {
     const { index, file, onChange } = await harness();
-    await writeProjects(file, { projects: [{ id: 'p1', name: 'One' }], rules: [] });
+    await writeProjects(file, { projects: [{ id: 'p1', name: 'One', folder: null }], rules: [] });
     await index.update((book) => ({
-      projects: [...book.projects, { id: 'p2', name: 'Two' }],
+      projects: [...book.projects, { id: 'p2', name: 'Two', folder: null }],
       rules: book.rules,
     }));
     const expected = {
       projects: [
-        { id: 'p1', name: 'One' },
-        { id: 'p2', name: 'Two' },
+        { id: 'p1', name: 'One', folder: null },
+        { id: 'p2', name: 'Two', folder: null },
       ],
       rules: [],
     };
@@ -150,7 +150,7 @@ describe('ProjectIndex', () => {
     await Promise.all(
       ['p1', 'p2'].map(async (id) =>
         index.update((book) => ({
-          projects: [...book.projects, { id, name: id }],
+          projects: [...book.projects, { id, name: id, folder: null }],
           rules: book.rules,
         })),
       ),
