@@ -1,6 +1,7 @@
 # Hooks stay fast: they only look at what changed. CI runs the full
 # `npm run check` and mutation gates on every push, so nothing reaches
-# master without them.
+# master without them. The heavy jobs take turns with other sessions'
+# checks through scripts/slot.mjs, so a busy machine does not crawl.
 pre-commit:
   parallel: true
   jobs:
@@ -8,7 +9,7 @@ pre-commit:
       run: npm run -s typecheck:fast
     - name: lint
       glob: '*.{ts,tsx,mjs,cjs}'
-      run: npx eslint --max-warnings 0 --cache --cache-location .cache/eslint/ {staged_files}
+      run: node scripts/slot.mjs npx eslint --max-warnings 0 --cache --cache-location .cache/eslint/ {staged_files}
     - name: format
       glob: '*.{ts,tsx,mjs,cjs,json,md,yml}'
       run: npx prettier --check {staged_files}
@@ -16,7 +17,7 @@ pre-commit:
       run: npm run -s nodash
     - name: related tests
       glob: '*.{ts,tsx}'
-      run: npx vitest related --run --passWithNoTests {staged_files}
+      run: npm run -s test:related -- {staged_files}
 
 pre-push:
   jobs:

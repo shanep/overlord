@@ -11,8 +11,9 @@ const config: KnipConfig = {
     'test/fake-claude/*.mjs',
     'test/integration/**/*.ts',
   ],
-  // Loaded by @vscode/test-cli at runtime, not imported.
-  ignoreDependencies: ['@vscode/test-electron'],
+  // @vscode/test-electron is loaded by @vscode/test-cli at runtime, not imported.
+  // type-coverage runs through scripts/slot.mjs, where knip cannot see the binary.
+  ignoreDependencies: ['@vscode/test-electron', 'type-coverage'],
   project: ['src/**/*.ts', 'webview/**/*.{ts,tsx}', 'scripts/**/*.mjs', 'test/**/*.{ts,mjs}'],
 };
 

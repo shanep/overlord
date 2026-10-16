@@ -13,9 +13,16 @@ minutes and CI runs it on every push anyway.
   typecheck:
 
   ```sh
-  npx vitest related --run src/core/foo.ts src/core/foo.test.ts
+  npm run -s test:related -- src/core/foo.ts src/core/foo.test.ts
   npm run -s typecheck:fast
   ```
+
+- Heavy scripts (tsc, eslint, vitest, stryker) take turns with other
+  sessions through `scripts/slot.mjs`, so one may print "Waiting for a free
+  check slot" and sit for a while. That is not a hang. Give the command a
+  timeout of 10 minutes or run it in the background, and do not kill it and
+  start it again. Run these through npm scripts, not `npx`, so they wait
+  their turn.
 
 - `git commit` runs typecheck, lint, format and the related tests on the
   staged files. If it passes, the commit is checked.

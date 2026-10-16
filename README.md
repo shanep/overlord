@@ -163,6 +163,7 @@ install over a copy older than this needs one reload by hand.
 
 ```sh
 npm test                       # unit tests
+npm run test:related -- <files> # only the tests that import those files
 npm run test:coverage          # unit tests with the 90% coverage gate
 npm run test:mutation:changed  # Stryker on the files you changed, a minute or two
 npm run test:mutation          # Stryker on everything, about 13 minutes
@@ -189,6 +190,11 @@ The git hooks only look at what changed, so they stay quick:
 
 The hooks only lint what changed, so a type change in one file can hide an error in another
 until CI's full lint catches it.
+
+Typecheck, lint, test, mutation and type coverage scripts run through `scripts/slot.mjs`, which
+lets only a third of the cores' worth of them run at once across the machine. With many sessions
+checking their work together, taking turns finishes each one sooner than running them all at
+once. Set `OVERLORD_CHECK_SLOTS` to change the limit.
 
 None of the tests call the Claude API. Sessions run against a fake Claude binary in
 `test/fake-claude/` that replays scripted conversations through the real Agent SDK.
