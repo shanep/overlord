@@ -13,11 +13,11 @@ import { formatJson, JsonView } from './json-view.js';
 import { Meter, meterTone } from './meter.js';
 
 describe('Badge', () => {
-  it('renders a label with a tone class and title', () => {
+  it('renders a label with a tone class and tooltip', () => {
     const { getByText } = render(<Badge label="modified" tone="warning" title="Changed" />);
     const badge = getByText('modified');
     expect(badge.className).toBe('badge badge-warning');
-    expect(badge.title).toBe('Changed');
+    expect(badge.dataset['tip']).toBe('Changed');
   });
 
   it('defaults to the neutral tone', () => {
@@ -27,11 +27,11 @@ describe('Badge', () => {
 
   it('shows state as a hidden glyph plus a word', () => {
     const { container } = render(<StateBadge state="failed" />);
-    const state = container.querySelector('.state');
+    const state = container.querySelector<HTMLElement>('.state');
     expect(state?.className).toBe('state state-critical');
     expect(state?.textContent).toBe('✕failed');
     expect(container.querySelector('[aria-hidden="true"]')?.textContent).toBe('✕');
-    expect(state?.getAttribute('title')).toBe('failed: Ended with an error.');
+    expect(state?.dataset['tip']).toBe('failed: Ended with an error.');
   });
 
   it('names the surface', () => {

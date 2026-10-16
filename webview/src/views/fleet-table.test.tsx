@@ -49,12 +49,12 @@ describe('FleetTable', () => {
     ).toHaveLength(0);
     expect(grid.querySelectorAll('.sparkline [role="img"]')).toHaveLength(0);
     const vscode = screen.getByRole('img', { name: 'VS Code' });
-    expect(vscode.getAttribute('title')).toBe('VS Code: Open in a terminal in this VS Code window');
+    expect(vscode.dataset['tip']).toBe('VS Code: Open in a terminal in this VS Code window');
     expect(vscode.className).toBe('place place-good');
     expect(vscode.closest('td')?.className).toBe('col-title');
     expect(screen.getByRole('img', { name: 'Background' }).className).toBe('place place-neutral');
     expect(screen.queryByRole('img', { name: 'Terminal' })).toBeNull();
-    expect(grid.querySelectorAll('.row-summary')).toHaveLength(0);
+    expect(grid.querySelectorAll<HTMLElement>('.row-summary')).toHaveLength(0);
     // Only the finished session no terminal shows gets the hourglass.
     const windowless = screen.getAllByRole('img', { name: 'No window' });
     expect(windowless).toHaveLength(1);
@@ -67,19 +67,19 @@ describe('FleetTable', () => {
       ...fleetState,
       sessions: fleetState.sessions.map((item) => (item.id === 's1' ? { ...item, recap } : item)),
     });
-    const lines = grid.querySelectorAll('.row-summary');
+    const lines = grid.querySelectorAll<HTMLElement>('.row-summary');
     expect(lines).toHaveLength(1);
     expect(lines[0]?.textContent).toBe('Split the parser in two.');
-    expect(lines[0]?.getAttribute('title')).toBe('Split the parser in two.');
+    expect(lines[0]?.dataset['tip']).toBe('Split the parser in two.');
     expect(lines[0]?.closest('td')?.className).toBe('col-title');
   });
 
   it('describes each row button in its tooltip', () => {
     const grid = renderTable(fleetState);
-    const stop = grid.querySelector('button[aria-label^="Stop "]');
-    expect(stop?.getAttribute('title')).toBe('Stop: End the session');
-    const titles = [...grid.querySelectorAll('button.icon-button')].map(
-      (button) => button.getAttribute('title') ?? '',
+    const stop = grid.querySelector<HTMLElement>('button[aria-label^="Stop "]');
+    expect(stop?.dataset['tip']).toBe('Stop: End the session');
+    const titles = [...grid.querySelectorAll<HTMLElement>('button.icon-button')].map(
+      (button) => button.dataset['tip'] ?? '',
     );
     expect(titles.length).toBeGreaterThan(0);
     expect(titles.every((title) => /^[^:]+: \S/u.test(title))).toBe(true);
@@ -94,7 +94,7 @@ describe('FleetTable', () => {
       },
       false,
     );
-    expect(grid.querySelectorAll('.row-summary')).toHaveLength(0);
+    expect(grid.querySelectorAll<HTMLElement>('.row-summary')).toHaveLength(0);
   });
 });
 

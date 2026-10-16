@@ -109,7 +109,7 @@ export function PermissionBanner(props: {
                 <button
                   type="button"
                   className="primary"
-                  title="Let this one call run"
+                  data-tip="Let this one call run"
                   aria-label={`Allow ${request.toolName} for ${title}`}
                   onClick={() => {
                     onResolve(request, 'allow');
@@ -119,7 +119,7 @@ export function PermissionBanner(props: {
                 </button>
                 <button
                   type="button"
-                  title={alwaysAllowScope(request.toolName)}
+                  data-tip={alwaysAllowScope(request.toolName)}
                   aria-label={`Always allow ${request.toolName} for ${title}`}
                   onClick={() => {
                     onResolve(request, 'always');
@@ -129,7 +129,7 @@ export function PermissionBanner(props: {
                 </button>
                 <button
                   type="button"
-                  title="Block this call and tell the session it was denied"
+                  data-tip="Block this call and tell the session it was denied"
                   aria-label={`Deny ${request.toolName} for ${title}`}
                   onClick={() => {
                     onResolve(request, 'deny');

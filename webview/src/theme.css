@@ -479,6 +479,24 @@ kbd {
   padding: 2px 0;
 }
 
+/* The shared tooltip, styled like VS Code's own hovers. */
+.tooltip {
+  position: fixed;
+  z-index: 100;
+  max-width: 320px;
+  padding: 4px 8px;
+  border: 1px solid var(--vscode-editorHoverWidget-border, var(--ov-border));
+  border-radius: 4px;
+  color: var(--vscode-editorHoverWidget-foreground, var(--ov-fg));
+  background: var(--vscode-editorHoverWidget-background, var(--ov-panel));
+  box-shadow: 0 2px 8px var(--vscode-widget-shadow, rgb(0 0 0 / 30%));
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+}
+
 .confirm {
   display: flex;
   flex-wrap: wrap;

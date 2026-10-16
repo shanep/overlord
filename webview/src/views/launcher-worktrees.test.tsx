@@ -40,7 +40,7 @@ describe('WorktreesTable', () => {
     const { container } = renderView(<WorktreesTable worktrees={launcherState.worktrees} />);
     expect(screen.getByText('3 open, 2 touching the same files')).toBeDefined();
     const busy = row('Flaky test');
-    expect(within(busy).getByText('active').title).toBe(WORKTREE_INFO.active.description);
+    expect(within(busy).getByText('active').dataset['tip']).toBe(WORKTREE_INFO.active.description);
     expect(within(busy).getByText('1 file')).toBeDefined();
     expect(within(busy).getByText('Parser cleanup: src/parser.ts', { exact: false })).toBeDefined();
     expect(within(busy).queryByRole('button')).toBeNull();

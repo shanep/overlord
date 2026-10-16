@@ -8,6 +8,7 @@ import { isViewId } from '../../src/shared/protocol.js';
 
 import { EmptyState } from './components/empty-state.js';
 import { ErrorBoundary } from './components/error-boundary.js';
+import { TooltipLayer } from './components/tooltip.js';
 import { useHostState } from './use-host-state.js';
 import { AgentView } from './views/agent-view.js';
 import { ConfigView } from './views/config-view.js';
@@ -119,6 +120,7 @@ export function App(props: { readonly view: ViewId }): ReactElement {
           <ViewSwitch message={message} />
         )}
       </ErrorBoundary>
+      <TooltipLayer />
     </main>
   );
 }

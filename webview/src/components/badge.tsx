@@ -12,7 +12,7 @@ export function Badge(props: {
   readonly title?: string;
 }): ReactElement {
   return (
-    <span className={`badge badge-${props.tone ?? 'neutral'}`} title={props.title}>
+    <span className={`badge badge-${props.tone ?? 'neutral'}`} data-tip={props.title}>
       {props.label}
     </span>
   );
@@ -22,7 +22,7 @@ export function Badge(props: {
 export function StateBadge(props: { readonly state: SessionState }): ReactElement {
   const info = STATE_INFO[props.state];
   return (
-    <span className={`state state-${info.tone}`} title={`${info.label}: ${info.description}`}>
+    <span className={`state state-${info.tone}`} data-tip={`${info.label}: ${info.description}`}>
       <span aria-hidden="true" className="state-icon">
         {info.icon}
       </span>
@@ -43,7 +43,7 @@ export function PlaceMarker(props: { readonly place: SessionPlace }): ReactEleme
       className={`place place-${info.tone}`}
       role="img"
       aria-label={info.label}
-      title={`${info.label}: ${info.description}`}
+      data-tip={`${info.label}: ${info.description}`}
     >
       <Icon name={info.icon} />
     </span>
@@ -57,7 +57,7 @@ export function WindowlessMarker(): ReactElement {
       className="place place-neutral"
       role="img"
       aria-label={WINDOWLESS_INFO.label}
-      title={`${WINDOWLESS_INFO.label}: ${WINDOWLESS_INFO.description}`}
+      data-tip={`${WINDOWLESS_INFO.label}: ${WINDOWLESS_INFO.description}`}
     >
       <Icon name="hourglass" />
     </span>

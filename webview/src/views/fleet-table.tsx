@@ -76,7 +76,7 @@ function RowActions(props: {
       className="icon-button"
       tabIndex={tabIndex}
       disabled={disabled}
-      title={actionTip(action)}
+      data-tip={actionTip(action)}
       aria-label={`${ACTION_LABELS[action]} ${row.title}`}
       onClick={onClick}
     >
@@ -160,7 +160,7 @@ function Twisty(props: {
       type="button"
       className="twisty"
       tabIndex={-1}
-      title={`${verb}: ${visible.expanded ? 'Hide' : 'Show'} the rows under this one`}
+      data-tip={`${verb}: ${visible.expanded ? 'Hide' : 'Show'} the rows under this one`}
       aria-label={`${verb} ${visible.row.title}`}
       onClick={() => {
         onToggle(visible);
@@ -179,7 +179,7 @@ function TitleCell(props: {
   const { visible } = props;
   const { row } = visible;
   return (
-    <td role="gridcell" className="col-title" title={row.detail}>
+    <td role="gridcell" className="col-title" data-tip={row.detail}>
       <span style={{ paddingLeft: `${(visible.depth * 1.2).toString()}em` }}>
         <Twisty visible={visible} onToggle={props.onToggle} />
         {row.place === null ? null : <PlaceMarker place={row.place} />}
@@ -190,7 +190,7 @@ function TitleCell(props: {
         <Badge
           label="No project"
           tone="warning"
-          title="Move to project puts this folder in one, or tells Overlord never to ask"
+          data-tip="Move to project puts this folder in one, or tells Overlord never to ask"
         />
       ) : null}{' '}
       <span className="muted row-detail">{row.detail}</span>
@@ -198,7 +198,7 @@ function TitleCell(props: {
         <span
           className="muted row-summary"
           style={{ paddingLeft: `${(visible.depth * 1.2 + 1.2).toString()}em` }}
-          title={row.summary}
+          data-tip={row.summary}
         >
           {row.summary}
         </span>
