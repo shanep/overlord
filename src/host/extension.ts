@@ -22,16 +22,37 @@ const VIEW_COMMANDS: readonly (readonly [string, ViewId, string])[] = [
   ['overlord.openUsage', 'usage', 'Usage'],
 ];
 
-class ViewListProvider implements vscode.TreeDataProvider<readonly [string, ViewId, string]> {
-  getTreeItem(entry: readonly [string, ViewId, string]): vscode.TreeItem {
+type ViewListEntry = readonly [string, ViewId | null, string];
+
+const NEW_SESSION: ViewListEntry = ['overlord.newClaudeSession', null, 'New Claude Code session'];
+
+class ViewListProvider implements vscode.TreeDataProvider<ViewListEntry> {
+  getTreeItem(entry: ViewListEntry): vscode.TreeItem {
     const item = new vscode.TreeItem(entry[2]);
     item.command = { command: entry[0], title: entry[2] };
+    if (entry[1] === null) {
+      item.iconPath = new vscode.ThemeIcon('sparkle');
+    }
     return item;
   }
 
-  getChildren(): (readonly [string, ViewId, string])[] {
-    return [...VIEW_COMMANDS];
+  getChildren(): ViewListEntry[] {
+    return [NEW_SESSION, ...VIEW_COMMANDS];
   }
+}
+
+/** Starts an interactive Claude Code CLI in an editor tab, in the workspace folder. */
+function newClaudeSession(claudePath: string, cwd: string | null): vscode.Terminal {
+  const terminal = vscode.window.createTerminal({
+    name: 'Claude Code',
+    ...(cwd === null ? {} : { cwd }),
+    location: { viewColumn: vscode.ViewColumn.Active },
+    iconPath: new vscode.ThemeIcon('sparkle'),
+    // Running claude as the terminal's process means closing the session closes the tab.
+    shellPath: claudePath,
+  });
+  terminal.show();
+  return terminal;
 }
 
 class RunningProvider implements vscode.TreeDataProvider<RunningItem> {
@@ -133,6 +154,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     register('overlord.uninstallHooks', async () => overlord.setup.uninstallHooks()),
     register('overlord.enableTelemetry', async () => overlord.setup.enableTelemetry()),
     register('overlord.disableTelemetry', async () => overlord.setup.disableTelemetry()),
+    register('overlord.newClaudeSession', (): void => {
+      newClaudeSession(host.settings.claudePath, host.workspaceFolder());
+    }),
     register('overlord.launchPrompt', () => {
       panels.open('launcher');
     }),

@@ -32,6 +32,12 @@
   "contributes": {
     "commands": [
       {
+        "command": "overlord.newClaudeSession",
+        "title": "New Claude Code Session",
+        "category": "Overlord",
+        "icon": "$(sparkle)"
+      },
+      {
         "command": "overlord.openFleet",
         "title": "Fleet",
         "category": "Overlord",
@@ -182,6 +188,11 @@
     },
     "menus": {
       "view/title": [
+        {
+          "command": "overlord.newClaudeSession",
+          "when": "view == overlord.views",
+          "group": "navigation"
+        },
         {
           "command": "overlord.refresh",
           "when": "view == overlord.sessions",

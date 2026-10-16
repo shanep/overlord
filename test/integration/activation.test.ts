@@ -45,4 +45,23 @@ describe('Overlord extension', () => {
     }
     assert.ok(labels.includes('Overlord: Fleet'), `tabs were: ${labels.join(', ')}`);
   });
+
+  it('opens a new Claude Code session as an editor tab', async () => {
+    // Tests must never start the real CLI, so point the setting at a plain shell.
+    const config = vscode.workspace.getConfiguration('overlord');
+    await config.update('claudePath', '/bin/sh', vscode.ConfigurationTarget.Global);
+    try {
+      await vscode.commands.executeCommand('overlord.newClaudeSession');
+      const terminal = vscode.window.terminals.find((entry) => entry.name === 'Claude Code');
+      assert.ok(terminal, 'a Claude Code terminal was created');
+      const deadline = Date.now() + 5000;
+      while (vscode.window.activeTerminal?.name !== 'Claude Code' && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      assert.equal(vscode.window.activeTerminal?.name, 'Claude Code');
+      terminal.dispose();
+    } finally {
+      await config.update('claudePath', undefined, vscode.ConfigurationTarget.Global);
+    }
+  });
 });

@@ -56,7 +56,13 @@ export function createVscodeHostPort(options: VscodeHostPortOptions): HostPort {
       await vscode.window.showTextDocument(document, { preview: false });
     },
     runInTerminal: (request: TerminalRequest): void => {
-      const terminal = vscode.window.createTerminal({ name: request.name, cwd: request.cwd });
+      // Claude sessions get a full editor tab, like the CLI in its own window.
+      const terminal = vscode.window.createTerminal({
+        name: request.name,
+        cwd: request.cwd,
+        location: { viewColumn: vscode.ViewColumn.Active },
+        iconPath: new vscode.ThemeIcon('sparkle'),
+      });
       terminal.show();
       terminal.sendText(shellCommand(request.command, request.args));
     },
