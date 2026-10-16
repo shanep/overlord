@@ -19,31 +19,26 @@ export interface UpdateWatchOptions {
   readonly onUpdate: () => void;
 }
 
-function notWatching(): void {
-  // Replaced by the real unwatch as soon as the watch starts.
-}
-
 /** Calls onUpdate once, after the bundle has been replaced and stopped changing. Returns a stop function. */
 export function watchForUpdate(options: UpdateWatchOptions): () => void {
   let timer: ReturnType<typeof setTimeout> | undefined;
   let stopped = false;
-  let unwatch = notWatching;
-  const stop = (): void => {
-    stopped = true;
-    clearTimeout(timer);
-    unwatch();
-  };
-  unwatch = options.watch(options.bundle, (mtimeMs) => {
+  const unwatch = options.watch(options.bundle, (mtimeMs) => {
     clearTimeout(timer);
     if (stopped || mtimeMs === 0) {
       return;
     }
     timer = setTimeout(() => {
-      stop();
+      stopped = true;
+      unwatch();
       options.onUpdate();
     }, options.settleMs);
   });
-  return stop;
+  return (): void => {
+    stopped = true;
+    clearTimeout(timer);
+    unwatch();
+  };
 }
 
 export interface LoadedMarker {
