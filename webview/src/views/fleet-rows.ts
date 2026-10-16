@@ -54,7 +54,11 @@ export interface VisibleRow {
   readonly parentKey: string | null;
 }
 
-export const DEFAULT_SORT: SortState = { column: 'state', descending: false };
+/**
+ * Start order, oldest first. A row keeps its place while its state changes and
+ * new sessions join at the bottom, so nothing moves under the pointer.
+ */
+export const DEFAULT_SORT: SortState = { column: 'started', descending: false };
 
 function isActive(state: SessionState): boolean {
   return state !== 'done' && state !== 'failed';
@@ -188,6 +192,7 @@ export function rowCallsPerMinute(row: FleetRow, now: number): number {
 type Sorter = (row: FleetRow, now: number) => number | string;
 
 const SORTERS: Readonly<Record<string, Sorter>> = {
+  started: (row) => row.startedAt,
   state: (row) => STATE_RANK[row.state],
   surface: (row) => `${SURFACE_LABELS[row.surface]} ${placeLabel(row)}`,
   title: (row) => row.title.toLowerCase(),
@@ -209,6 +214,11 @@ function compareValues(a: number | string, b: number | string): number {
   return String(a).localeCompare(String(b));
 }
 
+/** Rows that tie keep start order, so a tie never reshuffles between updates. */
+function compareRows(a: FleetRow, b: FleetRow): number {
+  return a.startedAt - b.startedAt || a.key.localeCompare(b.key);
+}
+
 /** Sort siblings at every level. An unknown column leaves the order alone. */
 export function sortTree(
   nodes: readonly FleetNode[],
@@ -223,7 +233,11 @@ export function sortTree(
   const sortLevel = (level: readonly FleetNode[]): FleetNode[] =>
     level
       .map((node) => ({ row: node.row, children: sortLevel(node.children) }))
-      .toSorted((a, b) => direction * compareValues(sorter(a.row, now), sorter(b.row, now)));
+      .toSorted(
+        (a, b) =>
+          direction * compareValues(sorter(a.row, now), sorter(b.row, now)) ||
+          compareRows(a.row, b.row),
+      );
   return sortLevel(nodes);
 }
 
@@ -304,6 +318,14 @@ export function normalizeRatio(value: number | null): number | null {
     return null;
   }
   return value > 1 ? value / 100 : value;
+}
+
+/** Header clicks go ascending, descending, then back to start order. */
+export function nextFleetSort(current: SortState, column: string): SortState {
+  if (current.column === column && current.descending) {
+    return DEFAULT_SORT;
+  }
+  return { column, descending: current.column === column };
 }
 
 export function isSortState(value: unknown): value is SortState {

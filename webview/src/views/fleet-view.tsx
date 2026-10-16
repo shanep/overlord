@@ -10,7 +10,6 @@ import { useChartTheme } from '../charts/chart-theme.js';
 import { useNow } from '../clock.js';
 import { ConfirmBar } from '../components/confirm-bar.js';
 import type { SortState } from '../components/data-table.js';
-import { nextSort } from '../components/data-table.js';
 import { EmptyState } from '../components/empty-state.js';
 import { isBoolean, isString, isStringArray } from '../guards.js';
 import { usePersistentState, usePostAction } from '../vscode-context.js';
@@ -27,6 +26,7 @@ import {
   filterTree,
   flattenTree,
   isSortState,
+  nextFleetSort,
   sortTree,
 } from './fleet-rows.js';
 import type { RowAction } from './fleet-table.js';
@@ -232,7 +232,7 @@ export function FleetView(props: { readonly state: FleetState }): ReactElement {
           selectedRef={selectedRef}
           sort={preferences.sort}
           onSort={(column) => {
-            preferences.setSort(nextSort(preferences.sort, column));
+            preferences.setSort(nextFleetSort(preferences.sort, column));
           }}
           now={now}
           theme={theme}

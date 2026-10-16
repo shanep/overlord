@@ -68,11 +68,11 @@ describe('FleetView', () => {
       screen.getByRole('meter', { name: '7 day limit used' }).getAttribute('aria-valuenow'),
     ).toBe('20');
     expect(bodyRowTitles()).toStrictEqual([
+      'Old run',
       'Write docs',
       'Refactor parser',
       'Explore',
       'general-purpose',
-      'Old run',
     ]);
     const s1 = rowFor('Refactor parser');
     expect(s1.getAttribute('aria-level')).toBe('1');
@@ -88,8 +88,8 @@ describe('FleetView', () => {
       within(s1).getByRole('meter', { name: 'Context used by Refactor parser' }),
     ).toBeDefined();
     expect(within(rowFor('Old run')).getAllByText('n/a')).toHaveLength(3);
-    expect(rowFor('Write docs').getAttribute('aria-selected')).toBe('true');
-    expect(rowFor('Write docs').tabIndex).toBe(0);
+    expect(rowFor('Old run').getAttribute('aria-selected')).toBe('true');
+    expect(rowFor('Old run').tabIndex).toBe(0);
     expect(s1.tabIndex).toBe(-1);
     await expectAccessible(container);
   });
@@ -189,7 +189,7 @@ describe('FleetView', () => {
     expect(rowFor('Write docs').getAttribute('aria-selected')).toBe('false');
     await user.keyboard('{ArrowLeft}');
     expect(rowFor('Refactor parser').getAttribute('aria-expanded')).toBe('false');
-    expect(bodyRowTitles()).toStrictEqual(['Write docs', 'Refactor parser', 'Old run']);
+    expect(bodyRowTitles()).toStrictEqual(['Old run', 'Write docs', 'Refactor parser']);
     await user.keyboard('{ArrowRight}');
     expect(bodyRowTitles()).toHaveLength(5);
     await user.keyboard('{ArrowRight}');
@@ -252,7 +252,7 @@ describe('FleetView', () => {
     const user = userEvent.setup();
     setup();
     await user.click(screen.getByRole('button', { name: 'Collapse Explore' }));
-    expect(bodyRowTitles()).toStrictEqual(['Write docs', 'Refactor parser', 'Explore', 'Old run']);
+    expect(bodyRowTitles()).toStrictEqual(['Old run', 'Write docs', 'Refactor parser', 'Explore']);
     await user.click(screen.getByRole('button', { name: 'Expand Explore' }));
     expect(bodyRowTitles()).toHaveLength(5);
   });
@@ -271,6 +271,12 @@ describe('FleetView', () => {
       'descending',
     );
     expect(api.saved).toStrictEqual({ 'fleet.sort': { column: 'cost', descending: true } });
+    await user.click(screen.getByRole('button', { name: 'Cost' }));
+    expect(bodyRowTitles()[0]).toBe('Old run');
+    expect(screen.getByRole('columnheader', { name: 'Cost' }).getAttribute('aria-sort')).toBe(
+      'none',
+    );
+    expect(api.saved).toStrictEqual({ 'fleet.sort': { column: 'started', descending: false } });
   });
 
   it('filters by text and hides done rows', async () => {

@@ -11,6 +11,7 @@ import {
   filterTree,
   flattenTree,
   isSortState,
+  nextFleetSort,
   normalizeRatio,
   rowCallsPerMinute,
   rowMatches,
@@ -19,6 +20,10 @@ import {
 
 function keys(nodes: readonly FleetNode[]): string[] {
   return nodes.map((node) => node.row.key);
+}
+
+function idleNode(base: FleetRow, key: string, startedAt: number): FleetNode {
+  return { row: { ...base, key, startedAt, state: 'idle' }, children: [] };
 }
 
 function firstRow(nodes: readonly FleetNode[]): FleetRow {
@@ -150,20 +155,41 @@ describe('row metrics', () => {
 describe('sortTree', () => {
   const tree = buildFleetTree(fleetState);
 
-  it('sorts by state rank by default, waiting first', () => {
-    expect(keys(sortTree(tree, DEFAULT_SORT, NOW))).toStrictEqual(['s:s2', 's:s1', 's:s3']);
+  it('keeps start order by default, oldest first', () => {
+    expect(keys(sortTree(tree, DEFAULT_SORT, NOW))).toStrictEqual(['s:s3', 's:s2', 's:s1']);
+  });
+
+  it('keeps a row in place when its state changes', () => {
+    const before = keys(sortTree(tree, DEFAULT_SORT, NOW));
+    const flipped = tree.map((node) => ({
+      ...node,
+      row: { ...node.row, state: 'running' as const },
+    }));
+    expect(keys(sortTree(flipped, DEFAULT_SORT, NOW))).toStrictEqual(before);
+  });
+
+  it('breaks ties by start time, then key, whatever order rows arrive in', () => {
+    const base = firstRow(tree);
+    const nodes = [idleNode(base, 's:b', 2), idleNode(base, 's:c', 1), idleNode(base, 's:a', 2)];
+    const expected = ['s:c', 's:a', 's:b'];
+    expect(keys(sortTree(nodes, { column: 'state', descending: false }, NOW))).toStrictEqual(
+      expected,
+    );
+    expect(
+      keys(sortTree(nodes.toReversed(), { column: 'state', descending: true }, NOW)),
+    ).toStrictEqual(expected);
   });
 
   it.each([
     ['surface', ['s:s1', 's:s2', 's:s3']],
     ['title', ['s:s3', 's:s1', 's:s2']],
     ['model', ['s:s3', 's:s1', 's:s2']],
-    ['effort', ['s:s2', 's:s1', 's:s3']],
+    ['effort', ['s:s2', 's:s3', 's:s1']],
     ['elapsed', ['s:s1', 's:s2', 's:s3']],
-    ['tool', ['s:s2', 's:s3', 's:s1']],
+    ['tool', ['s:s3', 's:s2', 's:s1']],
     ['calls', ['s:s3', 's:s2', 's:s1']],
-    ['tokens', ['s:s3', 's:s1', 's:s2']],
-    ['cache', ['s:s3', 's:s1', 's:s2']],
+    ['tokens', ['s:s3', 's:s2', 's:s1']],
+    ['cache', ['s:s3', 's:s2', 's:s1']],
     ['context', ['s:s3', 's:s1', 's:s2']],
     ['cost', ['s:s3', 's:s2', 's:s1']],
   ])('sorts ascending by %s', (column, expected) => {
@@ -261,6 +287,23 @@ describe('normalizeRatio', () => {
     expect(normalizeRatio(null)).toBeNull();
     expect(normalizeRatio(0.64)).toBeCloseTo(0.64);
     expect(normalizeRatio(64)).toBeCloseTo(0.64);
+  });
+});
+
+describe('nextFleetSort', () => {
+  it('goes ascending, then descending, then back to start order', () => {
+    const first = nextFleetSort(DEFAULT_SORT, 'cost');
+    expect(first).toStrictEqual({ column: 'cost', descending: false });
+    const second = nextFleetSort(first, 'cost');
+    expect(second).toStrictEqual({ column: 'cost', descending: true });
+    expect(nextFleetSort(second, 'cost')).toBe(DEFAULT_SORT);
+  });
+
+  it('starts a new column ascending', () => {
+    expect(nextFleetSort({ column: 'cost', descending: true }, 'title')).toStrictEqual({
+      column: 'title',
+      descending: false,
+    });
   });
 });
 

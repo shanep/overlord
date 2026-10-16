@@ -37,9 +37,10 @@ describe('FleetTable', () => {
     const grid = screen.getByRole('treegrid', { name: 'Sessions' });
     expect(grid.querySelectorAll('tr[aria-selected="true"]')).toHaveLength(0);
     expect(grid.querySelectorAll('tbody tr')).toHaveLength(5);
-    expect(screen.getByRole('columnheader', { name: 'State' }).getAttribute('aria-sort')).toBe(
-      'ascending',
-    );
+    // Start order has no header, so no column claims the sort.
+    expect(
+      grid.querySelectorAll('th[aria-sort="ascending"], th[aria-sort="descending"]'),
+    ).toHaveLength(0);
     expect(grid.querySelectorAll('.sparkline [role="img"]')).toHaveLength(0);
     const vscode = screen.getByRole('img', { name: 'VS Code' });
     expect(vscode.getAttribute('title')).toBe('VS Code: Open in a terminal in this VS Code window');
