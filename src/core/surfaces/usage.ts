@@ -10,6 +10,7 @@ import type { DailyUsage } from '../../shared/model.js';
 import type { UsageStats } from '../../shared/protocol.js';
 import type { ClaudePaths } from '../paths.js';
 
+import { emptyClimate, estimateClimate } from './climate.js';
 import { hasErrorCode, lenientArray, sourceError } from './common.js';
 import type { SourceError } from './common.js';
 
@@ -93,6 +94,7 @@ export const EMPTY_USAGE: UsageStats = {
   hourCounts: {},
   totalSessions: 0,
   totalMessages: 0,
+  climate: emptyClimate(),
 };
 
 type Stats = z.infer<typeof statsSchema>;
@@ -155,14 +157,16 @@ export function parseStatsCache(json: unknown): UsageHistory {
     throw new Error('stats-cache.json is not an object');
   }
   const stats = parsed.data;
+  const modelUsage = buildModelUsage(stats);
   return {
     usage: {
       days: buildDays(stats),
       hourCounts: stats.hourCounts,
       totalSessions: stats.totalSessions,
       totalMessages: stats.totalMessages,
+      climate: estimateClimate(modelUsage),
     },
-    modelUsage: buildModelUsage(stats),
+    modelUsage,
     longestSession: toLongest(stats.longestSession),
     firstSessionDate: stats.firstSessionDate ?? null,
     lastComputedDate: stats.lastComputedDate ?? null,

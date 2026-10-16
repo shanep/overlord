@@ -6,7 +6,14 @@ import { usageState } from '../../test/fixtures-tools.js';
 import { NOW } from '../../test/fixtures.js';
 import { expectAccessible, renderView } from '../../test/render.js';
 
-import { dailyTable, hourTable, severityTone, totalTokensAll, UsageView } from './usage-view.js';
+import {
+  dailyTable,
+  formatAmount,
+  hourTable,
+  severityTone,
+  totalTokensAll,
+  UsageView,
+} from './usage-view.js';
 
 describe('usage tables', () => {
   it('builds the daily table twin in date order', () => {
@@ -46,6 +53,16 @@ describe('usage tables', () => {
   it('totals tokens across days', () => {
     expect(totalTokensAll(usageState)).toBe(920_000);
   });
+
+  it('formats amounts with fewer decimals as they grow', () => {
+    expect(formatAmount(0.0412)).toBe('0.04');
+    expect(formatAmount(0.999)).toBe('1');
+    expect(formatAmount(1)).toBe('1');
+    expect(formatAmount(9.84)).toBe('9.8');
+    expect(formatAmount(10.4)).toBe('10');
+    expect(formatAmount(1480.6)).toBe('1,481');
+    expect(formatAmount(Number.NaN)).toBe('n/a');
+  });
 });
 
 describe('UsageView', () => {
@@ -63,13 +80,52 @@ describe('UsageView', () => {
     await expectAccessible(container);
   });
 
-  it('says there is no data for an empty history', () => {
-    const { getAllByText } = renderView(
+  it('says there is no data for an empty history and leaves the climate section out', () => {
+    const climate = { ...usageState.climate, models: [], unpricedTokens: 0 };
+    const { getAllByText, queryByRole } = renderView(
       <UsageView
-        state={{ days: [], hourCounts: {}, totalSessions: 0, totalMessages: 0, plan: null }}
+        state={{
+          days: [],
+          hourCounts: {},
+          totalSessions: 0,
+          totalMessages: 0,
+          climate,
+          plan: null,
+        }}
       />,
     );
     expect(getAllByText('No data yet.')).toHaveLength(2);
+    expect(queryByRole('heading', { name: /Climate impact/ })).toBeNull();
+  });
+
+  it('shows the climate estimate, its assumptions and a row per model, and passes axe', async () => {
+    const { getByRole, getByText, container } = renderView(<UsageView state={usageState} />);
+    const section = getByRole('region', { name: 'Climate impact (estimate)' });
+    const inside = within(section);
+    expect(inside.getByText('Energy').nextElementSibling?.textContent).toBe('13 kWh');
+    expect(inside.getByText('CO2e').nextElementSibling?.textContent).toBe('5 kg');
+    expect(inside.getByText('Cooling water').nextElementSibling?.textContent).toBe('23 L');
+    expect(inside.getByText('Same as driving').nextElementSibling?.textContent).toBe('13 miles');
+    expect(inside.getByText('Same as a US home for').nextElementSibling?.textContent).toBe(
+      '0.43 days',
+    );
+    expect(getByText(/assumes 40 Wh per dollar, 0.4 kg CO2e per kWh and 1.8 L/)).toBeDefined();
+    const table = getByRole('table', { name: 'Climate impact by model' });
+    const rows = within(table).getAllByRole('row');
+    expect(rows.map((row) => row.textContent)).toStrictEqual([
+      'ModelTotal tokensEnergy (kWh)CO2e (kg)',
+      'claude-opus-4-7800K124.8',
+      'claude-sonnet-4-6120K0.50.2',
+    ]);
+    expect(inside.queryByText(/no list price/)).toBeNull();
+    await expectAccessible(container);
+  });
+
+  it('says how many tokens had no price, even with no priced models', () => {
+    const climate = { ...usageState.climate, models: [], unpricedTokens: 2_500_000 };
+    const { getByText, queryByRole } = renderView(<UsageView state={{ ...usageState, climate }} />);
+    expect(getByText('2.5M tokens from models with no list price are left out.')).toBeDefined();
+    expect(queryByRole('table', { name: 'Climate impact by model' })).toBeNull();
   });
 
   it('leaves the plan section out when there are no plan limits', () => {

@@ -1,6 +1,7 @@
 import * as fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 
+import { emptyClimate, estimateClimate } from './climate.js';
 import { makeScratchHome } from './test-helpers/scratch-home.js';
 import { EMPTY_USAGE, parseStatsCache, readUsageHistory } from './usage.js';
 
@@ -47,6 +48,7 @@ describe('EMPTY_USAGE', () => {
       hourCounts: {},
       totalSessions: 0,
       totalMessages: 0,
+      climate: emptyClimate(),
     });
   });
 });
@@ -75,7 +77,9 @@ describe('parseStatsCache', () => {
       hourCounts: { '0': 5, '7': 6 },
       totalSessions: 983,
       totalMessages: 125_730,
+      climate: estimateClimate(history.modelUsage),
     });
+    expect(history.usage.climate.models.map((row) => row.model)).toStrictEqual(['claude-opus-5']);
   });
 
   it('keeps model totals, the longest session and file metadata', () => {
@@ -135,6 +139,7 @@ describe('parseStatsCache', () => {
         hourCounts: { '3': 0, '4': 2 },
         totalSessions: 0,
         totalMessages: 0,
+        climate: emptyClimate(),
       },
       modelUsage: {},
       longestSession: { sessionId: 's', at: null, durationMs: 0, messages: 0 },

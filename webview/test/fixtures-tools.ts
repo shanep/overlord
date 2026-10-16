@@ -167,5 +167,24 @@ export const usageState: UsageState = {
   hourCounts: { '9': 12, '10': 30, '14': 8 },
   totalSessions: 10,
   totalMessages: 200,
+  climate: {
+    energyKwh: 12.5,
+    co2eKg: 5,
+    waterLiters: 22.5,
+    drivingMiles: 12.5,
+    homeDays: 0.431,
+    unpricedTokens: 0,
+    models: [
+      { model: 'claude-opus-4-7', tokens: 800_000, energyKwh: 12, co2eKg: 4.8 },
+      { model: 'claude-sonnet-4-6', tokens: 120_000, energyKwh: 0.5, co2eKg: 0.2 },
+    ],
+    assumptions: {
+      whPerListDollar: 40,
+      kgCo2ePerKwh: 0.4,
+      litersPerKwh: 1.8,
+      kgCo2ePerMile: 0.4,
+      kwhPerHomeDay: 29,
+    },
+  },
   plan: null,
 };

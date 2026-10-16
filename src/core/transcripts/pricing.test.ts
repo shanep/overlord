@@ -122,7 +122,9 @@ describe('DEFAULT_PRICES', () => {
     expect(findPrice('claude-haiku-5-5', DEFAULT_PRICES)?.cacheRead).toBeCloseTo(0.01, 10);
     expect(findPrice('claude-fable-5-1', DEFAULT_PRICES)?.cacheRead).toBe(0.25);
     expect(findPrice('claude-fable-5', DEFAULT_PRICES)?.cacheRead).toBe(1);
-    expect(Object.keys(DEFAULT_PRICES)).toHaveLength(14);
+    expect(findPrice('claude-opus-4-5-20251101', DEFAULT_PRICES)?.output).toBe(25);
+    expect(findPrice('claude-sonnet-4-5-20250929', DEFAULT_PRICES)?.output).toBe(15);
+    expect(Object.keys(DEFAULT_PRICES)).toHaveLength(16);
     for (const listed of Object.values(DEFAULT_PRICES)) {
       expect(listed.cacheWrite).toBeCloseTo(listed.input * 1.25, 10);
       expect(listed.output).toBeCloseTo(listed.input * 5, 10);

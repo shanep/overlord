@@ -173,6 +173,40 @@ export interface UsageStats {
   readonly hourCounts: Readonly<Record<string, number>>;
   readonly totalSessions: number;
   readonly totalMessages: number;
+  readonly climate: ClimateEstimate;
+}
+
+/** The numbers behind the climate estimate, so the view can show its working. */
+export interface ClimateAssumptions {
+  readonly whPerListDollar: number;
+  readonly kgCo2ePerKwh: number;
+  readonly litersPerKwh: number;
+  readonly kgCo2ePerMile: number;
+  readonly kwhPerHomeDay: number;
+}
+
+/** One model's share of the climate estimate. */
+export interface ModelClimate {
+  readonly model: string;
+  readonly tokens: number;
+  readonly energyKwh: number;
+  readonly co2eKg: number;
+}
+
+/** A rough estimate of the energy, carbon and water behind the usage history. */
+export interface ClimateEstimate {
+  readonly energyKwh: number;
+  readonly co2eKg: number;
+  readonly waterLiters: number;
+  /** Miles in an average gas car with the same CO2e. */
+  readonly drivingMiles: number;
+  /** Days of an average US home's electricity. */
+  readonly homeDays: number;
+  /** Tokens from models with no list price, left out of the totals. */
+  readonly unpricedTokens: number;
+  /** Largest energy first. */
+  readonly models: readonly ModelClimate[];
+  readonly assumptions: ClimateAssumptions;
 }
 
 /** One plan limit window, such as the current session or the current week. */

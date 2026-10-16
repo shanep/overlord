@@ -1,9 +1,15 @@
-// Usage: plan limits, history totals, daily tokens by model, and activity by hour.
+// Usage: plan limits, history totals, daily tokens by model, activity by hour,
+// and a rough climate estimate.
 
 import type { ReactElement } from 'react';
 import { useMemo } from 'react';
 
-import type { PlanLimit, PlanLimits, UsageState } from '../../../src/shared/protocol.js';
+import type {
+  ClimateEstimate,
+  PlanLimit,
+  PlanLimits,
+  UsageState,
+} from '../../../src/shared/protocol.js';
 import { useChartTheme } from '../charts/chart-theme.js';
 import {
   buildDailyUsage,
@@ -116,6 +122,77 @@ function PlanSection(props: { readonly plan: PlanLimits | null }): ReactElement 
   );
 }
 
+/** 0.04, 0.42, 9.8, 232, 1,480: more decimals for small amounts, none past 10. */
+export function formatAmount(value: number): string {
+  if (!Number.isFinite(value)) {
+    return 'n/a';
+  }
+  let digits = 0;
+  if (value < 1) {
+    digits = 2;
+  } else if (value < 10) {
+    digits = 1;
+  }
+  return value.toLocaleString('en-US', { maximumFractionDigits: digits });
+}
+
+function ClimateSection(props: { readonly climate: ClimateEstimate }): ReactElement | null {
+  const { climate } = props;
+  if (climate.models.length === 0 && climate.unpricedTokens === 0) {
+    return null;
+  }
+  const { assumptions } = climate;
+  return (
+    <section className="section climate" aria-labelledby="climate-title">
+      <h2 id="climate-title">Climate impact (estimate)</h2>
+      <dl className="stats">
+        <Stat label="Energy" value={`${formatAmount(climate.energyKwh)} kWh`} />
+        <Stat label="CO2e" value={`${formatAmount(climate.co2eKg)} kg`} />
+        <Stat label="Cooling water" value={`${formatAmount(climate.waterLiters)} L`} />
+        <Stat label="Same as driving" value={`${formatAmount(climate.drivingMiles)} miles`} />
+        <Stat label="Same as a US home for" value={`${formatAmount(climate.homeDays)} days`} />
+      </dl>
+      <p className="muted">
+        {`Anthropic does not publish energy per token, so this prices every token at list price and assumes ${formatAmount(assumptions.whPerListDollar)} Wh per dollar, ${formatAmount(assumptions.kgCo2ePerKwh)} kg CO2e per kWh and ${formatAmount(assumptions.litersPerKwh)} L of cooling water per kWh. It could be off by 3 times either way.`}
+      </p>
+      {climate.unpricedTokens > 0 ? (
+        <p className="muted">
+          {`${formatCompact(climate.unpricedTokens)} tokens from models with no list price are left out.`}
+        </p>
+      ) : null}
+      {climate.models.length > 0 ? (
+        <table className="grid">
+          <caption className="visually-hidden">Climate impact by model</caption>
+          <thead>
+            <tr>
+              <th scope="col">Model</th>
+              <th scope="col" className="num">
+                Total tokens
+              </th>
+              <th scope="col" className="num">
+                Energy (kWh)
+              </th>
+              <th scope="col" className="num">
+                CO2e (kg)
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {climate.models.map((row) => (
+              <tr key={row.model}>
+                <td>{row.model}</td>
+                <td className="num">{formatCompact(row.tokens)}</td>
+                <td className="num">{formatAmount(row.energyKwh)}</td>
+                <td className="num">{formatAmount(row.co2eKg)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : null}
+    </section>
+  );
+}
+
 export function UsageView(props: { readonly state: UsageState }): ReactElement {
   const { state } = props;
   const theme = useChartTheme();
@@ -152,6 +229,7 @@ export function UsageView(props: { readonly state: UsageState }): ReactElement {
           table={hourTable(state)}
         />
       </div>
+      <ClimateSection climate={state.climate} />
     </section>
   );
 }
