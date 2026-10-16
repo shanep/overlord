@@ -4,9 +4,11 @@
 
 import path from 'node:path';
 
+import type { HealthLevel } from '../../../shared/health.js';
 import type { PermissionRequest, SessionPlace, SessionSummary } from '../../../shared/model.js';
 import { sessionName, ZERO_USAGE } from '../../../shared/model.js';
 import type { FleetState, PlanLimits, RateLimits } from '../../../shared/protocol.js';
+import { assessHealth } from '../../health/health.js';
 import type { OverlordStore } from '../../store/store.js';
 import type { BackgroundJob } from '../../surfaces/jobs.js';
 import type { RegistryStatus } from '../places.js';
@@ -168,6 +170,30 @@ export function windowSession(
   );
 }
 
+/** Each unfinished session that is wearing out, with how badly. */
+export function fleetHealth(
+  store: OverlordStore,
+  sessions: readonly SessionSummary[],
+): FleetState['health'] {
+  const activity = store.mainThreadActivity();
+  const out: Record<string, Exclude<HealthLevel, 'good'>> = {};
+  for (const session of sessions) {
+    const thread = activity.get(session.id);
+    if (thread === undefined || session.state === 'done' || session.state === 'failed') {
+      continue;
+    }
+    const { level } = assessHealth({
+      startedAt: session.startedAt,
+      updatedAt: session.updatedAt,
+      ...thread,
+    });
+    if (level !== 'good') {
+      out[session.id] = level;
+    }
+  }
+  return out;
+}
+
 export function buildFleet(input: FleetInputs): FleetState {
   const base = input.store.fleetState(input.now);
   const sessions = withLiveStates(
@@ -187,6 +213,7 @@ export function buildFleet(input: FleetInputs): FleetState {
     activeVersion: input.activeVersion,
     rateLimits: withPlanLimits(normalizeRateLimits(base.rateLimits), input.plan),
     spendPerHourUsd: base.spendPerHourUsd,
+    health: fleetHealth(input.store, sessions),
   };
 }
 

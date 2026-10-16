@@ -95,6 +95,7 @@ describe('opening panels and files', () => {
     await app.dispatch({ type: 'openAgent', sessionId: 's', agentId: 'a' }, {});
     await app.dispatch({ type: 'openContext', sessionId: 's', agentId: null }, {});
     await app.dispatch({ type: 'openContext', sessionId: 's', agentId: 'a' }, {});
+    await app.dispatch({ type: 'openProperties', sessionId: 's' }, {});
     await app.dispatch({ type: 'openFile', path: '/f.md' }, {});
     await app.dispatch({ type: 'openView', view: 'knobs' }, {});
     // A view name off the wire is checked, since postMessage carries anything.
@@ -107,6 +108,7 @@ describe('opening panels and files', () => {
       { view: 'agent', params: { sessionId: 's', agentId: 'a' } },
       { view: 'context', params: { sessionId: 's' } },
       { view: 'context', params: { sessionId: 's', agentId: 'a' } },
+      { view: 'properties', params: { sessionId: 's' } },
       { view: 'knobs', params: {} },
     ]);
     expect(env.host.opened).toStrictEqual(['/f.md']);

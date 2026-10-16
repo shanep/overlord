@@ -4,7 +4,7 @@
 // `action` messages for user intent.
 
 import type { ConnectorsState } from './connectors.js';
-import type { SessionHealth } from './health.js';
+import type { HealthLevel, SessionHealth } from './health.js';
 import type {
   AgentNode,
   ApiRequest,
@@ -104,6 +104,8 @@ export interface FleetState {
   readonly rateLimits: RateLimits;
   /** Spend per hour over the last hour, all sessions. */
   readonly spendPerHourUsd: number;
+  /** Health of each unfinished session that is wearing out, by session id. Healthy ones are left out. */
+  readonly health: Readonly<Record<string, Exclude<HealthLevel, 'good'>>>;
 }
 
 export interface AgentDetailState {
@@ -438,6 +440,7 @@ export type WebviewAction =
   | { readonly type: 'openSession'; readonly sessionId: string }
   | { readonly type: 'openAgent'; readonly sessionId: string; readonly agentId: string }
   | { readonly type: 'openContext'; readonly sessionId: string; readonly agentId: string | null }
+  | { readonly type: 'openProperties'; readonly sessionId: string }
   | { readonly type: 'interrupt'; readonly sessionId: string }
   | { readonly type: 'stop'; readonly sessionId: string }
   | { readonly type: 'setModel'; readonly sessionId: string; readonly model: string }

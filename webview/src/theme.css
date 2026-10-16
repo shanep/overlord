@@ -736,6 +736,23 @@ fieldset.chips {
   font-weight: 600;
 }
 
+/* A session's health in the Fleet: a badge that is also a button. */
+.health-badge {
+  font: inherit;
+  font-size: 0.85em;
+  line-height: inherit;
+  cursor: pointer;
+}
+
+.health-badge:hover {
+  background: var(--ov-badge);
+}
+
+.health-badge:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder, var(--ov-blue));
+  outline-offset: 1px;
+}
+
 /* One line under a session's title on what it is working on. */
 .row-summary {
   display: block;

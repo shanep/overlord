@@ -75,6 +75,12 @@ function byStart(left: AgentNode, right: AgentNode): number {
   return left.startedAt - right.startedAt;
 }
 
+interface ThreadActivity {
+  readonly toolCalls: ToolCall[];
+  readonly requests: ApiRequest[];
+  readonly compactions: readonly number[];
+}
+
 export class OverlordStore {
   private readonly sessions = new Map<string, SessionSummary>();
   private readonly agents = new SessionScoped<AgentNode>();
@@ -127,7 +133,7 @@ export class OverlordStore {
     now: number,
   ): Omit<
     FleetState,
-    'places' | 'activeSessionId' | 'activeVersion' | 'projects' | 'sessionProjects'
+    'places' | 'activeSessionId' | 'activeVersion' | 'projects' | 'sessionProjects' | 'health'
   > {
     return {
       sessions: [...this.sessions.values()].toSorted(
@@ -156,6 +162,38 @@ export class OverlordStore {
   }
 
   /** One agent's tool calls, requests and compactions, each oldest first. */
+  /** Every session's main thread tool calls, requests and compactions, gathered in one pass. */
+  mainThreadActivity(): ReadonlyMap<
+    string,
+    Pick<AgentDetailState, 'toolCalls' | 'requests' | 'compactions'>
+  > {
+    const out = new Map<string, ThreadActivity>();
+    const entry = (sessionId: string): ThreadActivity => {
+      const found = out.get(sessionId);
+      if (found !== undefined) {
+        return found;
+      }
+      const made = {
+        toolCalls: [],
+        requests: [],
+        compactions: this.compactions.get(sessionId, sessionId)?.toArray() ?? [],
+      };
+      out.set(sessionId, made);
+      return made;
+    };
+    for (const call of this.toolCalls.values()) {
+      if (call.agentId === call.sessionId) {
+        entry(call.sessionId).toolCalls.push(call);
+      }
+    }
+    for (const request of this.requests.values()) {
+      if (request.agentId === request.sessionId) {
+        entry(request.sessionId).requests.push(request);
+      }
+    }
+    return out;
+  }
+
   agentActivity(
     sessionId: string,
     agentId: string,

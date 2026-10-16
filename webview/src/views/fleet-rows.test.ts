@@ -181,7 +181,10 @@ describe('buildFleetTree', () => {
       needsProject: false,
       manualProjectId: null,
       projectFolder: null,
+      health: null,
     });
+    const worn = buildFleetTree({ ...fleetState, health: { s1: 'watch' } });
+    expect(firstRow(worn).health).toBe('watch');
   });
 
   it('fills agent rows from the agent and inherits the session surface', () => {

@@ -17,6 +17,7 @@ function fleet(overrides: Partial<FleetState> = {}): FleetState {
     activeVersion: 0,
     rateLimits: { fiveHourPct: null, sevenDayPct: null, resetsAt: null },
     spendPerHourUsd: 0,
+    health: {},
     ...overrides,
   };
 }

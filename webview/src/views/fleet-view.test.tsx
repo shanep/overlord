@@ -155,6 +155,25 @@ describe('FleetView', () => {
     expect(alwaysAllowScope('Edit')).toBe('Allow every Edit request from now on, in every session');
   });
 
+  it('badges a session that is wearing out and opens its properties from the badge', async () => {
+    const user = userEvent.setup();
+    const { api, container } = setup({ ...fleetState, health: { s1: 'degraded', s2: 'watch' } });
+    const degraded = within(rowFor('Refactor parser')).getByRole('button', {
+      name: 'Health Degraded for Refactor parser: open Session Properties',
+    });
+    expect(degraded.textContent).toBe('Degraded');
+    expect(degraded.className).toContain('badge-critical');
+    const watch = within(rowFor('Write docs')).getByRole('button', {
+      name: 'Health Watch for Write docs: open Session Properties',
+    });
+    expect(watch.className).toContain('badge-warning');
+    expect(within(rowFor('Old run')).queryByRole('button', { name: /^Health/u })).toBeNull();
+    await user.click(degraded);
+    expect(api.actions()).toStrictEqual([{ type: 'openProperties', sessionId: 's1' }]);
+    expect(rowFor('Refactor parser').getAttribute('aria-selected')).toBe('true');
+    await expectAccessible(container);
+  });
+
   it('says ready is not its job and posts row actions', async () => {
     const user = userEvent.setup();
     const { api } = setup();

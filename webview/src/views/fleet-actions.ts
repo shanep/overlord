@@ -1,6 +1,8 @@
 // The buttons on Fleet rows: what each one is called and what its tooltip says.
 
 export type RowAction = 'open' | 'context' | 'interrupt' | 'stop' | 'move' | 'relocate' | 'combine';
+/** A row button, or the health badge, which opens Session Properties. */
+export type RowEvent = RowAction | 'properties';
 export type ProjectAction = 'newSession' | 'openFolder' | 'setFolder' | 'rename' | 'delete';
 
 export const ACTION_LABELS: Readonly<Record<RowAction | ProjectAction, string>> = {

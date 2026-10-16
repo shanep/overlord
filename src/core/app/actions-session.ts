@@ -24,6 +24,7 @@ type SessionActions =
   | 'openSession'
   | 'openAgent'
   | 'openContext'
+  | 'openProperties'
   | 'openFile'
   | 'openView'
   | 'interrupt'
@@ -217,6 +218,10 @@ export const sessionActions: ActionHandlers<SessionActions> = {
         ? { sessionId: action.sessionId }
         : { sessionId: action.sessionId, agentId: action.agentId };
     rt.host.openPanel('context', params);
+    await Promise.resolve();
+  },
+  openProperties: async ({ rt }, action) => {
+    rt.host.openPanel('properties', { sessionId: action.sessionId });
     await Promise.resolve();
   },
   openFile: async ({ rt }, action) => {

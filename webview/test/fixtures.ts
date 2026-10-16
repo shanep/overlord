@@ -145,6 +145,7 @@ export const fleetState: FleetState = {
   activeVersion: 0,
   rateLimits: { fiveHourPct: 0.64, sevenDayPct: 0.2, resetsAt: NOW + 90 * MINUTE },
   spendPerHourUsd: 3.5,
+  health: {},
 };
 
 const mainAgent = fleetState.agents[0];

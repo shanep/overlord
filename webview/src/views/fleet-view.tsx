@@ -16,7 +16,7 @@ import { Icon } from '../components/icon.js';
 import { isBoolean, isString, isStringArray } from '../guards.js';
 import { usePersistentState, usePostAction } from '../vscode-context.js';
 
-import type { ProjectAction, RowAction } from './fleet-actions.js';
+import type { ProjectAction, RowEvent } from './fleet-actions.js';
 import type { PermissionChoice } from './fleet-header.js';
 import { FleetHeader, PermissionBanner } from './fleet-header.js';
 import { historySamples, useRowHistory } from './fleet-history.js';
@@ -163,7 +163,7 @@ export function FleetView(props: { readonly state: FleetState }): ReactElement {
     );
   };
 
-  const onAction = (row: FleetRow, action: RowAction): void => {
+  const onAction = (row: FleetRow, action: RowEvent): void => {
     setSelected(row.key);
     switch (action) {
       case 'open': {
@@ -185,6 +185,10 @@ export function FleetView(props: { readonly state: FleetState }): ReactElement {
       }
       case 'combine': {
         post({ type: 'combineSessions', sessionId: row.sessionId });
+        break;
+      }
+      case 'properties': {
+        post({ type: 'openProperties', sessionId: row.sessionId });
         break;
       }
       case 'interrupt':

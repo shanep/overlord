@@ -1,6 +1,7 @@
 // Pure logic for the fleet tree: build project, session and subagent rows,
 // sort, filter and flatten them for display.
 
+import type { HealthLevel } from '../../../src/shared/health.js';
 import type {
   AgentNode,
   SessionPlace,
@@ -9,7 +10,7 @@ import type {
   Surface,
 } from '../../../src/shared/model.js';
 import { sessionName } from '../../../src/shared/model.js';
-import type { FleetState, ProjectSummary, SessionProject } from '../../../src/shared/protocol.js';
+import type { FleetState, ProjectSummary } from '../../../src/shared/protocol.js';
 import type { SortState } from '../components/data-table.js';
 import { plural } from '../format.js';
 import { isBoolean, isRecord, isString } from '../guards.js';
@@ -53,6 +54,8 @@ export interface FleetRow {
   readonly manualProjectId: string | null;
   /** On a project's row, the folder that opens in the window, or null while it has none. */
   readonly projectFolder: string | null;
+  /** On a session's row, how worn out it is, or null when it is healthy or finished. */
+  readonly health: Exclude<HealthLevel, 'good'> | null;
 }
 
 export interface FleetNode {
@@ -78,12 +81,16 @@ function isActive(state: SessionState): boolean {
   return state !== 'done' && state !== 'failed';
 }
 
+/** What a session's node looks up by its id. */
+type SessionLookups = Pick<FleetState, 'agents' | 'places' | 'sessionProjects' | 'health'>;
+
 function sessionRow(
   session: SessionSummary,
   agents: readonly AgentNode[],
-  place: SessionPlace | null,
-  project: SessionProject | undefined,
+  state: SessionLookups,
 ): FleetRow {
+  const place = state.places[session.id] ?? null;
+  const project = state.sessionProjects[session.id];
   const main = agents.find((agent) => agent.id === session.id);
   const busy = agents.find((agent) => agent.state === 'running' && agent.currentTool !== null);
   const title = sessionName(session);
@@ -115,6 +122,7 @@ function sessionRow(
     needsProject: project?.projectId === null && !project.ignored,
     manualProjectId: null,
     projectFolder: null,
+    health: state.health[session.id] ?? null,
   };
 }
 
@@ -147,6 +155,7 @@ function agentRow(agent: AgentNode, session: FleetRow): FleetRow {
     needsProject: false,
     manualProjectId: null,
     projectFolder: null,
+    health: null,
   };
 }
 
@@ -169,13 +178,9 @@ function agentNodes(level: readonly AgentNode[], context: TreeContext): FleetNod
   return nodes;
 }
 
-function sessionNode(
-  session: SessionSummary,
-  agents: readonly AgentNode[],
-  place: SessionPlace | null,
-  project: SessionProject | undefined,
-): FleetNode {
-  const row = sessionRow(session, agents, place, project);
+function sessionNode(session: SessionSummary, state: SessionLookups): FleetNode {
+  const agents = state.agents.filter((agent) => agent.sessionId === session.id);
+  const row = sessionRow(session, agents, state);
   const subagents = agents.filter((agent) => agent.id !== session.id);
   const ids = new Set(subagents.map((agent) => agent.id));
   const roots = subagents.filter(
@@ -214,14 +219,15 @@ function mostUrgent(rows: readonly FleetRow[]): SessionState {
   return best;
 }
 
-/** What a project's row knows about the project itself. Unassigned has none of it. */
+/** What a project's row knows about the project itself. Unassigned has none of it, and no project has a health. */
 function projectFields(
   project: ProjectSummary | null,
-): Pick<FleetRow, 'projectId' | 'manualProjectId' | 'projectFolder'> {
+): Pick<FleetRow, 'projectId' | 'manualProjectId' | 'projectFolder' | 'health'> {
   return {
     projectId: project?.id ?? null,
     manualProjectId: project?.kind === 'manual' ? project.id : null,
     projectFolder: project?.folder ?? null,
+    health: null,
   };
 }
 
@@ -284,14 +290,7 @@ function groupByProject(sessions: readonly FleetNode[], state: FleetState): Flee
  * the sessions sit under a row for their project.
  */
 export function buildFleetTree(state: FleetState, grouped = false): FleetNode[] {
-  const sessions = state.sessions.map((session) =>
-    sessionNode(
-      session,
-      state.agents.filter((agent) => agent.sessionId === session.id),
-      state.places[session.id] ?? null,
-      state.sessionProjects[session.id],
-    ),
-  );
+  const sessions = state.sessions.map((session) => sessionNode(session, state));
   return grouped ? groupByProject(sessions, state) : sessions;
 }
 

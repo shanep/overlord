@@ -19,6 +19,7 @@ const REQUIRED: Readonly<Record<ViewId, Readonly<Record<string, FieldKind>>>> = 
     sessionProjects: 'object',
     rateLimits: 'object',
     spendPerHourUsd: 'number',
+    health: 'object',
   },
   agent: {
     agent: 'nullable-object',

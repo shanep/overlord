@@ -2,6 +2,7 @@ import path from 'node:path';
 
 import { describe, expect, it, vi } from 'vitest';
 
+import type { ApiRequest } from '../../../shared/model.js';
 import { EventBus } from '../../bus.js';
 import { loadCatalog } from '../../knobs/catalog.js';
 import { OverlordStore } from '../../store/store.js';
@@ -13,6 +14,7 @@ import {
   permissionRequest,
   session,
   sorted,
+  toolCall,
   writeJson,
   writeText,
   immediateScheduler,
@@ -20,6 +22,7 @@ import {
 
 import {
   buildFleet,
+  fleetHealth,
   normalizeRateLimits,
   toFraction,
   withJobStates,
@@ -159,6 +162,7 @@ describe('fleet view', () => {
       'activeSessionId',
       'activeVersion',
       'agents',
+      'health',
       'pendingPermissions',
       'places',
       'projects',
@@ -167,6 +171,49 @@ describe('fleet view', () => {
       'sessions',
       'spendPerHourUsd',
     ]);
+  });
+
+  it('rates the health of each unfinished session from its main thread', () => {
+    const bus = new EventBus();
+    const fleetStore = store(bus);
+    const request: ApiRequest = {
+      messageId: 'm1',
+      requestId: null,
+      sessionId: 'tired',
+      agentId: 'sub',
+      model: 'claude-opus-5-5',
+      timestamp: NOW,
+      usage: { input: 900_000, output: 0, cacheRead: 0, cacheCreation: 0, thinking: 0 },
+      ttftMs: null,
+      durationMs: null,
+      costUsd: null,
+    };
+    for (const id of ['worn', 'tired', 'fine', 'over', 'quiet']) {
+      bus.emit('session.upserted', session(id, { state: id === 'over' ? 'done' : 'idle' }));
+    }
+    for (const id of ['worn', 'tired', 'fine', 'over']) {
+      bus.emit('tool.upserted', toolCall(id, id, `t-${id}`, {}));
+    }
+    // A subagent's work and compactions do not count against the session.
+    bus.emit('tool.upserted', toolCall('fine', 'sub', 't-sub', {}));
+    bus.emit('request.recorded', request);
+    bus.emit('request.recorded', {
+      ...request,
+      messageId: 'm2',
+      sessionId: 'fine',
+      agentId: 'fine',
+      usage: { ...request.usage, input: 10 },
+    });
+    bus.emit('compaction.recorded', { sessionId: 'fine', agentId: 'sub', at: NOW });
+    bus.emit('compaction.recorded', { sessionId: 'tired', agentId: 'tired', at: NOW });
+    for (const id of ['worn', 'over', 'quiet']) {
+      bus.emit('compaction.recorded', { sessionId: id, agentId: id, at: NOW });
+      bus.emit('compaction.recorded', { sessionId: id, agentId: id, at: NOW + 1 });
+    }
+    expect(fleetHealth(fleetStore, fleetStore.fleetState(NOW).sessions)).toStrictEqual({
+      worn: 'degraded',
+      tired: 'watch',
+    });
   });
 
   it('marks finished jobs done and gives a job with no transcript a bare row', () => {
