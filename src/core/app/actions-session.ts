@@ -3,7 +3,7 @@
 // Sessions Overlord launched are driven through the SDK. Any other local
 // session can only be signalled, and only after the user agrees.
 
-import type { LaunchRun, SurfaceSession } from '../../shared/protocol.js';
+import type { HandoffKind, LaunchRun, SurfaceSession } from '../../shared/protocol.js';
 import { parsePermissionMode } from '../harness/events.js';
 import { isTerminal } from '../harness/launcher.js';
 import type { SdkSession } from '../harness/session.js';
@@ -55,6 +55,15 @@ async function liveProcess(rt: Runtime, sessionId: string): Promise<LiveProcess 
 }
 
 /** Where a terminal for this session should start. */
+const TAB_TITLE_CHARS = 40;
+
+/** Tab title for a handoff terminal, for example "Claude: Fix the parser". */
+export function terminalName(kind: HandoffKind, title: string): string {
+  const short =
+    title.length > TAB_TITLE_CHARS ? `${title.slice(0, TAB_TITLE_CHARS - 3)}...` : title;
+  return kind === 'resume-local' ? `Claude: ${short}` : `Claude ${kind}: ${short}`;
+}
+
 function cwdFor(rt: Runtime, sessionId: string, known: string | null): string {
   const session = rt.store
     .fleetState(rt.clock())
@@ -167,11 +176,20 @@ export const sessionActions: ActionHandlers<SessionActions> = {
       rt.host.showInfo('That handoff is not available for this session.');
       return;
     }
+    const cwd = cwdFor(rt, session.id, session.cwd);
+    // Claude Code finds a session by the folder it ran in, so resuming
+    // anywhere else fails with a confusing "no conversation found".
+    if (action.kind === 'resume-local' && (await rt.fs.kind(cwd)) !== 'directory') {
+      rt.host.showWarning(
+        `Cannot continue "${session.title}": its folder ${cwd} no longer exists.`,
+      );
+      return;
+    }
     rt.host.runInTerminal({
-      name: `Claude ${action.kind}`,
+      name: terminalName(action.kind, session.title),
       command: command.command,
       args: command.args,
-      cwd: cwdFor(rt, session.id, session.cwd),
+      cwd,
     });
   },
 };

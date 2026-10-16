@@ -11,11 +11,11 @@ import type { Column } from '../components/data-table.js';
 import { DataTable } from '../components/data-table.js';
 import { formatAgo } from '../format.js';
 import { isBoolean, isString } from '../guards.js';
-import { isSurface, SURFACE_LABELS, SURFACES } from '../labels.js';
+import { isSurface, LOCAL_SURFACES, SURFACE_LABELS, SURFACES } from '../labels.js';
 import { usePersistentState, usePostAction } from '../vscode-context.js';
 
 export const HANDOFF_LABELS: Readonly<Record<HandoffKind, string>> = {
-  'resume-local': 'Resume',
+  'resume-local': 'Continue',
   'open-desktop': 'Open in Desktop',
   'teleport-local': 'Pull to local',
   'start-cloud': 'Start in cloud',
@@ -50,18 +50,10 @@ export function filterSessions(
     .toSorted((a, b) => b.updatedAt - a.updatedAt);
 }
 
-/** Surfaces whose sessions have a local transcript the agent view can show. */
-const OPENABLE: ReadonlySet<SurfaceSession['surface']> = new Set([
-  'cli',
-  'sdk',
-  'overlord',
-  'desktop-code',
-]);
-
 function SessionTitle(props: { readonly entry: SurfaceSession }): ReactElement {
   const post = usePostAction();
   const { entry } = props;
-  if (!OPENABLE.has(entry.surface)) {
+  if (!LOCAL_SURFACES.has(entry.surface)) {
     return <>{entry.title}</>;
   }
   return (
@@ -90,6 +82,7 @@ function HandoffButtons(props: { readonly entry: SurfaceSession }): ReactElement
         <button
           key={kind}
           type="button"
+          className={kind === 'resume-local' ? 'primary' : undefined}
           aria-label={`${HANDOFF_LABELS[kind]}: ${entry.title}`}
           onClick={() => {
             post({ type: 'handoff', sessionId: entry.id, kind });

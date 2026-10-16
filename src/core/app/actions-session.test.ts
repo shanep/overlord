@@ -7,7 +7,7 @@ import type { WebviewAction } from '../../shared/protocol.js';
 import { isWebviewToHost } from '../../shared/protocol.js';
 import type { ExecResult } from '../sync/exec.js';
 
-import { NOT_LOCAL, SDK_ONLY, sdkTarget } from './actions-session.js';
+import { NOT_LOCAL, SDK_ONLY, sdkTarget, terminalName } from './actions-session.js';
 import type { TestApp, TestEnv } from './test-helpers/fixtures.js';
 import {
   makeApp,
@@ -237,24 +237,54 @@ describe('attach', () => {
   });
 });
 
+describe('terminalName', () => {
+  it('names continue tabs after the session and cuts long titles', () => {
+    expect(terminalName('resume-local', 'Fix the parser')).toBe('Claude: Fix the parser');
+    expect(terminalName('teleport-local', 'Cloud fix')).toBe('Claude teleport-local: Cloud fix');
+    const long = terminalName('resume-local', 'x'.repeat(50));
+    expect(long).toBe(`Claude: ${'x'.repeat(37)}...`);
+    expect(terminalName('resume-local', 'y'.repeat(40))).toBe(`Claude: ${'y'.repeat(40)}`);
+  });
+});
+
 describe('handoff', () => {
   it('runs the handoff command for a session in the list', async () => {
     const env = await makeEnv();
-    await registry(env, { pid: 123, sessionId: 'local', cwd: '/here', name: 'Mine' });
+    await registry(env, { pid: 123, sessionId: 'local', cwd: env.home, name: 'Mine' });
     const test = liveApp(env);
     await test.app.dispatch({ type: 'handoff', sessionId: 'local', kind: 'resume-local' }, {});
     expect(env.host.terminals).toStrictEqual([
-      { name: 'Claude resume-local', command: 'claude', args: ['--resume', 'local'], cwd: '/here' },
+      { name: 'Claude: Mine', command: 'claude', args: ['--resume', 'local'], cwd: env.home },
     ]);
     const before = test.calls.length;
     await test.app.dispatch({ type: 'handoff', sessionId: 'local', kind: 'start-cloud' }, {});
     expect(test.calls).toHaveLength(before);
-    expect(env.host.terminals[1]?.args).toStrictEqual(['--cloud', 'Mine']);
+    expect(env.host.terminals[1]).toMatchObject({
+      name: 'Claude start-cloud: Mine',
+      args: ['--cloud', 'Mine'],
+    });
+  });
+
+  it('will not continue a session whose folder is gone', async () => {
+    const env = await makeEnv();
+    const gone = path.join(env.root, 'deleted-project');
+    await registry(env, { pid: 123, sessionId: 'old', cwd: gone, name: 'Old work' });
+    const test = liveApp(env);
+    await test.app.dispatch({ type: 'handoff', sessionId: 'old', kind: 'resume-local' }, {});
+    expect(env.host.terminals).toStrictEqual([]);
+    expect(env.host.warnings).toStrictEqual([
+      `Cannot continue "Old work": its folder ${gone} no longer exists.`,
+    ]);
+    // A file where the folder should be is not a folder either.
+    await writeText(gone, '');
+    await test.app.dispatch({ type: 'handoff', sessionId: 'old', kind: 'resume-local' }, {});
+    expect(env.host.terminals).toStrictEqual([]);
+    expect(env.host.warnings).toHaveLength(2);
   });
 
   it('says so when the session or the handoff is not available', async () => {
     const env = await makeEnv();
-    await registry(env, { pid: 123, sessionId: 'local', cwd: '/here' });
+    await registry(env, { pid: 123, sessionId: 'local', cwd: env.home });
     const test = liveApp(env);
     await test.app.dispatch({ type: 'handoff', sessionId: 'missing', kind: 'resume-local' }, {});
     await test.app.dispatch({ type: 'handoff', sessionId: 'local', kind: 'teleport-local' }, {});

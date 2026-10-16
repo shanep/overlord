@@ -9,6 +9,7 @@ import { useNow } from '../clock.js';
 import { StateBadge } from '../components/badge.js';
 import { ConfirmBar } from '../components/confirm-bar.js';
 import { formatCompact, formatCost, formatDuration } from '../format.js';
+import { LOCAL_SURFACES } from '../labels.js';
 import { totalTokens } from '../metrics.js';
 import { usePostAction } from '../vscode-context.js';
 
@@ -102,6 +103,18 @@ export function AgentHeader(props: {
           </button>
         )}
         <span className="spacer" />
+        {parent === null && session !== null && LOCAL_SURFACES.has(session.surface) ? (
+          <button
+            type="button"
+            className="primary"
+            title="Continue this session in Claude Code"
+            onClick={() => {
+              post({ type: 'handoff', sessionId: session.id, kind: 'resume-local' });
+            }}
+          >
+            Continue
+          </button>
+        ) : null}
         <button
           type="button"
           onClick={() => {

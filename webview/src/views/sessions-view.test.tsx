@@ -67,6 +67,18 @@ describe('SessionsView', () => {
     expect(HANDOFF_LABELS['open-desktop']).toBe('Open in Desktop');
   });
 
+  it('continues a local session from its Continue button', async () => {
+    const { getByRole, api } = renderView(<SessionsView state={sessionsState} />);
+    const button = getByRole('button', { name: 'Continue: Refactor parser' });
+    expect(button.className).toBe('primary');
+    expect(getByRole('button', { name: 'Start in cloud: Refactor parser' }).className).toBe('');
+    await userEvent.click(button);
+    expect(api.actions()).toStrictEqual([
+      { type: 'handoff', sessionId: 'x1', kind: 'resume-local' },
+    ]);
+    expect(HANDOFF_LABELS['resume-local']).toBe('Continue');
+  });
+
   it('opens the agent view from a local session title only', async () => {
     const { getByRole, queryByRole, api } = renderView(<SessionsView state={sessionsState} />);
     const title = getByRole('button', { name: 'Refactor parser' });

@@ -50,6 +50,25 @@ describe('AgentView', () => {
     expect(api.actions()).toStrictEqual([{ type: 'openContext', sessionId: 's1', agentId: 's1' }]);
   });
 
+  it('continues the main session in Claude Code', async () => {
+    const user = userEvent.setup();
+    const { api } = renderView(<AgentView state={agentState} />);
+    const button = screen.getByRole('button', { name: 'Continue' });
+    expect(button.className).toBe('primary');
+    expect(button.getAttribute('title')).toBe('Continue this session in Claude Code');
+    await user.click(button);
+    expect(api.actions()).toStrictEqual([
+      { type: 'handoff', sessionId: 's1', kind: 'resume-local' },
+    ]);
+  });
+
+  it('offers no Continue for a session with no local transcript', () => {
+    const cloud =
+      agentState.session === null ? null : { ...agentState.session, surface: 'cloud' as const };
+    renderView(<AgentView state={{ ...agentState, session: cloud }} />);
+    expect(screen.queryByRole('button', { name: 'Continue' })).toBeNull();
+  });
+
   it('confirms inline before interrupting', async () => {
     const user = userEvent.setup();
     const { api } = renderView(<AgentView state={agentState} />);
@@ -153,6 +172,7 @@ describe('AgentView', () => {
     expect(screen.getByText('Nothing in the feed yet.')).toBeDefined();
     expect(screen.getAllByText('No data yet.')).toHaveLength(5);
     expect(screen.queryByRole('img')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Continue' })).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Open parent' }));
     expect(api.actions()).toStrictEqual([{ type: 'openAgent', sessionId: 's1', agentId: 's1' }]);
     await expectAccessible(container);

@@ -55,3 +55,11 @@ const SURFACE_SET: ReadonlySet<string> = new Set(SURFACES);
 export function isSurface(value: unknown): value is Surface {
   return typeof value === 'string' && SURFACE_SET.has(value);
 }
+
+/** Surfaces whose sessions have a local transcript Claude Code can continue or show. */
+export const LOCAL_SURFACES: ReadonlySet<Surface> = new Set<Surface>([
+  'cli',
+  'sdk',
+  'overlord',
+  'desktop-code',
+]);

@@ -14,7 +14,6 @@ import type {
   TerminalRequest,
 } from '../core/app/host-port.js';
 import { findOnPath } from '../core/find-on-path.js';
-import { shellCommand } from '../core/shell-quote.js';
 import type { ViewId } from '../shared/protocol.js';
 
 function expandHome(value: string): string {
@@ -62,9 +61,12 @@ export function createVscodeHostPort(options: VscodeHostPortOptions): HostPort {
         cwd: request.cwd,
         location: { viewColumn: vscode.ViewColumn.Active },
         iconPath: new vscode.ThemeIcon('sparkle'),
+        // Run claude as the terminal's own process: no shell quoting, and the
+        // tab closes when the session ends.
+        shellPath: request.command,
+        shellArgs: [...request.args],
       });
       terminal.show();
-      terminal.sendText(shellCommand(request.command, request.args));
     },
     pickFile: async (request: FilePickRequest): Promise<string | null> => {
       const filters: Record<string, string[]> = {};
