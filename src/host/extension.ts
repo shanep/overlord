@@ -25,6 +25,7 @@ const GLOBAL_VIEWS: readonly ViewEntry[] = [
   ['overlord.openConfig', 'config', 'Config and Sync', 'repo'],
   ['overlord.openUsage', 'usage', 'Usage', 'graph'],
   ['overlord.openFrustration', 'frustration', 'Frustration', 'flame'],
+  ['overlord.openMessages', 'messages', 'Agent Messages', 'comment-discussion'],
   ['overlord.openHelp', 'help', 'Help', 'question'],
 ];
 
@@ -38,7 +39,6 @@ const FLEET_TITLE_VIEWS: readonly ViewEntry[] = [
 const SESSION_VIEWS: readonly ViewEntry[] = [
   ['overlord.openLauncher', 'launcher', 'Launcher', 'rocket'],
   ['overlord.openContext', 'context', 'Context Inspector', 'search'],
-  ['overlord.openMessages', 'messages', 'Agent Messages', 'comment-discussion'],
 ];
 
 const VIEW_COMMANDS = [...GLOBAL_VIEWS, ...FLEET_TITLE_VIEWS, ...SESSION_VIEWS];
