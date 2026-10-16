@@ -92,6 +92,7 @@ export const launcherState: LauncherState = {
       ahead: 0,
       dirty: 1,
       files: ['src/parser.ts'],
+      upstreamFiles: [],
       overlaps: [{ id: 'w2', label: 'Parser cleanup', files: ['src/parser.ts'] }],
     },
     {
@@ -108,6 +109,7 @@ export const launcherState: LauncherState = {
       ahead: 2,
       dirty: 0,
       files: ['src/parser.ts', 'src/lexer.ts'],
+      upstreamFiles: ['src/lexer.ts'],
       overlaps: [{ id: 'w1', label: 'Flaky test', files: ['src/parser.ts'] }],
     },
     {
@@ -124,6 +126,7 @@ export const launcherState: LauncherState = {
       ahead: 1,
       dirty: 3,
       files: ['README.md'],
+      upstreamFiles: [],
       overlaps: [],
     },
   ],

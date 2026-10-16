@@ -347,6 +347,11 @@
           "default": true,
           "description": "Tell each new Claude Code session which connectors (MCP servers, claude.ai connectors, Claude in Chrome, headless Chrome) are ready, and ask it to check the ones its task needs before it starts."
         },
+        "overlord.coordination.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Help sessions working in the same repository avoid each other. Each session hears which other sessions are working there and what files they are changing, its first edit to a file another session is changing is paused with the reason, and it is told when new commits on the default branch touch files it changed. Needs Overlord's hooks installed."
+        },
         "overlord.telemetry.port": {
           "type": "number",
           "default": 47318,

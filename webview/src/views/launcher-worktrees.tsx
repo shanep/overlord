@@ -1,5 +1,6 @@
 // Worktrees table: every worktree Overlord made, what is left in it, which
-// other worktrees touch the same files, and the actions a finished one takes.
+// other worktrees or newly landed commits touch the same files, and the
+// actions a finished one takes.
 
 import type { ReactElement } from 'react';
 
@@ -32,8 +33,8 @@ export function describeChanges(item: WorktreeSummary): string {
 }
 
 function Overlaps(props: { readonly item: WorktreeSummary }): ReactElement {
-  const { overlaps } = props.item;
-  if (overlaps.length === 0) {
+  const { overlaps, upstreamFiles, target } = props.item;
+  if (overlaps.length === 0 && upstreamFiles.length === 0) {
     return <span className="muted">none</span>;
   }
   return (
@@ -43,6 +44,12 @@ function Overlaps(props: { readonly item: WorktreeSummary }): ReactElement {
           <Badge label="overlap" tone="warning" /> {overlap.label}: {overlap.files.join(', ')}
         </li>
       ))}
+      {upstreamFiles.length > 0 ? (
+        <li title={upstreamFiles.join('\n')}>
+          <Badge label="behind" tone="warning" /> {target ?? 'default branch'} also changed:{' '}
+          {upstreamFiles.join(', ')}
+        </li>
+      ) : null}
     </ul>
   );
 }

@@ -302,6 +302,46 @@ describe('HookServer', () => {
       expect(await other.next()).toStrictEqual({ id: 'm2', output: {} });
     });
 
+    it("joins the session note and the adviser's note into one answer", async () => {
+      await startServer({
+        sessionContext: () => 'check the connectors',
+        advise: (payload) =>
+          payload.hook_event_name === 'SessionStart'
+            ? { hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: 'peers' } }
+            : null,
+      });
+      const opened = await client();
+      opened.send('m1', start);
+      expect(await opened.next()).toStrictEqual({
+        id: 'm1',
+        output: {
+          hookSpecificOutput: {
+            hookEventName: 'SessionStart',
+            additionalContext: 'check the connectors\n\npeers',
+          },
+        },
+      });
+    });
+
+    it('uses the adviser alone when there is no session note', async () => {
+      const outputs: (Readonly<Record<string, unknown>> | null)[] = [
+        { hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: 'peers' } },
+        { hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: '' } },
+        { hookSpecificOutput: 'odd' },
+        { continue: true },
+      ];
+      await startServer({ advise: () => outputs.shift() ?? null });
+      const opened = await client();
+      opened.send('m1', start);
+      expect(await opened.next()).toMatchObject({
+        output: { hookSpecificOutput: { additionalContext: 'peers' } },
+      });
+      for (const id of ['m2', 'm3', 'm4']) {
+        opened.send(id, start);
+        expect(await opened.next()).toStrictEqual({ id, output: {} });
+      }
+    });
+
     it('reports a note that throws and answers with nothing', async () => {
       await startServer({
         sessionContext: () => {
@@ -612,6 +652,53 @@ describe('HookServer', () => {
         tool_response: {},
       });
       expect(await opened.next()).toStrictEqual({ id: 'm1', output: {} });
+    });
+  });
+
+  describe('adviser', () => {
+    const note = {
+      hookSpecificOutput: { hookEventName: 'UserPromptSubmit', additionalContext: 'hi' },
+    };
+    const prompt = { ...base, hook_event_name: 'UserPromptSubmit', prompt: 'go' };
+
+    it('answers with what the adviser returns, after the deny rules had their say', async () => {
+      const seen: string[] = [];
+      await startServer({
+        rules: [
+          { ...allowLs, id: 'deny-peers', behavior: 'deny', tool: 'SendMessage', pattern: null },
+        ],
+        advise: (payload) => {
+          seen.push(payload.hook_event_name);
+          return payload.hook_event_name === 'UserPromptSubmit' ? note : null;
+        },
+      });
+      const opened = await client();
+      opened.send('m1', prompt);
+      expect(await opened.next()).toStrictEqual({ id: 'm1', output: note });
+      opened.send('m2', sendEvent('uds:/x'));
+      expect(await opened.next()).toMatchObject({
+        id: 'm2',
+        output: { hookSpecificOutput: { permissionDecision: 'deny' } },
+      });
+      opened.send('m3', sendEvent('uds:/x', 'Bash'));
+      expect(await opened.next()).toStrictEqual({ id: 'm3', output: {} });
+      opened.send('m4', { ...base, hook_event_name: 'SomethingNew' });
+      expect(await opened.next()).toStrictEqual({ id: 'm4', output: {} });
+      expect(seen).toStrictEqual(['UserPromptSubmit', 'PreToolUse']);
+    });
+
+    it('reports an adviser that throws and answers with no opinion', async () => {
+      await startServer({
+        advise: () => {
+          throw new Error('confused');
+        },
+      });
+      const errors: string[] = [];
+      bus.on('source.error', (error) => errors.push(error.message));
+      const opened = await client();
+      opened.send('m1', prompt);
+      expect(await opened.next()).toStrictEqual({ id: 'm1', output: {} });
+      expect(errors).toStrictEqual(['hook adviser failed: confused']);
     });
   });
 

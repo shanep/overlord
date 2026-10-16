@@ -10,6 +10,7 @@ import { callStdioTool } from '../connectors/stdio-mcp.js';
 import { Launcher } from '../harness/launcher.js';
 import { mergeEnv } from '../harness/options.js';
 import { sdkPlanUsage, sdkQuery } from '../harness/sdk-types.js';
+import type { HookOutput } from '../hooks/protocol.js';
 import { socketPath } from '../hooks/socket-path.js';
 import type { ClaudePaths } from '../paths.js';
 import { OverlordStore } from '../store/store.js';
@@ -23,6 +24,7 @@ import { createCaches } from './caches.js';
 import { ChangeHub } from './changes.js';
 import { cliLoader, executableFor } from './claude-bin.js';
 import { ConfigSync } from './config-sync.js';
+import { createCoordinator } from './coordination.js';
 import type { AppError } from './errors.js';
 import { ErrorLog } from './errors.js';
 import type { PanelParams } from './host-port.js';
@@ -201,6 +203,7 @@ export class OverlordApp {
     const activity = createActivity(base, machine.interval);
     this.rt = { ...base, caches: createCaches(base), context, activity };
     this.cleanups.push(store.onChange(notify), launcher.onChange(notify));
+    const coordinator = createCoordinator(this.rt);
     this.sources = new Sources({
       paths: this.paths,
       host,
@@ -211,6 +214,7 @@ export class OverlordApp {
       watchFactory: deps.watchFactory,
       permissions,
       context,
+      advise: (payload): HookOutput | null => coordinator.handle(payload),
       report,
       notify,
       sessionContext: (): string | null =>

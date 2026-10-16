@@ -49,6 +49,8 @@ export interface OverlordSettings {
   readonly updateThrottleMs: number;
   readonly maxConcurrency: number;
   readonly holdTimeoutSeconds: number;
+  /** Tell sessions in one repository about each other and pause clashing edits. */
+  readonly coordinateSessions: boolean;
   readonly telemetryPort: number;
   readonly claudePath: string;
   readonly configRepoUrl: string;

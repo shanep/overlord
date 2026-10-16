@@ -20,6 +20,7 @@ const DEFAULT_SETTINGS: OverlordSettings = {
   updateThrottleMs: 250,
   maxConcurrency: 4,
   holdTimeoutSeconds: 600,
+  coordinateSessions: true,
   telemetryPort: 0,
   claudePath: 'claude',
   configRepoUrl: '',

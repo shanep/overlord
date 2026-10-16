@@ -44,6 +44,9 @@ describe('WorktreesTable', () => {
     expect(within(busy).getByText('1 file')).toBeDefined();
     expect(within(busy).getByText('Parser cleanup: src/parser.ts', { exact: false })).toBeDefined();
     expect(within(busy).queryByRole('button')).toBeNull();
+    expect(
+      within(row('Parser cleanup')).getByText('main also changed: src/lexer.ts', { exact: false }),
+    ).toBeDefined();
     expect(within(row('Docs pass')).getByText('none')).toBeDefined();
     expect(within(row('Docs pass')).getByText('docs').title).toBe('/docs');
     await expectAccessible(container);

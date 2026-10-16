@@ -291,6 +291,7 @@ export class WorktreeRegistry {
           ahead: status.ahead,
           dirty: status.dirty,
           files: status.files,
+          upstreamFiles: status.upstreamFiles,
         };
       }),
     );

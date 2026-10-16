@@ -163,3 +163,13 @@ export function ruleDenyMessage(ruleId: string, description: string): string {
 export function sessionStartOutput(text: string): HookOutput {
   return { hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: text } };
 }
+
+/** The additionalContext text an output carries, or null when it carries none. */
+export function additionalContextOf(output: HookOutput | null): string | null {
+  const specific = output?.['hookSpecificOutput'];
+  if (typeof specific !== 'object' || specific === null) {
+    return null;
+  }
+  const text: unknown = Reflect.get(specific, 'additionalContext');
+  return typeof text === 'string' && text !== '' ? text : null;
+}

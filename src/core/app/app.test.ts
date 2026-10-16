@@ -556,6 +556,46 @@ describe('OverlordApp', () => {
     client.destroy();
   });
 
+  it('passes hook events to the coordinator, which refreshes worktrees after a push', async () => {
+    const env = await makeEnv();
+    await installOurHooks(env.paths.userSettings);
+    const socket = shortSocketPath();
+    const { app } = makeApp(env, { deps: { hookSocketPath: socket } });
+    await app.start();
+    const refresh = vi.spyOn(app.runtime.caches.worktrees, 'refresh');
+    const client = connect(socket);
+    const replies: string[] = [];
+    client.setEncoding('utf8');
+    client.on('data', (chunk: string) => {
+      replies.push(chunk);
+    });
+    const common = { session_id: 's1', cwd: env.home };
+    client.write(
+      encodeMessage({
+        id: 'c1',
+        event: { ...common, hook_event_name: 'SessionStart', source: 'startup' },
+      }),
+    );
+    client.write(
+      encodeMessage({
+        id: 'c2',
+        event: {
+          ...common,
+          hook_event_name: 'PostToolUse',
+          tool_name: 'Bash',
+          tool_input: { command: 'git push origin HEAD:master' },
+          tool_response: {},
+        },
+      }),
+    );
+    await waitFor(() => replies.join('').includes('"c2"'));
+    // Alone in no repository, the session hears nothing about other sessions.
+    expect(replies.join('')).not.toContain('other Claude Code sessions');
+    expect(replies.join('')).toContain('{"id":"c2","output":{}}');
+    expect(refresh).toHaveBeenCalled();
+    client.destroy();
+  });
+
   it('dispatches actions', async () => {
     const env = await makeEnv();
     const { app } = makeApp(env);

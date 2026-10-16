@@ -45,7 +45,8 @@ function compile(pattern: string, bash: boolean): Matcher {
   return matcher;
 }
 
-function stringField(input: unknown, key: string): string | null {
+/** A string field of a tool input, or null when it is missing or not a string. */
+export function stringField(input: unknown, key: string): string | null {
   if (typeof input !== 'object' || input === null || !(key in input)) {
     return null;
   }

@@ -28,6 +28,11 @@ export interface WorktreeStatus {
   readonly ahead: number;
   /** Files changed on this branch, committed or not. */
   readonly files: readonly string[];
+  /**
+   * Files in `files` that the origin target has also changed since this
+   * branch started, so rebasing onto it may conflict in them.
+   */
+  readonly upstreamFiles: readonly string[];
 }
 
 export class NotARepoError extends Error {
@@ -56,7 +61,13 @@ const SLOW_TIMEOUT_MS = 15 * 60_000;
 const BEHIND_PATTERN = /\(fetch first\)|non-fast-forward/u;
 
 /** A worktree that is gone, so there is nothing to land and nothing left to keep. */
-const MISSING: WorktreeStatus = { exists: false, dirty: 0, ahead: 0, files: [] };
+const MISSING: WorktreeStatus = {
+  exists: false,
+  dirty: 0,
+  ahead: 0,
+  files: [],
+  upstreamFiles: [],
+};
 
 function lines(text: string): string[] {
   return text.split('\n').filter((line) => line.trim() !== '');
@@ -156,13 +167,19 @@ export class WorktreeGit {
     const ahead = await this.git(info.path, ['rev-list', '--count', `${upstream ?? since}..HEAD`]);
     const changed = await this.git(info.path, ['diff', '--name-only', since]);
     const untracked = await this.git(info.path, ['ls-files', '--others', '--exclude-standard']);
+    const files = [...new Set([...lines(changed), ...lines(untracked)])].toSorted((a, b) =>
+      a.localeCompare(b),
+    );
+    const landed =
+      upstream === null
+        ? new Set<string>()
+        : new Set(lines(await this.git(info.path, ['diff', '--name-only', since, upstream])));
     return {
       exists: true,
       dirty: lines(porcelain).length,
       ahead: Number(ahead.trim()),
-      files: [...new Set([...lines(changed), ...lines(untracked)])].toSorted((a, b) =>
-        a.localeCompare(b),
-      ),
+      files,
+      upstreamFiles: files.filter((file) => landed.has(file)),
     };
   }
 

@@ -26,6 +26,9 @@ import type {
   ToolCall,
 } from './model.js';
 import type { TuningState } from './tuning.js';
+import type { WorktreeSummary } from './worktrees.js';
+
+export type { WorktreeOverlap, WorktreeState, WorktreeSummary } from './worktrees.js';
 
 export const VIEW_IDS = [
   'fleet',
@@ -146,38 +149,6 @@ export interface LaunchRun {
   readonly durationMs: number;
   readonly result: string | null;
   readonly worktreePath: string | null;
-}
-
-/**
- * Where a worktree stands. Active ones have a session working in them. The
- * rest are finished: dirty ones hold uncommitted edits, unlanded ones hold
- * commits the default branch does not have, landed ones are about to go.
- */
-export type WorktreeState = 'active' | 'dirty' | 'unlanded' | 'landed' | 'missing';
-
-export interface WorktreeOverlap {
-  readonly id: string;
-  readonly label: string;
-  readonly files: readonly string[];
-}
-
-export interface WorktreeSummary {
-  readonly id: string;
-  readonly kind: 'run' | 'session';
-  readonly label: string;
-  readonly repoRoot: string;
-  readonly path: string;
-  readonly branch: string;
-  /** The origin branch work lands on, or null when the repository has no origin. */
-  readonly target: string | null;
-  readonly slot: number;
-  readonly createdAt: number;
-  readonly state: WorktreeState;
-  readonly ahead: number;
-  readonly dirty: number;
-  readonly files: readonly string[];
-  /** Other worktrees of the same repository changing some of the same files. */
-  readonly overlaps: readonly WorktreeOverlap[];
 }
 
 export interface AutoApproveRule {

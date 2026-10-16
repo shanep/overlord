@@ -5,6 +5,7 @@
 
 import type { EventBus } from '../bus.js';
 import { isInstalled } from '../hooks/install.js';
+import type { Adviser } from '../hooks/server.js';
 import { HookServer } from '../hooks/server.js';
 import { TelemetryDecoder } from '../otel/decode.js';
 import { OtlpReceiver } from '../otel/receiver.js';
@@ -29,6 +30,8 @@ export interface SourcesDeps {
   readonly watchFactory: WatchFactory | null | undefined;
   readonly permissions: PermissionHub;
   readonly context: ContextViews;
+  /** Answers hooks for the coordinator, or null to leave them unanswered. */
+  readonly advise?: Adviser | null;
   readonly report: (source: string, message: string) => void;
   readonly notify: () => void;
   /** The SessionStart note for new sessions, or null for none. */
@@ -181,6 +184,7 @@ export class Sources {
       now: deps.clock,
       platform: deps.platform,
       sessionContext: deps.sessionContext,
+      advise: deps.advise ?? null,
     });
     try {
       await server.start();

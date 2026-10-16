@@ -4,6 +4,8 @@
 // other event is acknowledged at once so hooks never slow a session down.
 // SendMessage never asks permission, so its deny rules are applied on
 // PreToolUse instead. PreToolUse only ever denies; it never allows anything.
+// An adviser may answer the other events too, from what it already knows, so
+// the answer is still immediate.
 
 import { randomUUID } from 'node:crypto';
 import { mkdir, rm } from 'node:fs/promises';
@@ -17,6 +19,7 @@ import type { EventBus } from '../bus.js';
 import type { AuditEntry } from './audit.js';
 import type { InstructionLoadedEvent } from './mapping.js';
 import {
+  additionalContextOf,
   permissionOutput,
   preToolUseDenyOutput,
   ruleDenyMessage,
@@ -56,7 +59,11 @@ export interface HookServerOptions {
   readonly maxLineBytes?: number;
   /** Text every new session gets from its SessionStart hook, or null for none. Must not block. */
   readonly sessionContext?: () => string | null;
+  /** Answers a hook that no deny rule answered, or null for no opinion. Must not wait on anything. */
+  readonly advise?: Adviser | null;
 }
+
+export type Adviser = (payload: KnownPayload) => HookOutput | null;
 
 export interface HookEvent {
   readonly receivedAt: number;
@@ -122,6 +129,7 @@ export class HookServer {
   private readonly newId: () => string;
   private readonly platform: NodeJS.Platform;
   private readonly maxLineBytes: number;
+  private readonly advise: Adviser | null;
   private readonly server: net.Server;
   private readonly sockets = new Set<net.Socket>();
   private readonly pending = new Map<string, Pending>();
@@ -142,6 +150,7 @@ export class HookServer {
     this.platform = options.platform ?? process.platform;
     this.maxLineBytes = options.maxLineBytes ?? MAX_LINE_BYTES;
     this.sessionContext = options.sessionContext ?? ((): null => null);
+    this.advise = options.advise ?? null;
     this.server = net.createServer((socket) => {
       this.accept(socket);
     });
@@ -268,19 +277,43 @@ export class HookServer {
     this.reply(socket, message.id, (hook.known ? this.outputFor(hook.payload) : null) ?? {});
   }
 
-  /** What a hook prints: a deny on PreToolUse, the session note on SessionStart, else nothing. */
+  /**
+   * What a hook prints: a deny rule's answer on PreToolUse, else the
+   * adviser's. SessionStart joins the session note and the adviser's note
+   * into one, since a hook prints a single answer.
+   */
   private outputFor(payload: KnownPayload): HookOutput | null {
-    if (payload.hook_event_name === 'PreToolUse') {
-      return this.preToolDeny(payload);
+    const denied = payload.hook_event_name === 'PreToolUse' ? this.preToolDeny(payload) : null;
+    if (denied !== null) {
+      return denied;
     }
+    const advice = this.adviseSafely(payload);
     if (payload.hook_event_name !== 'SessionStart') {
+      return advice;
+    }
+    const notes = [this.sessionNote(), additionalContextOf(advice)].filter(
+      (note): note is string => note !== null,
+    );
+    return notes.length === 0 ? null : sessionStartOutput(notes.join('\n\n'));
+  }
+
+  private sessionNote(): string | null {
+    try {
+      return this.sessionContext();
+    } catch (error) {
+      this.report(`session note failed: ${errorMessage(error)}`);
+      return null;
+    }
+  }
+
+  private adviseSafely(payload: KnownPayload): HookOutput | null {
+    if (this.advise === null) {
       return null;
     }
     try {
-      const text = this.sessionContext();
-      return text === null ? null : sessionStartOutput(text);
+      return this.advise(payload);
     } catch (error) {
-      this.report(`session note failed: ${errorMessage(error)}`);
+      this.report(`hook adviser failed: ${errorMessage(error)}`);
       return null;
     }
   }

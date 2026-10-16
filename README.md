@@ -131,6 +131,23 @@ Each session also gets `OVERLORD_SLOT`, a small number no other live worktree ha
 `OVERLORD_PORT_BASE` (40000 plus 100 per slot), so dev servers and test databases can pick ports
 that do not collide.
 
+### Sessions that share a repo
+
+Worktrees keep sessions out of each other's files, but two sessions changing the same file still
+conflict when the second one lands. With Overlord's hooks installed, Overlord tells each session
+about the others so it can steer clear:
+
+- When a session starts, it gets a list of the other sessions in the repo, what each one is
+  working on and which files each one has changed. It gets the list again on a prompt when
+  someone joins or leaves.
+- The first time a session edits a file another session is also changing, Overlord pauses the
+  edit and says who else has it. If the session makes the same edit again, it goes through.
+- When new commits land on the default branch and change files a worktree also changed, the
+  session in it is told to rebase now, while the conflict is still small. The Worktrees table
+  shows these files too.
+
+Turn this off with `overlord.coordination.enabled`.
+
 ## New machine
 
 1. Install the extension.

@@ -196,6 +196,7 @@ describe('WorktreeGit', { timeout: 30_000 }, () => {
         dirty: 0,
         ahead: 0,
         files: [],
+        upstreamFiles: [],
       });
       await writeFile(path.join(info.path, 'a.txt'), 'edited\n');
       await writeFile(path.join(info.path, 'new.txt'), 'new\n');
@@ -204,6 +205,7 @@ describe('WorktreeGit', { timeout: 30_000 }, () => {
         dirty: 2,
         ahead: 0,
         files: ['a.txt', 'new.txt'],
+        upstreamFiles: [],
       });
       await git(info.path, 'add', '-A');
       await git(info.path, 'commit', '-q', '-m', 'work');
@@ -212,6 +214,22 @@ describe('WorktreeGit', { timeout: 30_000 }, () => {
         dirty: 0,
         ahead: 1,
         files: ['a.txt', 'new.txt'],
+        upstreamFiles: [],
+      });
+    });
+
+    it('names the changed files the default branch has also changed since the branch started', async () => {
+      const info = await manager.create(world.repo, 'w1');
+      await commitFile(info.path, 'mine.txt', 'mine\n');
+      await writeFile(path.join(info.path, 'a.txt'), 'edited here\n');
+      await commitFile(world.other, 'a.txt', 'theirs\n');
+      await commitFile(world.other, 'theirs.txt', 'theirs\n');
+      await git(world.other, 'push', '-q', 'origin', 'main');
+      expect(await manager.status(info)).toMatchObject({ upstreamFiles: [] });
+      await git(world.repo, 'fetch', '-q', 'origin', 'main');
+      expect(await manager.status(info)).toMatchObject({
+        files: ['a.txt', 'mine.txt'],
+        upstreamFiles: ['a.txt'],
       });
     });
 
@@ -233,6 +251,7 @@ describe('WorktreeGit', { timeout: 30_000 }, () => {
         dirty: 0,
         ahead: 0,
         files: [],
+        upstreamFiles: [],
       });
     });
   });
