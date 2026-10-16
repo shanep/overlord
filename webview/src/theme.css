@@ -1355,3 +1355,21 @@ summary > h2 {
 .impact-worse {
   color: var(--ov-red);
 }
+
+/* ---- Activity ---------------------------------------------------------- */
+
+.activity-alerts li {
+  margin-bottom: 4px;
+}
+
+/* Process rows sit under their session, past the twisty. */
+.activity-indent {
+  display: inline-block;
+  min-width: 5em;
+  padding-left: 1.2em;
+  color: var(--ov-muted);
+}
+
+.activity-process .badge {
+  margin-right: 4px;
+}

@@ -93,6 +93,12 @@ describe('SessionPlaces', () => {
     expect(h.places.terminalFor('nobody')).toBeNull();
     expect(h.places.pidOf('bg')).toBe(31);
     expect(h.places.pidOf('gone')).toBeNull();
+    expect(
+      h.places
+        .liveSessions()
+        .map((entry) => entry.sessionId)
+        .toSorted((left, right) => left.localeCompare(right)),
+    ).toStrictEqual(['bg', 'elsewhere', 'here']);
 
     await h.places.refresh();
     expect(h.changes).toBe(1);

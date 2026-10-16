@@ -3,6 +3,7 @@
 // `patch` messages as data changes. The webview sends `ready` once and then
 // `action` messages for user intent.
 
+import type { ActivityState } from './activity.js';
 import type { ConnectorsState } from './connectors.js';
 import type { HealthLevel, SessionHealth } from './health.js';
 import type {
@@ -26,23 +27,7 @@ import type {
 } from './model.js';
 import type { TuningState } from './tuning.js';
 
-export type ViewId =
-  | 'fleet'
-  | 'agent'
-  | 'context'
-  | 'knobs'
-  | 'launcher'
-  | 'sessions'
-  | 'config'
-  | 'usage'
-  | 'reputation'
-  | 'messages'
-  | 'properties'
-  | 'help'
-  | 'tuning'
-  | 'connectors';
-
-export const VIEW_IDS: readonly ViewId[] = [
+export const VIEW_IDS = [
   'fleet',
   'agent',
   'context',
@@ -57,7 +42,10 @@ export const VIEW_IDS: readonly ViewId[] = [
   'help',
   'tuning',
   'connectors',
-];
+  'activity',
+] as const;
+
+export type ViewId = (typeof VIEW_IDS)[number];
 
 export interface RateLimits {
   readonly fiveHourPct: number | null;
@@ -426,6 +414,7 @@ interface ViewStateMap {
   readonly help: HelpState;
   readonly tuning: TuningState;
   readonly connectors: ConnectorsState;
+  readonly activity: ActivityState;
 }
 
 export type HostToWebview = {

@@ -9,6 +9,7 @@ import type {
   UsageStats,
   WorktreeSummary,
 } from '../../shared/protocol.js';
+import type { ActivityMonitor } from '../activity/monitor.js';
 import type { EventBus } from '../bus.js';
 import type { StdioToolCaller } from '../connectors/stdio-mcp.js';
 import type { FileSystem } from '../context/fs.js';
@@ -84,6 +85,8 @@ export interface Runtime {
   readonly configSync: ConfigSyncHandle;
   /** Calls the GitHub REST API. Tests pass a fake so nothing reaches the network. */
   readonly fetch: FetchFunction;
+  /** CPU, memory, disk and network per session, sampled while the Activity view is open. */
+  readonly activity: ActivityMonitor;
   /** Sends a source.error to the bus, which also lands in the status error list. */
   readonly report: (source: string, message: string) => void;
   /** Asks the CLI for the plan limits /usage shows. Resolves to the raw reply. */

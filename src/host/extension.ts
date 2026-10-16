@@ -24,6 +24,7 @@ const GLOBAL_VIEWS: readonly ViewEntry[] = [
   ['overlord.openKnobs', 'knobs', 'Knobs', 'settings-gear'],
   ['overlord.openConfig', 'config', 'Config and Sync', 'repo'],
   ['overlord.openUsage', 'usage', 'Usage', 'graph'],
+  ['overlord.openActivity', 'activity', 'Activity', 'dashboard'],
   ['overlord.openReputation', 'reputation', 'Reputation', 'robot'],
   ['overlord.openMessages', 'messages', 'Agent Messages', 'comment-discussion'],
   ['overlord.openTuning', 'tuning', 'Tuning', 'tools'],

@@ -10,6 +10,7 @@ import { EmptyState } from './components/empty-state.js';
 import { ErrorBoundary } from './components/error-boundary.js';
 import { TooltipLayer } from './components/tooltip.js';
 import { useHostState } from './use-host-state.js';
+import { ActivityView } from './views/activity-view.js';
 import { AgentView } from './views/agent-view.js';
 import { ConfigView } from './views/config-view.js';
 import { ConnectorsView } from './views/connectors-view.js';
@@ -31,7 +32,8 @@ export function readViewId(element: HTMLElement): ViewId | null {
   return isViewId(view) ? view : null;
 }
 
-type GlobalView = 'knobs' | 'config' | 'usage' | 'reputation' | 'tuning' | 'connectors' | 'help';
+type GlobalView =
+  'knobs' | 'config' | 'usage' | 'activity' | 'reputation' | 'tuning' | 'connectors' | 'help';
 type GlobalMessage = Extract<HostToWebview, { readonly view: GlobalView }>;
 type SessionMessage = Exclude<HostToWebview, GlobalMessage>;
 
@@ -39,6 +41,7 @@ const GLOBAL_VIEWS: ReadonlySet<ViewId> = new Set<GlobalView>([
   'knobs',
   'config',
   'usage',
+  'activity',
   'reputation',
   'tuning',
   'connectors',
@@ -61,6 +64,9 @@ function GlobalViewSwitch(props: { readonly message: GlobalMessage }): ReactElem
     }
     case 'usage': {
       return <UsageView state={message.state} />;
+    }
+    case 'activity': {
+      return <ActivityView state={message.state} />;
     }
     case 'reputation': {
       return <ReputationView state={message.state} />;

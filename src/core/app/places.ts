@@ -74,6 +74,7 @@ export class SessionPlaces {
   private current: Readonly<Record<string, SessionPlace>> = {};
   private pids: Readonly<Record<string, number>> = {};
   private status: Readonly<Record<string, RegistryStatus>> = {};
+  private live: readonly RegistryEntry[] = [];
   private placements: ReadonlyMap<string, Placement> = new Map();
   private parents: ReadonlyMap<number, number> = new Map();
   private attaches: readonly AttachClient[] = [];
@@ -104,6 +105,11 @@ export class SessionPlaces {
   /** The process id of a session that is running now, or null. */
   pidOf(sessionId: string): number | null {
     return this.pids[sessionId] ?? null;
+  }
+
+  /** Registry entries for the sessions whose process is alive, as of the last refresh. */
+  liveSessions(): readonly RegistryEntry[] {
+    return this.live;
   }
 
   /** The shell pid of the VS Code terminal the session runs in, or null. */
@@ -169,6 +175,7 @@ export class SessionPlaces {
         this.deps.terminalPids(),
       ]);
       const live = liveEntries(registry.items, this.deps.isAlive);
+      this.live = live;
       const roots = new Set(terminals);
       await this.readTree(live, roots);
       this.placements = placeSessions(live, this.parents, roots, this.attaches);

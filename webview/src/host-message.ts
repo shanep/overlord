@@ -62,6 +62,7 @@ const REQUIRED: Readonly<Record<ViewId, Readonly<Record<string, FieldKind>>>> = 
   help: {},
   tuning: { tips: 'array', suggestions: 'array', rows: 'array', sessions: 'number' },
   connectors: { connectors: 'array' },
+  activity: { machine: 'object', sessions: 'array', alerts: 'array', notes: 'array' },
 };
 
 function fieldMatches(value: unknown, kind: FieldKind): boolean {

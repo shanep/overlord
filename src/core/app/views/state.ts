@@ -69,7 +69,8 @@ function sessionStateFor(rt: Runtime, view: SessionView, params: PanelParams): H
   }
 }
 
-type ReportView = 'usage' | 'reputation' | 'messages' | 'help' | 'tuning' | 'connectors';
+type ReportView =
+  'usage' | 'reputation' | 'messages' | 'help' | 'tuning' | 'connectors' | 'activity';
 
 const REPORT_VIEWS: ReadonlySet<ViewId> = new Set<ReportView>([
   'usage',
@@ -78,13 +79,14 @@ const REPORT_VIEWS: ReadonlySet<ViewId> = new Set<ReportView>([
   'help',
   'tuning',
   'connectors',
+  'activity',
 ]);
 
 function isReportView(view: ViewId): view is ReportView {
   return REPORT_VIEWS.has(view);
 }
 
-/** The Global views that report on history and setup rather than one session. */
+/** The Global views that report on history, setup and live load rather than one session. */
 function reportStateFor(rt: Runtime, view: ReportView): HostToWebview {
   switch (view) {
     case 'usage': {
@@ -104,6 +106,9 @@ function reportStateFor(rt: Runtime, view: ReportView): HostToWebview {
     }
     case 'connectors': {
       return { type: 'state', view, state: buildConnectors(rt) };
+    }
+    case 'activity': {
+      return { type: 'state', view, state: rt.activity.state() };
     }
   }
 }

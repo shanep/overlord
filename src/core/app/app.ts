@@ -42,6 +42,7 @@ import { runningItems, statusLine } from './status.js';
 import { SyncCommands } from './sync-commands.js';
 import { startTimers } from './timers.js';
 import { installTransferSkill } from './transfer.js';
+import { createActivity } from './views/activity.js';
 import { sessionBriefing } from './views/connectors.js';
 import { ContextViews } from './views/context.js';
 import { fleetFor } from './views/fleet.js';
@@ -197,7 +198,8 @@ export class OverlordApp {
       callTool: deps.callTool ?? callStdioTool,
     };
     const context = new ContextViews({ ...base, onUpdate: notify, onError: report });
-    this.rt = { ...base, caches: createCaches(base), context };
+    const activity = createActivity(base, machine.interval);
+    this.rt = { ...base, caches: createCaches(base), context, activity };
     this.cleanups.push(store.onChange(notify), launcher.onChange(notify));
     this.sources = new Sources({
       paths: this.paths,
@@ -379,6 +381,7 @@ export class OverlordApp {
       cleanup();
     }
     this.rt.launcher.stopAll();
+    this.rt.activity.stop();
     this.rt.permissions.inbox.cancelAll();
     this.rt.store.dispose();
     this.changes.clear();

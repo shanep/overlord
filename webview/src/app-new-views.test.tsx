@@ -1,4 +1,4 @@
-// The reputation, messages, help, Tuning and Connectors views through the app's view switch. Kept
+// The reputation, messages, help, activity, Tuning and Connectors views through the app's view switch. Kept
 // apart from app.test.tsx, which another session owns.
 import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
@@ -35,6 +35,30 @@ const views: readonly HostToWebview[] = [
     state: { messages: [], routes: [], inboundPolicy: null, inboundChoices: [], rules: [] },
   },
   { type: 'state', view: 'help', state: {} },
+  {
+    type: 'state',
+    view: 'activity',
+    state: {
+      sampledAt: null,
+      intervalMs: 2000,
+      machine: {
+        cores: 1,
+        cpuPct: null,
+        loadAverage: [0, 0, 0],
+        memoryTotalBytes: 1,
+        memoryUsedBytes: null,
+        swapUsedBytes: null,
+        swapTotalBytes: null,
+        memoryPressure: null,
+        stall: null,
+        cpuSpeedLimitPct: null,
+        volumes: [],
+      },
+      sessions: [],
+      alerts: [],
+      notes: [],
+    },
+  },
   {
     type: 'state',
     view: 'tuning',

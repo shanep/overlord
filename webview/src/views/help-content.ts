@@ -73,6 +73,12 @@ export const SIDEBAR_GROUPS: readonly SidebarGroup[] = [
           'Daily tokens by model, activity by hour, plan limits and a climate impact estimate.',
       },
       {
+        name: 'Activity',
+        icon: 'Dashboard',
+        meaning:
+          'CPU, memory, disk and network for every running session and the processes it started, like Activity Monitor. Flags processes that hog the machine, get starved of CPU, or hang waiting on the disk.',
+      },
+      {
         name: 'Reputation',
         icon: 'Robot',
         meaning:

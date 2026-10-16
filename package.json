@@ -98,6 +98,12 @@
         "icon": "$(graph)"
       },
       {
+        "command": "overlord.openActivity",
+        "title": "Activity",
+        "category": "Overlord",
+        "icon": "$(dashboard)"
+      },
+      {
         "command": "overlord.setup",
         "title": "Set Up Hooks and Telemetry",
         "category": "Overlord"

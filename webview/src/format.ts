@@ -140,3 +140,30 @@ export function plural(count: number, noun: string): string {
 export function truncate(text: string, max: number): string {
   return text.length <= max ? text : `${text.slice(0, Math.max(0, max - 1))}…`;
 }
+
+const BYTE_STEPS: readonly (readonly [number, string])[] = [
+  [1024 ** 4, 'TB'],
+  [1024 ** 3, 'GB'],
+  [1024 ** 2, 'MB'],
+  [1024, 'KB'],
+];
+
+/** 512 B, 3.4 KB, 12 MB, 1.5 GB, in powers of 1024 like Activity Monitor. Null reads as n/a. */
+export function formatBytes(bytes: number | null): string {
+  if (bytes === null || !Number.isFinite(bytes)) {
+    return 'n/a';
+  }
+  for (const [step, unit] of BYTE_STEPS) {
+    if (bytes >= step * ROUND_UP) {
+      return `${trimDecimal(bytes / step)} ${unit}`;
+    }
+  }
+  return `${Math.round(bytes).toString()} B`;
+}
+
+/** Bytes per second: 0 B/s, 3.4 KB/s. Null reads as n/a. */
+export function formatRate(bytesPerSec: number | null): string {
+  return bytesPerSec === null || !Number.isFinite(bytesPerSec)
+    ? 'n/a'
+    : `${formatBytes(bytesPerSec)}/s`;
+}

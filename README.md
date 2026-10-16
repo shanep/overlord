@@ -58,6 +58,15 @@ See [PLAN.md](PLAN.md) for the full design and the decisions behind it.
 - **Config and sync**: every config item with a badge for versioned, local only, external repo
   and so on, synced through a separate git repo so a new machine matches this one.
 - **Usage**: daily tokens by model and activity by hour.
+- **Activity**: what each running session costs this machine, like Activity Monitor or Task
+  Manager. Each session row adds up CPU, memory, disk and network for every process it started
+  (builds, test runners, dev servers), and opens to show them one by one. It flags processes
+  that hog CPU, memory, disk or network, ones that are ready to run but starved of CPU, ones
+  stuck in an uninterruptible wait (nearly always a slow disk or a hung network mount), and
+  stopped or zombie processes. It also warns about machine wide trouble: high load, memory
+  pressure, full swap, a nearly full disk, a filesystem that stops answering, and macOS slowing
+  the CPU for heat. It samples every 2 seconds, only while the view is open. Disk use per
+  process on macOS needs python3 from the Xcode command line tools.
 - **Tuning**: tips from measuring every session transcript, such as how much of the spend goes
   to re-reading old context, sessions that never compact, huge tool output and denied tools.
   Each tip lists its pros and cons and when to skip it, since following one can mean giving up

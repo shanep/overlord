@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { missingValue } from '../test/render.js';
 
 import {
+  formatBytes,
   formatAgo,
   formatClock,
   formatCompact,
@@ -13,6 +14,7 @@ import {
   formatDuration,
   formatInteger,
   formatPercent,
+  formatRate,
   formatUsd,
   formatValue,
   truncate,
@@ -148,5 +150,24 @@ describe('truncate', () => {
     expect(truncate('short', 10)).toBe('short');
     expect(truncate('abcdefghij', 5)).toBe('abcd…');
     expect(truncate('abc', 0)).toBe('…');
+  });
+});
+
+describe('formatBytes and formatRate', () => {
+  it('steps up in powers of 1024', () => {
+    expect(formatBytes(512)).toBe('512 B');
+    expect(formatBytes(2048)).toBe('2 KB');
+    expect(formatBytes(1.5 * 1024 ** 2)).toBe('1.5 MB');
+    expect(formatBytes(1023.9 * 1024)).toBe('1 MB');
+    expect(formatBytes(3 * 1024 ** 3)).toBe('3 GB');
+    expect(formatBytes(2 * 1024 ** 4)).toBe('2 TB');
+  });
+
+  it('reads null and non-finite values as n/a', () => {
+    expect(formatBytes(null)).toBe('n/a');
+    expect(formatBytes(Number.NaN)).toBe('n/a');
+    expect(formatRate(null)).toBe('n/a');
+    expect(formatRate(Number.POSITIVE_INFINITY)).toBe('n/a');
+    expect(formatRate(0)).toBe('0 B/s');
   });
 });
