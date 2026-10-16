@@ -13,8 +13,10 @@ import { AgentView } from './views/agent-view.js';
 import { ConfigView } from './views/config-view.js';
 import { ContextView } from './views/context-view.js';
 import { FleetView } from './views/fleet-view.js';
+import { FrustrationView } from './views/frustration-view.js';
 import { KnobsView } from './views/knobs-view.js';
 import { LauncherView } from './views/launcher-view.js';
+import { MessagesView } from './views/messages-view.js';
 import { SessionsView } from './views/sessions-view.js';
 import { UsageView } from './views/usage-view.js';
 
@@ -50,6 +52,12 @@ export function ViewSwitch(props: { readonly message: HostToWebview }): ReactEle
     }
     case 'usage': {
       return <UsageView state={message.state} />;
+    }
+    case 'frustration': {
+      return <FrustrationView state={message.state} />;
+    }
+    case 'messages': {
+      return <MessagesView state={message.state} />;
     }
   }
 }

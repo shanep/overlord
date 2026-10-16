@@ -35,7 +35,7 @@ describe('buildWebviewHtml', () => {
 
   it('sets the view, nonce, script and escaped title', () => {
     const html = buildWebviewHtml({ ...base, styleUri: null });
-    expect(html).toContain('<div id="root" data-view="fleet"></div>');
+    expect(html).toContain('<div id="root" data-view="fleet" data-layout="panel"></div>');
     expect(html).toContain(
       '<script type="module" nonce="abc" src="https://file/main.js?a=1&amp;b=2"></script>',
     );
@@ -43,6 +43,11 @@ describe('buildWebviewHtml', () => {
     expect(html).toContain(`content="default-src 'none'; img-src vscode-resource: data:;`);
     expect(html).not.toContain('<link');
     expect(html.startsWith('<!doctype html>')).toBe(true);
+  });
+
+  it('marks the sidebar layout', () => {
+    const html = buildWebviewHtml({ ...base, styleUri: null, layout: 'sidebar' });
+    expect(html).toContain('<div id="root" data-view="fleet" data-layout="sidebar"></div>');
   });
 
   it('links the stylesheet when there is one', () => {

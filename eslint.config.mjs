@@ -63,6 +63,8 @@ export default tseslint.config(
   {
     rules: {
       '@typescript-eslint/explicit-function-return-type': 'error',
+      // A leading underscore marks an argument that is unused on purpose.
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       '@typescript-eslint/explicit-module-boundary-types': 'error',
       '@typescript-eslint/consistent-type-imports': 'error',
       '@typescript-eslint/consistent-type-exports': 'error',

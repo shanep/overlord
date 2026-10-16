@@ -11,6 +11,8 @@ export interface WebviewHtmlInput {
   readonly scriptUri: string;
   readonly styleUri: string | null;
   readonly nonce: string;
+  /** The sidebar Fleet hides some columns to fit. */
+  readonly layout?: 'panel' | 'sidebar';
 }
 
 const NONCE_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -59,7 +61,7 @@ export function buildWebviewHtml(input: WebviewHtmlInput): string {
     <title>${escapeAttribute(input.title)}</title>${style}
   </head>
   <body>
-    <div id="root" data-view="${input.view}"></div>
+    <div id="root" data-view="${input.view}" data-layout="${input.layout ?? 'panel'}"></div>
     <script type="module" nonce="${input.nonce}" src="${escapeAttribute(input.scriptUri)}"></script>
   </body>
 </html>

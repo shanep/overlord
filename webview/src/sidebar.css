@@ -1,0 +1,24 @@
+/* The Fleet in the narrow sidebar: keep state, title, elapsed, tool, cost
+   and actions, and hide the rest. The full Fleet panel shows every column. */
+#root[data-layout='sidebar'] .tree-table :is(th, td):nth-child(2),
+#root[data-layout='sidebar'] .tree-table :is(th, td):nth-child(4),
+#root[data-layout='sidebar'] .tree-table :is(th, td):nth-child(5),
+#root[data-layout='sidebar'] .tree-table :is(th, td):nth-child(8),
+#root[data-layout='sidebar'] .tree-table :is(th, td):nth-child(9),
+#root[data-layout='sidebar'] .tree-table :is(th, td):nth-child(10),
+#root[data-layout='sidebar'] .tree-table :is(th, td):nth-child(11),
+#root[data-layout='sidebar'] .tree-table :is(th, td):nth-child(13) {
+  display: none;
+}
+
+#root[data-layout='sidebar'] .app {
+  padding: 4px 0;
+}
+
+#root[data-layout='sidebar'] .view-header h1 {
+  font-size: 1em;
+}
+
+#root[data-layout='sidebar'] .title-cell .muted {
+  display: none;
+}

@@ -4,41 +4,50 @@
 import * as vscode from 'vscode';
 
 import { OverlordApp } from '../core/app/app.js';
-import type { RunningItem } from '../core/app/status.js';
 import { parseTransferUri } from '../core/app/transfer.js';
 import type { HostToWebview, ViewId, WebviewAction } from '../shared/protocol.js';
 
 import { createVscodeHostPort } from './host-port.js';
-import { PanelManager } from './panels.js';
+import { FleetSidebar, PanelManager } from './panels.js';
 
 let app: OverlordApp | null = null;
 
-const VIEW_COMMANDS: readonly (readonly [string, ViewId, string])[] = [
-  ['overlord.openFleet', 'fleet', 'Fleet'],
-  ['overlord.openContext', 'context', 'Context Inspector'],
-  ['overlord.openKnobs', 'knobs', 'Knobs'],
-  ['overlord.openLauncher', 'launcher', 'Launcher'],
-  ['overlord.openSessions', 'sessions', 'All Sessions'],
-  ['overlord.openConfig', 'config', 'Config and Sync'],
-  ['overlord.openUsage', 'usage', 'Usage'],
+type ViewEntry = readonly [command: string, view: ViewId | null, label: string, icon: string];
+
+/** Settings and history that apply across every session. */
+const GLOBAL_VIEWS: readonly ViewEntry[] = [
+  ['overlord.openKnobs', 'knobs', 'Knobs', 'settings-gear'],
+  ['overlord.openConfig', 'config', 'Config and Sync', 'repo'],
+  ['overlord.openUsage', 'usage', 'Usage', 'graph'],
+  ['overlord.openFrustration', 'frustration', 'Frustration', 'flame'],
 ];
 
-type ViewListEntry = readonly [string, ViewId | null, string];
+/** Views about particular sessions and agents. */
+const SESSION_VIEWS: readonly ViewEntry[] = [
+  ['overlord.newClaudeSession', null, 'New Claude Code session', 'sparkle'],
+  ['overlord.openFleet', 'fleet', 'Fleet (full view)', 'pulse'],
+  ['overlord.openSessions', 'sessions', 'All Sessions', 'list-unordered'],
+  ['overlord.openLauncher', 'launcher', 'Launcher', 'rocket'],
+  ['overlord.openContext', 'context', 'Context Inspector', 'search'],
+  ['overlord.openMessages', 'messages', 'Agent Messages', 'comment-discussion'],
+];
 
-const NEW_SESSION: ViewListEntry = ['overlord.newClaudeSession', null, 'New Claude Code session'];
+const VIEW_COMMANDS = [...GLOBAL_VIEWS, ...SESSION_VIEWS].flatMap(([command, view]) =>
+  view === null ? [] : [[command, view] as const],
+);
 
-class ViewListProvider implements vscode.TreeDataProvider<ViewListEntry> {
-  getTreeItem(entry: ViewListEntry): vscode.TreeItem {
+class ViewListProvider implements vscode.TreeDataProvider<ViewEntry> {
+  constructor(private readonly entries: readonly ViewEntry[]) {}
+
+  getTreeItem(entry: ViewEntry): vscode.TreeItem {
     const item = new vscode.TreeItem(entry[2]);
     item.command = { command: entry[0], title: entry[2] };
-    if (entry[1] === null) {
-      item.iconPath = new vscode.ThemeIcon('sparkle');
-    }
+    item.iconPath = new vscode.ThemeIcon(entry[3]);
     return item;
   }
 
-  getChildren(): ViewListEntry[] {
-    return [NEW_SESSION, ...VIEW_COMMANDS];
+  getChildren(): ViewEntry[] {
+    return [...this.entries];
   }
 }
 
@@ -54,43 +63,6 @@ function newClaudeSession(claudePath: string, cwd: string | null): vscode.Termin
   });
   terminal.show();
   return terminal;
-}
-
-class RunningProvider implements vscode.TreeDataProvider<RunningItem> {
-  private readonly changed = new vscode.EventEmitter<void>();
-  readonly onDidChangeTreeData = this.changed.event;
-
-  constructor(private readonly source: () => readonly RunningItem[]) {}
-
-  refresh(): void {
-    this.changed.fire();
-  }
-
-  getTreeItem(entry: RunningItem): vscode.TreeItem {
-    const collapsible =
-      entry.children.length > 0
-        ? vscode.TreeItemCollapsibleState.Expanded
-        : vscode.TreeItemCollapsibleState.None;
-    const item = new vscode.TreeItem(entry.label, collapsible);
-    item.id = entry.id;
-    item.description = entry.description;
-    item.tooltip = `${entry.label} (${entry.state})`;
-    item.iconPath = new vscode.ThemeIcon(entry.state === 'waiting' ? 'bell' : 'pulse');
-    item.command = {
-      command: 'overlord.openAgent',
-      title: 'Open agent',
-      arguments: [entry.sessionId, entry.agentId],
-    };
-    return item;
-  }
-
-  getChildren(entry?: RunningItem): RunningItem[] {
-    return [...(entry === undefined ? this.source() : entry.children)];
-  }
-
-  dispose(): void {
-    this.changed.dispose();
-  }
 }
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
@@ -118,11 +90,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 50);
   status.command = 'overlord.openFleet';
   status.tooltip = 'Overlord: open the fleet view';
-  const running = new RunningProvider(() => overlord.runningItems());
   const update = (): void => {
     status.text = `$(pulse) ${overlord.statusLine()}`;
     status.show();
-    running.refresh();
   };
 
   const dispatch = async (action: WebviewAction): Promise<void> => {
@@ -134,9 +104,23 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(
     panels,
     status,
-    running,
-    vscode.window.registerTreeDataProvider('overlord.views', new ViewListProvider()),
-    vscode.window.registerTreeDataProvider('overlord.sessions', running),
+    vscode.window.registerWebviewViewProvider(
+      FleetSidebar.viewType,
+      new FleetSidebar(
+        context.extensionUri,
+        {
+          stateFor: (view, params): HostToWebview => overlord.stateFor(view, params),
+          onChange: (listener): (() => void) => overlord.onChange(listener),
+        },
+        async (action, params) => overlord.dispatch(action, params),
+      ),
+      { webviewOptions: { retainContextWhenHidden: true } },
+    ),
+    vscode.window.registerTreeDataProvider('overlord.global', new ViewListProvider(GLOBAL_VIEWS)),
+    vscode.window.registerTreeDataProvider(
+      'overlord.sessionViews',
+      new ViewListProvider(SESSION_VIEWS),
+    ),
     ...VIEW_COMMANDS.map(([id, view]) =>
       register(id, (): void => {
         panels.open(view);

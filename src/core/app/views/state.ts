@@ -11,7 +11,9 @@ import type { PanelParams } from '../host-port.js';
 import type { Runtime } from '../runtime.js';
 
 import { buildFleet } from './fleet.js';
+import { buildFrustration } from './frustration.js';
 import { buildKnobs } from './knobs.js';
+import { buildMessages } from './messages.js';
 import { buildSessions } from './sessions.js';
 
 function buildAgent(rt: Runtime, params: PanelParams): AgentDetailState {
@@ -61,6 +63,12 @@ export function stateFor(rt: Runtime, view: ViewId, params: PanelParams): HostTo
     }
     case 'usage': {
       return { type: 'state', view, state: rt.caches.usage.value };
+    }
+    case 'frustration': {
+      return { type: 'state', view, state: buildFrustration(rt) };
+    }
+    case 'messages': {
+      return { type: 'state', view, state: buildMessages(rt) };
     }
   }
 }

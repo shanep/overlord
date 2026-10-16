@@ -39,6 +39,8 @@ const REQUIRED: Readonly<Record<ViewId, Readonly<Record<string, FieldKind>>>> = 
   sessions: { sessions: 'array' },
   config: { items: 'array', repo: 'object' },
   usage: { days: 'array', hourCounts: 'object', totalSessions: 'number', totalMessages: 'number' },
+  frustration: { byDay: 'array', bySession: 'array', topTerms: 'array', recent: 'array' },
+  messages: { messages: 'array', routes: 'array', inboundChoices: 'array', rules: 'array' },
 };
 
 function fieldMatches(value: unknown, kind: FieldKind): boolean {

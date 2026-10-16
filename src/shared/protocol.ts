@@ -21,7 +21,16 @@ import type {
 } from './model.js';
 
 export type ViewId =
-  'fleet' | 'agent' | 'context' | 'knobs' | 'launcher' | 'sessions' | 'config' | 'usage';
+  | 'fleet'
+  | 'agent'
+  | 'context'
+  | 'knobs'
+  | 'launcher'
+  | 'sessions'
+  | 'config'
+  | 'usage'
+  | 'frustration'
+  | 'messages';
 
 export const VIEW_IDS: readonly ViewId[] = [
   'fleet',
@@ -32,6 +41,8 @@ export const VIEW_IDS: readonly ViewId[] = [
   'sessions',
   'config',
   'usage',
+  'frustration',
+  'messages',
 ];
 
 export interface RateLimits {
@@ -148,6 +159,72 @@ export interface UsageState {
   readonly totalMessages: number;
 }
 
+/** One user prompt with abusive or frustrated language in it. */
+export interface FrustrationHit {
+  readonly id: string;
+  readonly sessionId: string;
+  readonly at: number;
+  /** The words or phrases that matched. */
+  readonly terms: readonly string[];
+  /** Aimed at Claude ("you", "your", direct insults) or general swearing. */
+  readonly target: 'claude' | 'general';
+  /** A short excerpt around the first match. */
+  readonly excerpt: string;
+}
+
+export interface FrustrationState {
+  readonly totalPrompts: number;
+  readonly atClaude: number;
+  readonly general: number;
+  readonly byDay: readonly {
+    readonly date: string;
+    readonly prompts: number;
+    readonly atClaude: number;
+    readonly general: number;
+  }[];
+  readonly bySession: readonly {
+    readonly sessionId: string;
+    readonly title: string;
+    readonly prompts: number;
+    readonly hits: number;
+  }[];
+  readonly topTerms: readonly { readonly term: string; readonly count: number }[];
+  readonly recent: readonly FrustrationHit[];
+  /** When the counts were last rebuilt from transcripts, or null before the first scan. */
+  readonly scannedAt: number | null;
+}
+
+/** One message between agents or sessions, from the transcripts. */
+export interface AgentMessage {
+  readonly id: string;
+  readonly at: number;
+  readonly sessionId: string;
+  /** Who sent it: an agent name, agent id, "main", or a session id. */
+  readonly from: string;
+  readonly to: string;
+  readonly kind: 'send' | 'receive' | 'broadcast' | 'task-notification' | 'hand-back';
+  readonly preview: string;
+  /** True when a rule or hook stopped it. */
+  readonly blocked: boolean;
+}
+
+export interface MessageRoute {
+  readonly from: string;
+  readonly to: string;
+  readonly count: number;
+  readonly lastAt: number;
+}
+
+export interface MessagesState {
+  readonly messages: readonly AgentMessage[];
+  readonly routes: readonly MessageRoute[];
+  /** The crossSessionInbound setting in effect, or null when unset. */
+  readonly inboundPolicy: string | null;
+  readonly inboundChoices: readonly string[];
+  /** Auto-approve rules whose tool pattern covers SendMessage. */
+  readonly rules: readonly AutoApproveRule[];
+}
+
 interface ViewStateMap {
   readonly fleet: FleetState;
   readonly agent: AgentDetailState;
@@ -157,6 +234,8 @@ interface ViewStateMap {
   readonly sessions: SessionsState;
   readonly config: ConfigState;
   readonly usage: UsageState;
+  readonly frustration: FrustrationState;
+  readonly messages: MessagesState;
 }
 
 export type HostToWebview = {
@@ -199,7 +278,9 @@ export type WebviewAction =
   | { readonly type: 'adoptConfig'; readonly itemId: string }
   | { readonly type: 'openFile'; readonly path: string }
   | { readonly type: 'newAgent' }
-  | { readonly type: 'newSkill' };
+  | { readonly type: 'newSkill' }
+  | { readonly type: 'rescanFrustration' }
+  | { readonly type: 'setInboundPolicy'; readonly value: string | null };
 
 export type WebviewToHost =
   | { readonly type: 'ready'; readonly view: ViewId }

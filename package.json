@@ -45,7 +45,7 @@
       },
       {
         "command": "overlord.openFleet",
-        "title": "Fleet",
+        "title": "Fleet (full view)",
         "category": "Overlord",
         "icon": "$(pulse)"
       },
@@ -163,12 +163,25 @@
       {
         "command": "overlord.refresh",
         "title": "Refresh",
-        "category": "Overlord"
+        "category": "Overlord",
+        "icon": "$(refresh)"
       },
       {
         "command": "overlord.openAgent",
         "title": "Open Agent",
         "category": "Overlord"
+      },
+      {
+        "command": "overlord.openFrustration",
+        "title": "Frustration",
+        "category": "Overlord",
+        "icon": "$(flame)"
+      },
+      {
+        "command": "overlord.openMessages",
+        "title": "Agent Messages",
+        "category": "Overlord",
+        "icon": "$(comment-discussion)"
       }
     ],
     "viewsContainers": {
@@ -183,12 +196,17 @@
     "views": {
       "overlord": [
         {
-          "id": "overlord.views",
-          "name": "Views"
+          "type": "webview",
+          "id": "overlord.fleet",
+          "name": "Fleet"
         },
         {
-          "id": "overlord.sessions",
-          "name": "Running"
+          "id": "overlord.global",
+          "name": "Global"
+        },
+        {
+          "id": "overlord.sessionViews",
+          "name": "Sessions and Agents"
         }
       ]
     },
@@ -196,18 +214,18 @@
       "view/title": [
         {
           "command": "overlord.newClaudeSession",
-          "when": "view == overlord.views",
-          "group": "navigation"
-        },
-        {
-          "command": "overlord.refresh",
-          "when": "view == overlord.sessions",
-          "group": "navigation"
+          "when": "view == overlord.fleet",
+          "group": "navigation@1"
         },
         {
           "command": "overlord.openFleet",
-          "when": "view == overlord.views",
-          "group": "navigation"
+          "when": "view == overlord.fleet",
+          "group": "navigation@2"
+        },
+        {
+          "command": "overlord.refresh",
+          "when": "view == overlord.fleet",
+          "group": "navigation@3"
         }
       ],
       "commandPalette": [

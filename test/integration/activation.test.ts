@@ -64,4 +64,15 @@ describe('Overlord extension', () => {
       await config.update('claudePath', undefined, vscode.ConfigurationTarget.Global);
     }
   });
+
+  it('docks the Fleet in the Overlord sidebar', async () => {
+    // VS Code adds a focus command for every contributed view.
+    await vscode.commands.executeCommand('overlord.fleet.focus');
+    await vscode.commands.executeCommand('overlord.global.focus');
+    await vscode.commands.executeCommand('overlord.sessionViews.focus');
+    const commands = new Set(await vscode.commands.getCommands(true));
+    for (const view of ['overlord.fleet', 'overlord.global', 'overlord.sessionViews']) {
+      assert.ok(commands.has(`${view}.focus`), `${view} is a contributed view`);
+    }
+  });
 });
