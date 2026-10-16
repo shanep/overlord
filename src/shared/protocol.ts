@@ -291,6 +291,7 @@ export type HostToWebview = {
 }[ViewId];
 
 export type WebviewAction =
+  | { readonly type: 'openSession'; readonly sessionId: string }
   | { readonly type: 'openAgent'; readonly sessionId: string; readonly agentId: string }
   | { readonly type: 'openContext'; readonly sessionId: string; readonly agentId: string | null }
   | { readonly type: 'interrupt'; readonly sessionId: string }

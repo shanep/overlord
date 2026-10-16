@@ -7,6 +7,7 @@ import type { SessionPlace } from '../../shared/model.js';
 import type { ClaudePaths } from '../paths.js';
 import type { RegistryEntry } from '../surfaces/live.js';
 import { readSessionRegistry } from '../surfaces/live.js';
+import type { Placement } from '../surfaces/places.js';
 import { liveEntries, parseProcessTable, placeSessions } from '../surfaces/places.js';
 import type { ExecFunction, IsAlive } from '../surfaces/process.js';
 
@@ -32,6 +33,7 @@ function byNumber(left: number, right: number): number {
 
 export class SessionPlaces {
   private current: Readonly<Record<string, SessionPlace>> = {};
+  private placements: ReadonlyMap<string, Placement> = new Map();
   private parents: ReadonlyMap<number, number> = new Map();
   private treeKey = '';
   private running: Promise<void> | null = null;
@@ -41,6 +43,11 @@ export class SessionPlaces {
   /** Session id to place, for sessions with a live process. */
   get value(): Readonly<Record<string, SessionPlace>> {
     return this.current;
+  }
+
+  /** The shell pid of the VS Code terminal the session runs in, or null. */
+  terminalFor(sessionId: string): number | null {
+    return this.placements.get(sessionId)?.terminal ?? null;
   }
 
   /** Read the registry again. Calls made while one runs share it. */
@@ -60,7 +67,10 @@ export class SessionPlaces {
       const live = liveEntries(registry.items, this.deps.isAlive);
       const roots = new Set(terminals);
       await this.readTree(live, roots);
-      const next = Object.fromEntries(placeSessions(live, this.parents, roots));
+      this.placements = placeSessions(live, this.parents, roots);
+      const next = Object.fromEntries(
+        [...this.placements].map(([sessionId, placement]) => [sessionId, placement.place]),
+      );
       if (JSON.stringify(next) !== JSON.stringify(this.current)) {
         this.current = next;
         this.deps.onChange();

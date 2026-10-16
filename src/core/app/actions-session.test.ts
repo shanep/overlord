@@ -263,6 +263,60 @@ describe('attach', () => {
   });
 });
 
+/** pid 123 is interactive under the only process ps knows, and 456 is alive too. */
+function placesApp(env: TestEnv): TestApp {
+  return makeApp(env, {
+    deps: { isAlive: (pid) => pid === 123 || pid === 456 },
+    responders: [
+      (call): ExecResult | undefined => (call.command === 'ps' ? ok('  123     1\n') : undefined),
+      (call): ExecResult | undefined => (call.args[0] === 'agents' ? ok('[]') : undefined),
+    ],
+  });
+}
+
+describe('openSession', () => {
+  it('focuses the VS Code terminal a session runs in', async () => {
+    const env = await makeEnv();
+    await registry(env, { pid: 123, sessionId: 'here', kind: 'interactive' });
+    env.host.shellPids = [123];
+    const test = placesApp(env);
+    await test.app.dispatch({ type: 'openSession', sessionId: 'here' }, {});
+    expect(env.host.shown).toStrictEqual([{ sessionId: 'here', processId: 123 }]);
+    expect(env.host.terminals).toStrictEqual([]);
+    expect(env.host.panels).toStrictEqual([]);
+  });
+
+  it('attaches a background session once, then focuses its tab', async () => {
+    const env = await makeEnv();
+    await registry(env, { pid: 456, sessionId: 'bg', cwd: '/bg', kind: 'bg' });
+    const test = placesApp(env);
+    await test.app.dispatch({ type: 'openSession', sessionId: 'bg' }, {});
+    expect(env.host.terminals.map((terminal) => terminal.args)).toStrictEqual([['attach', 'bg']]);
+    env.host.terminalTabs = ['bg'];
+    await test.app.dispatch({ type: 'openSession', sessionId: 'bg' }, {});
+    expect(env.host.terminals).toHaveLength(1);
+    expect(env.host.shown).toStrictEqual([
+      { sessionId: 'bg', processId: null },
+      { sessionId: 'bg', processId: null },
+    ]);
+  });
+
+  it('opens the agent view for a session open elsewhere or not running', async () => {
+    const env = await makeEnv();
+    await registry(env, { pid: 123, sessionId: 'elsewhere', kind: 'interactive' });
+    const test = placesApp(env);
+    test.bus.emit('session.upserted', session('elsewhere'));
+    test.bus.emit('session.upserted', session('quiet'));
+    await test.app.dispatch({ type: 'openSession', sessionId: 'elsewhere' }, {});
+    await test.app.dispatch({ type: 'openSession', sessionId: 'quiet' }, {});
+    expect(env.host.panels).toStrictEqual([
+      { view: 'agent', params: { sessionId: 'elsewhere', agentId: 'elsewhere' } },
+      { view: 'agent', params: { sessionId: 'quiet', agentId: 'quiet' } },
+    ]);
+    expect(env.host.terminals).toStrictEqual([]);
+  });
+});
+
 describe('moving a live session here', () => {
   it('asks first, and leaves the other copy alone when told no', async () => {
     const env = await makeEnv();

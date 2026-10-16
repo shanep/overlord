@@ -9,6 +9,11 @@ export interface PanelParams {
   readonly agentId?: string;
 }
 
+export interface TerminalTarget {
+  readonly sessionId: string;
+  readonly processId: number | null;
+}
+
 export interface TerminalRequest {
   readonly name: string;
   readonly command: string;
@@ -52,6 +57,11 @@ export interface HostPort {
   readonly openPanel: (view: ViewId, params: PanelParams) => void;
   readonly openFile: (path: string) => Promise<void>;
   readonly runInTerminal: (request: TerminalRequest) => void;
+  /**
+   * Focus the terminal tab for a session: the tab Overlord opened for it, or
+   * else the terminal whose shell has processId. False when there is none.
+   */
+  readonly showTerminal: (target: TerminalTarget) => Promise<boolean>;
   /** Process ids of the shells behind this window's open terminals. */
   readonly terminalPids: () => Promise<readonly number[]>;
   /** The picked file or folder path, or null when cancelled. */

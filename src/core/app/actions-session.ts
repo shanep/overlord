@@ -17,6 +17,7 @@ import { shortId } from './text.js';
 import { clearOtherCopy } from './transfer.js';
 
 type SessionActions =
+  | 'openSession'
   | 'openAgent'
   | 'openContext'
   | 'openFile'
@@ -106,17 +107,50 @@ async function readyToResume(rt: Runtime, session: SurfaceSession): Promise<bool
   return clearOtherCopy(rt, await liveProcess(rt, session.id), session.title);
 }
 
+async function openAgentPanel(rt: Runtime, sessionId: string, agentId: string): Promise<void> {
+  // Old sessions are not tailed, so load the transcript before the panel asks for it.
+  const known = rt.store
+    .fleetState(rt.clock())
+    .sessions.some((session) => session.id === sessionId);
+  if (!known && !(await rt.openTranscript(sessionId))) {
+    rt.host.showInfo(`No transcript found for session ${shortId(sessionId)}.`);
+    return;
+  }
+  rt.host.openPanel('agent', { sessionId, agentId });
+}
+
+/** A tab running `claude attach` for a background session, or `--resume` for any other. */
+async function attachTerminal(rt: Runtime, sessionId: string): Promise<void> {
+  const live = await liveProcess(rt, sessionId);
+  const background = live?.kind === 'background';
+  const args = background ? ['attach', live.agentId ?? sessionId] : ['--resume', sessionId];
+  rt.host.runInTerminal({
+    name: `Claude ${shortId(sessionId)}`,
+    command: rt.host.settings.claudePath,
+    args,
+    cwd: cwdFor(rt, sessionId, live?.cwd ?? null),
+    sessionId,
+  });
+}
+
 export const sessionActions: ActionHandlers<SessionActions> = {
-  openAgent: async ({ rt }, action) => {
-    // Old sessions are not tailed, so load the transcript before the panel asks for it.
-    const known = rt.store
-      .fleetState(rt.clock())
-      .sessions.some((session) => session.id === action.sessionId);
-    if (!known && !(await rt.openTranscript(action.sessionId))) {
-      rt.host.showInfo(`No transcript found for session ${shortId(action.sessionId)}.`);
+  // Go to the session where it runs: its VS Code tab, a new attach tab for a
+  // background session, and the agent view for anything else, since resuming
+  // a session open in another terminal would start a second copy.
+  openSession: async ({ rt }, { sessionId }) => {
+    await rt.places.refresh();
+    const processId = rt.places.terminalFor(sessionId);
+    if (await rt.host.showTerminal({ sessionId, processId })) {
       return;
     }
-    rt.host.openPanel('agent', { sessionId: action.sessionId, agentId: action.agentId });
+    if (rt.places.value[sessionId] === 'background') {
+      await attachTerminal(rt, sessionId);
+      return;
+    }
+    await openAgentPanel(rt, sessionId, sessionId);
+  },
+  openAgent: async ({ rt }, action) => {
+    await openAgentPanel(rt, action.sessionId, action.agentId);
   },
   openContext: async ({ rt }, action) => {
     const params =
@@ -146,18 +180,7 @@ export const sessionActions: ActionHandlers<SessionActions> = {
     context.rt.launcher.stopRun(target.run.id);
   },
   attach: async ({ rt }, action) => {
-    const live = await liveProcess(rt, action.sessionId);
-    const background = live?.kind === 'background';
-    const args = background
-      ? ['attach', live.agentId ?? action.sessionId]
-      : ['--resume', action.sessionId];
-    rt.host.runInTerminal({
-      name: `Claude ${shortId(action.sessionId)}`,
-      command: rt.host.settings.claudePath,
-      args,
-      cwd: cwdFor(rt, action.sessionId, live?.cwd ?? null),
-      sessionId: action.sessionId,
-    });
+    await attachTerminal(rt, action.sessionId);
   },
   setModel: async ({ rt }, action) => {
     const target = sdkTarget(rt, action.sessionId);

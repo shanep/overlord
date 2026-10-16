@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { RegistryEntry } from './live.js';
-import { descendsFrom, liveEntries, parseProcessTable, placeSessions } from './places.js';
+import { liveEntries, parseProcessTable, placeSessions, rootOf } from './places.js';
 
 function entry(overrides: Partial<RegistryEntry> & { pid: number }): RegistryEntry {
   return {
@@ -31,7 +31,7 @@ describe('parseProcessTable', () => {
   });
 });
 
-describe('descendsFrom', () => {
+describe('rootOf', () => {
   const parents = new Map([
     [400, 300],
     [300, 200],
@@ -40,15 +40,15 @@ describe('descendsFrom', () => {
   ]);
 
   it('climbs the parents to a root', () => {
-    expect(descendsFrom(400, parents, new Set([200]))).toBe(true);
-    expect(descendsFrom(200, parents, new Set([200]))).toBe(true);
-    expect(descendsFrom(400, parents, new Set([999]))).toBe(false);
+    expect(rootOf(400, parents, new Set([200, 999]))).toBe(200);
+    expect(rootOf(200, parents, new Set([200]))).toBe(200);
+    expect(rootOf(400, parents, new Set([999]))).toBeNull();
   });
 
   it('stops at init, at an unknown pid and in a loop', () => {
-    expect(descendsFrom(400, parents, new Set([1]))).toBe(false);
-    expect(descendsFrom(600, parents, new Set([200]))).toBe(false);
-    expect(descendsFrom(500, parents, new Set([200]))).toBe(false);
+    expect(rootOf(400, parents, new Set([1]))).toBeNull();
+    expect(rootOf(600, parents, new Set([200]))).toBeNull();
+    expect(rootOf(500, parents, new Set([200]))).toBeNull();
   });
 });
 
@@ -86,9 +86,9 @@ describe('placeSessions', () => {
       new Set([5]),
     );
     expect(Object.fromEntries(places)).toStrictEqual({
-      here: 'vscode',
-      elsewhere: 'terminal',
-      bg: 'background',
+      here: { place: 'vscode', terminal: 5 },
+      elsewhere: { place: 'terminal', terminal: null },
+      bg: { place: 'background', terminal: null },
     });
   });
 });

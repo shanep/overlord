@@ -87,6 +87,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     onSessionTerminal: (terminal, sessionId) => {
       tabsHolder.current?.track(terminal, sessionId);
     },
+    showSessionTerminal: (sessionId) => tabsHolder.current?.show(sessionId) ?? false,
   });
   const overlord = new OverlordApp({ host });
   app = overlord;

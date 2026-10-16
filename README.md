@@ -15,7 +15,9 @@ See [PLAN.md](PLAN.md) for the full design and the decisions behind it.
   the official Claude Code extension installed, it connects to VS Code on its own, so diffs open
   in the editor and Claude sees your selection. Resume, attach and handoffs open the same way.
 - **Fleet**: every session, subagent and background task with live state, tokens, cost, cache
-  hit ratio and the tool it is running right now.
+  hit ratio and the tool it is running right now. An icon shows where each session runs (a VS
+  Code terminal, another terminal or the background). Click a session to jump to its terminal
+  tab, or to attach a tab to a background session.
 - **Agent detail**: the live feed of thinking and tool calls, a tool timeline, and token, cost
   and context charts.
 - **Context inspector**: the system prompt, every memory file that loaded (and why), and every

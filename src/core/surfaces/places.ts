@@ -23,20 +23,26 @@ export function parseProcessTable(stdout: string): Map<number, number> {
   return parents;
 }
 
-/** True when pid is one of roots or runs somewhere under one of them. */
-export function descendsFrom(
+/** The root that pid is, or runs somewhere under, or null when it is under none of them. */
+export function rootOf(
   pid: number,
   parents: ReadonlyMap<number, number>,
   roots: ReadonlySet<number>,
-): boolean {
+): number | null {
   let current: number | undefined = pid;
   for (let depth = 0; current !== undefined && current > 1 && depth < MAX_DEPTH; depth += 1) {
     if (roots.has(current)) {
-      return true;
+      return current;
     }
     current = parents.get(current);
   }
-  return false;
+  return null;
+}
+
+export interface Placement {
+  readonly place: SessionPlace;
+  /** The terminal's shell pid, for a session in a VS Code terminal. */
+  readonly terminal: number | null;
 }
 
 /** The registry entries whose process is still running, one per session. */
@@ -56,14 +62,14 @@ export function placeSessions(
   live: readonly RegistryEntry[],
   parents: ReadonlyMap<number, number>,
   terminalPids: ReadonlySet<number>,
-): Map<string, SessionPlace> {
-  const places = new Map<string, SessionPlace>();
+): Map<string, Placement> {
+  const places = new Map<string, Placement>();
   for (const entry of live) {
     if (entry.kind === 'background') {
-      places.set(entry.sessionId, 'background');
+      places.set(entry.sessionId, { place: 'background', terminal: null });
     } else if (entry.kind === 'interactive') {
-      const inVscode = descendsFrom(entry.pid, parents, terminalPids);
-      places.set(entry.sessionId, inVscode ? 'vscode' : 'terminal');
+      const terminal = rootOf(entry.pid, parents, terminalPids);
+      places.set(entry.sessionId, { place: terminal === null ? 'terminal' : 'vscode', terminal });
     }
   }
   return places;

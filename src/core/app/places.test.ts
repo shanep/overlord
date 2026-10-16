@@ -71,6 +71,9 @@ describe('SessionPlaces', () => {
     });
     expect(h.changes).toBe(1);
     expect(h.psCalls).toStrictEqual([['ps', '-A', '-o', 'pid=,ppid=']]);
+    expect(h.places.terminalFor('here')).toBe(10);
+    expect(h.places.terminalFor('elsewhere')).toBeNull();
+    expect(h.places.terminalFor('nobody')).toBeNull();
 
     await h.places.refresh();
     expect(h.changes).toBe(1);

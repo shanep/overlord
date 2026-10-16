@@ -10,6 +10,7 @@ import type {
   PanelParams,
   PickItem,
   TerminalRequest,
+  TerminalTarget,
 } from '../host-port.js';
 
 const DEFAULT_SETTINGS: OverlordSettings = {
@@ -35,6 +36,9 @@ export class FakeHost implements HostPort {
   readonly panels: { readonly view: ViewId; readonly params: PanelParams }[] = [];
   readonly opened: string[] = [];
   readonly terminals: TerminalRequest[] = [];
+  readonly shown: TerminalTarget[] = [];
+  /** Session ids with a tab Overlord opened, which showTerminal finds. */
+  terminalTabs: readonly string[] = [];
   /** What terminalPids reports. */
   shellPids: readonly number[] = [];
   readonly infos: string[] = [];
@@ -75,6 +79,15 @@ export class FakeHost implements HostPort {
 
   readonly runInTerminal = (request: TerminalRequest): void => {
     this.terminals.push(request);
+  };
+
+  readonly showTerminal = async (target: TerminalTarget): Promise<boolean> => {
+    this.shown.push(target);
+    await Promise.resolve();
+    return (
+      this.terminalTabs.includes(target.sessionId) ||
+      (target.processId !== null && this.shellPids.includes(target.processId))
+    );
   };
 
   readonly terminalPids = async (): Promise<readonly number[]> => {

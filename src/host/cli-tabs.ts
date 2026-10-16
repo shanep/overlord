@@ -33,6 +33,18 @@ export class CliTabs implements vscode.Disposable {
     this.setActiveContext(true);
   }
 
+  /** Focuses the newest tab Overlord opened for the session. False when none is open. */
+  show(sessionId: string): boolean {
+    let newest: vscode.Terminal | undefined;
+    for (const [terminal, id] of this.sessions) {
+      if (id === sessionId) {
+        newest = terminal;
+      }
+    }
+    newest?.show();
+    return newest !== undefined;
+  }
+
   /** Opens the properties panel for the active CLI tab, if there is one. */
   showActive(): void {
     const terminal = vscode.window.activeTerminal;

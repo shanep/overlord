@@ -135,8 +135,8 @@ describe('FleetView', () => {
     const user = userEvent.setup();
     const { api } = setup();
     expect(screen.getByText('1 pending permission')).toBeDefined();
-    await user.click(screen.getByRole('button', { name: 'Open Refactor parser' }));
-    await user.click(screen.getByRole('button', { name: 'Open Explore' }));
+    await user.click(screen.getByRole('button', { name: 'Agent view Refactor parser' }));
+    await user.click(screen.getByRole('button', { name: 'Agent view Explore' }));
     await user.click(screen.getByRole('button', { name: 'Attach Write docs' }));
     expect(api.posted.every((message) => message.type === 'action')).toBe(true);
     expect(api.actions()).toStrictEqual([
@@ -202,13 +202,28 @@ describe('FleetView', () => {
     await user.keyboard('{Escape}');
     expect(screen.queryByText('Interrupt "Refactor parser"?')).toBeNull();
     expect(document.activeElement).toBe(rowFor('Explore'));
-    expect(api.actions()).toStrictEqual([{ type: 'openAgent', sessionId: 's1', agentId: 'a1' }]);
+    expect(api.actions()).toStrictEqual([
+      { type: 'openSession', sessionId: 's2' },
+      { type: 'openAgent', sessionId: 's1', agentId: 'a1' },
+    ]);
+  });
+
+  it('opens a session where it runs and a subagent in its view on a row click', async () => {
+    const user = userEvent.setup();
+    const { api } = setup();
+    await user.click(rowFor('Refactor parser'));
+    await user.click(within(rowFor('Explore')).getByText('Find parser tests'));
+    expect(api.actions()).toStrictEqual([
+      { type: 'openSession', sessionId: 's1' },
+      { type: 'openAgent', sessionId: 's1', agentId: 'a1' },
+    ]);
+    expect(rowFor('Explore').getAttribute('aria-selected')).toBe('true');
   });
 
   it('ignores row keys pressed on a button inside the row', async () => {
     const user = userEvent.setup();
     const { api } = setup();
-    screen.getByRole('button', { name: 'Open Write docs' }).focus();
+    screen.getByRole('button', { name: 'Agent view Write docs' }).focus();
     await user.keyboard('k');
     expect(screen.queryByRole('group', { name: 'Confirm' })).toBeNull();
     expect(api.actions()).toStrictEqual([]);

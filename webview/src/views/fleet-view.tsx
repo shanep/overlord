@@ -90,6 +90,17 @@ export function FleetView(props: { readonly state: FleetState }): ReactElement {
     preferences.setCollapsed(expanded ? others : [...others, key]);
   };
 
+  // A session opens where it runs (its terminal tab, or an attach tab for a
+  // background session). A subagent has no terminal, so it opens its view.
+  const activate = (row: FleetRow): void => {
+    setSelected(row.key);
+    post(
+      row.kind === 'session'
+        ? { type: 'openSession', sessionId: row.sessionId }
+        : { type: 'openAgent', sessionId: row.sessionId, agentId: row.agentId },
+    );
+  };
+
   const onAction = (row: FleetRow, action: RowAction): void => {
     setSelected(row.key);
     if (action === 'open') {
@@ -114,7 +125,7 @@ export function FleetView(props: { readonly state: FleetState }): ReactElement {
         break;
       }
       case 'open': {
-        onAction(command.row, 'open');
+        activate(command.row);
         break;
       }
       case 'interrupt': {
@@ -214,6 +225,7 @@ export function FleetView(props: { readonly state: FleetState }): ReactElement {
           now={now}
           theme={theme}
           onSelect={setSelected}
+          onActivate={activate}
           onKey={onKey}
           onToggle={(visible: VisibleRow) => {
             setExpanded(visible.row.key, !visible.expanded);

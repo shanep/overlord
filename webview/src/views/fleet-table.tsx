@@ -74,7 +74,7 @@ function RowActions(props: {
   );
   return (
     <span className="actions">
-      {button('open', 'Open', false)}
+      {button('open', 'Agent view', false)}
       {row.kind === 'session' ? (
         <>
           {button('interrupt', 'Interrupt', !row.sessionActive)}
@@ -94,6 +94,8 @@ interface FleetTableRowProps {
   readonly theme: ChartTheme;
   readonly rowRef: RefObject<HTMLTableRowElement | null> | undefined;
   readonly onSelect: (key: string) => void;
+  /** A click on the row itself, not one of its buttons. */
+  readonly onActivate: (row: FleetRow) => void;
   readonly onKey: (event: KeyboardEvent<HTMLTableRowElement>, key: string) => void;
   readonly onToggle: (visible: VisibleRow) => void;
   readonly onAction: (row: FleetRow, action: RowAction) => void;
@@ -138,8 +140,12 @@ function FleetTableRow(props: FleetTableRowProps): ReactElement {
       data-kind={row.kind}
       data-state={row.state}
       tabIndex={selected ? 0 : -1}
-      onClick={() => {
-        props.onSelect(row.key);
+      onClick={(event) => {
+        if (event.target instanceof Element && event.target.closest('button') !== null) {
+          props.onSelect(row.key);
+        } else {
+          props.onActivate(row);
+        }
       }}
       onKeyDown={(event) => {
         props.onKey(event, row.key);
@@ -253,6 +259,7 @@ export function FleetTable(props: FleetTableProps): ReactElement {
               theme={props.theme}
               rowRef={selected ? props.selectedRef : undefined}
               onSelect={props.onSelect}
+              onActivate={props.onActivate}
               onKey={props.onKey}
               onToggle={props.onToggle}
               onAction={props.onAction}

@@ -12,6 +12,7 @@ import type {
   PanelParams,
   PickItem,
   TerminalRequest,
+  TerminalTarget,
 } from '../core/app/host-port.js';
 import { findOnPath } from '../core/find-on-path.js';
 import { loginShellLaunch } from '../core/login-shell.js';
@@ -62,6 +63,13 @@ export interface VscodeHostPortOptions {
   readonly openPanel: (view: ViewId, params: PanelParams) => void;
   /** Called with each terminal that runs a known Claude Code session. */
   readonly onSessionTerminal: (terminal: vscode.Terminal, sessionId: string) => void;
+  /** Focuses the tab Overlord opened for a session. False when there is none. */
+  readonly showSessionTerminal: (sessionId: string) => boolean;
+}
+
+async function terminalWithProcess(processId: number): Promise<vscode.Terminal | undefined> {
+  const pids = await Promise.all(vscode.window.terminals.map(async (item) => item.processId));
+  return vscode.window.terminals[pids.indexOf(processId)];
 }
 
 export function createVscodeHostPort(options: VscodeHostPortOptions): HostPort {
@@ -87,6 +95,15 @@ export function createVscodeHostPort(options: VscodeHostPortOptions): HostPort {
       if (request.sessionId !== null) {
         options.onSessionTerminal(terminal, request.sessionId);
       }
+    },
+    showTerminal: async (target: TerminalTarget): Promise<boolean> => {
+      if (options.showSessionTerminal(target.sessionId)) {
+        return true;
+      }
+      const terminal =
+        target.processId === null ? undefined : await terminalWithProcess(target.processId);
+      terminal?.show();
+      return terminal !== undefined;
     },
     terminalPids: async (): Promise<readonly number[]> => {
       const pids = await Promise.all(vscode.window.terminals.map(async (item) => item.processId));

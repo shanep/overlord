@@ -28,6 +28,7 @@ describe('FleetTable', () => {
         now={NOW}
         theme={theme}
         onSelect={noop}
+        onActivate={noop}
         onKey={noop}
         onToggle={noop}
         onAction={noop}
