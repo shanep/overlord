@@ -30,10 +30,228 @@
     "onStartupFinished"
   ],
   "contributes": {
-    "commands": [],
-    "viewsContainers": {},
-    "views": {},
-    "configuration": {}
+    "commands": [
+      {
+        "command": "overlord.openFleet",
+        "title": "Fleet",
+        "category": "Overlord",
+        "icon": "$(pulse)"
+      },
+      {
+        "command": "overlord.openContext",
+        "title": "Context Inspector",
+        "category": "Overlord",
+        "icon": "$(search)"
+      },
+      {
+        "command": "overlord.openKnobs",
+        "title": "Knobs",
+        "category": "Overlord",
+        "icon": "$(settings-gear)"
+      },
+      {
+        "command": "overlord.openLauncher",
+        "title": "Launcher",
+        "category": "Overlord",
+        "icon": "$(rocket)"
+      },
+      {
+        "command": "overlord.openSessions",
+        "title": "All Sessions",
+        "category": "Overlord",
+        "icon": "$(list-unordered)"
+      },
+      {
+        "command": "overlord.openConfig",
+        "title": "Config and Sync",
+        "category": "Overlord",
+        "icon": "$(repo)"
+      },
+      {
+        "command": "overlord.openUsage",
+        "title": "Usage",
+        "category": "Overlord",
+        "icon": "$(graph)"
+      },
+      {
+        "command": "overlord.setup",
+        "title": "Set Up Hooks and Telemetry",
+        "category": "Overlord"
+      },
+      {
+        "command": "overlord.installHooks",
+        "title": "Install Hooks",
+        "category": "Overlord"
+      },
+      {
+        "command": "overlord.uninstallHooks",
+        "title": "Remove Hooks",
+        "category": "Overlord"
+      },
+      {
+        "command": "overlord.enableTelemetry",
+        "title": "Enable Local Telemetry",
+        "category": "Overlord"
+      },
+      {
+        "command": "overlord.disableTelemetry",
+        "title": "Disable Local Telemetry",
+        "category": "Overlord"
+      },
+      {
+        "command": "overlord.launchPrompt",
+        "title": "Launch Prompt",
+        "category": "Overlord"
+      },
+      {
+        "command": "overlord.stopAll",
+        "title": "Stop All Agents",
+        "category": "Overlord"
+      },
+      {
+        "command": "overlord.newAgent",
+        "title": "New Agent",
+        "category": "Overlord"
+      },
+      {
+        "command": "overlord.newSkill",
+        "title": "New Skill",
+        "category": "Overlord"
+      },
+      {
+        "command": "overlord.connectConfigRepo",
+        "title": "Connect Config Repo",
+        "category": "Overlord"
+      },
+      {
+        "command": "overlord.syncPush",
+        "title": "Push Config",
+        "category": "Overlord"
+      },
+      {
+        "command": "overlord.syncPull",
+        "title": "Pull Config",
+        "category": "Overlord"
+      },
+      {
+        "command": "overlord.importDotfiles",
+        "title": "Import Config From dot-files",
+        "category": "Overlord"
+      },
+      {
+        "command": "overlord.bootstrap",
+        "title": "Set Up This Machine From Config Repo",
+        "category": "Overlord"
+      },
+      {
+        "command": "overlord.importClaudeAi",
+        "title": "Import claude.ai Export",
+        "category": "Overlord"
+      },
+      {
+        "command": "overlord.refresh",
+        "title": "Refresh",
+        "category": "Overlord"
+      },
+      {
+        "command": "overlord.openAgent",
+        "title": "Open Agent",
+        "category": "Overlord"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "overlord",
+          "title": "Overlord",
+          "icon": "media/overlord.svg"
+        }
+      ]
+    },
+    "views": {
+      "overlord": [
+        {
+          "id": "overlord.views",
+          "name": "Views"
+        },
+        {
+          "id": "overlord.sessions",
+          "name": "Running"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "overlord.refresh",
+          "when": "view == overlord.sessions",
+          "group": "navigation"
+        },
+        {
+          "command": "overlord.openFleet",
+          "when": "view == overlord.views",
+          "group": "navigation"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "overlord.openAgent",
+          "when": "false"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Overlord",
+      "properties": {
+        "overlord.claudePath": {
+          "type": "string",
+          "default": "claude",
+          "description": "Path to the claude binary."
+        },
+        "overlord.activeWindowMinutes": {
+          "type": "number",
+          "default": 30,
+          "minimum": 1,
+          "description": "Tail transcripts changed within this many minutes."
+        },
+        "overlord.updateThrottleMs": {
+          "type": "number",
+          "default": 250,
+          "minimum": 50,
+          "description": "Minimum time between view updates."
+        },
+        "overlord.maxConcurrency": {
+          "type": "number",
+          "default": 4,
+          "minimum": 1,
+          "maximum": 32,
+          "description": "Most agents the launcher runs at once."
+        },
+        "overlord.permissions.holdTimeoutSeconds": {
+          "type": "number",
+          "default": 600,
+          "minimum": 10,
+          "description": "How long a permission request waits in the inbox before Claude Code falls back to its own prompt."
+        },
+        "overlord.telemetry.port": {
+          "type": "number",
+          "default": 47318,
+          "minimum": 1024,
+          "maximum": 65535,
+          "description": "Port for the local OTLP receiver. It is written into your Claude settings, so it stays fixed."
+        },
+        "overlord.configRepo.url": {
+          "type": "string",
+          "default": "",
+          "description": "Git URL of the config repo, for example git@github.com:shanep/claude-config.git."
+        },
+        "overlord.configRepo.path": {
+          "type": "string",
+          "default": "~/.claude-config",
+          "description": "Where the config repo is cloned."
+        }
+      }
+    }
   },
   "type": "module",
   "scripts": {
@@ -46,7 +264,7 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:mutation": "stryker run",
-    "test:integration": "node scripts/build.mjs && vscode-test",
+    "test:integration": "node scripts/build.mjs && node scripts/build-tests.mjs && vscode-test",
     "type-coverage": "type-coverage --strict --at-least 100 --detail -p tsconfig.json",
     "knip": "knip",
     "depcruise": "depcruise src webview --config .dependency-cruiser.cjs",
@@ -117,5 +335,12 @@
     "typescript-eslint": "^8.71.2",
     "vite": "^8.3.4",
     "vitest": "^4.1.11"
+  },
+  "overrides": {
+    "diff": "^9.0.0",
+    "serialize-javascript": "^7.1.2",
+    "qs": "^6.16.1",
+    "smol-toml": "^1.9.1",
+    "katex": "^0.19.0"
   }
 }

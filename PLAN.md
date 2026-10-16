@@ -62,8 +62,8 @@ VS Code extension host (Node)
                  claude.ai export importer, SDK runner
     model/       normalized entities: Session, Agent, Task, Request,
                  ToolCall, ContextItem, Setting, ConfigItem
-    store/       event bus + in-memory ring buffers + SQLite (sql.js, wasm,
-                 so no native module per platform)
+    store/       event bus + bounded in-memory ring buffers (history is
+                 reread from transcripts, so nothing is persisted)
     resolver/    context provenance ("why loaded / why not")
     knobs/       settings and env var catalog, layer merge, provenance
     sync/        config repo manifest, link/apply/diff, secrets
@@ -353,9 +353,9 @@ Tests:
   and fleet tests run without the API or cost.
 - **Integration (`@vscode/test-electron`)**: activation, commands, tree views,
   hook install and removal, settings round trips.
-- **Webview tests**: Vitest browser mode for components, Playwright for full
-  panels, with visual snapshots of each chart in light and dark themes, plus
-  axe accessibility checks.
+- **Webview tests**: Vitest with jsdom and Testing Library for every view and
+  component, plus axe accessibility checks on every view. Playwright visual
+  snapshots of each chart in light and dark themes are still to do.
 - **Sync tests**: apply, diff and revert against a temp HOME and a temp git
   remote, on macOS and Linux.
 - **CI**: GitHub Actions matrix on macOS and Ubuntu, every check above
@@ -409,8 +409,8 @@ That is about 16 weeks of focused work. M1 alone is a useful tool.
 - **claude.ai and Cowork handoff may not be possible** with supported
   surfaces. The plan treats those as view-first and only adds actions that
   use documented commands.
-- **Electron and native modules.** We avoid native modules (sql.js instead of
-  better-sqlite3) so one package works on macOS and Linux.
+- **Electron and native modules.** We avoid native modules so one package
+  works on macOS and Linux.
 
 ## Decisions
 

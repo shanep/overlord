@@ -7,5 +7,13 @@
     "MD024": { "siblings_only": true },
   },
   "globs": ["**/*.md"],
-  "ignores": ["node_modules/**", "dist/**", "coverage/**", "reports/**", "CHANGELOG.md"],
+  "ignores": [
+    "node_modules/**",
+    "dist/**",
+    "out/**",
+    ".vscode-test/**",
+    "coverage/**",
+    "reports/**",
+    "CHANGELOG.md",
+  ],
 }

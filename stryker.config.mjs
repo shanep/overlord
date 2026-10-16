@@ -1,6 +1,7 @@
-/** @type {import('@stryker-mutator/api/core').PartialStrykerOptions} */
 export default {
   testRunner: 'vitest',
+  // Keep downloads and build output out of the sandbox copy.
+  ignorePatterns: ['.vscode-test', 'out', 'dist', 'coverage', 'reports', '*.vsix'],
   vitest: { configFile: 'vitest.config.ts' },
   checkers: ['typescript'],
   tsconfigFile: 'tsconfig.json',

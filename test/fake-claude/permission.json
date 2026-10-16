@@ -1,0 +1,28 @@
+{
+  "model": "claude-fake-1",
+  "tools": ["Bash"],
+  "turns": [
+    {
+      "steps": [
+        { "type": "text", "text": "I need to run a command." },
+        {
+          "type": "tool_use",
+          "id": "toolu_perm_1",
+          "name": "Bash",
+          "input": { "command": "rm -rf build" },
+          "askPermission": true,
+          "result": "removed"
+        },
+        { "type": "wait", "ms": 30000 },
+        { "type": "text", "text": "Done." }
+      ],
+      "result": {
+        "subtype": "success",
+        "result": "Done.",
+        "total_cost_usd": 0.004,
+        "num_turns": 2,
+        "duration_ms": 400
+      }
+    }
+  ]
+}

@@ -5,10 +5,13 @@ const config: KnipConfig = {
     'src/host/extension.ts',
     'src/hook/main.ts',
     'webview/src/main.tsx',
+    'webview/vite.config.ts',
     'scripts/*.mjs',
     'test/fake-claude/*.mjs',
     'test/integration/**/*.ts',
   ],
+  // Loaded by @vscode/test-cli at runtime, not imported.
+  ignoreDependencies: ['@vscode/test-electron'],
   project: ['src/**/*.ts', 'webview/**/*.{ts,tsx}', 'scripts/**/*.mjs', 'test/**/*.{ts,mjs}'],
 };
 

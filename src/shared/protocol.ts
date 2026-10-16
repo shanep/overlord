@@ -148,7 +148,7 @@ export interface UsageState {
   readonly totalMessages: number;
 }
 
-export interface ViewStateMap {
+interface ViewStateMap {
   readonly fleet: FleetState;
   readonly agent: AgentDetailState;
   readonly context: ContextState;

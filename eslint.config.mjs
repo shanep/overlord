@@ -36,9 +36,7 @@ export default tseslint.config(
   {
     languageOptions: {
       parserOptions: {
-        projectService: {
-          allowDefaultProject: ['*.mjs', '*.cjs', 'scripts/*.mjs', 'test/fake-claude/*.mjs'],
-        },
+        projectService: true,
         tsconfigRootDir: import.meta.dirname,
       },
     },
@@ -49,6 +47,8 @@ export default tseslint.config(
   importX.flatConfigs.typescript,
   {
     settings: {
+      // vscode is provided by the editor at runtime (types come from @types/vscode).
+      'import-x/core-modules': ['vscode'],
       'import-x/resolver-next': [
         createTypeScriptImportResolver({
           project: ['tsconfig.json', 'webview/tsconfig.json'],
@@ -227,7 +227,19 @@ export default tseslint.config(
   {
     files: ['**/*.mjs', '**/*.cjs'],
     ...tseslint.configs.disableTypeChecked,
-    languageOptions: { globals: globals.node },
+    languageOptions: {
+      globals: globals.node,
+      // Plain JS files are not in a tsconfig, so they parse without type info.
+      parserOptions: { projectService: false, project: null },
+    },
+  },
+  {
+    files: ['**/*.mjs', '**/*.cjs'],
+    rules: {
+      // Plain JavaScript has no return type syntax.
+      '@typescript-eslint/explicit-function-return-type': 'off',
+      '@typescript-eslint/explicit-module-boundary-types': 'off',
+    },
   },
   {
     files: [

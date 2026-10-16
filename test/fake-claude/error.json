@@ -1,0 +1,17 @@
+{
+  "model": "claude-fake-1",
+  "tools": ["Bash"],
+  "turns": [
+    {
+      "steps": [{ "type": "text", "text": "Something went wrong." }],
+      "result": {
+        "subtype": "error_during_execution",
+        "is_error": true,
+        "errors": ["boom"],
+        "total_cost_usd": 0.003,
+        "num_turns": 1,
+        "duration_ms": 200
+      }
+    }
+  ]
+}
