@@ -205,6 +205,58 @@ describe('PermissionHub', () => {
     expect(errors[0]).toMatch(/^permissions: audit log write failed: /u);
   });
 
+  it('always allows: approves, saves an exact rule and answers matching waiting requests', async () => {
+    const { hub: inbox, storageDir } = await hub();
+    const hooks = new FakeHooks();
+    hooks.pending = [
+      permissionRequest('same', { input: { command: 'npm test' }, source: 'hook' }),
+      permissionRequest('other', { input: { command: 'npm run build' }, source: 'hook' }),
+    ];
+    inbox.attachHooks(hooks);
+    const clicked = inbox.inbox.request(
+      permissionRequest('click', { input: { command: ' npm test ' } }),
+      new AbortController().signal,
+    );
+    await expect(inbox.alwaysAllow('click')).resolves.toBe('saved');
+    await expect(clicked).resolves.toStrictEqual({ behavior: 'allow', ruleId: null });
+    const saved: AutoApproveRule = {
+      id: 'allow-click',
+      enabled: true,
+      behavior: 'allow',
+      tool: 'Bash',
+      pattern: 'npm test',
+      description: 'Added by Always allow',
+    };
+    expect(inbox.rules()).toStrictEqual([saved]);
+    expect(await readJson(path.join(storageDir, 'rules.json'))).toStrictEqual({
+      version: 1,
+      rules: [saved],
+    });
+    expect(hooks.resolved).toStrictEqual([
+      { id: 'same', decision: { behavior: 'allow', ruleId: 'allow-click' } },
+    ]);
+    await inbox.flushAudit();
+    const text = await readFile(path.join(storageDir, 'audit.jsonl'), 'utf8');
+    expect(JSON.parse(text.trim())).toMatchObject({ requestId: 'same', ruleId: 'allow-click' });
+  });
+
+  it('always allows a compound command once, saving no rule', async () => {
+    const { hub: inbox } = await hub();
+    const clicked = inbox.inbox.request(
+      permissionRequest('c', { input: { command: 'ls && rm -rf ~' } }),
+      new AbortController().signal,
+    );
+    await expect(inbox.alwaysAllow('c')).resolves.toBe('once');
+    await expect(clicked).resolves.toStrictEqual({ behavior: 'allow', ruleId: null });
+    expect(inbox.rules()).toStrictEqual([]);
+  });
+
+  it('says a request that always allow cannot find is gone', async () => {
+    const { hub: inbox } = await hub();
+    await expect(inbox.alwaysAllow('missing')).resolves.toBe('gone');
+    expect(inbox.rules()).toStrictEqual([]);
+  });
+
   it('loads saved rules and reports a broken rules file without applying any rule', async () => {
     const first = await hub();
     await first.hub.saveRule(DENY);

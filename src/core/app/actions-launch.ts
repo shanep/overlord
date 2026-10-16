@@ -14,6 +14,7 @@ import { plural } from './text.js';
 
 type LaunchActions =
   | 'resolvePermission'
+  | 'alwaysAllowPermission'
   | 'launch'
   | 'stopRun'
   | 'stopAll'
@@ -62,6 +63,16 @@ export const launchActions: ActionHandlers<LaunchActions> = {
       rt.host.showInfo('That request is no longer waiting.');
     }
     await Promise.resolve();
+  },
+  alwaysAllowPermission: async ({ rt }, action) => {
+    const outcome = await rt.permissions.alwaysAllow(action.requestId);
+    if (outcome === 'gone') {
+      rt.host.showInfo('That request is no longer waiting.');
+    } else if (outcome === 'once') {
+      rt.host.showInfo(
+        'Allowed once. Overlord only remembers a plain command, with no chaining, pipes, redirects or backslashes, so this one will ask again.',
+      );
+    }
   },
   launch: async ({ rt }, action) => {
     if (action.specs.length === 0) {

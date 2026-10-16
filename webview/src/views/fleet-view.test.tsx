@@ -9,6 +9,7 @@ import { expectAccessible, FakeApi } from '../../test/render.js';
 import { NowProvider } from '../clock.js';
 import { VsCodeProvider } from '../vscode-context.js';
 
+import { alwaysAllowScope } from './fleet-header.js';
 import { FleetView } from './fleet-view.js';
 
 function ui(state: FleetState, api: FakeApi): ReactElement {
@@ -117,6 +118,10 @@ describe('FleetView', () => {
     expect(within(banner).getAllByText('{"command":"rm -rf build"}')).toHaveLength(2);
     await user.click(screen.getByRole('button', { name: 'Allow Bash for Refactor parser' }));
     await user.click(screen.getByRole('button', { name: 'Deny Bash for gone' }));
+    await user.click(screen.getByRole('button', { name: 'Always allow Bash for gone' }));
+    expect(
+      screen.getByRole('button', { name: 'Always allow Bash for gone' }).getAttribute('title'),
+    ).toBe('Allow this exact command from now on, in every session');
     expect(api.actions()).toStrictEqual([
       {
         type: 'resolvePermission',
@@ -128,7 +133,15 @@ describe('FleetView', () => {
         requestId: 'perm-2',
         decision: { behavior: 'deny', message: 'Denied from Overlord', ruleId: null },
       },
+      { type: 'alwaysAllowPermission', requestId: 'perm-2' },
     ]);
+  });
+
+  it('says what always allow covers for shells and for other tools', () => {
+    expect(alwaysAllowScope('PowerShell')).toBe(
+      'Allow this exact command from now on, in every session',
+    );
+    expect(alwaysAllowScope('Edit')).toBe('Allow every Edit request from now on, in every session');
   });
 
   it('says ready is not its job and posts row actions', async () => {

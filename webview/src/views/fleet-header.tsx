@@ -62,7 +62,14 @@ export function FleetHeader(props: {
   );
 }
 
-export type PermissionChoice = 'allow' | 'deny';
+export type PermissionChoice = 'allow' | 'always' | 'deny';
+
+/** What an Always allow rule for this tool covers, for the button's tooltip. */
+export function alwaysAllowScope(toolName: string): string {
+  return toolName === 'Bash' || toolName === 'PowerShell'
+    ? 'Allow this exact command from now on, in every session'
+    : `Allow every ${toolName} request from now on, in every session`;
+}
 
 export function PermissionBanner(props: {
   readonly requests: readonly PermissionRequest[];
@@ -94,6 +101,16 @@ export function PermissionBanner(props: {
                   }}
                 >
                   Allow
+                </button>
+                <button
+                  type="button"
+                  title={alwaysAllowScope(request.toolName)}
+                  aria-label={`Always allow ${request.toolName} for ${title}`}
+                  onClick={() => {
+                    onResolve(request, 'always');
+                  }}
+                >
+                  Always allow
                 </button>
                 <button
                   type="button"

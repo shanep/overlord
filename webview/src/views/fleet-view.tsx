@@ -164,6 +164,10 @@ export function FleetView(props: { readonly state: FleetState }): ReactElement {
   };
 
   const onResolve = (request: PermissionRequest, choice: PermissionChoice): void => {
+    if (choice === 'always') {
+      post({ type: 'alwaysAllowPermission', requestId: request.id });
+      return;
+    }
     post({
       type: 'resolvePermission',
       requestId: request.id,

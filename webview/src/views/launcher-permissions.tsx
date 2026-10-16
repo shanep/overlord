@@ -8,6 +8,8 @@ import { JsonView } from '../components/json-view.js';
 import { formatAgo } from '../format.js';
 import { usePostAction } from '../vscode-context.js';
 
+import { alwaysAllowScope } from './fleet-header.js';
+
 const DENY_MESSAGE = 'Denied from Overlord';
 
 export function PermissionInbox(props: {
@@ -40,6 +42,16 @@ export function PermissionInbox(props: {
                 }}
               >
                 Allow
+              </button>
+              <button
+                type="button"
+                title={alwaysAllowScope(request.toolName)}
+                aria-label={`Always allow ${request.toolName} for ${request.sessionId}`}
+                onClick={() => {
+                  post({ type: 'alwaysAllowPermission', requestId: request.id });
+                }}
+              >
+                Always allow
               </button>
               <button
                 type="button"

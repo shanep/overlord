@@ -10,7 +10,7 @@ import type { AutoDecisionEntry } from '../harness/inbox.js';
 import { PermissionInbox } from '../harness/inbox.js';
 import { AuditLog } from '../hooks/audit.js';
 import { ruleDenyMessage } from '../hooks/mapping.js';
-import { findMatchingRule } from '../hooks/rules.js';
+import { alwaysAllowRule, findMatchingRule } from '../hooks/rules.js';
 
 import { messageOf } from './errors.js';
 import { readRules, storagePath, writeRules } from './storage.js';
@@ -30,6 +30,12 @@ export interface PermissionHubOptions {
 }
 
 const SOURCE = 'permissions';
+
+/**
+ * What Always allow did: saved a rule and approved the request, approved it
+ * once because no rule can cover it, or found the request already gone.
+ */
+export type AlwaysAllowOutcome = 'saved' | 'once' | 'gone';
 
 /** The decision the rules make for a request, or null to ask the user. Deny rules win. */
 export function decideByRules(
@@ -106,6 +112,32 @@ export class PermissionHub {
       return true;
     }
     return this.hooks?.resolvePermission(requestId, decision) ?? false;
+  }
+
+  /**
+   * Approves the request and saves an allow rule so its kind never asks
+   * again, then lets the new rule answer every other request still waiting.
+   */
+  async alwaysAllow(requestId: string): Promise<AlwaysAllowOutcome> {
+    const request = this.list().find((item) => item.id === requestId);
+    if (request === undefined) {
+      return 'gone';
+    }
+    // Answer first, so the request cannot time out while the rule is written.
+    this.resolve(requestId, { behavior: 'allow', ruleId: null });
+    const rule = alwaysAllowRule(request.toolName, request.input, `allow-${request.id}`);
+    if (rule === null) {
+      return 'once';
+    }
+    await this.saveRule(rule);
+    for (const other of this.list()) {
+      const decision = decideByRules(this.current, other);
+      if (decision !== null) {
+        this.resolve(other.id, decision);
+        this.logAuto({ request: other, decision, at: this.options.clock() });
+      }
+    }
+    return 'saved';
   }
 
   /** Adds the rule, or replaces the one with the same id in place. */

@@ -63,6 +63,26 @@ describe('permission actions', () => {
     expect(env.host.infos).toStrictEqual(['That request is no longer waiting.']);
   });
 
+  it('always allows a request, or explains why it could not remember it', async () => {
+    const env = await makeEnv();
+    const { app } = makeApp(env);
+    const { permissions } = app.runtime;
+    void permissions.inbox.request(permissionRequest('p1'), new AbortController().signal);
+    await app.dispatch({ type: 'alwaysAllowPermission', requestId: 'p1' }, {});
+    expect(permissions.rules()).toMatchObject([{ id: 'allow-p1', tool: 'Bash', pattern: 'ls' }]);
+    expect(env.host.infos).toStrictEqual([]);
+    void permissions.inbox.request(
+      permissionRequest('p2', { input: { command: 'ls | wc' } }),
+      new AbortController().signal,
+    );
+    await app.dispatch({ type: 'alwaysAllowPermission', requestId: 'p2' }, {});
+    await app.dispatch({ type: 'alwaysAllowPermission', requestId: 'p2' }, {});
+    expect(env.host.infos).toStrictEqual([
+      'Allowed once. Overlord only remembers a plain command, with no chaining, pipes, redirects or backslashes, so this one will ask again.',
+      'That request is no longer waiting.',
+    ]);
+  });
+
   it('saves, validates and deletes rules', async () => {
     const env = await makeEnv();
     const { app } = makeApp(env);

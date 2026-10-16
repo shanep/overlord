@@ -26,7 +26,8 @@ See [PLAN.md](PLAN.md) for the full design and the decisions behind it.
 - **Knobs**: 700+ settings, env vars and CLI flags pulled from the docs, with the effective value
   and which layer set it.
 - **Launcher**: run many prompts at once, across profiles, each in its own git worktree, with one
-  permission inbox and auto-approve rules.
+  permission inbox and auto-approve rules. Always allow on a pending request writes the rule for
+  you: the exact command for Bash, or the whole tool otherwise.
 - **All sessions**: CLI, Claude Desktop, Cowork, cloud sessions and claude.ai chats in one list,
   with handoff between local and cloud.
 - **Config and sync**: every config item with a badge for versioned, local only, external repo

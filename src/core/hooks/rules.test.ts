@@ -4,9 +4,11 @@ import { describe, expect, it } from 'vitest';
 import type { AutoApproveRule } from '../../shared/protocol.js';
 
 import {
+  alwaysAllowRule,
   evaluateRules,
   findMatchingRule,
   isCompoundCommand,
+  literalPattern,
   ruleMatches,
   ruleSubject,
   SEND_MESSAGE_TOOL,
@@ -116,6 +118,87 @@ describe('isCompoundCommand', () => {
       expect(isCompoundCommand(command)).toBe(false);
     },
   );
+});
+
+function exactCommandRule(text: string): AutoApproveRule {
+  return rule({ id: 'exact', tool: 'Bash', pattern: literalPattern(text) });
+}
+
+// Every character a command might hold except a backslash, which literalPattern refuses.
+const COMMAND_CHARS = ['a', 'b', ' ', '/', '.', '-', '_', '*', '?', '[', ']', '{', '}', '(', ')'];
+const MORE_COMMAND_CHARS = ['!', '+', '@', '^', '$', ',', '"', "'", '#', '~', '%', '=', ':', '0'];
+
+describe('literalPattern', () => {
+  it('matches its text exactly, glob and quote characters included', () => {
+    const commands = [
+      'git status',
+      'echo "a (b)" [x] *.ts !foo',
+      "grep -E 'a+b{2}' src/**/*.ts",
+      'echo $HOME ~/a?b @(x) +(y) a]b',
+    ];
+    for (const command of commands) {
+      const pattern = exactCommandRule(command);
+      expect(ruleMatches(pattern, 'Bash', { command })).toBe(true);
+      expect(ruleMatches(pattern, 'Bash', { command: `${command}x` })).toBe(false);
+      expect(ruleMatches(pattern, 'Bash', { command: `x${command}` })).toBe(false);
+    }
+  });
+
+  it('matches exactly what it was made from (property)', () => {
+    const text = fc.string({
+      unit: fc.constantFrom(...COMMAND_CHARS, ...MORE_COMMAND_CHARS),
+      minLength: 1,
+    });
+    fc.assert(
+      fc.property(text, fc.constantFrom('a', '/', '*'), (raw, extra) => {
+        const command = raw.trim();
+        fc.pre(command !== '' && !isCompoundCommand(command));
+        const pattern = exactCommandRule(command);
+        expect(ruleMatches(pattern, 'Bash', { command })).toBe(true);
+        expect(ruleMatches(pattern, 'Bash', { command: `${command}${extra}` })).toBe(false);
+      }),
+    );
+  });
+});
+
+describe('alwaysAllowRule', () => {
+  it('allows the exact command for a shell tool', () => {
+    const made = alwaysAllowRule('Bash', { command: '  git log --format="%h (%s)"  ' }, 'r1');
+    expect(made).toStrictEqual({
+      id: 'r1',
+      enabled: true,
+      behavior: 'allow',
+      tool: 'Bash',
+      pattern: literalPattern('git log --format="%h (%s)"'),
+      description: 'Added by Always allow',
+    });
+    if (made === null) {
+      return;
+    }
+    expect(ruleMatches(made, 'Bash', { command: 'git log --format="%h (%s)"' })).toBe(true);
+    expect(ruleMatches(made, 'Bash', { command: 'git log --format="%h (%s)" -p' })).toBe(false);
+    expect(ruleMatches(made, 'PowerShell', { command: 'git log --format="%h (%s)"' })).toBe(false);
+  });
+
+  it('allows the whole tool when there is no command', () => {
+    expect(alwaysAllowRule('Edit', { file_path: '/a.ts' }, 'r2')).toMatchObject({
+      tool: 'Edit',
+      pattern: null,
+    });
+    expect(alwaysAllowRule('mcp__github__create_issue', {}, 'r3')).toMatchObject({
+      tool: 'mcp__github__create_issue',
+      pattern: null,
+    });
+  });
+
+  it('gives no rule for a compound command, since no allow rule could match it', () => {
+    expect(alwaysAllowRule('Bash', { command: 'ls && rm -rf ~' }, 'r4')).toBeNull();
+    expect(alwaysAllowRule('Bash', { command: 'ls\n' }, 'r5')).toBeNull();
+  });
+
+  it('gives no rule for a command with a backslash, since no pattern matches it exactly', () => {
+    expect(alwaysAllowRule('Bash', { command: String.raw`printf "a\n"` }, 'r6')).toBeNull();
+  });
 });
 
 describe('ruleMatches', () => {

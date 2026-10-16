@@ -383,6 +383,7 @@ export type WebviewAction =
   | { readonly type: 'launch'; readonly specs: readonly LaunchSpec[] }
   | { readonly type: 'stopRun'; readonly runId: string }
   | { readonly type: 'stopAll' }
+  | { readonly type: 'alwaysAllowPermission'; readonly requestId: string }
   | { readonly type: 'saveRule'; readonly rule: AutoApproveRule }
   | { readonly type: 'deleteRule'; readonly ruleId: string }
   | { readonly type: 'saveProfile'; readonly profile: LaunchProfile }

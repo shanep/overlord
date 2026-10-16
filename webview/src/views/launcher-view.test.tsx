@@ -243,6 +243,7 @@ describe('permission inbox', () => {
     expect(inbox.getByText(/rm -rf build/u)).toBeDefined();
     await userEvent.click(inbox.getByRole('button', { name: 'Allow Bash for s1' }));
     await userEvent.click(inbox.getByRole('button', { name: 'Deny Bash for s1' }));
+    await userEvent.click(inbox.getByRole('button', { name: 'Always allow Bash for s1' }));
     expect(api.actions()).toStrictEqual([
       {
         type: 'resolvePermission',
@@ -254,6 +255,7 @@ describe('permission inbox', () => {
         requestId: 'perm-1',
         decision: { behavior: 'deny', message: 'Denied from Overlord', ruleId: null },
       },
+      { type: 'alwaysAllowPermission', requestId: 'perm-1' },
     ]);
   });
 });

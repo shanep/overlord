@@ -77,6 +77,41 @@ export function isCompoundCommand(command: string): boolean {
   return COMPOUND_COMMAND.test(command);
 }
 
+/**
+ * A rule pattern that matches exactly this text, which must have no
+ * backslash: picomatch has no exact form for one (an escaped backslash breaks
+ * the escape after it, and a bracketed one also matches "[\\]").
+ */
+export function literalPattern(text: string): string {
+  return text.replaceAll(/[^\s\w/-]/gu, (char) => `\\${char}`);
+}
+
+/**
+ * The allow rule that stops a request like this one from asking again: the
+ * exact command for a shell tool, else the whole tool. Null for a compound
+ * command, since no allow rule ever matches one, and for a command with a
+ * backslash, since no pattern matches it exactly.
+ */
+export function alwaysAllowRule(
+  toolName: string,
+  input: unknown,
+  id: string,
+): AutoApproveRule | null {
+  const subject = ruleSubject(toolName, input);
+  const command = subject?.kind === 'command' ? subject.value : null;
+  if (command !== null && (isCompoundCommand(command) || command.includes('\\'))) {
+    return null;
+  }
+  return {
+    id,
+    enabled: true,
+    behavior: 'allow',
+    tool: literalPattern(toolName),
+    pattern: command === null ? null : literalPattern(command.trim()),
+    description: 'Added by Always allow',
+  };
+}
+
 function patternMatches(rule: AutoApproveRule, subject: RuleSubject | null): boolean {
   if (rule.pattern === null) {
     return true;
