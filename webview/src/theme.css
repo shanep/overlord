@@ -756,6 +756,181 @@ details > summary {
   margin-bottom: 6px;
 }
 
+/* The VS Code screen map on the help page. Everything draws from the theme
+   tokens, so it follows light, dark and high contrast themes. */
+
+.ext-diagram {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 8px 0 12px;
+}
+
+.ext-diagram text {
+  font-family: var(--ov-font);
+  font-size: 11px;
+  fill: var(--ov-fg);
+}
+
+.ext-diagram .ext-muted {
+  fill: var(--ov-muted);
+}
+
+.ext-diagram .ext-small {
+  font-size: 10px;
+}
+
+.ext-diagram .ext-italic {
+  font-style: italic;
+}
+
+.ext-diagram .ext-mono {
+  font-family: var(--ov-mono);
+}
+
+.ext-diagram .ext-heading {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.ext-frame,
+.ext-editor {
+  fill: var(--ov-bg);
+  stroke: var(--ov-border);
+}
+
+.ext-outline {
+  fill: none;
+  stroke: var(--ov-border);
+}
+
+.ext-chrome {
+  fill: var(--ov-inactive-selected);
+  stroke: var(--ov-border);
+}
+
+.ext-side {
+  fill: var(--ov-panel);
+  stroke: var(--ov-border);
+}
+
+.ext-box {
+  fill: var(--ov-hover);
+  stroke: var(--ov-border);
+}
+
+.ext-input {
+  fill: var(--ov-input);
+  stroke: var(--ov-focus);
+}
+
+.ext-overlay {
+  fill: var(--vscode-editorWidget-background, var(--ov-panel));
+  stroke: var(--ov-border);
+  filter: drop-shadow(0 2px 4px rgb(0 0 0 / 30%));
+}
+
+.ext-selected {
+  fill: var(--ov-inactive-selected);
+}
+
+.ext-line {
+  fill: var(--ov-muted);
+  opacity: 0.35;
+}
+
+.ext-faint {
+  fill: var(--ov-muted);
+  opacity: 0.25;
+}
+
+.ext-icon {
+  fill: none;
+  stroke: var(--ov-muted);
+  stroke-width: 1.5;
+}
+
+.ext-icon-on {
+  stroke: var(--ov-fg);
+}
+
+.ext-accent {
+  fill: var(--ov-focus);
+}
+
+.ext-state {
+  fill: var(--ov-green);
+}
+
+.ext-squiggle {
+  fill: none;
+  stroke: var(--ov-red);
+  stroke-width: 1.2;
+}
+
+.ext-badge {
+  fill: var(--ov-button);
+}
+
+.ext-diagram .ext-badge-text {
+  font-size: 9px;
+  font-weight: 700;
+  fill: var(--ov-button-fg);
+}
+
+.ext-status {
+  fill: var(--vscode-statusBar-background, var(--ov-button));
+}
+
+.ext-status-item {
+  fill: rgb(255 255 255 / 15%);
+}
+
+.ext-diagram .ext-status-text {
+  fill: var(--vscode-statusBar-foreground, var(--ov-button-fg));
+}
+
+.ext-marker circle {
+  fill: var(--ov-bg);
+  stroke: var(--ov-orange);
+  stroke-width: 2;
+  stroke-dasharray: 4 2;
+}
+
+.ext-marker-used circle {
+  fill: var(--ov-orange);
+  stroke-dasharray: none;
+}
+
+.ext-diagram .ext-marker text {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ext-diagram .ext-marker-used text {
+  fill: #000;
+}
+
+.ext-number {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 2px dashed var(--ov-orange);
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.ext-number-used {
+  border-style: solid;
+  color: #000;
+  background: var(--ov-orange);
+}
+
 /* ---- Tips ----------------------------------------------------------------- */
 
 .tips {
