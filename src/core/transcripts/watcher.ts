@@ -257,10 +257,11 @@ export class TranscriptWatcher {
         await this.poll(info, now);
       }
     }
-    for (const [sessionId, session] of this.tracked) {
+    // A session that went quiet, or whose transcript is gone, leaves the fleet.
+    for (const sessionId of this.tracked.keys()) {
       if (!active.has(sessionId)) {
-        this.publish(session, [], now);
         this.tracked.delete(sessionId);
+        this.emit('session.removed', { sessionId });
       }
     }
   }

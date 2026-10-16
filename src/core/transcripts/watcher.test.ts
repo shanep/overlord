@@ -1,4 +1,4 @@
-import { appendFile, mkdir, symlink, truncate, utimes, writeFile } from 'node:fs/promises';
+import { appendFile, mkdir, rm, symlink, truncate, utimes, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -35,6 +35,7 @@ import {
 
 const NAMES: readonly EventName[] = [
   'session.upserted',
+  'session.removed',
   'agent.upserted',
   'tool.upserted',
   'request.recorded',
@@ -309,22 +310,21 @@ describe('TranscriptWatcher', () => {
     await utimes(layout.transcriptPath, old, old);
     await watcher.refresh();
     expect(watcher.sessionIds()).toStrictEqual([]);
-    expect(events).toStrictEqual([]);
+    expect(events).toStrictEqual([{ name: 'session.removed', payload: { sessionId: SESSION } }]);
   });
 
-  it('publishes the last state of a session as it goes quiet', async () => {
+  it('removes a session whose transcript is deleted, and publishes it again if it comes back', async () => {
     await writeFile(layout.transcriptPath, jsonl([userPrompt('u1', 0, 'x')]));
-    const watcher = make({ activeWindowMs: YEAR });
+    const watcher = make();
     await watcher.refresh();
-    expect(payloads(events, 'session.upserted')).toMatchObject([{ state: 'running' }]);
     events.length = 0;
-    const old = new Date(clock - 2 * YEAR);
-    await utimes(layout.transcriptPath, old, old);
-    clock = T0 + 120_000;
+    await rm(layout.transcriptPath);
     await watcher.refresh();
-    expect(names(events)).toStrictEqual(['session.upserted', 'agent.upserted']);
-    expect(payloads(events, 'session.upserted')).toMatchObject([{ state: 'idle' }]);
-    expect(watcher.sessionIds()).toStrictEqual([]);
+    expect(events).toStrictEqual([{ name: 'session.removed', payload: { sessionId: SESSION } }]);
+    events.length = 0;
+    await writeFile(layout.transcriptPath, jsonl([userPrompt('u1', 0, 'x')]));
+    await watcher.refresh();
+    expect(names(events)).toStrictEqual(['session.upserted', 'agent.upserted', 'feed.appended']);
   });
 
   it('picks up a meta file written after the transcript', async () => {

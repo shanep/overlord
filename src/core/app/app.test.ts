@@ -135,6 +135,24 @@ describe('OverlordApp', () => {
     expect(watches.every((entry) => entry.stopped)).toBe(true);
   });
 
+  it('drops a session from the fleet once it leaves the active window', async () => {
+    const env = await makeEnv();
+    const line = JSON.stringify({ ...userPrompt('u1', 0, 'hello'), sessionId: 'abc' });
+    await writeText(path.join(env.paths.projectsDir, '-work', 'abc.jsonl'), `${line}\n`);
+    let now = Date.now();
+    const { app } = makeApp(env, { deps: { clock: () => now } });
+    await app.start();
+    const fleetIds = (): string[] => {
+      const message = app.stateFor('fleet', {});
+      return message.view === 'fleet' ? message.state.sessions.map((item) => item.id) : [];
+    };
+    expect(fleetIds()).toStrictEqual(['abc']);
+    now += (env.host.settings.activeWindowMinutes + 1) * 60_000;
+    await app.refresh();
+    expect(fleetIds()).toStrictEqual([]);
+    await app.dispose();
+  });
+
   it('watches only user settings without a workspace', async () => {
     const env = await makeEnv();
     const { app, watches } = makeApp(env);
