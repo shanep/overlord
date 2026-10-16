@@ -17,7 +17,13 @@ import {
   immediateScheduler,
 } from '../test-helpers/fixtures.js';
 
-import { buildFleet, normalizeRateLimits, toFraction, withPlanLimits } from './fleet.js';
+import {
+  buildFleet,
+  normalizeRateLimits,
+  toFraction,
+  withFinishedJobs,
+  withPlanLimits,
+} from './fleet.js';
 import { buildKnobs, EMPTY_KNOBS, loadKnobs, loadProfiles } from './knobs.js';
 import { loadUsage } from './usage.js';
 
@@ -46,7 +52,14 @@ describe('fleet view', () => {
     bus.emit('rateLimits.updated', { fiveHourPct: 80, sevenDayPct: null, resetsAt: null });
     const pending = [permissionRequest('live')];
     const places = { s1: 'vscode' as const };
-    const state = buildFleet({ store: fleetStore, pending, now: NOW, plan: null, places });
+    const state = buildFleet({
+      store: fleetStore,
+      pending,
+      now: NOW,
+      plan: null,
+      places,
+      jobs: [],
+    });
     expect(state.sessions.map((item) => item.id)).toStrictEqual(['s1']);
     expect(state.pendingPermissions).toBe(pending);
     expect(state.rateLimits).toStrictEqual({ fiveHourPct: 0.8, sevenDayPct: null, resetsAt: null });
@@ -60,6 +73,43 @@ describe('fleet view', () => {
       'rateLimits',
       'sessions',
       'spendPerHourUsd',
+    ]);
+  });
+
+  it('marks finished jobs done and gives a job with no transcript a bare row', () => {
+    const bus = new EventBus();
+    const fleetStore = store(bus);
+    bus.emit('session.upserted', session('live'));
+    bus.emit('session.upserted', session('finished', { state: 'idle', model: 'opus' }));
+    const jobs = [
+      { sessionId: 'finished', name: 'Ran', cwd: '/a', startedAt: 1, state: 'done' as const },
+      { sessionId: 'gone', name: null, cwd: null, startedAt: null, state: 'failed' as const },
+    ];
+    const state = buildFleet({
+      store: fleetStore,
+      pending: [],
+      now: NOW,
+      plan: null,
+      places: {},
+      jobs,
+    });
+    const byId = new Map(state.sessions.map((item) => [item.id, item]));
+    expect(byId.get('live')?.state).toBe('running');
+    expect(byId.get('finished')).toStrictEqual(
+      session('finished', { state: 'done', model: 'opus' }),
+    );
+    expect(byId.get('gone')).toStrictEqual(
+      session('gone', { title: '', cwd: '', state: 'failed', startedAt: 0, updatedAt: 0 }),
+    );
+  });
+
+  it('hands back the same sessions when no job applies', () => {
+    const sessions = [session('a', { state: 'done' })];
+    expect(withFinishedJobs(sessions, [])).toBe(sessions);
+    const job = { sessionId: 'a', name: 'A', cwd: '/w', startedAt: 5, state: 'done' as const };
+    expect(withFinishedJobs(sessions, [job])[0]).toBe(sessions[0]);
+    expect(withFinishedJobs([], [job])).toStrictEqual([
+      session('a', { title: 'A', cwd: '/w', state: 'done', startedAt: 5, updatedAt: 5 }),
     ]);
   });
 
@@ -82,7 +132,8 @@ describe('fleet view', () => {
       fetchedAt: NOW,
     };
     expect(
-      buildFleet({ store: fleetStore, pending: [], now: NOW, plan, places: {} }).rateLimits,
+      buildFleet({ store: fleetStore, pending: [], now: NOW, plan, places: {}, jobs: [] })
+        .rateLimits,
     ).toStrictEqual({
       fiveHourPct: 0.01,
       sevenDayPct: 0.45,

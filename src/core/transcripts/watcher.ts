@@ -136,6 +136,8 @@ export class TranscriptWatcher {
   private readonly tracked = new Map<string, TrackedSession>();
   /** Sessions opened from a list view, tailed even outside the active window. */
   private readonly pinned = new Set<string>();
+  /** Sessions held from outside (finished background jobs), replaced whole by keep(). */
+  private kept: ReadonlySet<string> = new Set();
   /** Sessions dropped as idle, with the mtime they had then. A newer write brings them back. */
   private readonly settled = new Map<string, number>();
   private timer: NodeJS.Timeout | null = null;
@@ -190,6 +192,21 @@ export class TranscriptWatcher {
       return false;
     }
     return true;
+  }
+
+  /**
+   * Tail exactly these sessions however old or idle they are, in place of
+   * the ones kept before. A session no longer kept leaves on the next cycle
+   * unless the windows still hold it.
+   */
+  async keep(sessionIds: readonly string[]): Promise<void> {
+    const next = new Set(sessionIds);
+    const differs =
+      next.size !== this.kept.size || [...next].some((sessionId) => !this.kept.has(sessionId));
+    this.kept = next;
+    if (differs) {
+      await this.refresh();
+    }
   }
 
   /** Run one scan and read cycle. Calls made while one runs share a single follow-up cycle. */
@@ -284,7 +301,7 @@ export class TranscriptWatcher {
 
   /** Read a session when it belongs in the fleet. True when it stays there. */
   private async visit(info: SessionFileInfo, now: number): Promise<boolean> {
-    if (this.pinned.has(info.sessionId)) {
+    if (this.pinned.has(info.sessionId) || this.kept.has(info.sessionId)) {
       await this.poll(info, now);
       return true;
     }

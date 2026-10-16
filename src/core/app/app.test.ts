@@ -123,7 +123,7 @@ describe('OverlordApp', () => {
     });
     await app.start();
     await app.start();
-    expect(intervals.map((entry) => entry.ms)).toStrictEqual([30_000, 5000]);
+    expect(intervals.map((entry) => entry.ms)).toStrictEqual([30_000, 5000, 15_000]);
     const workspace = env.host.workspace ?? '';
     expect(watches.map((entry) => entry.file)).toStrictEqual([
       env.paths.userSettings,
@@ -134,10 +134,17 @@ describe('OverlordApp', () => {
       'abc',
     ]);
     intervals[0]?.callback();
-    await waitFor(() => calls.some((call) => call.args.includes('agents')));
+    // The sessions cache asks for live agents only; the jobs poll adds --all.
+    await waitFor(() =>
+      calls.some((call) => call.args.includes('agents') && !call.args.includes('--all')),
+    );
+    expect(calls.filter((call) => call.args.includes('--all'))).toHaveLength(1);
     const placesRefresh = vi.spyOn(app.runtime.places, 'refresh');
     intervals[1]?.callback();
     expect(placesRefresh).toHaveBeenCalledTimes(1);
+    const jobsRefresh = vi.spyOn(app.runtime.jobs, 'refresh');
+    intervals[2]?.callback();
+    expect(jobsRefresh).toHaveBeenCalledTimes(1);
     const status = await app.setup.status();
     expect(status).toStrictEqual({
       hooksInstalled: false,
@@ -168,6 +175,36 @@ describe('OverlordApp', () => {
     now += (env.host.settings.activeWindowMinutes + 1) * 60_000;
     await app.refresh();
     expect(fleetIds()).toStrictEqual([]);
+    await app.dispose();
+  });
+
+  it('keeps finished background jobs in the fleet as done until Claude Code forgets them', async () => {
+    const env = await makeEnv();
+    const line = JSON.stringify({ ...userPrompt('u1', 0, 'hello'), sessionId: 'abc' });
+    await writeText(path.join(env.paths.projectsDir, '-work', 'abc.jsonl'), `${line}\n`);
+    const now = Date.now() + (env.host.settings.activeWindowMinutes + 1) * 60_000;
+    let jobs: unknown[] = [
+      { sessionId: 'abc', kind: 'background', state: 'done', name: 'Ran' },
+      { sessionId: 'gone', kind: 'background', state: 'stopped', name: 'Gone' },
+    ];
+    const { app } = makeApp(env, {
+      deps: { clock: () => now },
+      responders: [
+        (call): ExecResult | undefined =>
+          call.args.includes('--all') ? ok(JSON.stringify(jobs)) : undefined,
+      ],
+    });
+    await app.start();
+    const fleet = (): string[] => {
+      const message = app.stateFor('fleet', {});
+      return message.view === 'fleet'
+        ? message.state.sessions.map((item) => `${item.id} ${item.state}`)
+        : [];
+    };
+    expect(fleet().toSorted((a, b) => a.localeCompare(b))).toStrictEqual(['abc done', 'gone done']);
+    jobs = [];
+    await app.refresh();
+    expect(fleet()).toStrictEqual([]);
     await app.dispose();
   });
 

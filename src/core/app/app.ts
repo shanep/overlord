@@ -29,6 +29,7 @@ import { ChangeHub } from './changes.js';
 import type { AppError } from './errors.js';
 import { ErrorLog } from './errors.js';
 import type { HostPort, PanelParams } from './host-port.js';
+import { FinishedJobs, JOBS_REFRESH_MS } from './jobs.js';
 import { PermissionHub } from './permissions.js';
 import { PLACES_REFRESH_MS, SessionPlaces } from './places.js';
 import type { FileWatchFunction, IntervalFunction, KillFunction } from './process.js';
@@ -218,6 +219,16 @@ export class OverlordApp {
       onChange: notify,
       report,
     });
+    const jobs = new FinishedJobs({
+      exec: surfacesExec,
+      // Null means a bare claude the login shell cannot find either, so leave it to PATH.
+      claudeBin: async (): Promise<string> =>
+        executableFor(host.settings.claudePath, await launchEnv(), platform) ?? 'claude',
+      // Sources is built below, and this only runs after start.
+      keep: async (sessionIds): Promise<void> => this.sources.keepTranscripts(sessionIds),
+      onChange: notify,
+      report,
+    });
     const base: CacheRuntime = {
       paths: this.paths,
       host,
@@ -236,6 +247,7 @@ export class OverlordApp {
       launcher,
       permissions,
       places,
+      jobs,
       report,
       planUsage: async (): Promise<unknown> => {
         const usageEnv = await launchEnv();
@@ -292,8 +304,11 @@ export class OverlordApp {
       this.interval(() => {
         void this.rt.places.refresh();
       }, PLACES_REFRESH_MS),
+      this.interval(() => {
+        void this.rt.jobs.refresh();
+      }, JOBS_REFRESH_MS),
     );
-    await this.rt.places.refresh();
+    await Promise.all([this.rt.places.refresh(), this.rt.jobs.refresh()]);
     for (const file of this.settingsFiles()) {
       this.cleanups.push(
         this.fileWatch(file, () => {
@@ -364,6 +379,7 @@ export class OverlordApp {
       caches.usage.refresh(),
       caches.plan.refresh(),
       this.rt.places.refresh(),
+      this.rt.jobs.refresh(),
     ]);
     this.rt.context.clear();
   }

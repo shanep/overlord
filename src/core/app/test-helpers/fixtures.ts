@@ -156,9 +156,13 @@ export interface AppOptions {
   readonly queries?: FakeQueries;
 }
 
+// The fleet polls `claude agents --json --all`; an empty list keeps that quiet unless a test answers first.
+const noJobs: Responder = (call) =>
+  call.args[0] === 'agents' && call.args.includes('--all') ? ok('[]') : undefined;
+
 export function makeApp(env: TestEnv, options: AppOptions = {}): TestApp {
   const bus = new EventBus();
-  const { exec, calls } = recordingExec(...(options.responders ?? []));
+  const { exec, calls } = recordingExec(...(options.responders ?? []), noJobs);
   const kills: TestApp['kills'] = [];
   const intervals: TestApp['intervals'] = [];
   const watches: TestApp['watches'] = [];

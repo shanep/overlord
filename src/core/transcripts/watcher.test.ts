@@ -350,6 +350,32 @@ describe('TranscriptWatcher', () => {
     expect(watcher.sessionIds()).toStrictEqual([SESSION]);
   });
 
+  it('holds kept sessions past both windows and lets them go once released', async () => {
+    await writeFile(
+      layout.transcriptPath,
+      jsonl([
+        userPrompt('u1', 0, 'hi'),
+        assistant({ uuid: 'a1', at: 1, messageId: 'm1', content: [text('done')] }),
+      ]),
+    );
+    const old = new Date(Date.now() - 60 * 60_000);
+    await utimes(layout.transcriptPath, old, old);
+    clock = Date.now();
+    const watcher = make({ activeWindowMs: 30 * 60_000, idleWindowMs: 10 * 60_000 });
+    await watcher.refresh();
+    expect(watcher.sessionIds()).toStrictEqual([]);
+
+    await watcher.keep([SESSION, 'no-such-session']);
+    expect(watcher.sessionIds()).toStrictEqual([SESSION]);
+    events.length = 0;
+    await watcher.keep([SESSION, 'no-such-session']);
+    expect(events).toStrictEqual([]);
+
+    await watcher.keep([]);
+    expect(watcher.sessionIds()).toStrictEqual([]);
+    expect(names(events).at(-1)).toBe('session.removed');
+  });
+
   it('keeps a session that is mid-turn past the idle window', async () => {
     await writeFile(layout.transcriptPath, jsonl([userPrompt('u1', 0, 'working')]));
     const quiet = new Date(Date.now() - 11 * 60_000);

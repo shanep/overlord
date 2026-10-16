@@ -13,6 +13,7 @@ import type { Exec } from '../sync/exec.js';
 
 import type { AsyncValue } from './async-value.js';
 import type { HostPort } from './host-port.js';
+import type { FinishedJobs } from './jobs.js';
 import type { PermissionHub } from './permissions.js';
 import type { SessionPlaces } from './places.js';
 import type { KillFunction } from './process.js';
@@ -51,6 +52,8 @@ export interface Runtime {
   readonly permissions: PermissionHub;
   /** Where each live session runs, for the fleet. */
   readonly places: SessionPlaces;
+  /** Finished background jobs Claude Code still lists, for the fleet. */
+  readonly jobs: FinishedJobs;
   readonly caches: Caches;
   readonly context: ContextViews;
   /** Sends a source.error to the bus, which also lands in the status error list. */

@@ -1,9 +1,12 @@
-// The fleet view: the store's sessions and agents, the pending permissions
-// from both sources, and rate limits as 0 to 1 fractions.
+// The fleet view: the store's sessions and agents with finished background
+// jobs marked done, the pending permissions from both sources, and rate
+// limits as 0 to 1 fractions.
 
-import type { PermissionRequest, SessionPlace } from '../../../shared/model.js';
+import type { PermissionRequest, SessionPlace, SessionSummary } from '../../../shared/model.js';
+import { ZERO_USAGE } from '../../../shared/model.js';
 import type { FleetState, PlanLimits, RateLimits } from '../../../shared/protocol.js';
 import type { OverlordStore } from '../../store/store.js';
+import type { FinishedJob } from '../../surfaces/jobs.js';
 import type { Runtime } from '../runtime.js';
 
 import { currentPlan } from './usage.js';
@@ -39,18 +42,67 @@ export function withPlanLimits(limits: RateLimits, plan: PlanLimits | null): Rat
   };
 }
 
+/** A row for a finished job whose transcript is gone, from what Claude Code still knows. */
+function jobSession(job: FinishedJob): SessionSummary {
+  const startedAt = job.startedAt ?? 0;
+  return {
+    id: job.sessionId,
+    surface: 'cli',
+    title: job.name ?? '',
+    cwd: job.cwd ?? '',
+    state: job.state,
+    startedAt,
+    updatedAt: startedAt,
+    usage: ZERO_USAGE,
+    costUsd: null,
+    model: null,
+    effort: null,
+    permissionMode: null,
+    pid: null,
+    transcriptPath: null,
+    gitBranch: null,
+    version: null,
+    agentCount: 0,
+    contextFill: null,
+  };
+}
+
+/**
+ * A transcript cannot tell a finished job from an idle session, so Claude
+ * Code's job state wins. Jobs with no transcript still get a row.
+ */
+export function withFinishedJobs(
+  sessions: readonly SessionSummary[],
+  jobs: readonly FinishedJob[],
+): readonly SessionSummary[] {
+  if (jobs.length === 0) {
+    return sessions;
+  }
+  const byId = new Map(jobs.map((job) => [job.sessionId, job]));
+  const marked = sessions.map((session) => {
+    const job = byId.get(session.id);
+    return job === undefined || job.state === session.state
+      ? session
+      : { ...session, state: job.state };
+  });
+  const known = new Set(sessions.map((session) => session.id));
+  const bare = jobs.filter((job) => !known.has(job.sessionId)).map((job) => jobSession(job));
+  return [...marked, ...bare];
+}
+
 export interface FleetInputs {
   readonly store: OverlordStore;
   readonly pending: readonly PermissionRequest[];
   readonly now: number;
   readonly plan: PlanLimits | null;
   readonly places: Readonly<Record<string, SessionPlace>>;
+  readonly jobs: readonly FinishedJob[];
 }
 
 export function buildFleet(input: FleetInputs): FleetState {
   const base = input.store.fleetState(input.now);
   return {
-    sessions: base.sessions,
+    sessions: withFinishedJobs(base.sessions, input.jobs),
     agents: base.agents,
     pendingPermissions: input.pending,
     places: input.places,
@@ -66,5 +118,6 @@ export function fleetFor(rt: Runtime): FleetState {
     now: rt.clock(),
     plan: currentPlan(rt),
     places: rt.places.value,
+    jobs: rt.jobs.value,
   });
 }
