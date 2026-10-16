@@ -16,6 +16,7 @@ import { buildKnobs } from './knobs.js';
 import { buildMessages } from './messages.js';
 import { buildProperties } from './properties.js';
 import { buildSessions } from './sessions.js';
+import { buildTips } from './tips.js';
 import { buildUsage } from './usage.js';
 
 function buildAgent(rt: Runtime, params: PanelParams): AgentDetailState {
@@ -100,6 +101,9 @@ export function stateFor(rt: Runtime, view: ViewId, params: PanelParams): HostTo
     }
     case 'help': {
       return { type: 'state', view, state: {} };
+    }
+    case 'tips': {
+      return { type: 'state', view, state: buildTips(rt) };
     }
   }
 }

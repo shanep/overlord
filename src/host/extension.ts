@@ -25,6 +25,7 @@ const GLOBAL_VIEWS: readonly ViewEntry[] = [
   ['overlord.openUsage', 'usage', 'Usage', 'graph'],
   ['overlord.openFrustration', 'frustration', 'Frustration', 'flame'],
   ['overlord.openMessages', 'messages', 'Agent Messages', 'comment-discussion'],
+  ['overlord.openTips', 'tips', 'Tips', 'lightbulb'],
   ['overlord.openHelp', 'help', 'Help', 'question'],
 ];
 

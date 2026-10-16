@@ -34,6 +34,10 @@ See [PLAN.md](PLAN.md) for the full design and the decisions behind it.
 - **Config and sync**: every config item with a badge for versioned, local only, external repo
   and so on, synced through a separate git repo so a new machine matches this one.
 - **Usage**: daily tokens by model and activity by hour.
+- **Tips**: advice from measuring every session transcript, such as how much of the spend goes
+  to re-reading old context, sessions that never compact, huge tool output and denied tools.
+  It also suggests skills and agents for work your sessions keep doing by hand, and **Create**
+  writes one into `~/.claude` or the project.
 - **Keep awake**: while Overlord is open the computer does not sleep, so agents keep working and
   the machine stays reachable remotely. The display still turns off. Turn it off with
   `overlord.keepAwake`.

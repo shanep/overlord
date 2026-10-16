@@ -99,11 +99,15 @@ function checkText(rt: Runtime, kind: AuthoringKind, text: string): void {
   }
 }
 
-async function createAuthored(rt: Runtime, kind: AuthoringKind): Promise<void> {
-  const authored = await authoredText(rt, kind);
-  const destination = authored === null ? null : await pickDestination(rt);
-  if (authored === null || destination === null) {
-    return;
+/** Asks where the file goes, writes it, links it into ~/.claude when needed and opens it. False when the user backed out. */
+export async function saveAuthored(
+  rt: Runtime,
+  kind: AuthoringKind,
+  authored: { readonly name: string; readonly text: string },
+): Promise<boolean> {
+  const destination = await pickDestination(rt);
+  if (destination === null) {
+    return false;
   }
   checkText(rt, kind, authored.text);
   const request = {
@@ -116,7 +120,7 @@ async function createAuthored(rt: Runtime, kind: AuthoringKind): Promise<void> {
   let written = await writeAuthored(request);
   if (!written.ok) {
     if (!(await rt.host.confirm(`${written.path} already exists. Replace it?`, 'Replace'))) {
-      return;
+      return false;
     }
     written = await writeAuthored({ ...request, overwrite: true });
   }
@@ -125,6 +129,14 @@ async function createAuthored(rt: Runtime, kind: AuthoringKind): Promise<void> {
   }
   await rt.host.openFile(written.path);
   await rt.caches.config.refresh();
+  return true;
+}
+
+async function createAuthored(rt: Runtime, kind: AuthoringKind): Promise<void> {
+  const authored = await authoredText(rt, kind);
+  if (authored !== null) {
+    await saveAuthored(rt, kind, authored);
+  }
 }
 
 export const authoringActions: ActionHandlers<'newAgent' | 'newSkill'> = {

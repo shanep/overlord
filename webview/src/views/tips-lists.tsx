@@ -1,0 +1,244 @@
+// The parts of the tips view: the advice cards, the skills and agents to
+// add, and the per-session table.
+
+import type { ReactElement } from 'react';
+
+import type { Suggestion, Tip, TipSeverity, TipsSessionRow } from '../../../src/shared/protocol.js';
+import { Badge } from '../components/badge.js';
+import type { Column } from '../components/data-table.js';
+import { DataTable } from '../components/data-table.js';
+import {
+  formatCompact,
+  formatCost,
+  formatDateTime,
+  formatInteger,
+  formatPercent,
+} from '../format.js';
+import type { Tone } from '../labels.js';
+import { usePostAction } from '../vscode-context.js';
+
+export const SEVERITY_INFO: Readonly<Record<TipSeverity, { label: string; tone: Tone }>> = {
+  high: { label: 'High impact', tone: 'critical' },
+  medium: { label: 'Medium impact', tone: 'warning' },
+  low: { label: 'Low impact', tone: 'info' },
+};
+
+function SessionButton(props: {
+  readonly sessionId: string;
+  readonly title: string;
+}): ReactElement {
+  const post = usePostAction();
+  return (
+    <button
+      type="button"
+      className="link-button"
+      title="Open the agent view for this session"
+      onClick={() => {
+        post({ type: 'openAgent', sessionId: props.sessionId, agentId: props.sessionId });
+      }}
+    >
+      {props.title}
+    </button>
+  );
+}
+
+function TipCard(props: {
+  readonly tip: Tip;
+  readonly names: ReadonlyMap<string, string>;
+}): ReactElement {
+  const { tip } = props;
+  const severity = SEVERITY_INFO[tip.severity];
+  const headingId = `tip-${tip.id}`;
+  const fixes = tip.fixes.flatMap((id) => {
+    const name = props.names.get(id);
+    return name === undefined ? [] : [name];
+  });
+  return (
+    <article className="tip" aria-labelledby={headingId}>
+      <header className="tip-header">
+        <h3 id={headingId}>{tip.title}</h3>
+        <Badge label={severity.label} tone={severity.tone} />
+      </header>
+      <p>{tip.finding}</p>
+      <ul className="tip-advice">
+        {tip.advice.map((line) => (
+          <li key={line}>{line}</li>
+        ))}
+      </ul>
+      {fixes.length === 0 ? null : (
+        <p className="muted">
+          Would help:{' '}
+          {fixes.map((name, index) => (
+            <span key={name}>
+              {index === 0 ? '' : ', '}
+              <code>{name}</code>
+            </span>
+          ))}
+        </p>
+      )}
+      {tip.sessions.length === 0 ? null : (
+        <details>
+          <summary>Worst sessions</summary>
+          <ul className="props-list">
+            {tip.sessions.map((session) => (
+              <li key={session.sessionId}>
+                <SessionButton sessionId={session.sessionId} title={session.title} />{' '}
+                <span className="muted">{session.detail}</span>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </article>
+  );
+}
+
+export function TipList(props: {
+  readonly tips: readonly Tip[];
+  readonly names: ReadonlyMap<string, string>;
+}): ReactElement {
+  return (
+    <section className="section" aria-labelledby="tips-advice">
+      <h2 id="tips-advice">Advice</h2>
+      {props.tips.length === 0 ? (
+        <p className="muted">Nothing stands out. Your sessions look lean.</p>
+      ) : (
+        <div className="tips">
+          {props.tips.map((tip) => (
+            <TipCard key={tip.id} tip={tip} names={props.names} />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function SuggestionCard(props: { readonly suggestion: Suggestion }): ReactElement {
+  const { suggestion } = props;
+  const post = usePostAction();
+  const headingId = `suggestion-${suggestion.id}`;
+  return (
+    <article className="tip" aria-labelledby={headingId}>
+      <header className="tip-header">
+        <h3 id={headingId}>
+          <code>{suggestion.name}</code>
+        </h3>
+        <Badge label={suggestion.kind === 'skill' ? 'Skill' : 'Agent'} tone="info" />
+        {suggestion.installed ? <Badge label="Installed" tone="good" /> : null}
+      </header>
+      <p>{suggestion.summary}</p>
+      <p className="muted">{suggestion.reason ?? 'Nothing in your sessions calls for it yet.'}</p>
+      <div className="actions">
+        <button
+          type="button"
+          title={`Write the ${suggestion.kind} file, then open it to review`}
+          onClick={() => {
+            post({ type: 'createSuggestion', suggestionId: suggestion.id });
+          }}
+        >
+          {suggestion.installed ? 'Create again' : 'Create'}
+        </button>
+      </div>
+    </article>
+  );
+}
+
+export function SuggestionList(props: {
+  readonly suggestions: readonly Suggestion[];
+}): ReactElement {
+  return (
+    <section className="section" aria-labelledby="tips-suggestions">
+      <h2 id="tips-suggestions">Skills and agents to add</h2>
+      <p className="muted">
+        Each one takes over work your sessions keep doing by hand. Create asks where to save it and
+        opens the file so you can review it.
+      </p>
+      <div className="tips">
+        {props.suggestions.map((suggestion) => (
+          <SuggestionCard key={suggestion.id} suggestion={suggestion} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function sessionColumns(titles: ReadonlyMap<string, string>): readonly Column<TipsSessionRow>[] {
+  return [
+    {
+      id: 'title',
+      header: 'Session',
+      cell: (row) => <SessionButton sessionId={row.sessionId} title={row.title} />,
+      sortValue: (row) => row.title.toLowerCase(),
+    },
+    {
+      id: 'updated',
+      header: 'Last active',
+      cell: (row) => formatDateTime(row.updatedAt),
+      sortValue: (row) => row.updatedAt,
+    },
+    {
+      id: 'prompts',
+      header: 'Prompts',
+      cell: (row) => formatInteger(row.prompts),
+      sortValue: (row) => row.prompts,
+      numeric: true,
+    },
+    {
+      id: 'peak',
+      header: 'Peak context',
+      cell: (row) => formatCompact(row.peakContext),
+      sortValue: (row) => row.peakContext,
+      numeric: true,
+    },
+    {
+      id: 'average',
+      header: 'Average context',
+      cell: (row) => formatCompact(row.averageContext),
+      sortValue: (row) => row.averageContext,
+      numeric: true,
+    },
+    {
+      id: 'cost',
+      header: 'Cost',
+      cell: (row) => formatCost(row.costUsd),
+      sortValue: (row) => row.costUsd,
+      numeric: true,
+    },
+    {
+      id: 'reread',
+      header: 'Re-reading',
+      cell: (row) => formatPercent(row.cacheReadShare),
+      sortValue: (row) => row.cacheReadShare,
+      numeric: true,
+    },
+    {
+      id: 'tips',
+      header: 'Tips',
+      cell: (row) => (
+        <span title={row.tips.map((id) => titles.get(id) ?? id).join('\n')}>
+          {formatInteger(row.tips.length)}
+        </span>
+      ),
+      sortValue: (row) => row.tips.length,
+      numeric: true,
+    },
+  ];
+}
+
+export function TipsSessionTable(props: {
+  readonly rows: readonly TipsSessionRow[];
+  readonly titles: ReadonlyMap<string, string>;
+}): ReactElement {
+  return (
+    <section className="section" aria-labelledby="tips-sessions">
+      <h2 id="tips-sessions">Sessions by cost</h2>
+      <DataTable
+        caption="Sessions by cost"
+        columns={sessionColumns(props.titles)}
+        rows={props.rows}
+        rowKey={(row) => row.sessionId}
+        empty="No sessions measured yet."
+      />
+    </section>
+  );
+}

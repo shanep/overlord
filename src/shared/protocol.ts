@@ -33,7 +33,8 @@ export type ViewId =
   | 'frustration'
   | 'messages'
   | 'properties'
-  | 'help';
+  | 'help'
+  | 'tips';
 
 export const VIEW_IDS: readonly ViewId[] = [
   'fleet',
@@ -48,6 +49,7 @@ export const VIEW_IDS: readonly ViewId[] = [
   'messages',
   'properties',
   'help',
+  'tips',
 ];
 
 export interface RateLimits {
@@ -346,6 +348,76 @@ export interface MessagesState {
   readonly rules: readonly AutoApproveRule[];
 }
 
+export type TipSeverity = 'high' | 'medium' | 'low';
+
+/** A session that shows the problem a tip is about. */
+export interface TipSession {
+  readonly sessionId: string;
+  readonly title: string;
+  /** The number that put it on the list, for example "949K peak context". */
+  readonly detail: string;
+}
+
+/** One piece of advice, backed by numbers from the session transcripts. */
+export interface Tip {
+  readonly id: string;
+  readonly severity: TipSeverity;
+  readonly title: string;
+  /** What the transcripts show, with numbers. */
+  readonly finding: string;
+  /** What to do about it, one step per entry. */
+  readonly advice: readonly string[];
+  /** The worst sessions, worst first. */
+  readonly sessions: readonly TipSession[];
+  /** Ids of suggested skills or agents that help with it. */
+  readonly fixes: readonly string[];
+}
+
+/** A skill or agent Overlord can write for you, with why it would help. */
+export interface Suggestion {
+  readonly id: string;
+  readonly kind: 'skill' | 'agent';
+  /** The file name and the name Claude Code shows. */
+  readonly name: string;
+  readonly summary: string;
+  /** What in the transcripts points at it, or null when nothing does yet. */
+  readonly reason: string | null;
+  /** True when a skill or agent with this name is already in ~/.claude. */
+  readonly installed: boolean;
+}
+
+/** One session's numbers in the tips table. */
+export interface TipsSessionRow {
+  readonly sessionId: string;
+  readonly title: string;
+  readonly updatedAt: number;
+  readonly prompts: number;
+  readonly requests: number;
+  readonly peakContext: number;
+  readonly averageContext: number;
+  /** Main thread plus subagents, at list price. */
+  readonly costUsd: number;
+  /** Share of the cost that went to re-reading cached context. */
+  readonly cacheReadShare: number;
+  /** Ids of the tips that list this session. */
+  readonly tips: readonly string[];
+}
+
+export interface TipsState {
+  readonly sessions: number;
+  readonly totalUsd: number;
+  readonly cacheReadUsd: number;
+  /** Context tokens per main thread request, averaged over every session. */
+  readonly averageContext: number;
+  readonly largestContext: number;
+  readonly tips: readonly Tip[];
+  readonly suggestions: readonly Suggestion[];
+  /** Most expensive first. */
+  readonly rows: readonly TipsSessionRow[];
+  /** When the transcripts were last measured, or null before the first scan. */
+  readonly scannedAt: number | null;
+}
+
 /** The help page is static, so it needs no data from the host. */
 type HelpState = Readonly<Record<string, never>>;
 
@@ -362,6 +434,7 @@ interface ViewStateMap {
   readonly messages: MessagesState;
   readonly properties: PropertiesState;
   readonly help: HelpState;
+  readonly tips: TipsState;
 }
 
 export type HostToWebview = {
@@ -407,6 +480,8 @@ export type WebviewAction =
   | { readonly type: 'newAgent' }
   | { readonly type: 'newSkill' }
   | { readonly type: 'rescanFrustration' }
+  | { readonly type: 'rescanTips' }
+  | { readonly type: 'createSuggestion'; readonly suggestionId: string }
   | { readonly type: 'setInboundPolicy'; readonly value: string | null }
   | { readonly type: 'newSession' }
   | { readonly type: 'landWorktree'; readonly id: string }

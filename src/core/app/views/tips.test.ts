@@ -1,0 +1,182 @@
+import { mkdir, readFile, rm } from 'node:fs/promises';
+import path from 'node:path';
+
+import { describe, expect, it } from 'vitest';
+
+import type { TipsState } from '../../../shared/protocol.js';
+import type { TestApp, TestEnv } from '../test-helpers/fixtures.js';
+import { makeApp, makeEnv, NOW, waitFor, writeText } from '../test-helpers/fixtures.js';
+
+import { buildTips, EMPTY_TIPS, RESCAN_AFTER_MS, rescanTips, TIPS_FILE } from './tips.js';
+
+const S1 = 'aaaaaaaa-1111-4111-8111-111111111111';
+
+function request(id: string, cacheRead: number): string {
+  return JSON.stringify({
+    type: 'assistant',
+    uuid: `a-${id}`,
+    timestamp: '2026-10-01T12:00:00.000Z',
+    message: {
+      id,
+      model: 'claude-opus-5-5',
+      usage: {
+        input_tokens: 0,
+        output_tokens: 1000,
+        cache_read_input_tokens: cacheRead,
+        cache_creation_input_tokens: 0,
+      },
+      content: [],
+    },
+  });
+}
+
+async function transcript(
+  env: TestEnv,
+  sessionId: string,
+  lines: readonly string[],
+): Promise<string> {
+  return writeText(
+    path.join(env.paths.projectsDir, '-work', `${sessionId}.jsonl`),
+    lines.map((line) => `${line}\n`).join(''),
+  );
+}
+
+interface Clocked {
+  readonly test: TestApp;
+  readonly advance: (ms: number) => void;
+  readonly notified: () => number;
+}
+
+function clockedApp(env: TestEnv): Clocked {
+  let now = NOW;
+  const test = makeApp(env, { deps: { clock: () => now } });
+  let count = 0;
+  test.app.onChange(() => {
+    count += 1;
+  });
+  return {
+    test,
+    advance: (ms): void => {
+      now += ms;
+    },
+    notified: (): number => count,
+  };
+}
+
+/** Waits until the check passes and the scan that got there has finished writing. */
+async function settled(test: TestApp, check: (state: TipsState) => boolean): Promise<TipsState> {
+  await waitFor((): boolean => check(buildTips(test.app.runtime)));
+  return rescanTips(test.app.runtime);
+}
+
+describe('buildTips', () => {
+  it('starts empty, scans in the background, saves the index and notifies', async () => {
+    const env = await makeEnv();
+    await transcript(env, S1, [request('m1', 300_000), request('m2', 300_000)]);
+    const { test, notified } = clockedApp(env);
+    expect(buildTips(test.app.runtime)).toBe(EMPTY_TIPS);
+    const state = await settled(test, (next) => next.scannedAt !== null);
+    expect(state).toMatchObject({ sessions: 1, largestContext: 300_000, scannedAt: NOW });
+    expect(state.tips.map((tip) => tip.id)).toStrictEqual(['huge-context']);
+    expect(state.rows.map((row) => row.sessionId)).toStrictEqual([S1]);
+    expect(notified()).toBeGreaterThanOrEqual(2);
+    const saved: unknown = JSON.parse(await readFile(path.join(env.storageDir, TIPS_FILE), 'utf8'));
+    expect(saved).toMatchObject({ version: 1, scannedAt: NOW });
+  });
+
+  it('writes nothing for an empty home', async () => {
+    const env = await makeEnv();
+    const { test } = clockedApp(env);
+    const state = await settled(test, (next) => next.scannedAt !== null);
+    expect(state.sessions).toBe(0);
+    await expect(readFile(path.join(env.storageDir, TIPS_FILE), 'utf8')).rejects.toThrow('ENOENT');
+    expect(test.app.errorList()).toStrictEqual([]);
+  });
+
+  it('loads the saved index in a new app, and forgets a deleted transcript', async () => {
+    const env = await makeEnv();
+    const file = await transcript(env, S1, [request('m1', 10)]);
+    await settled(clockedApp(env).test, (next) => next.sessions === 1);
+    const { test } = clockedApp(env);
+    await rm(file);
+    const state = await rescanTips(test.app.runtime);
+    expect(state.sessions).toBe(0);
+    const saved: unknown = JSON.parse(await readFile(path.join(env.storageDir, TIPS_FILE), 'utf8'));
+    expect(saved).toHaveProperty('entries', {});
+  });
+
+  it('rescans only after a minute', async () => {
+    const env = await makeEnv();
+    await transcript(env, S1, [request('m1', 10)]);
+    const { test, advance } = clockedApp(env);
+    await settled(test, (next) => next.sessions === 1);
+    await transcript(env, 'bbbbbbbb-2222-4222-8222-222222222222', [request('m2', 10)]);
+    advance(RESCAN_AFTER_MS - 1);
+    buildTips(test.app.runtime);
+    await new Promise((resolve) => {
+      setTimeout(resolve, 50);
+    });
+    expect(buildTips(test.app.runtime).sessions).toBe(1);
+    advance(1);
+    await settled(test, (next) => next.sessions === 2);
+  });
+
+  it('reports a failed scan', async () => {
+    const env = await makeEnv();
+    // A folder where the index file should go makes the save fail.
+    await transcript(env, S1, [request('m1', 10)]);
+    await mkdir(path.join(env.storageDir, TIPS_FILE), { recursive: true });
+    const { test } = clockedApp(env);
+    buildTips(test.app.runtime);
+    await waitFor(() => test.app.errorList().some((error) => error.source === 'tips'));
+    expect(test.app.errorList().find((error) => error.source === 'tips')?.message).toMatch(
+      /EISDIR/u,
+    );
+  });
+});
+
+describe('tips actions', () => {
+  it('rescans and says what it found', async () => {
+    const env = await makeEnv();
+    await transcript(env, S1, [request('m1', 10)]);
+    const { app } = makeApp(env);
+    await app.dispatch({ type: 'rescanTips' }, {});
+    expect(env.host.infos).toStrictEqual(['Tips rescan done: 1 session, 0 tips.']);
+  });
+
+  it('refuses an unknown suggestion', async () => {
+    const env = await makeEnv();
+    const { app } = makeApp(env);
+    await app.dispatch({ type: 'createSuggestion', suggestionId: 'nope' }, {});
+    expect(env.host.errors).toStrictEqual(['There is no suggestion called nope.']);
+  });
+
+  it('creates a suggested skill and agent and marks them installed', async () => {
+    const env = await makeEnv({ workspace: true });
+    const workspace = env.host.workspace ?? '';
+    const { app } = makeApp(env);
+    await rescanTips(app.runtime);
+    env.host.pickAnswers.push('user', 'project');
+    await app.dispatch({ type: 'createSuggestion', suggestionId: 'land' }, {});
+    await app.dispatch({ type: 'createSuggestion', suggestionId: 'scout' }, {});
+    const skill = path.join(env.paths.userSkillsDir, 'land', 'SKILL.md');
+    const agent = path.join(workspace, '.claude', 'agents', 'scout.md');
+    expect(await readFile(skill, 'utf8')).toMatch(/^---\nname: land\n/u);
+    expect(await readFile(agent, 'utf8')).toMatch(/^---\nname: scout\n/u);
+    expect(env.host.opened).toStrictEqual([skill, agent]);
+    const installed = buildTips(app.runtime)
+      .suggestions.filter((item) => item.installed)
+      .map((item) => item.id);
+    expect(installed.toSorted((left, right) => left.localeCompare(right))).toStrictEqual([
+      'land',
+      'scout',
+    ]);
+  });
+
+  it('leaves things alone when the save is cancelled', async () => {
+    const env = await makeEnv();
+    const { app } = makeApp(env);
+    await app.dispatch({ type: 'createSuggestion', suggestionId: 'handoff' }, {});
+    expect(env.host.opened).toStrictEqual([]);
+  });
+});

@@ -71,6 +71,12 @@ export const SIDEBAR_GROUPS: readonly SidebarGroup[] = [
         icon: 'Flame',
         meaning: 'Prompts where you swore at Claude or sounded fed up, by day and by session.',
       },
+      {
+        name: 'Tips',
+        icon: 'Light bulb',
+        meaning:
+          'Advice from measuring every session: context size, where the spend goes, wasteful habits, and skills or agents to add.',
+      },
       { name: 'Help', icon: 'Question mark', meaning: 'This page.' },
     ],
   },

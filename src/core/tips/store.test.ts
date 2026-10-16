@@ -1,0 +1,46 @@
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+
+import { describe, expect, it, onTestFinished } from 'vitest';
+
+import { emptyIndex, loadIndex, saveIndex } from './store.js';
+import { measureOf } from './test-helpers/fixtures.js';
+
+async function temporaryFile(): Promise<string> {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'overlord-tips-store-'));
+  onTestFinished(async () => {
+    await rm(root, { recursive: true, force: true });
+  });
+  return path.join(root, 'tips.json');
+}
+
+describe('tips index', () => {
+  it('starts empty when the file is missing', async () => {
+    expect(await loadIndex(await temporaryFile())).toStrictEqual(emptyIndex());
+  });
+
+  it('round trips entries and the scan time', async () => {
+    const file = await temporaryFile();
+    const index = emptyIndex();
+    const measure = measureOf({ spawns: { Explore: 2 }, topRepeat: { command: 'ls', runs: 3 } });
+    index.entries.set('/p/s.jsonl', { stamp: { mtimeMs: 5, size: 9 }, measure });
+    index.scannedAt = 77;
+    await saveIndex(file, index);
+    expect(JSON.parse(await readFile(file, 'utf8'))).toMatchObject({ version: 1, scannedAt: 77 });
+    const loaded = await loadIndex(file);
+    expect(loaded.scannedAt).toBe(77);
+    expect(loaded.entries.get('/p/s.jsonl')).toStrictEqual({
+      stamp: { mtimeMs: 5, size: 9 },
+      measure,
+    });
+  });
+
+  it('starts over from bad JSON, a wrong shape or an older version', async () => {
+    const file = await temporaryFile();
+    for (const text of ['{oops', '{"version":1}', '{"version":0,"scannedAt":null,"entries":{}}']) {
+      await writeFile(file, text);
+      expect(await loadIndex(file)).toStrictEqual(emptyIndex());
+    }
+  });
+});

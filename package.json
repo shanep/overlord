@@ -190,6 +190,12 @@
         "icon": "$(comment-discussion)"
       },
       {
+        "command": "overlord.openTips",
+        "title": "Tips",
+        "category": "Overlord",
+        "icon": "$(lightbulb)"
+      },
+      {
         "command": "overlord.openHelp",
         "title": "Help",
         "category": "Overlord",
