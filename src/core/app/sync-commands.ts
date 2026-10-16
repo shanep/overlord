@@ -103,7 +103,7 @@ export class SyncCommands {
   /**
    * The one step a machine needs, like turning on VS Code's Settings Sync.
    * With no URL configured it signs in to GitHub through the editor, finds
-   * the user's claude-config repo or creates it private, and saves its URL.
+   * the user's overlord-config repo or creates it private, and saves its URL.
    * A new repo gets a starter manifest. An existing one is set up here after a
    * dry run. From then on ConfigSync keeps it in step in the background.
    */

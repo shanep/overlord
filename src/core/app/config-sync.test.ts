@@ -31,7 +31,7 @@ const LINKED_CLAUDE_MD = JSON.stringify({
 interface Machines {
   readonly env: TestEnv;
   readonly exec: Exec;
-  /** This machine's clone at ~/.claude-config. */
+  /** This machine's clone at ~/.overlord-config. */
   readonly repo: string;
   readonly remote: string;
   /** Another machine's clone of the same remote. */

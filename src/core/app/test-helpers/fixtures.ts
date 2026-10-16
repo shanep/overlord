@@ -324,14 +324,14 @@ const DEFAULT_REPO_FILES: Readonly<Record<string, string>> = {
   'overlord.json': '{"version":1}\n',
 };
 
-/** A clone of a fresh bare remote at ~/.claude-config, the default config repo path. */
+/** A clone of a fresh bare remote at ~/.overlord-config, the default config repo path. */
 export async function cloneConfigRepo(
   env: TestEnv,
   exec: Exec,
   files: Readonly<Record<string, string>> = DEFAULT_REPO_FILES,
 ): Promise<string> {
   const remote = await bareRemoteWith(exec, files);
-  const repo = path.join(env.home, '.claude-config');
+  const repo = path.join(env.home, '.overlord-config');
   await git(exec, env.root, ['clone', '-q', remote, repo]);
   return repo;
 }

@@ -80,8 +80,8 @@ function kinds(actions: readonly Action[], kind: Action['kind']): readonly Actio
 
 describe('pointerReadme', () => {
   it('says where the files went', () => {
-    expect(pointerReadme('~/repos/claude-config')).toBe(
-      '# claude\n\nThis folder moved to the claude-config repo (~/repos/claude-config).\nOverlord links ~/.claude to that repo now, so edit the files there.\n',
+    expect(pointerReadme('~/repos/overlord-config')).toBe(
+      '# claude\n\nThis folder moved to the overlord-config repo (~/repos/overlord-config).\nOverlord links ~/.claude to that repo now, so edit the files there.\n',
     );
   });
 });

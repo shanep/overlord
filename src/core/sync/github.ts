@@ -10,7 +10,7 @@ import { parseJson } from './json.js';
 import { remoteSlug } from './layout.js';
 
 /** The name of the repo Overlord makes when the user has none configured. */
-export const CONFIG_REPO_NAME = 'claude-config';
+export const CONFIG_REPO_NAME = 'overlord-config';
 
 const API = 'https://api.github.com';
 const NOT_FOUND = 404;

@@ -1,4 +1,4 @@
-// Where things live inside the config repo (shanep/claude-config by default).
+// Where things live inside the config repo (shanep/overlord-config by default).
 
 import path from 'node:path';
 

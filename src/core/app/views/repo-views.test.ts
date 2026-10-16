@@ -165,8 +165,8 @@ describe('sessions view', () => {
 
 describe('config view', () => {
   it('expands ~ in the configured path', () => {
-    expect(configRepoDir('~/.claude-config', '/home/me')).toBe(
-      path.join('/home/me', '.claude-config'),
+    expect(configRepoDir('~/.overlord-config', '/home/me')).toBe(
+      path.join('/home/me', '.overlord-config'),
     );
     expect(configRepoDir('/abs/repo', '/home/me')).toBe('/abs/repo');
   });
@@ -174,7 +174,7 @@ describe('config view', () => {
   it('is empty and not connected without a clone', async () => {
     const env = await makeEnv();
     const { exec } = recordingExec();
-    const dir = path.join(env.home, '.claude-config');
+    const dir = path.join(env.home, '.overlord-config');
     await expect(connectedRoot(exec, dir)).resolves.toBeNull();
     const state = await loadConfig({ paths: env.paths, exec, repoDir: dir, workspace: null });
     expect(state.repo).toStrictEqual({
@@ -203,14 +203,14 @@ describe('config view', () => {
     const env = await makeEnv();
     const exec = isolatedExec();
     const repo = await repoWith(exec, { 'a.txt': 'a\n' });
-    await git(exec, repo, ['remote', 'add', 'origin', 'git@github.com:me/claude-config.git']);
+    await git(exec, repo, ['remote', 'add', 'origin', 'git@github.com:me/overlord-config.git']);
     await writeText(path.join(repo, 'b.txt'), 'b\n');
     await writeText(path.join(repo, 'a.txt'), 'changed\n');
     await writeText(env.paths.userClaudeMd, '# me\n');
     const state = await loadConfig({ paths: env.paths, exec, repoDir: repo, workspace: null });
     expect(state.repo).toStrictEqual({
       connected: true,
-      remote: 'git@github.com:me/claude-config.git',
+      remote: 'git@github.com:me/overlord-config.git',
       path: repo,
       ahead: 0,
       behind: 0,

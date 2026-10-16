@@ -32,8 +32,8 @@ function answering(...responses: Response[]): { fetch: FetchFunction; seen: Seen
 }
 
 const REPO = {
-  full_name: 'me/claude-config',
-  clone_url: 'https://github.com/me/claude-config.git',
+  full_name: 'me/overlord-config',
+  clone_url: 'https://github.com/me/overlord-config.git',
 };
 
 describe('gitHubLogin', () => {
@@ -60,13 +60,13 @@ describe('findOrCreateRepo', () => {
   it('returns the repo that is already there', async () => {
     const { fetch, seen } = answering(Response.json({ login: 'me' }), Response.json(REPO));
     await expect(findOrCreateRepo(fetch, 'tok', CONFIG_REPO_NAME)).resolves.toStrictEqual({
-      fullName: 'me/claude-config',
-      cloneUrl: 'https://github.com/me/claude-config.git',
+      fullName: 'me/overlord-config',
+      cloneUrl: 'https://github.com/me/overlord-config.git',
       created: false,
     });
     expect(seen.map((call) => call.url)).toStrictEqual([
       'https://api.github.com/user',
-      'https://api.github.com/repos/me/claude-config',
+      'https://api.github.com/repos/me/overlord-config',
     ]);
   });
 

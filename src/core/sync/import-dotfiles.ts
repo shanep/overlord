@@ -116,7 +116,7 @@ export function pointerReadme(repoLocation: string): string {
   return [
     '# claude',
     '',
-    `This folder moved to the claude-config repo (${repoLocation}).`,
+    `This folder moved to the overlord-config repo (${repoLocation}).`,
     'Overlord links ~/.claude to that repo now, so edit the files there.',
     '',
   ].join('\n');

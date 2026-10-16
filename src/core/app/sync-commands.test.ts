@@ -65,10 +65,10 @@ interface FetchCall {
   readonly body: unknown;
 }
 
-/** GitHub's API for a user called me, whose claude-config repo clones from `cloneUrl`. */
+/** GitHub's API for a user called me, whose overlord-config repo clones from `cloneUrl`. */
 function gitHub(cloneUrl: string, exists: boolean): { fetch: FetchFunction; calls: FetchCall[] } {
   const calls: FetchCall[] = [];
-  const repo = { full_name: 'me/claude-config', clone_url: cloneUrl };
+  const repo = { full_name: 'me/overlord-config', clone_url: cloneUrl };
   const fetch: FetchFunction = async (url, init) => {
     const method = init.method ?? 'GET';
     const body = typeof init.body === 'string' ? (JSON.parse(init.body) as unknown) : null;
@@ -86,7 +86,7 @@ function gitHub(cloneUrl: string, exists: boolean): { fetch: FetchFunction; call
 }
 
 async function emptyRemote(exec: Exec): Promise<string> {
-  const bare = path.join(await scratchDir(), 'claude-config.git');
+  const bare = path.join(await scratchDir(), 'overlord-config.git');
   await exec('git', ['init', '-q', '--bare', bare], {});
   return bare;
 }
@@ -104,13 +104,13 @@ describe('turnOn', () => {
     expect(env.host.gitHubRequests[0]).toBe(true);
     expect(github.calls.map((call) => `${call.method} ${call.url}`)).toStrictEqual([
       'GET https://api.github.com/user',
-      'GET https://api.github.com/repos/me/claude-config',
+      'GET https://api.github.com/repos/me/overlord-config',
       'POST https://api.github.com/user/repos',
     ]);
-    expect(github.calls[2]?.body).toMatchObject({ name: 'claude-config', private: true });
+    expect(github.calls[2]?.body).toMatchObject({ name: 'overlord-config', private: true });
     expect(env.host.savedSettings).toStrictEqual([{ key: 'configRepo.url', value: remote }]);
     expect(env.host.infos).toStrictEqual([
-      'Created the private repo me/claude-config for your Claude config.',
+      'Created the private repo me/overlord-config for your Claude config.',
       'Config synced.',
     ]);
     expect(await log(exec, remote)).toStrictEqual(['Start the config repo from test-host']);
@@ -127,7 +127,7 @@ describe('turnOn', () => {
     await app.dispatch({ type: 'turnOnSync' }, {});
     expect(env.host.errors).toStrictEqual([SIGN_IN_MESSAGE]);
     expect(github.calls).toStrictEqual([]);
-    await expect(lstat(path.join(env.home, '.claude-config'))).rejects.toThrow();
+    await expect(lstat(path.join(env.home, '.overlord-config'))).rejects.toThrow();
   });
 
   it('finds an existing repo, shows the plan and applies it after a yes', async () => {
@@ -158,11 +158,11 @@ describe('turnOn', () => {
     expect(github.calls.map((call) => call.method)).toStrictEqual(['GET', 'GET']);
     env.host.confirmAnswers.push(true);
     await app.dispatch({ type: 'turnOnSync' }, {});
-    const repo = path.join(env.home, '.claude-config');
+    const repo = path.join(env.home, '.overlord-config');
     expect(await readlink(env.paths.userClaudeMd)).toBe(path.join(repo, 'global', 'CLAUDE.md'));
     expect(github.calls).toHaveLength(2);
     expect(env.host.infos).toStrictEqual([
-      'Found your config repo me/claude-config.',
+      'Found your config repo me/overlord-config.',
       'Config synced.',
       'Applied 1 change.',
       'Config synced.',
@@ -176,7 +176,7 @@ describe('turnOn', () => {
     await app.dispatch({ type: 'turnOnSync' }, {});
     expect(env.host.gitHubRequests).toStrictEqual([true]);
     expect(env.host.errors).toStrictEqual([SIGN_IN_MESSAGE]);
-    await expect(lstat(path.join(env.home, '.claude-config'))).rejects.toThrow();
+    await expect(lstat(path.join(env.home, '.overlord-config'))).rejects.toThrow();
   });
 
   it('uses a configured URL without asking GitHub', async () => {
@@ -191,19 +191,19 @@ describe('turnOn', () => {
     expect(github.calls).toStrictEqual([]);
     expect(env.host.gitHubRequests).toStrictEqual([]);
     expect(env.host.savedSettings).toStrictEqual([]);
-    expect(await remoteOf(exec, path.join(env.home, '.claude-config'))).toBe(remote);
+    expect(await remoteOf(exec, path.join(env.home, '.overlord-config'))).toBe(remote);
   });
 
   it('adopts an existing clone of the same repo, ssh or https', async () => {
     const env = await makeEnv({
-      settings: { configRepoUrl: ' https://github.com/me/claude-config ' },
+      settings: { configRepoUrl: ' https://github.com/me/overlord-config ' },
     });
     const real = isolatedExec();
     // ssh that fails at once, so the sync after connecting never reaches GitHub.
     const exec: Exec = async (command, args, options) =>
       real(command, args, { ...options, env: { ...options.env, GIT_SSH_COMMAND: 'false' } });
     const repo = await cloneConfigRepo(env, exec);
-    await git(exec, repo, ['remote', 'set-url', 'origin', 'git@github.com:me/claude-config.git']);
+    await git(exec, repo, ['remote', 'set-url', 'origin', 'git@github.com:me/overlord-config.git']);
     const { app } = gitApp(env, exec);
     await app.dispatch({ type: 'turnOnSync' }, {});
     expect(env.host.questions).toStrictEqual([]);
@@ -337,7 +337,7 @@ describe('push and pull over https to GitHub', () => {
     const exec = isolatedExec();
     const repo = await cloneConfigRepo(env, exec);
     const remote = await remoteOf(exec, repo);
-    const github = 'https://github.com/me/claude-config.git';
+    const github = 'https://github.com/me/overlord-config.git';
     await git(exec, repo, ['remote', 'set-url', 'origin', github]);
     // Pushes go to the local remote, so the test never reaches GitHub.
     await git(exec, repo, ['config', `url.${remote}.pushInsteadOf`, github]);

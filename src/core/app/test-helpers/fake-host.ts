@@ -23,7 +23,7 @@ const DEFAULT_SETTINGS: OverlordSettings = {
   telemetryPort: 0,
   claudePath: 'claude',
   configRepoUrl: '',
-  configRepoPath: '~/.claude-config',
+  configRepoPath: '~/.overlord-config',
   configSyncAuto: true,
   configSyncIntervalMinutes: 5,
 };

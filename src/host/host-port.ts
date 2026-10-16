@@ -55,7 +55,7 @@ function readSettings(): OverlordSettings {
     telemetryPort: config.get<number>('telemetry.port', 47_318),
     claudePath: resolveClaude(config.get<string>('claudePath', 'claude')),
     configRepoUrl: config.get<string>('configRepo.url', ''),
-    configRepoPath: expandHome(config.get<string>('configRepo.path', '~/.claude-config')),
+    configRepoPath: expandHome(config.get<string>('configRepo.path', '~/.overlord-config')),
     configSyncAuto: config.get<boolean>('configSync.auto', true),
     configSyncIntervalMinutes: config.get<number>('configSync.intervalMinutes', 5),
   };

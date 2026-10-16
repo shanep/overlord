@@ -258,10 +258,10 @@ use over time.
 
 ## Config repo and new machine setup
 
-A separate repo, `shanep/claude-config` by default, that Overlord owns:
+A separate repo, `shanep/overlord-config` by default, that Overlord owns:
 
 ```text
-claude-config/
+overlord-config/
   overlord.json         manifest: every item, its target path, how to link it
   global/CLAUDE.md
   global/settings.json  shared settings
@@ -416,7 +416,7 @@ That is about 16 weeks of focused work. M1 alone is a useful tool.
 
 Made 2026-10-15.
 
-1. Config repo: `shanep/claude-config`, private.
+1. Config repo: `shanep/overlord-config`, private.
 2. Overlord repo: public, MIT license.
 3. Distribution: `.vsix` on GitHub releases and the VS Code Marketplace.
 4. Quality gates: 100% unit coverage and a 90% mutation score on `core/`, both
@@ -427,7 +427,7 @@ Made 2026-10-15.
 7. Permissions: approve and deny from the UI, plus auto-approve rules.
 8. Budgets: no caps by default. Spend is always shown.
 9. Auto memory: synced for every project.
-10. `shanep/dot-files/claude`: moved into `claude-config`, with a pointer left
+10. `shanep/dot-files/claude`: moved into `overlord-config`, with a pointer left
     in the dot-files README.
 11. claude.ai chats: build the view-only export import.
 12. Build order: as planned, M0 through M7.

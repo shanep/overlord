@@ -334,11 +334,11 @@
         "overlord.configRepo.url": {
           "type": "string",
           "default": "",
-          "description": "Git URL of the config repo. Leave it empty and Turn On Config Sync signs in to GitHub, finds or creates a private claude-config repo and fills this in."
+          "description": "Git URL of the config repo. Leave it empty and Turn On Config Sync signs in to GitHub, finds or creates a private overlord-config repo and fills this in."
         },
         "overlord.configRepo.path": {
           "type": "string",
-          "default": "~/.claude-config",
+          "default": "~/.overlord-config",
           "description": "Where the config repo is cloned."
         },
         "overlord.configSync.auto": {

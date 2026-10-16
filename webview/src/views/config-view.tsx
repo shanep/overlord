@@ -109,7 +109,7 @@ function RepoHeader(props: { readonly state: ConfigState }): ReactElement {
         <RepoStats state={props.state} />
       ) : (
         <p className="muted">
-          Config sync is off. Turning it on signs in to GitHub, finds your private claude-config
+          Config sync is off. Turning it on signs in to GitHub, finds your private overlord-config
           repo or creates one, and from then on keeps it in step with ~/.claude on every machine.
         </p>
       )}
