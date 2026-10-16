@@ -47,6 +47,7 @@ import { installTransferSkill } from './transfer.js';
 import { ContextViews } from './views/context.js';
 import { buildFleet } from './views/fleet.js';
 import { stateFor } from './views/state.js';
+import { currentPlan } from './views/usage.js';
 
 export interface AppDeps {
   readonly host: HostPort;
@@ -363,7 +364,12 @@ export class OverlordApp {
   }
 
   private fleet(): ReturnType<typeof buildFleet> {
-    return buildFleet(this.rt.store, this.rt.permissions.list(), this.rt.clock());
+    return buildFleet(
+      this.rt.store,
+      this.rt.permissions.list(),
+      this.rt.clock(),
+      currentPlan(this.rt),
+    );
   }
 
   private async teardown(): Promise<void> {

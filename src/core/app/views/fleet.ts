@@ -2,7 +2,7 @@
 // from both sources, and rate limits as 0 to 1 fractions.
 
 import type { PermissionRequest } from '../../../shared/model.js';
-import type { FleetState, RateLimits } from '../../../shared/protocol.js';
+import type { FleetState, PlanLimits, RateLimits } from '../../../shared/protocol.js';
 import type { OverlordStore } from '../../store/store.js';
 
 /** The harness reports fractions; anything over 1 is a percentage and gets scaled down. */
@@ -21,17 +21,33 @@ export function normalizeRateLimits(limits: RateLimits): RateLimits {
   };
 }
 
+/**
+ * Prefer the plan limits /usage shows. Rate limit events only come from
+ * sessions Overlord launched and carry no time, so they fill in only what the
+ * plan does not report.
+ */
+export function withPlanLimits(limits: RateLimits, plan: PlanLimits | null): RateLimits {
+  const session = plan?.limits.find((limit) => limit.kind === 'session');
+  const week = plan?.limits.find((limit) => limit.kind === 'weekly_all');
+  return {
+    fiveHourPct: session === undefined ? limits.fiveHourPct : session.percent / 100,
+    sevenDayPct: week === undefined ? limits.sevenDayPct : week.percent / 100,
+    resetsAt: session === undefined ? limits.resetsAt : session.resetsAt,
+  };
+}
+
 export function buildFleet(
   store: OverlordStore,
   pending: readonly PermissionRequest[],
   now: number,
+  plan: PlanLimits | null,
 ): FleetState {
   const base = store.fleetState(now);
   return {
     sessions: base.sessions,
     agents: base.agents,
     pendingPermissions: pending,
-    rateLimits: normalizeRateLimits(base.rateLimits),
+    rateLimits: withPlanLimits(normalizeRateLimits(base.rateLimits), plan),
     spendPerHourUsd: base.spendPerHourUsd,
   };
 }

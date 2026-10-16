@@ -17,7 +17,7 @@ import {
   immediateScheduler,
 } from '../test-helpers/fixtures.js';
 
-import { buildFleet, normalizeRateLimits, toFraction } from './fleet.js';
+import { buildFleet, normalizeRateLimits, toFraction, withPlanLimits } from './fleet.js';
 import { buildKnobs, EMPTY_KNOBS, loadKnobs, loadProfiles } from './knobs.js';
 import { loadUsage } from './usage.js';
 
@@ -45,7 +45,7 @@ describe('fleet view', () => {
     bus.emit('permission.requested', permissionRequest('stale'));
     bus.emit('rateLimits.updated', { fiveHourPct: 80, sevenDayPct: null, resetsAt: null });
     const pending = [permissionRequest('live')];
-    const state = buildFleet(fleetStore, pending, NOW);
+    const state = buildFleet(fleetStore, pending, NOW, null);
     expect(state.sessions.map((item) => item.id)).toStrictEqual(['s1']);
     expect(state.pendingPermissions).toBe(pending);
     expect(state.rateLimits).toStrictEqual({ fiveHourPct: 0.8, sevenDayPct: null, resetsAt: null });
@@ -58,6 +58,48 @@ describe('fleet view', () => {
       'sessions',
       'spendPerHourUsd',
     ]);
+  });
+
+  it('takes the session and weekly rows from the plan over rate limit events', () => {
+    const bus = new EventBus();
+    const fleetStore = store(bus);
+    bus.emit('rateLimits.updated', { fiveHourPct: 80, sevenDayPct: 30, resetsAt: 5 });
+    const plan = {
+      subscription: 'max',
+      limits: [
+        { kind: 'session', label: 'Current session', percent: 1, resetsAt: 9, severity: 'normal' },
+        {
+          kind: 'weekly_all',
+          label: 'Current week (all models)',
+          percent: 45,
+          resetsAt: 99,
+          severity: 'normal',
+        },
+      ],
+      fetchedAt: NOW,
+    };
+    expect(buildFleet(fleetStore, [], NOW, plan).rateLimits).toStrictEqual({
+      fiveHourPct: 0.01,
+      sevenDayPct: 0.45,
+      resetsAt: 9,
+    });
+  });
+
+  it('keeps event limits for whatever the plan leaves out', () => {
+    const limits = { fiveHourPct: 0.8, sevenDayPct: 0.3, resetsAt: 5 };
+    expect(withPlanLimits(limits, null)).toStrictEqual(limits);
+    const weekOnly = {
+      subscription: null,
+      limits: [
+        { kind: 'weekly_all', label: 'Week', percent: 50, resetsAt: null, severity: 'normal' },
+      ],
+      fetchedAt: NOW,
+    };
+    expect(withPlanLimits(limits, weekOnly)).toStrictEqual({
+      fiveHourPct: 0.8,
+      sevenDayPct: 0.5,
+      resetsAt: 5,
+    });
   });
 });
 

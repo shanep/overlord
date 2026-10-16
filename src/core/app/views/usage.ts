@@ -28,11 +28,16 @@ export async function loadPlanLimits(
   return parsePlanUsage(await read(), clock());
 }
 
-export function buildUsage(rt: Runtime): UsageState {
+/** The plan limits, loading them on first use and again once they go stale. */
+export function currentPlan(rt: Runtime): PlanLimits | null {
   const { plan } = rt.caches;
   const limits = plan.value;
   if (limits !== null && !plan.loading && rt.clock() - limits.fetchedAt > PLAN_STALE_MS) {
     void plan.refresh();
   }
-  return { ...rt.caches.usage.value, plan: limits };
+  return limits;
+}
+
+export function buildUsage(rt: Runtime): UsageState {
+  return { ...rt.caches.usage.value, plan: currentPlan(rt) };
 }
