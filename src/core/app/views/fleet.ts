@@ -1,6 +1,6 @@
 // The fleet view: the store's sessions and agents with background jobs marked
-// waiting or done, the pending permissions from both sources, and rate limits
-// as 0 to 1 fractions.
+// waiting or done, each session's project, the pending permissions from both
+// sources, and rate limits as 0 to 1 fractions.
 
 import path from 'node:path';
 
@@ -9,6 +9,7 @@ import { ZERO_USAGE } from '../../../shared/model.js';
 import type { FleetState, PlanLimits, RateLimits } from '../../../shared/protocol.js';
 import type { OverlordStore } from '../../store/store.js';
 import type { BackgroundJob } from '../../surfaces/jobs.js';
+import type { ProjectView, SessionFolder } from '../projects.js';
 import type { Runtime } from '../runtime.js';
 
 import { currentPlan } from './usage.js';
@@ -104,6 +105,8 @@ export interface FleetInputs {
   /** This window's workspace folder, whose session is highlighted when no terminal says otherwise. */
   readonly workspaceFolder: string | null;
   readonly jobs: readonly BackgroundJob[];
+  /** The projects, and the project of each session whose folder has been checked. */
+  readonly projects: (sessions: readonly SessionFolder[]) => ProjectView;
 }
 
 function newest(sessions: readonly SessionSummary[]): string | null {
@@ -131,11 +134,14 @@ export function windowSession(
 export function buildFleet(input: FleetInputs): FleetState {
   const base = input.store.fleetState(input.now);
   const sessions = withJobStates(base.sessions, input.jobs);
+  const projects = input.projects(sessions);
   return {
     sessions,
     agents: base.agents,
     pendingPermissions: input.pending,
     places: input.places,
+    projects: projects.projects,
+    sessionProjects: projects.sessionProjects,
     activeSessionId: input.activeSessionId ?? windowSession(sessions, input.workspaceFolder),
     activeVersion: input.activeVersion,
     rateLimits: withPlanLimits(normalizeRateLimits(base.rateLimits), input.plan),
@@ -154,5 +160,6 @@ export function fleetFor(rt: Runtime): FleetState {
     activeVersion: rt.places.activeVersion,
     workspaceFolder: rt.host.workspaceFolder(),
     jobs: rt.jobs.value,
+    projects: (sessions) => rt.projects.view(sessions),
   });
 }

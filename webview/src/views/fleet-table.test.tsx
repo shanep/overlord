@@ -32,6 +32,7 @@ describe('FleetTable', () => {
         onKey={noop}
         onToggle={noop}
         onAction={noop}
+        onProjectAction={noop}
       />,
     );
     const grid = screen.getByRole('treegrid', { name: 'Sessions' });

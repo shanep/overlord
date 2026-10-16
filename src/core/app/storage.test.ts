@@ -9,10 +9,12 @@ import {
   parseRule,
   readDrafts,
   readImport,
+  readProjects,
   readRules,
   STORAGE_FILES,
   storagePath,
   writeImport,
+  writeProjects,
   writeRules,
 } from './storage.js';
 import { makeEnv, readJson, writeJson, writeText } from './test-helpers/fixtures.js';
@@ -37,6 +39,7 @@ describe('storagePath', () => {
       claudeAi: 'claude-ai.json',
       memoryState: 'memory-state.json',
       dryRun: 'dry-run.txt',
+      projects: 'projects.json',
     });
   });
 });
@@ -124,5 +127,30 @@ describe('claude.ai import file', () => {
     const env = await makeEnv();
     const file = await writeText(path.join(env.root, 'claude-ai.json'), 'null');
     await expect(readImport(file)).resolves.toBeNull();
+  });
+});
+
+describe('projects file', () => {
+  it('reads nothing as an empty book and reads back what it wrote', async () => {
+    const env = await makeEnv();
+    const file = storagePath(env.storageDir, 'projects');
+    expect(await readProjects(file)).toStrictEqual({ projects: [], rules: [] });
+    const book = {
+      projects: [{ id: 'p1', name: 'Course' }],
+      rules: [
+        { folder: '/notes', projectId: 'p1' },
+        { folder: '/tmp', projectId: null },
+      ],
+    };
+    await writeProjects(file, book);
+    expect(await readJson(file)).toStrictEqual({ version: 1, ...book });
+    expect(await readProjects(file)).toStrictEqual(book);
+  });
+
+  it('rejects a file in the wrong shape', async () => {
+    const env = await makeEnv();
+    const file = storagePath(env.storageDir, 'projects');
+    await writeJson(file, { version: 1, projects: [{ id: '', name: 'x' }], rules: [] });
+    await expect(readProjects(file)).rejects.toThrow('not in the expected format');
   });
 });

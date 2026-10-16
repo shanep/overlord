@@ -45,12 +45,14 @@ export class FakeHost implements HostPort {
   readonly warnings: string[] = [];
   readonly errors: string[] = [];
   readonly questions: { readonly message: string; readonly action: string }[] = [];
+  readonly asks: { readonly message: string; readonly actions: readonly string[] }[] = [];
   readonly picks: { readonly items: readonly PickItem[]; readonly placeholder: string }[] = [];
   readonly inputs: InputRequest[] = [];
   readonly filePicks: FilePickRequest[] = [];
   readonly folderPicks: string[] = [];
   /** Answers, used in order. An empty queue answers no, null or cancel. */
   readonly confirmAnswers: boolean[] = [];
+  readonly askAnswers: (string | null)[] = [];
   readonly inputAnswers: (string | null)[] = [];
   readonly pickAnswers: (string | null)[] = [];
   readonly fileAnswers: (string | null)[] = [];
@@ -132,6 +134,12 @@ export class FakeHost implements HostPort {
 
   readonly showError = (message: string): void => {
     this.errors.push(message);
+  };
+
+  readonly ask = async (message: string, actions: readonly string[]): Promise<string | null> => {
+    this.asks.push({ message, actions });
+    await Promise.resolve();
+    return this.askAnswers.shift() ?? null;
   };
 
   readonly confirm = async (message: string, action: string): Promise<boolean> => {

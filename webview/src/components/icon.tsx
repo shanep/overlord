@@ -17,6 +17,12 @@ const SHAPES = {
   ),
   /** A bare prompt: the CLI in some other terminal. */
   prompt: <path d="m3 5 3 3-3 3M8 11h5" />,
+  /** A folder with an arrow: move to another project. */
+  move: <path d="M2 4.5h4l1.5 1.5H14v6.5H2zM7 9.5h4M9.5 8l1.5 1.5L9.5 11" />,
+  /** A pencil: rename. */
+  rename: <path d="m10.5 3 2.5 2.5L6 12.5H3.5V10zM9 4.5 11.5 7" />,
+  /** A bin: delete. */
+  delete: <path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.7 8.5h5.6l.7-8.5" />,
   /** Stacked layers: running in the background. */
   layers: <path d="M2 6.5 8 3.5l6 3-6 3zM2 9.5l6 3 6-3" />,
 } as const;

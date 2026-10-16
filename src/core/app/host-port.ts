@@ -76,6 +76,8 @@ export interface HostPort {
   readonly showInfo: (message: string) => void;
   readonly showWarning: (message: string) => void;
   readonly showError: (message: string) => void;
+  /** A notification with buttons. The label of the pressed one, or null when it is dismissed. */
+  readonly ask: (message: string, actions: readonly string[]) => Promise<string | null>;
   /** A modal question with one action button. True only when that button was pressed. */
   readonly confirm: (message: string, actionLabel: string) => Promise<boolean>;
   /** VS Code SecretStorage, which is the OS keychain. */

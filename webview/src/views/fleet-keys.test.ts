@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { fleetState } from '../../test/fixtures.js';
+import { fleetState, projectFleet } from '../../test/fixtures.js';
 
 import { keyCommand } from './fleet-keys.js';
 import type { VisibleRow } from './fleet-rows.js';
@@ -59,5 +59,15 @@ describe('keyCommand', () => {
   it('ignores other keys and unknown rows', () => {
     expect(keyCommand(rows, 's:s1', 'x')).toBeNull();
     expect(keyCommand(rows, 'missing', 'ArrowDown')).toBeNull();
+  });
+
+  it('folds a project row with Enter and moves only sessions with m', () => {
+    const grouped = flattenTree(buildFleetTree(projectFleet, true), new Set(['p:m1']));
+    expect(keyCommand(grouped, 'p:', 'Enter')).toStrictEqual({ type: 'collapse', key: 'p:' });
+    expect(keyCommand(grouped, 'p:m1', 'Enter')).toStrictEqual({ type: 'expand', key: 'p:m1' });
+    const session = grouped.find((row) => row.row.key === 's:s2');
+    expect(keyCommand(grouped, 's:s2', 'm')).toStrictEqual({ type: 'move', row: session?.row });
+    expect(keyCommand(grouped, 'p:', 'm')).toBeNull();
+    expect(keyCommand(rows, 'a:s1:a1', 'm')).toBeNull();
   });
 });

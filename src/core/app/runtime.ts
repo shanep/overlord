@@ -23,6 +23,7 @@ import type { BackgroundJobs } from './jobs.js';
 import type { PermissionHub } from './permissions.js';
 import type { SessionPlaces } from './places.js';
 import type { KillFunction } from './process.js';
+import type { ProjectIndex } from './projects.js';
 import type { Draft } from './storage.js';
 import type { ContextViews } from './views/context.js';
 import type { KnobsData } from './views/knobs.js';
@@ -64,6 +65,8 @@ export interface Runtime {
   readonly places: SessionPlaces;
   /** Background jobs waiting on the user or finished, for the fleet. */
   readonly jobs: BackgroundJobs;
+  /** Each session's project, and the projects made by hand. */
+  readonly projects: ProjectIndex;
   readonly caches: Caches;
   readonly context: ContextViews;
   /** Sends a source.error to the bus, which also lands in the status error list. */

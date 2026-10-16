@@ -17,7 +17,13 @@ import { readOptional, writeFileAtomic } from '../knobs/atomic-file.js';
 import type { IsAlive } from '../surfaces/process.js';
 import type { Exec } from '../sync/exec.js';
 
-import { repoFolder, type WorktreeGit, type WorktreeInfo, type WorktreeStatus } from './git.js';
+import {
+  NotARepoError,
+  repoFolder,
+  type WorktreeGit,
+  type WorktreeInfo,
+  type WorktreeStatus,
+} from './git.js';
 import { KeyedLock } from './lock.js';
 import { withOverlaps } from './overlap.js';
 import { setUpWorktree } from './setup.js';
@@ -172,6 +178,18 @@ export class WorktreeRegistry {
 
   /** The repository a session folder belongs to. */
   readonly projectFor = (cwd: string): string => projectFolder(cwd, this.deps.root, this.repos);
+
+  /** The main checkout of the repository cwd is in, or null when it is in none. */
+  async repoRoot(cwd: string): Promise<string | null> {
+    try {
+      return await this.deps.git.repoRoot(cwd);
+    } catch (error: unknown) {
+      if (error instanceof NotARepoError) {
+        return null;
+      }
+      throw error;
+    }
+  }
 
   async entries(): Promise<readonly WorktreeEntry[]> {
     let names: string[];

@@ -15,6 +15,8 @@ const REQUIRED: Readonly<Record<ViewId, Readonly<Record<string, FieldKind>>>> = 
     agents: 'array',
     pendingPermissions: 'array',
     places: 'object',
+    projects: 'array',
+    sessionProjects: 'object',
     rateLimits: 'object',
     spendPerHourUsd: 'number',
   },

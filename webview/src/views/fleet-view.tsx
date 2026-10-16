@@ -1,8 +1,9 @@
 // The htop view: every session and its subagents in one sortable,
-// filterable tree, with live stats, pending permissions and row actions.
+// filterable tree, grouped by project, with live stats, pending permissions
+// and row actions.
 
 import type { KeyboardEvent, ReactElement } from 'react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 
 import type { PermissionRequest } from '../../../src/shared/model.js';
 import type { FleetState } from '../../../src/shared/protocol.js';
@@ -22,6 +23,7 @@ import { keyCommand } from './fleet-keys.js';
 import type { FleetRow, VisibleRow } from './fleet-rows.js';
 import {
   buildFleetTree,
+  collapsedGroupOf,
   DEFAULT_SORT,
   filterTree,
   flattenTree,
@@ -29,7 +31,7 @@ import {
   nextFleetSort,
   sortTree,
 } from './fleet-rows.js';
-import type { RowAction } from './fleet-table.js';
+import type { ProjectAction, RowAction } from './fleet-table.js';
 import { FleetTable } from './fleet-table.js';
 
 interface PendingConfirm {
@@ -48,12 +50,26 @@ function useFleetPreferences(): {
   readonly setHideDone: (next: boolean) => void;
   readonly collapsed: readonly string[];
   readonly setCollapsed: (next: readonly string[]) => void;
+  readonly grouped: boolean;
+  readonly setGrouped: (next: boolean) => void;
 } {
   const [sort, setSort] = usePersistentState<SortState>('fleet.sort', DEFAULT_SORT, isSortState);
   const [filter, setFilter] = usePersistentState('fleet.filter', '', isString);
   const [hideDone, setHideDone] = usePersistentState('fleet.hideDone', false, isBoolean);
   const [collapsed, setCollapsed] = usePersistentState('fleet.collapsed', NO_KEYS, isStringArray);
-  return { sort, setSort, filter, setFilter, hideDone, setHideDone, collapsed, setCollapsed };
+  const [grouped, setGrouped] = usePersistentState('fleet.groupByProject', true, isBoolean);
+  return {
+    sort,
+    setSort,
+    filter,
+    setFilter,
+    hideDone,
+    setHideDone,
+    collapsed,
+    setCollapsed,
+    grouped,
+    setGrouped,
+  };
 }
 
 export function FleetView(props: { readonly state: FleetState }): ReactElement {
@@ -69,16 +85,31 @@ export function FleetView(props: { readonly state: FleetState }): ReactElement {
   /** The row key of the focused terminal's session, until that row is selected and scrolled to. */
   const following = useRef<string | null>(null);
 
-  const tree = useMemo(() => buildFleetTree(state), [state]);
+  const tree = useMemo(
+    () => buildFleetTree(state, preferences.grouped),
+    [state, preferences.grouped],
+  );
   const history = useRowHistory(historySamples(tree), state);
   const filtered = filterTree(tree, { text: preferences.filter, hideDone: preferences.hideDone });
-  const rows = flattenTree(
-    sortTree(filtered, preferences.sort, now),
-    new Set(preferences.collapsed),
-  );
+  const collapsed = new Set(preferences.collapsed);
+  const rows = flattenTree(sortTree(filtered, preferences.sort, now), collapsed);
   const selectedKey = rows.some((row) => row.row.key === selected)
     ? selected
     : (rows[0]?.row.key ?? null);
+
+  const setExpanded = (key: string, expanded: boolean): void => {
+    const others = preferences.collapsed.filter((item) => item !== key);
+    preferences.setCollapsed(expanded ? others : [...others, key]);
+  };
+
+  // Open the project row hiding a session. It runs only when the focused
+  // terminal changes, so a project the user folds later stays folded.
+  const reveal = useEffectEvent((key: string) => {
+    const group = collapsedGroupOf(tree, key, collapsed);
+    if (group !== null) {
+      setExpanded(group, true);
+    }
+  });
 
   // Follow the focused terminal: select its session and bring the row into
   // view, but leave keyboard focus in the terminal.
@@ -86,6 +117,7 @@ export function FleetView(props: { readonly state: FleetState }): ReactElement {
     if (state.activeSessionId !== null) {
       following.current = `s:${state.activeSessionId}`;
       setSelected(following.current);
+      reveal(following.current);
     }
   }, [state.activeSessionId, state.activeVersion]);
 
@@ -99,15 +131,15 @@ export function FleetView(props: { readonly state: FleetState }): ReactElement {
     }
   }, [selectedKey]);
 
-  const setExpanded = (key: string, expanded: boolean): void => {
-    const others = preferences.collapsed.filter((item) => item !== key);
-    preferences.setCollapsed(expanded ? others : [...others, key]);
-  };
-
   // A session opens where it runs (its terminal tab, or an attach tab for a
   // background session). A subagent has no terminal, so it opens its view.
+  // A project has nothing to open, so it folds.
   const activate = (row: FleetRow): void => {
     setSelected(row.key);
+    if (row.kind === 'project') {
+      setExpanded(row.key, collapsed.has(row.key));
+      return;
+    }
     post(
       row.kind === 'session'
         ? { type: 'openSession', sessionId: row.sessionId }
@@ -117,10 +149,20 @@ export function FleetView(props: { readonly state: FleetState }): ReactElement {
 
   const onAction = (row: FleetRow, action: RowAction): void => {
     setSelected(row.key);
-    if (action === 'open') {
-      post({ type: 'openAgent', sessionId: row.sessionId, agentId: row.agentId });
-    } else {
-      setConfirm({ kind: action, row });
+    switch (action) {
+      case 'open': {
+        post({ type: 'openAgent', sessionId: row.sessionId, agentId: row.agentId });
+        break;
+      }
+      case 'move': {
+        post({ type: 'moveSession', sessionId: row.sessionId });
+        break;
+      }
+      case 'interrupt':
+      case 'stop': {
+        setConfirm({ kind: action, row });
+        break;
+      }
     }
   };
 
@@ -142,6 +184,10 @@ export function FleetView(props: { readonly state: FleetState }): ReactElement {
       }
       case 'interrupt': {
         setConfirm({ kind: 'interrupt', row: command.row });
+        break;
+      }
+      case 'move': {
+        post({ type: 'moveSession', sessionId: command.row.sessionId });
         break;
       }
     }
@@ -210,9 +256,20 @@ export function FleetView(props: { readonly state: FleetState }): ReactElement {
           />
           Hide done
         </label>
+        <label>
+          <input
+            type="checkbox"
+            checked={preferences.grouped}
+            onChange={(event) => {
+              preferences.setGrouped(event.target.checked);
+            }}
+          />
+          Group by project
+        </label>
         <span className="spacer" />
         <span className="muted fleet-keys">
-          <kbd>{'↑'}</kbd> <kbd>{'↓'}</kbd> move, <kbd>Enter</kbd> open, <kbd>k</kbd> interrupt
+          <kbd>{'↑'}</kbd> <kbd>{'↓'}</kbd> move, <kbd>Enter</kbd> open, <kbd>k</kbd> interrupt,{' '}
+          <kbd>m</kbd> project
         </span>
       </div>
       {confirm === null ? null : (
@@ -247,6 +304,9 @@ export function FleetView(props: { readonly state: FleetState }): ReactElement {
             setExpanded(visible.row.key, !visible.expanded);
           }}
           onAction={onAction}
+          onProjectAction={(projectId: string, action: ProjectAction) => {
+            post({ type: action === 'rename' ? 'renameProject' : 'deleteProject', projectId });
+          }}
         />
       )}
     </section>

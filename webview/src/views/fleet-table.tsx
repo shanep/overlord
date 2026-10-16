@@ -1,5 +1,6 @@
 // The fleet tree table. Rows use roving focus: only the selected row and
 // its buttons are in the tab order, and arrow keys move the selection.
+// Project rows head their sessions with totals and have no per session cells.
 
 import type { KeyboardEvent, ReactElement, RefObject } from 'react';
 import { useMemo } from 'react';
@@ -7,7 +8,7 @@ import { useMemo } from 'react';
 import type { ChartTheme } from '../charts/chart-theme.js';
 import { EChart } from '../charts/chart.js';
 import { buildSparkline } from '../charts/sparkline.js';
-import { PlaceMarker, StateBadge, SurfaceBadge } from '../components/badge.js';
+import { Badge, PlaceMarker, StateBadge, SurfaceBadge } from '../components/badge.js';
 import type { SortState } from '../components/data-table.js';
 import { ariaSort, SortHeader } from '../components/data-table.js';
 import { Icon } from '../components/icon.js';
@@ -19,7 +20,17 @@ import type { RowHistory } from './fleet-history.js';
 import type { FleetRow, VisibleRow } from './fleet-rows.js';
 import { elapsedMs, rowCallsPerMinute } from './fleet-rows.js';
 
-export type RowAction = 'open' | 'interrupt' | 'stop';
+export type RowAction = 'open' | 'interrupt' | 'stop' | 'move';
+export type ProjectAction = 'rename' | 'delete';
+
+const ACTION_LABELS: Readonly<Record<RowAction | ProjectAction, string>> = {
+  open: 'Agent view',
+  interrupt: 'Interrupt',
+  stop: 'Stop',
+  move: 'Move to project',
+  rename: 'Rename project',
+  delete: 'Delete project',
+};
 
 const COLUMNS: readonly { readonly id: string; readonly label: string }[] = [
   { id: 'state', label: 'State' },
@@ -55,30 +66,59 @@ function RowActions(props: {
   readonly row: FleetRow;
   readonly tabIndex: number;
   readonly onAction: (row: FleetRow, action: RowAction) => void;
+  readonly onProjectAction: (projectId: string, action: ProjectAction) => void;
 }): ReactElement {
-  const { row, tabIndex, onAction } = props;
-  const button = (action: RowAction, label: string, disabled: boolean): ReactElement => (
+  const { row, tabIndex, onAction, onProjectAction } = props;
+  const iconButton = (
+    action: RowAction | ProjectAction,
+    onClick: () => void,
+    disabled = false,
+  ): ReactElement => (
     <button
       type="button"
       className="icon-button"
       tabIndex={tabIndex}
       disabled={disabled}
-      title={label}
-      aria-label={`${label} ${row.title}`}
-      onClick={() => {
-        onAction(row, action);
-      }}
+      title={ACTION_LABELS[action]}
+      aria-label={`${ACTION_LABELS[action]} ${row.title}`}
+      onClick={onClick}
     >
       <Icon name={action} />
     </button>
   );
+  const button = (action: RowAction, disabled = false): ReactElement =>
+    iconButton(
+      action,
+      () => {
+        onAction(row, action);
+      },
+      disabled,
+    );
+  if (row.kind === 'project') {
+    const projectId = row.manualProjectId;
+    return (
+      <span className="actions">
+        {projectId === null ? null : (
+          <>
+            {iconButton('rename', () => {
+              onProjectAction(projectId, 'rename');
+            })}
+            {iconButton('delete', () => {
+              onProjectAction(projectId, 'delete');
+            })}
+          </>
+        )}
+      </span>
+    );
+  }
   return (
     <span className="actions">
-      {button('open', 'Agent view', false)}
+      {button('open')}
       {row.kind === 'session' ? (
         <>
-          {button('interrupt', 'Interrupt', !row.sessionActive)}
-          {button('stop', 'Stop', !row.sessionActive)}
+          {button('move')}
+          {button('interrupt', !row.sessionActive)}
+          {button('stop', !row.sessionActive)}
         </>
       ) : null}
     </span>
@@ -98,6 +138,7 @@ interface FleetTableRowProps {
   readonly onKey: (event: KeyboardEvent<HTMLTableRowElement>, key: string) => void;
   readonly onToggle: (visible: VisibleRow) => void;
   readonly onAction: (row: FleetRow, action: RowAction) => void;
+  readonly onProjectAction: (projectId: string, action: ProjectAction) => void;
 }
 
 function Twisty(props: {
@@ -125,45 +166,83 @@ function Twisty(props: {
   );
 }
 
-function FleetTableRow(props: FleetTableRowProps): ReactElement {
-  const { visible, selected, now, history, theme, rowRef } = props;
+function TitleCell(props: {
+  readonly visible: VisibleRow;
+  readonly onToggle: (visible: VisibleRow) => void;
+}): ReactElement {
+  const { visible } = props;
+  const { row } = visible;
+  return (
+    <td role="gridcell" className="col-title" title={row.detail}>
+      <span style={{ paddingLeft: `${(visible.depth * 1.2).toString()}em` }}>
+        <Twisty visible={visible} onToggle={props.onToggle} />
+        {row.place === null ? null : <PlaceMarker place={row.place} />}
+        <span className="row-title">{row.title}</span>
+      </span>{' '}
+      {row.kind === 'session' && row.needsProject ? (
+        <Badge
+          label="No project"
+          tone="warning"
+          title="Move to project puts this folder in one, or tells Overlord never to ask"
+        />
+      ) : null}{' '}
+      <span className="muted row-detail">{row.detail}</span>
+    </td>
+  );
+}
+
+/** A project row: its most urgent state, its name and the totals of its sessions. */
+function ProjectCells(props: FleetTableRowProps): ReactElement {
+  const { visible, selected, history, theme } = props;
+  const { row } = visible;
+  return (
+    <>
+      <td role="gridcell" className="col-state">
+        <StateBadge state={row.state} />
+      </td>
+      <td role="gridcell" className="col-surface" />
+      <TitleCell visible={visible} onToggle={props.onToggle} />
+      <td role="gridcell" className="col-model" />
+      <td role="gridcell" className="col-effort" />
+      <td role="gridcell" className="col-elapsed num" />
+      <td role="gridcell" className="col-tool" />
+      <td role="gridcell" className="col-calls num" />
+      <td role="gridcell" className="col-tokens num">
+        {`${formatCompact(row.tokensIn)} / ${formatCompact(row.tokensOut)}`}
+      </td>
+      <td role="gridcell" className="col-cache num" />
+      <td role="gridcell" className="col-context" />
+      <td role="gridcell" className="col-cost num">
+        {formatCost(row.costUsd)}
+      </td>
+      <td role="gridcell" className="col-trend">
+        <FleetSparkline history={history} theme={theme} label={`Token trend for ${row.title}`} />
+      </td>
+      <td role="gridcell" className="col-actions">
+        <RowActions
+          row={row}
+          tabIndex={selected ? 0 : -1}
+          onAction={props.onAction}
+          onProjectAction={props.onProjectAction}
+        />
+      </td>
+    </>
+  );
+}
+
+function SessionCells(props: FleetTableRowProps): ReactElement {
+  const { visible, selected, now, history, theme } = props;
   const { row } = visible;
   const session = row.kind === 'session';
   return (
-    <tr
-      ref={rowRef}
-      role="row"
-      aria-level={visible.depth + 1}
-      aria-expanded={visible.hasChildren ? visible.expanded : undefined}
-      aria-selected={selected}
-      data-kind={row.kind}
-      data-state={row.state}
-      tabIndex={selected ? 0 : -1}
-      onClick={(event) => {
-        if (event.target instanceof Element && event.target.closest('button') !== null) {
-          props.onSelect(row.key);
-        } else {
-          props.onActivate(row);
-        }
-      }}
-      onKeyDown={(event) => {
-        props.onKey(event, row.key);
-      }}
-    >
+    <>
       <td role="gridcell" className="col-state">
         <StateBadge state={row.state} />
       </td>
       <td role="gridcell" className="col-surface">
         <SurfaceBadge surface={row.surface} />
       </td>
-      <td role="gridcell" className="col-title" title={row.detail}>
-        <span style={{ paddingLeft: `${(visible.depth * 1.2).toString()}em` }}>
-          <Twisty visible={visible} onToggle={props.onToggle} />
-          {row.place === null ? null : <PlaceMarker place={row.place} />}
-          <span className="row-title">{row.title}</span>
-        </span>{' '}
-        <span className="muted row-detail">{row.detail}</span>
-      </td>
+      <TitleCell visible={visible} onToggle={props.onToggle} />
       <td role="gridcell" className="col-model">
         {row.model ?? ''}
       </td>
@@ -195,8 +274,43 @@ function FleetTableRow(props: FleetTableRowProps): ReactElement {
         <FleetSparkline history={history} theme={theme} label={`Token trend for ${row.title}`} />
       </td>
       <td role="gridcell" className="col-actions">
-        <RowActions row={row} tabIndex={selected ? 0 : -1} onAction={props.onAction} />
+        <RowActions
+          row={row}
+          tabIndex={selected ? 0 : -1}
+          onAction={props.onAction}
+          onProjectAction={props.onProjectAction}
+        />
       </td>
+    </>
+  );
+}
+
+function FleetTableRow(props: FleetTableRowProps): ReactElement {
+  const { visible, selected, rowRef } = props;
+  const { row } = visible;
+  return (
+    <tr
+      ref={rowRef}
+      role="row"
+      aria-level={visible.depth + 1}
+      aria-expanded={visible.hasChildren ? visible.expanded : undefined}
+      aria-selected={selected}
+      data-kind={row.kind}
+      data-state={row.state}
+      data-needs-project={row.needsProject ? 'true' : undefined}
+      tabIndex={selected ? 0 : -1}
+      onClick={(event) => {
+        if (event.target instanceof Element && event.target.closest('button') !== null) {
+          props.onSelect(row.key);
+        } else {
+          props.onActivate(row);
+        }
+      }}
+      onKeyDown={(event) => {
+        props.onKey(event, row.key);
+      }}
+    >
+      {row.kind === 'project' ? <ProjectCells {...props} /> : <SessionCells {...props} />}
     </tr>
   );
 }
@@ -262,6 +376,7 @@ export function FleetTable(props: FleetTableProps): ReactElement {
               onKey={props.onKey}
               onToggle={props.onToggle}
               onAction={props.onAction}
+              onProjectAction={props.onProjectAction}
             />
           );
         })}

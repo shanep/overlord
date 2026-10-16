@@ -136,6 +136,8 @@ export const fleetState: FleetState = {
   ],
   pendingPermissions: [permission],
   places: { s1: 'vscode', s2: 'background' },
+  projects: [],
+  sessionProjects: {},
   activeSessionId: null,
   activeVersion: 0,
   rateLimits: { fiveHourPct: 0.64, sevenDayPct: 0.2, resetsAt: NOW + 90 * MINUTE },
@@ -228,4 +230,19 @@ export const agentState: AgentDetailState = {
   toolCalls,
   requests,
   compactions: [NOW - 6 * MINUTE],
+};
+
+/** The fleet in three projects: s1 in a git repo, s2 in none, s3 in one made by hand. */
+export const projectFleet: FleetState = {
+  ...fleetState,
+  projects: [
+    { id: 'git:/r/web', name: 'web', kind: 'git', folder: '/r/web' },
+    { id: 'm1', name: 'Course', kind: 'manual', folder: null },
+    { id: 'm2', name: 'Empty', kind: 'manual', folder: null },
+  ],
+  sessionProjects: {
+    s1: { projectId: 'git:/r/web', folder: '/r/web', ignored: false },
+    s2: { projectId: null, folder: '/notes', ignored: false },
+    s3: { projectId: 'm1', folder: '/class', ignored: false },
+  },
 };

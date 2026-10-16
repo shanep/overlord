@@ -1,5 +1,5 @@
 // The small JSON files Overlord keeps in the extension's storage folder:
-// auto-approve rules, prompt drafts and the claude.ai import. Every file is
+// auto-approve rules, prompt drafts, projects and the claude.ai import. Every file is
 // checked with zod on read, so a hand edit gone wrong is an error, not a crash.
 
 import path from 'node:path';
@@ -8,6 +8,7 @@ import { z } from 'zod';
 
 import type { AutoApproveRule, LauncherState, SurfaceSession } from '../../shared/protocol.js';
 import { readOptional, writeFileAtomic } from '../knobs/atomic-file.js';
+import type { ProjectBook } from '../projects/book.js';
 
 export type Draft = LauncherState['drafts'][number];
 
@@ -17,7 +18,7 @@ export interface StoredImport {
 }
 
 export type StorageName =
-  'rules' | 'audit' | 'profiles' | 'drafts' | 'claudeAi' | 'memoryState' | 'dryRun';
+  'rules' | 'audit' | 'profiles' | 'drafts' | 'claudeAi' | 'memoryState' | 'dryRun' | 'projects';
 
 export const STORAGE_FILES: Readonly<Record<StorageName, string>> = {
   rules: 'rules.json',
@@ -27,6 +28,7 @@ export const STORAGE_FILES: Readonly<Record<StorageName, string>> = {
   claudeAi: 'claude-ai.json',
   memoryState: 'memory-state.json',
   dryRun: 'dry-run.txt',
+  projects: 'projects.json',
 };
 
 export function storagePath(storageDir: string, name: StorageName): string {
@@ -59,6 +61,12 @@ const importFileSchema = z.object({
   version: z.literal(1),
   importedAt: z.number(),
   sessions: z.array(z.object({ id: z.string().min(1), title: z.string(), updatedAt: z.number() })),
+});
+
+const projectsFileSchema = z.object({
+  version: z.literal(1),
+  projects: z.array(z.object({ id: z.string().min(1), name: z.string().min(1) })),
+  rules: z.array(z.object({ folder: z.string().min(1), projectId: z.string().min(1).nullable() })),
 });
 
 /** Parsed file contents, or `fallback` when the file does not exist. */
@@ -130,4 +138,13 @@ export async function writeImport(file: string, stored: StoredImport): Promise<v
       updatedAt: session.updatedAt,
     })),
   });
+}
+
+export async function readProjects(file: string): Promise<ProjectBook> {
+  const data = await readChecked(file, projectsFileSchema, { version: 1, projects: [], rules: [] });
+  return { projects: data.projects, rules: data.rules };
+}
+
+export async function writeProjects(file: string, book: ProjectBook): Promise<void> {
+  await writeJson(file, { version: 1, projects: book.projects, rules: book.rules });
 }

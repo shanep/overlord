@@ -140,12 +140,13 @@ describe('OverlordApp', () => {
     });
     await app.start();
     await app.start();
-    expect(intervals.map((entry) => entry.ms)).toStrictEqual([30_000, 5000, 10_000, 60_000]);
+    expect(intervals.map((entry) => entry.ms)).toStrictEqual([30_000, 5000, 10_000, 60_000, 5000]);
     const workspace = env.host.workspace ?? '';
     expect(watches.map((entry) => entry.file)).toStrictEqual([
       env.paths.userSettings,
       path.join(workspace, '.claude', 'settings.json'),
       path.join(workspace, '.claude', 'settings.local.json'),
+      path.join(env.storageDir, 'projects.json'),
     ]);
     expect(app.runtime.store.fleetState(Date.now()).sessions.map((item) => item.id)).toStrictEqual([
       'abc',
@@ -162,6 +163,12 @@ describe('OverlordApp', () => {
     const jobsRefresh = vi.spyOn(app.runtime.jobs, 'refresh');
     intervals[2]?.callback();
     expect(jobsRefresh).toHaveBeenCalledTimes(1);
+    const projectsRefresh = vi.spyOn(app.runtime.projects, 'refresh');
+    intervals[4]?.callback();
+    expect(projectsRefresh).toHaveBeenCalledTimes(1);
+    const projectsLoad = vi.spyOn(app.runtime.projects, 'load');
+    watches[3]?.onChange();
+    expect(projectsLoad).toHaveBeenCalledTimes(1);
     const status = await app.setup.status();
     expect(status).toStrictEqual({
       hooksInstalled: false,
@@ -262,7 +269,10 @@ describe('OverlordApp', () => {
     const env = await makeEnv();
     const { app, watches } = makeApp(env);
     await app.start();
-    expect(watches.map((entry) => entry.file)).toStrictEqual([env.paths.userSettings]);
+    expect(watches.map((entry) => entry.file)).toStrictEqual([
+      env.paths.userSettings,
+      path.join(env.storageDir, 'projects.json'),
+    ]);
   });
 
   it('runs the hook server when hooks are installed and stops it when they are removed', async () => {

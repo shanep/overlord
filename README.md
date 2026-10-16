@@ -23,7 +23,10 @@ See [PLAN.md](PLAN.md) for the full design and the decisions behind it.
   Code terminal, another terminal or the background). Click a session to jump to its terminal
   tab, or to attach a tab to a background session. Switch terminal tabs and the fleet highlights
   the session in the one you are on. Switch to another VS Code window and its fleet highlights
-  the session that ran in that window's folder.
+  the session that ran in that window's folder. Sessions are grouped by project. A git repo is a
+  project on its own, and its worktrees count as the repo. A session in any other folder lands
+  in Unassigned, and the window running it asks once whether to add it to a project, make a new
+  one, or never ask about that folder again.
 - **Agent detail**: the live feed of thinking and tool calls, a tool timeline, and token, cost
   and context charts.
 - **Context inspector**: the system prompt, every memory file that loaded (and why), and every

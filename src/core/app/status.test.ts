@@ -11,6 +11,8 @@ function fleet(overrides: Partial<FleetState> = {}): FleetState {
     agents: [],
     pendingPermissions: [],
     places: {},
+    projects: [],
+    sessionProjects: {},
     activeSessionId: null,
     activeVersion: 0,
     rateLimits: { fiveHourPct: null, sevenDayPct: null, resetsAt: null },

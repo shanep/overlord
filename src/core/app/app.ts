@@ -20,6 +20,7 @@ import { makeIsAlive, type IsAlive } from '../surfaces/process.js';
 import { createNodeExec, type Exec } from '../sync/exec.js';
 import type { WatchFactory } from '../transcripts/watcher.js';
 
+import { watchProjects } from './actions-projects.js';
 import { dispatch } from './actions.js';
 import type { CacheRuntime } from './caches.js';
 import { createCaches } from './caches.js';
@@ -34,6 +35,7 @@ import type { ActiveTerminal } from './places.js';
 import { PLACES_REFRESH_MS, SessionPlaces } from './places.js';
 import type { FileWatchFunction, IntervalFunction, KillFunction } from './process.js';
 import { defaultInterval, defaultKill, pollingFileWatch, toSurfacesExec } from './process.js';
+import { createProjectIndex } from './projects.js';
 import type { ClaudeCli, Runtime } from './runtime.js';
 import { SetupCommands } from './setup.js';
 import { once, readLoginShellEnv } from './shell-env.js';
@@ -227,6 +229,11 @@ export class OverlordApp {
       onChange: notify,
       report,
     });
+    const projects = createProjectIndex(host.storageDir, worktrees, {
+      clock,
+      onChange: notify,
+      report,
+    });
     const base: CacheRuntime = {
       paths: this.paths,
       host,
@@ -248,6 +255,7 @@ export class OverlordApp {
       permissions,
       places,
       jobs,
+      projects,
       report,
       planUsage: async (): Promise<unknown> => {
         const usageEnv = await launchEnv();
@@ -322,6 +330,7 @@ export class OverlordApp {
         }),
       );
     }
+    this.cleanups.push(...(await watchProjects(this.rt, this.interval, this.fileWatch)));
   }
 
   /** The port the local OTLP receiver listens on, or null when telemetry is off. */
@@ -402,6 +411,7 @@ export class OverlordApp {
       tidyWorktrees(this.rt),
       this.rt.places.refresh(),
       this.rt.jobs.refresh(),
+      this.rt.projects.load(),
     ]);
     this.rt.context.clear();
   }

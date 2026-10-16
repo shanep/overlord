@@ -6,6 +6,7 @@ import { EventBus } from '../../bus.js';
 import { loadCatalog } from '../../knobs/catalog.js';
 import { OverlordStore } from '../../store/store.js';
 import { EMPTY_USAGE } from '../../surfaces/usage.js';
+import type { ProjectView } from '../projects.js';
 import {
   makeEnv,
   NOW,
@@ -27,6 +28,10 @@ import {
 } from './fleet.js';
 import { buildKnobs, EMPTY_KNOBS, loadKnobs, loadProfiles } from './knobs.js';
 import { loadUsage } from './usage.js';
+
+function noProjects(): ProjectView {
+  return { projects: [], sessionProjects: {} };
+}
 
 function store(bus: EventBus): OverlordStore {
   return new OverlordStore(bus, { scheduler: immediateScheduler });
@@ -65,6 +70,7 @@ describe('fleet view', () => {
       activeVersion: 3,
       workspaceFolder: '/repos/app',
       jobs: [],
+      projects: noProjects,
     };
     expect(buildFleet(inputs).activeSessionId).toBe('mine');
     expect(buildFleet(inputs).activeVersion).toBe(3);
@@ -101,6 +107,7 @@ describe('fleet view', () => {
       activeVersion: 0,
       workspaceFolder: null,
       jobs: [],
+      projects: noProjects,
     });
     expect(state.activeSessionId).toBe('s1');
     expect(state.sessions.map((item) => item.id)).toStrictEqual(['s1']);
@@ -115,7 +122,9 @@ describe('fleet view', () => {
       'agents',
       'pendingPermissions',
       'places',
+      'projects',
       'rateLimits',
+      'sessionProjects',
       'sessions',
       'spendPerHourUsd',
     ]);
@@ -140,6 +149,7 @@ describe('fleet view', () => {
       activeVersion: 0,
       workspaceFolder: null,
       jobs,
+      projects: noProjects,
     });
     const byId = new Map(state.sessions.map((item) => [item.id, item]));
     expect(byId.get('live')?.state).toBe('running');
@@ -190,6 +200,7 @@ describe('fleet view', () => {
         activeVersion: 0,
         workspaceFolder: null,
         jobs: [],
+        projects: noProjects,
       }).rateLimits,
     ).toStrictEqual({
       fiveHourPct: 0.01,

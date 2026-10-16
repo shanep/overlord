@@ -59,6 +59,25 @@ export interface RateLimits {
   readonly resetsAt: number | null;
 }
 
+export interface ProjectSummary {
+  /** "git:" plus the repository root for a git project, a random id for one made by hand. */
+  readonly id: string;
+  readonly name: string;
+  readonly kind: 'git' | 'manual';
+  /** The repository root of a git project, null for one made by hand. */
+  readonly folder: string | null;
+}
+
+/** The project a session belongs to, once Overlord has looked at its folder. */
+export interface SessionProject {
+  /** Null while the session is in no project. */
+  readonly projectId: string | null;
+  /** The folder a move applies to: the repository root, or else the session's folder. */
+  readonly folder: string;
+  /** The user said never to ask about this folder. */
+  readonly ignored: boolean;
+}
+
 export interface FleetState {
   readonly sessions: readonly SessionSummary[];
   readonly agents: readonly AgentNode[];
@@ -72,6 +91,10 @@ export interface FleetState {
   readonly activeVersion: number;
   /** Where each session with a live process runs, by session id. */
   readonly places: Readonly<Record<string, SessionPlace>>;
+  /** Every project made by hand and every git project a session is in. */
+  readonly projects: readonly ProjectSummary[];
+  /** Each session's project by session id. Sessions whose folder is still being checked are left out. */
+  readonly sessionProjects: Readonly<Record<string, SessionProject>>;
   readonly rateLimits: RateLimits;
   /** Spend per hour over the last hour, all sessions. */
   readonly spendPerHourUsd: number;
@@ -417,7 +440,11 @@ export type WebviewAction =
   | { readonly type: 'newSession' }
   | { readonly type: 'landWorktree'; readonly id: string }
   | { readonly type: 'discardWorktree'; readonly id: string }
-  | { readonly type: 'openWorktree'; readonly id: string };
+  | { readonly type: 'openWorktree'; readonly id: string }
+  | { readonly type: 'moveSession'; readonly sessionId: string }
+  | { readonly type: 'newProject'; readonly sessionId: string }
+  | { readonly type: 'renameProject'; readonly projectId: string }
+  | { readonly type: 'deleteProject'; readonly projectId: string };
 
 export type WebviewToHost =
   | { readonly type: 'ready'; readonly view: ViewId }

@@ -35,6 +35,15 @@ export function FleetHeader(props: {
     (agent) => agent.id !== agent.sessionId && agent.state === 'running',
   ).length;
   const waiting = count('waiting');
+  const unplaced = state.sessions.filter((session) => {
+    const project = state.sessionProjects[session.id];
+    return (
+      project?.projectId === null &&
+      !project.ignored &&
+      session.state !== 'done' &&
+      session.state !== 'failed'
+    );
+  }).length;
   const { fiveHourPct, sevenDayPct, resetsAt } = state.rateLimits;
   return (
     <header className="fleet-header">
@@ -44,6 +53,11 @@ export function FleetHeader(props: {
         <Stat label="Waiting" tone={waiting > 0 ? 'warning' : 'neutral'}>
           {waiting.toString()}
         </Stat>
+        {unplaced === 0 ? null : (
+          <Stat label="No project" tone="warning">
+            {unplaced.toString()}
+          </Stat>
+        )}
         <Stat label="Subagents">{`${subagents.toString()} running`}</Stat>
         <Stat label="Spend per hour">{formatCost(state.spendPerHourUsd)}</Stat>
         <Stat label="5 hour limit">

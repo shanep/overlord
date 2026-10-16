@@ -4,13 +4,18 @@ import type { ReactElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { FleetState } from '../../../src/shared/protocol.js';
-import { fleetState, NOW, permission, session, usage } from '../../test/fixtures.js';
+import { fleetState, NOW, permission, projectFleet, session, usage } from '../../test/fixtures.js';
 import { expectAccessible, FakeApi } from '../../test/render.js';
 import { NowProvider } from '../clock.js';
 import { VsCodeProvider } from '../vscode-context.js';
 
 import { alwaysAllowScope } from './fleet-header.js';
 import { FleetView } from './fleet-view.js';
+
+/** Most tests look at the plain session tree, with grouping off. */
+function flatApi(): FakeApi {
+  return new FakeApi({ 'fleet.groupByProject': false });
+}
 
 function ui(state: FleetState, api: FakeApi): ReactElement {
   return (
@@ -26,7 +31,7 @@ function ui(state: FleetState, api: FakeApi): ReactElement {
 
 function setup(
   state: FleetState = fleetState,
-  api: FakeApi = new FakeApi(),
+  api: FakeApi = flatApi(),
 ): ReturnType<typeof render> & { api: FakeApi } {
   return { ...render(ui(state, api)), api };
 }
@@ -243,7 +248,7 @@ describe('FleetView', () => {
 
   it('follows the focused terminal without taking focus', () => {
     const scroll = vi.spyOn(Element.prototype, 'scrollIntoView');
-    const api = new FakeApi();
+    const api = flatApi();
     const { rerender } = render(ui({ ...fleetState, activeSessionId: 's1' }, api));
     expect(rowFor('Refactor parser').getAttribute('aria-selected')).toBe('true');
     expect(scroll).toHaveBeenCalledTimes(1);
@@ -263,7 +268,7 @@ describe('FleetView', () => {
 
   it('highlights the same session again when the window comes back to the front', async () => {
     const user = userEvent.setup();
-    const api = new FakeApi();
+    const api = flatApi();
     const { rerender } = render(
       ui({ ...fleetState, activeSessionId: 's1', activeVersion: 1 }, api),
     );
@@ -296,13 +301,13 @@ describe('FleetView', () => {
     expect(screen.getByRole('columnheader', { name: 'Cost' }).getAttribute('aria-sort')).toBe(
       'descending',
     );
-    expect(api.saved).toStrictEqual({ 'fleet.sort': { column: 'cost', descending: true } });
+    expect(api.saved).toMatchObject({ 'fleet.sort': { column: 'cost', descending: true } });
     await user.click(screen.getByRole('button', { name: 'Cost' }));
     expect(bodyRowTitles()[0]).toBe('Old run');
     expect(screen.getByRole('columnheader', { name: 'Cost' }).getAttribute('aria-sort')).toBe(
       'none',
     );
-    expect(api.saved).toStrictEqual({ 'fleet.sort': { column: 'started', descending: false } });
+    expect(api.saved).toMatchObject({ 'fleet.sort': { column: 'started', descending: false } });
   });
 
   it('filters by text and hides done rows', async () => {
@@ -325,6 +330,7 @@ describe('FleetView', () => {
       'fleet.filter': 'r',
       'fleet.hideDone': false,
       'fleet.collapsed': ['s:s1'],
+      'fleet.groupByProject': false,
     });
     setup(fleetState, api);
     expect(screen.getByRole('searchbox', { name: 'Filter' })).toHaveProperty('value', 'r');
@@ -333,7 +339,7 @@ describe('FleetView', () => {
 
   it('moves the selection to the first row when the selected row goes away', async () => {
     const user = userEvent.setup();
-    const api = new FakeApi();
+    const api = flatApi();
     const { rerender } = setup(fleetState, api);
     await user.click(rowFor('Old run'));
     expect(rowFor('Old run').getAttribute('aria-selected')).toBe('true');
@@ -342,7 +348,7 @@ describe('FleetView', () => {
   });
 
   it('draws a token sparkline once a row has three samples', () => {
-    const api = new FakeApi();
+    const api = flatApi();
     const { rerender } = setup(grow(100), api);
     expect(screen.queryByRole('img', { name: 'Token trend for Grow' })).toBeNull();
     act(() => {
@@ -355,5 +361,92 @@ describe('FleetView', () => {
     expect(
       screen.getByRole('img', { name: 'Token trend for Grow' }).querySelector('svg'),
     ).not.toBeNull();
+  });
+});
+
+describe('FleetView grouped by project', () => {
+  it('groups sessions under their projects, flags the unplaced one and passes axe', async () => {
+    const { container } = setup(projectFleet, new FakeApi());
+    expect(bodyRowTitles()).toStrictEqual([
+      'Unassigned',
+      'Write docs',
+      'Course',
+      'Old run',
+      'web',
+      'Refactor parser',
+      'Explore',
+      'general-purpose',
+    ]);
+    expect(rowFor('Unassigned').dataset['needsProject']).toBe('true');
+    expect(rowFor('Course').dataset['needsProject']).toBeUndefined();
+    expect(rowFor('Refactor parser').getAttribute('aria-level')).toBe('2');
+    expect(within(rowFor('Write docs')).getByText('No project')).toBeDefined();
+    expect(screen.getByText('No project', { selector: 'dt' })).toBeDefined();
+    await expectAccessible(container);
+  });
+
+  it('leaves the header quiet when every live session has a project', () => {
+    setup(
+      {
+        ...projectFleet,
+        sessionProjects: { s2: { projectId: null, folder: '/n', ignored: true } },
+      },
+      new FakeApi(),
+    );
+    expect(screen.queryByText('No project', { selector: 'dt' })).toBeNull();
+  });
+
+  it('folds a project row on click and with Enter', async () => {
+    const user = userEvent.setup();
+    const { api } = setup(projectFleet, new FakeApi());
+    await user.click(rowFor('Course'));
+    expect(bodyRowTitles()).not.toContain('Old run');
+    await user.keyboard('{Enter}');
+    expect(bodyRowTitles()).toContain('Old run');
+    await user.click(rowFor('Course'));
+    expect(bodyRowTitles()).not.toContain('Old run');
+    expect(api.actions()).toStrictEqual([]);
+  });
+
+  it('posts project actions from row buttons and the m key', async () => {
+    const user = userEvent.setup();
+    const { api } = setup(projectFleet, new FakeApi());
+    expect(within(rowFor('web')).queryAllByRole('button', { name: /project/u })).toStrictEqual([]);
+    await user.click(screen.getByRole('button', { name: 'Rename project Course' }));
+    await user.click(screen.getByRole('button', { name: 'Delete project Course' }));
+    await user.click(screen.getByRole('button', { name: 'Move to project Write docs' }));
+    await user.click(rowFor('Write docs'));
+    await user.keyboard('m');
+    expect(api.actions()).toStrictEqual([
+      { type: 'renameProject', projectId: 'm1' },
+      { type: 'deleteProject', projectId: 'm1' },
+      { type: 'moveSession', sessionId: 's2' },
+      { type: 'openSession', sessionId: 's2' },
+      { type: 'moveSession', sessionId: 's2' },
+    ]);
+  });
+
+  it('turns grouping off and saves the choice', async () => {
+    const user = userEvent.setup();
+    const { api } = setup(projectFleet, new FakeApi());
+    await user.click(screen.getByRole('checkbox', { name: 'Group by project' }));
+    expect(bodyRowTitles()[0]).toBe('Old run');
+    expect(api.saved).toMatchObject({ 'fleet.groupByProject': false });
+  });
+
+  it('opens the folded project of the focused terminal session once', async () => {
+    const user = userEvent.setup();
+    const api = new FakeApi({ 'fleet.collapsed': ['p:git:/r/web'] });
+    const { rerender } = render(ui(projectFleet, api));
+    expect(bodyRowTitles()).not.toContain('Refactor parser');
+    rerender(ui({ ...projectFleet, activeSessionId: 's1', activeVersion: 1 }, api));
+    expect(rowFor('Refactor parser').getAttribute('aria-selected')).toBe('true');
+    // Folding it again sticks, since the reveal happens once per focus.
+    await user.click(rowFor('web'));
+    expect(bodyRowTitles()).not.toContain('Refactor parser');
+    rerender(
+      ui({ ...projectFleet, activeSessionId: 's1', activeVersion: 1, spendPerHourUsd: 9 }, api),
+    );
+    expect(bodyRowTitles()).not.toContain('Refactor parser');
   });
 });

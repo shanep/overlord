@@ -150,6 +150,8 @@ export function createVscodeHostPort(options: VscodeHostPortOptions): HostPort {
     showError: (message: string): void => {
       void vscode.window.showErrorMessage(message);
     },
+    ask: async (message: string, actions: readonly string[]): Promise<string | null> =>
+      (await vscode.window.showWarningMessage(message, ...actions)) ?? null,
     confirm: async (message: string, actionLabel: string): Promise<boolean> =>
       (await vscode.window.showWarningMessage(message, { modal: true }, actionLabel)) ===
       actionLabel,

@@ -149,6 +149,23 @@ export const ROW_BUTTONS: readonly RowButton[] = [
       'Opens the agent view: the live feed of thinking and tool calls, a tool timeline and charts.',
   },
   {
+    icon: 'move',
+    name: 'Move to project',
+    meaning:
+      'Puts every session in this folder in another project or a new one. For a folder with no git repository, it can also tell Overlord never to ask about it. The m key does the same.',
+  },
+  {
+    icon: 'rename',
+    name: 'Rename project',
+    meaning: 'On the row of a project you made, gives it a new name.',
+  },
+  {
+    icon: 'delete',
+    name: 'Delete project',
+    meaning:
+      'On the row of a project you made, deletes it after asking. Its sessions go back to their repository or to Unassigned.',
+  },
+  {
     icon: 'interrupt',
     name: 'Interrupt',
     meaning: 'Stops the current turn. The session stays open for your next prompt. Asks first.',
@@ -245,6 +262,11 @@ export const WORKFLOW: readonly WorkflowStep[] = [
     title: 'Watch the Fleet',
     detail:
       'Every session shows up here with its subagents under it. Waiting sessions sort to the top, then running, then idle. The status bar shows the same counts when the sidebar is closed.',
+  },
+  {
+    title: 'Group by project',
+    detail:
+      'Sessions sit under a row for their project, with its totals. A git repository is a project on its own, and its worktrees count as the repository. A session in any other folder lands in Unassigned with a No project badge, and the window running it asks once where it belongs: add it to a project, make a new one, or never ask about that folder. Click a project row or press Enter on it to fold it. Clear Group by project for the plain list.',
   },
   {
     title: 'Answer permissions',

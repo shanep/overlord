@@ -1,5 +1,5 @@
-// Pure logic for the fleet tree: build session and subagent rows, sort,
-// filter and flatten them for display.
+// Pure logic for the fleet tree: build project, session and subagent rows,
+// sort, filter and flatten them for display.
 
 import type {
   AgentNode,
@@ -8,7 +8,7 @@ import type {
   SessionSummary,
   Surface,
 } from '../../../src/shared/model.js';
-import type { FleetState } from '../../../src/shared/protocol.js';
+import type { FleetState, ProjectSummary, SessionProject } from '../../../src/shared/protocol.js';
 import type { SortState } from '../components/data-table.js';
 import { isBoolean, isRecord, isString } from '../guards.js';
 import { PLACE_INFO, STATE_RANK, SURFACE_LABELS } from '../labels.js';
@@ -16,7 +16,7 @@ import { cacheHitRatio, callsPerMinute, promptTokens } from '../metrics.js';
 
 export interface FleetRow {
   readonly key: string;
-  readonly kind: 'session' | 'agent';
+  readonly kind: 'project' | 'session' | 'agent';
   readonly sessionId: string;
   readonly agentId: string;
   readonly sessionTitle: string;
@@ -39,6 +39,12 @@ export interface FleetRow {
   readonly cacheHit: number | null;
   readonly contextFill: number | null;
   readonly costUsd: number | null;
+  /** The row's project, or null in Unassigned. */
+  readonly projectId: string | null;
+  /** A session in no project that should get one, or the Unassigned row holding one. */
+  readonly needsProject: boolean;
+  /** On the row of a project made by hand, its id, since only those can be renamed and deleted. */
+  readonly manualProjectId: string | null;
 }
 
 export interface FleetNode {
@@ -72,6 +78,7 @@ function sessionRow(
   session: SessionSummary,
   agents: readonly AgentNode[],
   place: SessionPlace | null,
+  project: SessionProject | undefined,
 ): FleetRow {
   const main = agents.find((agent) => agent.id === session.id);
   const busy = agents.find((agent) => agent.state === 'running' && agent.currentTool !== null);
@@ -99,6 +106,9 @@ function sessionRow(
     cacheHit: cacheHitRatio(session.usage),
     contextFill: session.contextFill,
     costUsd: session.costUsd,
+    projectId: project?.projectId ?? null,
+    needsProject: project?.projectId === null && !project.ignored,
+    manualProjectId: null,
   };
 }
 
@@ -126,6 +136,9 @@ function agentRow(agent: AgentNode, session: FleetRow): FleetRow {
     cacheHit: cacheHitRatio(agent.usage),
     contextFill: null,
     costUsd: null,
+    projectId: session.projectId,
+    needsProject: false,
+    manualProjectId: null,
   };
 }
 
@@ -152,8 +165,9 @@ function sessionNode(
   session: SessionSummary,
   agents: readonly AgentNode[],
   place: SessionPlace | null,
+  project: SessionProject | undefined,
 ): FleetNode {
-  const row = sessionRow(session, agents, place);
+  const row = sessionRow(session, agents, place, project);
   const subagents = agents.filter((agent) => agent.id !== session.id);
   const ids = new Set(subagents.map((agent) => agent.id));
   const roots = subagents.filter(
@@ -166,15 +180,104 @@ function sessionNode(
   return { row, children: [...children, ...agentNodes(stranded, context)] };
 }
 
-/** One node per session, with its subagents nested by parent agent id. */
-export function buildFleetTree(state: FleetState): FleetNode[] {
-  return state.sessions.map((session) =>
+/** The key of a project's row. Unassigned, with no project, is "p:". */
+export function projectKey(projectId: string | null): string {
+  return `p:${projectId ?? ''}`;
+}
+
+const UNASSIGNED_TITLE = 'Unassigned';
+
+function total(values: readonly number[]): number {
+  let result = 0;
+  for (const value of values) {
+    result += value;
+  }
+  return result;
+}
+
+/** The most urgent state among rows, done when there are none. */
+function mostUrgent(rows: readonly FleetRow[]): SessionState {
+  let best: SessionState = 'done';
+  for (const row of rows) {
+    if (STATE_RANK[row.state] < STATE_RANK[best]) {
+      best = row.state;
+    }
+  }
+  return best;
+}
+
+function plural(count: number, noun: string): string {
+  return `${count.toString()} ${noun}${count === 1 ? '' : 's'}`;
+}
+
+/** A project's row: the most urgent state of its sessions and their totals. */
+function projectRow(project: ProjectSummary | null, nodes: readonly FleetNode[]): FleetRow {
+  const rows = nodes.map((node) => node.row);
+  const title = project?.name ?? UNASSIGNED_TITLE;
+  const costs = rows.flatMap((row) => (row.costUsd === null ? [] : [row.costUsd]));
+  return {
+    key: projectKey(project?.id ?? null),
+    kind: 'project',
+    sessionId: '',
+    agentId: '',
+    sessionTitle: title,
+    sessionActive: false,
+    state: mostUrgent(rows),
+    surface: 'cli',
+    place: null,
+    title,
+    detail: project?.folder ?? plural(rows.length, 'session'),
+    model: null,
+    effort: null,
+    startedAt: Math.min(...rows.map((row) => row.startedAt)),
+    endedAt: null,
+    currentTool: null,
+    toolCalls: total(rows.map((row) => row.toolCalls)),
+    tokensIn: total(rows.map((row) => row.tokensIn)),
+    tokensOut: total(rows.map((row) => row.tokensOut)),
+    cacheHit: null,
+    contextFill: null,
+    costUsd: costs.length === 0 ? null : total(costs),
+    projectId: project?.id ?? null,
+    needsProject: rows.some((row) => row.needsProject),
+    manualProjectId: project?.kind === 'manual' ? project.id : null,
+  };
+}
+
+/**
+ * Sessions under one row per project, Unassigned first and the rest by name.
+ * A session whose project is not in the list waits in Unassigned.
+ */
+function groupByProject(sessions: readonly FleetNode[], state: FleetState): FleetNode[] {
+  const byId = new Map(state.projects.map((project) => [project.id, project]));
+  const groups = new Map<ProjectSummary | null, FleetNode[]>();
+  for (const node of sessions) {
+    const project = byId.get(node.row.projectId ?? '') ?? null;
+    groups.set(project, [...(groups.get(project) ?? []), node]);
+  }
+  return [...groups]
+    .map(([project, children]) => ({ row: projectRow(project, children), children }))
+    .toSorted(
+      (left, right) =>
+        Number(left.row.projectId !== null) - Number(right.row.projectId !== null) ||
+        left.row.title.localeCompare(right.row.title),
+    );
+}
+
+/**
+ * One node per session, with its subagents nested by parent agent id. Grouped,
+ * the sessions sit under a row for their project.
+ */
+export function buildFleetTree(state: FleetState, grouped = false): FleetNode[] {
+  const sessions = state.sessions.map((session) =>
     sessionNode(
       session,
       state.agents.filter((agent) => agent.sessionId === session.id),
       state.places[session.id] ?? null,
+      state.sessionProjects[session.id],
     ),
   );
+  return grouped ? groupByProject(sessions, state) : sessions;
 }
 
 function placeLabel(row: FleetRow): string {
@@ -219,7 +322,10 @@ function compareRows(a: FleetRow, b: FleetRow): number {
   return a.startedAt - b.startedAt || a.key.localeCompare(b.key);
 }
 
-/** Sort siblings at every level. An unknown column leaves the order alone. */
+/**
+ * Sort siblings at every level. Project rows keep their order, so Unassigned
+ * stays on top. An unknown column leaves the order alone.
+ */
 export function sortTree(
   nodes: readonly FleetNode[],
   sort: SortState,
@@ -230,14 +336,19 @@ export function sortTree(
     return nodes;
   }
   const direction = sort.descending ? -1 : 1;
-  const sortLevel = (level: readonly FleetNode[]): FleetNode[] =>
-    level
-      .map((node) => ({ row: node.row, children: sortLevel(node.children) }))
-      .toSorted(
-        (a, b) =>
-          direction * compareValues(sorter(a.row, now), sorter(b.row, now)) ||
-          compareRows(a.row, b.row),
-      );
+  const sortLevel = (level: readonly FleetNode[]): FleetNode[] => {
+    const sortedChildren = level.map((node) => ({
+      row: node.row,
+      children: sortLevel(node.children),
+    }));
+    return sortedChildren.every((node) => node.row.kind === 'project')
+      ? sortedChildren
+      : sortedChildren.toSorted(
+          (a, b) =>
+            direction * compareValues(sorter(a.row, now), sorter(b.row, now)) ||
+            compareRows(a.row, b.row),
+        );
+  };
   return sortLevel(nodes);
 }
 
@@ -246,8 +357,11 @@ export interface FleetFilter {
   readonly hideDone: boolean;
 }
 
-/** Case insensitive match on the text a person would type to find a row. */
+/** Case insensitive match on the text a person would type to find a row. A project matches on its name and folder. */
 export function rowMatches(row: FleetRow, needle: string): boolean {
+  if (row.kind === 'project') {
+    return `${row.title} ${row.detail}`.toLowerCase().includes(needle);
+  }
   const haystack = [
     row.title,
     row.detail,
@@ -310,6 +424,18 @@ export function flattenTree(
   const out: VisibleRow[] = [];
   flattenLevel(nodes, 0, null, { collapsed, out });
   return out;
+}
+
+/** The collapsed project row hiding the row with this key, or null when it shows. */
+export function collapsedGroupOf(
+  nodes: readonly FleetNode[],
+  key: string,
+  collapsed: ReadonlySet<string>,
+): string | null {
+  const group = nodes.find(
+    (node) => node.row.kind === 'project' && node.children.some((child) => child.row.key === key),
+  );
+  return group !== undefined && collapsed.has(group.row.key) ? group.row.key : null;
 }
 
 /** Rate limits may arrive as 0 to 1 or 0 to 100. Read anything over 1 as a percent. */

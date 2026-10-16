@@ -234,5 +234,29 @@ describe('registry with git', { timeout: 30_000 }, () => {
       await reg.load();
       expect(reg.projectFor('/anywhere')).toBe('/anywhere');
     });
+
+    it('finds the main checkout of a folder, null outside a repository, and passes other failures on', async () => {
+      const reg = registry();
+      await mkdir(path.join(world.repo, 'sub'), { recursive: true });
+      expect(await reg.repoRoot(path.join(world.repo, 'sub'))).toBe(world.repo);
+      expect(await reg.repoRoot(dir)).toBeNull();
+      const broken = new WorktreeRegistry({
+        git: new WorktreeGit(async () => {
+          await Promise.resolve();
+          throw new Error('spawn failed');
+        }, world.root),
+        exec: testExec,
+        dir,
+        root: world.root,
+        pid: ME,
+        isAlive: (): boolean => false,
+        clock: (): number => now,
+        liveCwds: async (): Promise<readonly string[]> => {
+          await Promise.resolve();
+          return [];
+        },
+      });
+      await expect(broken.repoRoot(world.repo)).rejects.toThrow('spawn failed');
+    });
   });
 });

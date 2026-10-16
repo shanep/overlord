@@ -8,7 +8,8 @@ export type FleetCommand =
   | { readonly type: 'expand'; readonly key: string }
   | { readonly type: 'collapse'; readonly key: string }
   | { readonly type: 'open'; readonly row: FleetRow }
-  | { readonly type: 'interrupt'; readonly row: FleetRow };
+  | { readonly type: 'interrupt'; readonly row: FleetRow }
+  | { readonly type: 'move'; readonly row: FleetRow };
 
 interface KeyContext {
   readonly rows: readonly VisibleRow[];
@@ -40,8 +41,15 @@ const HANDLERS: Readonly<Record<string, KeyHandler>> = {
     }
     return current.parentKey === null ? null : { type: 'select', key: current.parentKey };
   },
-  Enter: ({ current }) => ({ type: 'open', row: current.row }),
+  // A project row has nothing to open, so Enter folds it.
+  Enter: ({ current }) => {
+    if (current.row.kind !== 'project') {
+      return { type: 'open', row: current.row };
+    }
+    return { type: current.expanded ? 'collapse' : 'expand', key: current.row.key };
+  },
   k: ({ current }) => (current.row.sessionActive ? { type: 'interrupt', row: current.row } : null),
+  m: ({ current }) => (current.row.kind === 'session' ? { type: 'move', row: current.row } : null),
 };
 
 /** The command for `key` on the selected row, or null when the key does nothing. */

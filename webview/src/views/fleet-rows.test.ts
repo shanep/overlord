@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
 import type { FleetState } from '../../../src/shared/protocol.js';
-import { agent, fleetState, NOW, session } from '../../test/fixtures.js';
+import { agent, fleetState, NOW, projectFleet, session } from '../../test/fixtures.js';
 
 import type { FleetNode, FleetRow } from './fleet-rows.js';
 import {
   buildFleetTree,
+  collapsedGroupOf,
   DEFAULT_SORT,
   elapsedMs,
   filterTree,
@@ -14,6 +15,7 @@ import {
   nextFleetSort,
   normalizeRatio,
   rowCallsPerMinute,
+  projectKey,
   rowMatches,
   sortTree,
 } from './fleet-rows.js';
@@ -34,9 +36,103 @@ function firstRow(nodes: readonly FleetNode[]): FleetRow {
   return node.row;
 }
 
+function sessionRows(state: FleetState): FleetRow[] {
+  return buildFleetTree(state).map((node) => node.row);
+}
+
 function only(state: Partial<FleetState>): FleetState {
   return { ...fleetState, ...state };
 }
+
+describe('buildFleetTree grouped by project', () => {
+  it('puts Unassigned first, then projects with sessions by name', () => {
+    const tree = buildFleetTree(projectFleet, true);
+    expect(keys(tree)).toStrictEqual(['p:', 'p:m1', 'p:git:/r/web']);
+    expect(tree.map((node) => keys(node.children))).toStrictEqual([['s:s2'], ['s:s3'], ['s:s1']]);
+    expect(projectKey(null)).toBe('p:');
+  });
+
+  it('marks sessions that need a project, and not ignored or unchecked ones', () => {
+    expect(sessionRows(projectFleet).map((row) => [row.projectId, row.needsProject])).toStrictEqual(
+      [
+        ['git:/r/web', false],
+        [null, true],
+        ['m1', false],
+      ],
+    );
+    const ignored = only({
+      sessionProjects: { s2: { projectId: null, folder: '/notes', ignored: true } },
+    });
+    expect(sessionRows(ignored).map((row) => row.needsProject)).toStrictEqual([
+      false,
+      false,
+      false,
+    ]);
+  });
+
+  it('sums each project and takes its most urgent state', () => {
+    const [unassigned, course, web] = buildFleetTree(projectFleet, true).map((node) => node.row);
+    expect(unassigned).toMatchObject({
+      kind: 'project',
+      title: 'Unassigned',
+      detail: '1 session',
+      projectId: null,
+      needsProject: true,
+      manualProjectId: null,
+      sessionActive: false,
+    });
+    expect(course).toMatchObject({ title: 'Course', state: 'done', manualProjectId: 'm1' });
+    expect(web).toMatchObject({
+      title: 'web',
+      detail: '/r/web',
+      state: 'running',
+      tokensIn: 98_000,
+      tokensOut: 3400,
+      toolCalls: 46,
+      costUsd: 1.25,
+      cacheHit: null,
+    });
+    const both = only({
+      ...projectFleet,
+      sessionProjects: {},
+      sessions: [session({ id: 'x', costUsd: null }), session({ id: 'y', costUsd: null })],
+      agents: [],
+    });
+    expect(buildFleetTree(both, true).map((node) => node.row)).toMatchObject([
+      { key: 'p:', detail: '2 sessions', costUsd: null, needsProject: false },
+    ]);
+  });
+
+  it('puts a session whose project is gone in Unassigned', () => {
+    const state = only({
+      ...projectFleet,
+      sessionProjects: { s1: { projectId: 'gone', folder: '/x', ignored: false } },
+    });
+    expect(keys(buildFleetTree(state, true))).toStrictEqual(['p:']);
+  });
+
+  it('keeps project order when sorting and sorts the sessions inside', () => {
+    const tree = buildFleetTree(projectFleet, true);
+    const sortedTree = sortTree(tree, { column: 'title', descending: true }, NOW);
+    expect(keys(sortedTree)).toStrictEqual(['p:', 'p:m1', 'p:git:/r/web']);
+  });
+
+  it('matches a project on its name and folder only', () => {
+    const tree = buildFleetTree(projectFleet, true);
+    const web = firstRow(tree.slice(2));
+    expect(rowMatches(web, '/r/web')).toBe(true);
+    expect(rowMatches(web, 'cli')).toBe(false);
+    expect(rowMatches(firstRow(tree), 'unassigned')).toBe(true);
+  });
+
+  it('finds the collapsed project row hiding a session', () => {
+    const tree = buildFleetTree(projectFleet, true);
+    expect(collapsedGroupOf(tree, 's:s2', new Set(['p:']))).toBe('p:');
+    expect(collapsedGroupOf(tree, 's:s2', new Set())).toBeNull();
+    expect(collapsedGroupOf(tree, 'p:', new Set(['p:']))).toBeNull();
+    expect(collapsedGroupOf(buildFleetTree(projectFleet), 's:s2', new Set(['s:s2']))).toBeNull();
+  });
+});
 
 describe('buildFleetTree', () => {
   const tree = buildFleetTree(fleetState);
@@ -74,6 +170,9 @@ describe('buildFleetTree', () => {
       cacheHit: 80_000 / 98_000,
       contextFill: 0.82,
       costUsd: 1.25,
+      projectId: null,
+      needsProject: false,
+      manualProjectId: null,
     });
   });
 
