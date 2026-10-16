@@ -188,6 +188,12 @@
         "title": "Agent Messages",
         "category": "Overlord",
         "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "overlord.openHelp",
+        "title": "Help",
+        "category": "Overlord",
+        "icon": "$(question)"
       }
     ],
     "viewsContainers": {

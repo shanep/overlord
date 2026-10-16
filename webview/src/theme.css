@@ -725,3 +725,27 @@ details > summary {
 .props-list li {
   margin: 2px 0;
 }
+
+/* ---- Help page ------------------------------------------------------------ */
+
+.help {
+  max-width: 60em;
+}
+
+.help-table {
+  margin-bottom: 12px;
+}
+
+.help-key {
+  width: 12em;
+}
+
+.help-pair {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.help-steps li {
+  margin-bottom: 6px;
+}

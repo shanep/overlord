@@ -14,6 +14,7 @@ import { ConfigView } from './views/config-view.js';
 import { ContextView } from './views/context-view.js';
 import { FleetView } from './views/fleet-view.js';
 import { FrustrationView } from './views/frustration-view.js';
+import { HelpView } from './views/help-view.js';
 import { KnobsView } from './views/knobs-view.js';
 import { LauncherView } from './views/launcher-view.js';
 import { MessagesView } from './views/messages-view.js';
@@ -27,7 +28,46 @@ export function readViewId(element: HTMLElement): ViewId | null {
   return isViewId(view) ? view : null;
 }
 
-export function ViewSwitch(props: { readonly message: HostToWebview }): ReactElement {
+type GlobalView = 'knobs' | 'config' | 'usage' | 'frustration' | 'help';
+type GlobalMessage = Extract<HostToWebview, { readonly view: GlobalView }>;
+type SessionMessage = Exclude<HostToWebview, GlobalMessage>;
+
+const GLOBAL_VIEWS: ReadonlySet<ViewId> = new Set<GlobalView>([
+  'knobs',
+  'config',
+  'usage',
+  'frustration',
+  'help',
+]);
+
+function isGlobalMessage(message: HostToWebview): message is GlobalMessage {
+  return GLOBAL_VIEWS.has(message.view);
+}
+
+/** The views listed under Global in the sidebar. */
+function GlobalViewSwitch(props: { readonly message: GlobalMessage }): ReactElement {
+  const { message } = props;
+  switch (message.view) {
+    case 'knobs': {
+      return <KnobsView state={message.state} />;
+    }
+    case 'config': {
+      return <ConfigView state={message.state} />;
+    }
+    case 'usage': {
+      return <UsageView state={message.state} />;
+    }
+    case 'frustration': {
+      return <FrustrationView state={message.state} />;
+    }
+    case 'help': {
+      return <HelpView />;
+    }
+  }
+}
+
+/** The fleet and the views about particular sessions and agents. */
+function SessionViewSwitch(props: { readonly message: SessionMessage }): ReactElement {
   const { message } = props;
   switch (message.view) {
     case 'fleet': {
@@ -39,23 +79,11 @@ export function ViewSwitch(props: { readonly message: HostToWebview }): ReactEle
     case 'context': {
       return <ContextView state={message.state} />;
     }
-    case 'knobs': {
-      return <KnobsView state={message.state} />;
-    }
     case 'launcher': {
       return <LauncherView state={message.state} />;
     }
     case 'sessions': {
       return <SessionsView state={message.state} />;
-    }
-    case 'config': {
-      return <ConfigView state={message.state} />;
-    }
-    case 'usage': {
-      return <UsageView state={message.state} />;
-    }
-    case 'frustration': {
-      return <FrustrationView state={message.state} />;
     }
     case 'messages': {
       return <MessagesView state={message.state} />;
@@ -64,6 +92,15 @@ export function ViewSwitch(props: { readonly message: HostToWebview }): ReactEle
       return <PropertiesView state={message.state} />;
     }
   }
+}
+
+export function ViewSwitch(props: { readonly message: HostToWebview }): ReactElement {
+  const { message } = props;
+  return isGlobalMessage(message) ? (
+    <GlobalViewSwitch message={message} />
+  ) : (
+    <SessionViewSwitch message={message} />
+  );
 }
 
 export function App(props: { readonly view: ViewId }): ReactElement {

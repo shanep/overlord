@@ -44,6 +44,9 @@ Then open the Overlord icon in the activity bar. Run **Overlord: Set Up Hooks an
 to get live permission requests, memory load events and per-request cost. Both are off until
 you turn them on, since they write to `~/.claude/settings.json`.
 
+**Help** under Global in the sidebar explains every icon and badge and walks through a
+typical workflow.
+
 ## New machine
 
 1. Install the extension.

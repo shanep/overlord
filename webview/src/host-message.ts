@@ -49,6 +49,7 @@ const REQUIRED: Readonly<Record<ViewId, Readonly<Record<string, FieldKind>>>> = 
   frustration: { byDay: 'array', bySession: 'array', topTerms: 'array', recent: 'array' },
   messages: { messages: 'array', routes: 'array', inboundChoices: 'array', rules: 'array' },
   properties: { session: 'nullable-object', agents: 'array', pendingPermissions: 'array' },
+  help: {},
 };
 
 function fieldMatches(value: unknown, kind: FieldKind): boolean {

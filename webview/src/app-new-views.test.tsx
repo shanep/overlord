@@ -1,4 +1,4 @@
-// The frustration and messages views through the app's view switch. Kept
+// The frustration, messages and help views through the app's view switch. Kept
 // apart from app.test.tsx, which another session owns.
 import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
@@ -31,6 +31,7 @@ const views: readonly HostToWebview[] = [
     view: 'messages',
     state: { messages: [], routes: [], inboundPolicy: null, inboundChoices: [], rules: [] },
   },
+  { type: 'state', view: 'help', state: {} },
 ];
 
 describe('ViewSwitch for the newer views', () => {

@@ -32,7 +32,8 @@ export type ViewId =
   | 'usage'
   | 'frustration'
   | 'messages'
-  | 'properties';
+  | 'properties'
+  | 'help';
 
 export const VIEW_IDS: readonly ViewId[] = [
   'fleet',
@@ -46,6 +47,7 @@ export const VIEW_IDS: readonly ViewId[] = [
   'frustration',
   'messages',
   'properties',
+  'help',
 ];
 
 export interface RateLimits {
@@ -302,6 +304,9 @@ export interface MessagesState {
   readonly rules: readonly AutoApproveRule[];
 }
 
+/** The help page is static, so it needs no data from the host. */
+type HelpState = Readonly<Record<string, never>>;
+
 interface ViewStateMap {
   readonly fleet: FleetState;
   readonly agent: AgentDetailState;
@@ -314,6 +319,7 @@ interface ViewStateMap {
   readonly frustration: FrustrationState;
   readonly messages: MessagesState;
   readonly properties: PropertiesState;
+  readonly help: HelpState;
 }
 
 export type HostToWebview = {

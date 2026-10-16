@@ -93,5 +93,8 @@ export function stateFor(rt: Runtime, view: ViewId, params: PanelParams): HostTo
     case 'messages': {
       return { type: 'state', view, state: buildMessages(rt) };
     }
+    case 'help': {
+      return { type: 'state', view, state: {} };
+    }
   }
 }

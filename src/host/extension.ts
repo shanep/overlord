@@ -23,6 +23,7 @@ const GLOBAL_VIEWS: readonly ViewEntry[] = [
   ['overlord.openConfig', 'config', 'Config and Sync', 'repo'],
   ['overlord.openUsage', 'usage', 'Usage', 'graph'],
   ['overlord.openFrustration', 'frustration', 'Frustration', 'flame'],
+  ['overlord.openHelp', 'help', 'Help', 'question'],
 ];
 
 /** Views opened from buttons on the Fleet sidebar's title bar. */

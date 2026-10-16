@@ -33,6 +33,7 @@ const TITLES: Readonly<Record<ViewId, string>> = {
   frustration: 'Overlord: Frustration',
   messages: 'Overlord: Agent Messages',
   properties: 'Overlord: Properties',
+  help: 'Overlord: Help',
 };
 
 function isViewKey(value: string): value is ViewId {
