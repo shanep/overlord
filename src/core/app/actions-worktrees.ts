@@ -1,5 +1,5 @@
-// Worktree actions: start a session in a new worktree, continue one in
-// another folder, and land, discard or reopen a finished one.
+// Worktree actions: continue a session in another folder, and land, discard
+// or reopen a finished worktree.
 
 import { LandConflictError } from '../worktrees/git.js';
 
@@ -7,10 +7,9 @@ import type { ActionHandlers } from './action-types.js';
 import { continueInFolder } from './relocate.js';
 import type { Runtime } from './runtime.js';
 import { plural } from './text.js';
-import { newSession, openWorktree, STARTING } from './worktrees.js';
+import { openWorktree } from './worktrees.js';
 
-type WorktreeActions =
-  'newSession' | 'continueInFolder' | 'landWorktree' | 'discardWorktree' | 'openWorktree';
+type WorktreeActions = 'continueInFolder' | 'landWorktree' | 'discardWorktree' | 'openWorktree';
 
 function summary(rt: Runtime, id: string): { readonly label: string; readonly lost: string } {
   const found = rt.caches.worktrees.value.find((item) => item.id === id);
@@ -25,7 +24,6 @@ function summary(rt: Runtime, id: string): { readonly label: string; readonly lo
 }
 
 export const worktreeActions: ActionHandlers<WorktreeActions> = {
-  newSession: async ({ rt }) => rt.host.withProgress(STARTING, async () => newSession(rt)),
   continueInFolder: async ({ rt }, action) => continueInFolder(rt, action.sessionId),
   landWorktree: async ({ rt }, action) => {
     const { label } = summary(rt, action.id);

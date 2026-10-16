@@ -11,8 +11,9 @@ See [PLAN.md](PLAN.md) for the full design and the decisions behind it.
 ## What it does
 
 - **Claude Code in a tab**: **Overlord: New Claude Code Session** (or the sparkle button in the
-  Overlord sidebar) starts a `claude` session in the background, in its own worktree of your
-  workspace repo (see [Worktrees](#worktrees)), and attaches an editor tab to it. Closing the tab
+  Overlord sidebar) asks which project to start in, with this window's folder first, so Enter
+  starts where it always did. It starts a `claude` session in the background, in its own worktree
+  of that project's repo (see [Worktrees](#worktrees)), and attaches an editor tab to it. Closing the tab
   leaves the session running in the background instead of asking to terminate it, and clicking it in
   the Fleet attaches a new tab. Continue here works the same way. If Claude Code cannot start a
   background session, the tab runs `claude` itself, and with the official Claude Code extension

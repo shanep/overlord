@@ -15,6 +15,7 @@ import {
   testExec,
 } from '../worktrees/test-helpers/git-world.js';
 
+import { HERE_ID } from './actions-open-project.js';
 import {
   makeApp,
   makeEnv,
@@ -65,6 +66,12 @@ async function setup(
   return test;
 }
 
+/** Starts a session with the New Session command, in this window's folder. */
+async function newSession(test: TestApp): Promise<void> {
+  test.env.host.pickAnswers.push(HERE_ID);
+  await test.app.dispatch({ type: 'newSession' }, {});
+}
+
 function lastTerminal(test: TestApp): TestEnv['host']['terminals'][number] {
   const terminal = test.env.host.terminals.at(-1);
   if (terminal === undefined) {
@@ -102,7 +109,7 @@ async function finishedSession(
   test: TestApp,
   edit: (worktree: string) => Promise<unknown>,
 ): Promise<string> {
-  await test.app.dispatch({ type: 'newSession' }, {});
+  await newSession(test);
   const terminal = lastTerminal(test);
   await edit(terminal.cwd);
   await test.app.sessionClosed(terminal.sessionId ?? '');
@@ -135,7 +142,7 @@ describe('worktrees in the app', { timeout: 30_000 }, () => {
         const listed = [{ id: '8c3efb13', sessionId: '8c3efb13-full', kind: 'background' }];
         return { code: 0, stdout: JSON.stringify(listed), stderr: '' };
       });
-      await test.app.dispatch({ type: 'newSession' }, {});
+      await newSession(test);
       const terminal = lastTerminal(test);
       expect(terminal).toMatchObject({ args: ['attach', '8c3efb13'], sessionId: '8c3efb13-full' });
       expect(terminal.cwd.startsWith(worktreeRoot(test.env.paths))).toBe(true);
@@ -166,7 +173,7 @@ describe('worktrees in the app', { timeout: 30_000 }, () => {
         ];
         return { code: 0, stdout: JSON.stringify(listed), stderr: '' };
       });
-      await test.app.dispatch({ type: 'newSession' }, {});
+      await newSession(test);
       const terminal = lastTerminal(test);
       await test.app.sessionClosed('8c3efb13-full');
       expect(calls).toContainEqual(['stop', '8c3efb13']);
@@ -180,7 +187,7 @@ describe('worktrees in the app', { timeout: 30_000 }, () => {
         const stdout = args.includes('--bg') ? 'backgrounded \u00B7 8c3efb13 (idle)\n' : '[]';
         return { code: 0, stdout, stderr: '' };
       });
-      await test.app.dispatch({ type: 'newSession' }, {});
+      await newSession(test);
       expect(test.env.host.terminals).toStrictEqual([]);
       expect(test.env.host.warnings.at(-1)).toContain('did not become ready');
       expect(test.app.runtime.sessionWorktrees.size).toBe(0);
@@ -188,7 +195,7 @@ describe('worktrees in the app', { timeout: 30_000 }, () => {
 
     it('open in their own worktree and go away once closed with nothing left', async () => {
       const test = await setup();
-      await test.app.dispatch({ type: 'newSession' }, {});
+      await newSession(test);
       const terminal = lastTerminal(test);
       expect(terminal).toMatchObject({
         name: 'Claude Code',
@@ -208,19 +215,19 @@ describe('worktrees in the app', { timeout: 30_000 }, () => {
 
     it('open in the folder itself outside git, or in home with no folder', async () => {
       const plain = await setup('plain');
-      await plain.app.dispatch({ type: 'newSession' }, {});
+      await newSession(plain);
       expect(lastTerminal(plain)).toMatchObject({ cwd: plain.env.host.workspace });
       expect(lastTerminal(plain).env).toBeUndefined();
       expect(plain.env.host.warnings).toStrictEqual([]);
       const none = await setup('none');
-      await none.app.dispatch({ type: 'newSession' }, {});
+      await newSession(none);
       expect(lastTerminal(none)).toMatchObject({ cwd: none.env.home });
     });
 
     it('fall back to the folder with a warning when the worktree cannot be made', async () => {
       const test = await setup();
       await writeFile(path.join(test.env.home, '.overlord'), 'in the way');
-      await test.app.dispatch({ type: 'newSession' }, {});
+      await newSession(test);
       expect(lastTerminal(test)).toMatchObject({ cwd: world.repo });
       expect(test.env.host.warnings).toHaveLength(1);
       expect(test.env.host.warnings[0]).toMatch(
@@ -233,7 +240,7 @@ describe('worktrees in the app', { timeout: 30_000 }, () => {
       await commitFile(world.other, SETUP_SCRIPT, 'exit 2\n');
       await git(world.other, 'push', '-q', 'origin', 'main');
       const test = await setup();
-      await test.app.dispatch({ type: 'newSession' }, {});
+      await newSession(test);
       await waitFor(() => test.env.host.warnings.length > 0);
       expect(test.env.host.warnings).toHaveLength(1);
       expect(test.env.host.warnings[0]).toMatch(
@@ -250,7 +257,7 @@ describe('worktrees in the app', { timeout: 30_000 }, () => {
       );
       await git(world.other, 'push', '-q', 'origin', 'main');
       const test = await setup();
-      await test.app.dispatch({ type: 'newSession' }, {});
+      await newSession(test);
       const terminal = lastTerminal(test);
       expect(existsSync(path.join(terminal.cwd, 'set-up.txt'))).toBe(false);
       const closed = test.app.sessionClosed(terminal.sessionId ?? '');
@@ -274,7 +281,7 @@ describe('worktrees in the app', { timeout: 30_000 }, () => {
 
     it('report a release that fails', async () => {
       const test = await setup();
-      await test.app.dispatch({ type: 'newSession' }, {});
+      await newSession(test);
       const errors = captureErrors(test);
       await readOnly(path.join(test.env.storageDir, 'worktrees'));
       await test.app.sessionClosed(lastTerminal(test).sessionId ?? '');
@@ -286,7 +293,7 @@ describe('worktrees in the app', { timeout: 30_000 }, () => {
   describe('live sessions', () => {
     it('keep a released worktree while a Claude process still works in it', async () => {
       const test = await setup();
-      await test.app.dispatch({ type: 'newSession' }, {});
+      await newSession(test);
       const terminal = lastTerminal(test);
       const sessions = test.env.paths.sessionsDir;
       await writeJson(path.join(sessions, '1.json'), {
@@ -476,7 +483,7 @@ describe('worktrees in the app', { timeout: 30_000 }, () => {
 
     it('describe a worktree with nothing in it as losing nothing', async () => {
       const test = await setup();
-      await test.app.dispatch({ type: 'newSession' }, {});
+      await newSession(test);
       const id = lastTerminal(test).sessionId ?? '';
       await summaries(test);
       await test.app.dispatch({ type: 'discardWorktree', id }, {});

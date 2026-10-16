@@ -1,6 +1,7 @@
 // Open a project without a session in it first: pick any project Overlord
 // knows, or a folder, then start a session there, open it in its own
-// window, or add it to this one.
+// window, or add it to this one. The New Session command asks the same way,
+// with this window's folder first.
 
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
@@ -15,11 +16,14 @@ import type { Runtime } from './runtime.js';
 import { fleetFor } from './views/fleet.js';
 import { newSession, STARTING } from './worktrees.js';
 
-type OpenActions = 'openProject' | 'newProjectSession';
+type OpenActions = 'openProject' | 'newProjectSession' | 'newSession';
 
 const BROWSE_ID = 'browse';
 export const PICK_TITLE = 'Open a project';
 export const NO_FOLDER = 'no folder yet';
+export const SESSION_TITLE = 'Start a Claude Code session in';
+export const HERE_ID = 'here';
+const BROWSE_ITEM: PickItem = { id: BROWSE_ID, label: BROWSE_LABEL, description: '' };
 
 type Way = 'session' | 'window' | 'here';
 
@@ -98,21 +102,46 @@ async function fromFolder(rt: Runtime, folder: string): Promise<Target | null> {
   return { name, folder };
 }
 
-async function pickTarget(rt: Runtime): Promise<Target | null> {
-  const items = [
-    ...(await projectItems(rt)),
-    { id: BROWSE_ID, label: BROWSE_LABEL, description: '' },
-  ];
-  const picked = await rt.host.quickPick(items, PICK_TITLE);
+/** The project or folder picked from a list that ends with Browse. */
+async function targetOf(rt: Runtime, picked: string | null, title: string): Promise<Target | null> {
   if (picked === BROWSE_ID) {
-    const folder = await rt.host.pickFolder(PICK_TITLE);
+    const folder = await rt.host.pickFolder(title);
     return folder === null ? null : fromFolder(rt, folder);
   }
   const project = fleetFor(rt).projects.find((item) => item.id === picked);
   return project === undefined ? null : known(rt, project);
 }
 
-async function startIn(rt: Runtime, folder: string): Promise<void> {
+async function pickTarget(rt: Runtime): Promise<Target | null> {
+  const picked = await rt.host.quickPick([...(await projectItems(rt)), BROWSE_ITEM], PICK_TITLE);
+  return targetOf(rt, picked, PICK_TITLE);
+}
+
+/** This window's folder, or home in a window with none, where a session started before it asked. */
+function hereItem(rt: Runtime, here: string | null): PickItem {
+  return here === null
+    ? { id: HERE_ID, label: 'Home folder', description: rt.paths.home }
+    : { id: HERE_ID, label: path.basename(here), description: `${here} (this window)` };
+}
+
+/** Asks where a new session should start, with this window's folder first. */
+async function pickSessionFolder(rt: Runtime): Promise<string | null | undefined> {
+  const here = rt.host.workspaceFolder();
+  const root = here === null ? null : (rt.projects.rootOf(here) ?? here);
+  const projects = await projectItems(rt);
+  const others = projects.filter((item) => item.description !== root);
+  const picked = await rt.host.quickPick(
+    [hereItem(rt, here), ...others, BROWSE_ITEM],
+    SESSION_TITLE,
+  );
+  if (picked === HERE_ID) {
+    return here;
+  }
+  const target = await targetOf(rt, picked, SESSION_TITLE);
+  return target?.folder;
+}
+
+async function startIn(rt: Runtime, folder: string | null): Promise<void> {
   await rt.host.withProgress(STARTING, async () => newSession(rt, folder));
 }
 
@@ -135,6 +164,12 @@ export const openProjectActions: ActionHandlers<OpenActions> = {
     const way = await rt.host.quickPick(WAYS, `Open ${target.name}`);
     if (isWay(way)) {
       await OPENERS[way](rt, target.folder);
+    }
+  },
+  newSession: async ({ rt }) => {
+    const folder = await pickSessionFolder(rt);
+    if (folder !== undefined) {
+      await startIn(rt, folder);
     }
   },
   newProjectSession: async ({ rt }, action) => {

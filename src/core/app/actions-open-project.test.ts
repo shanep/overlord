@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { SessionSummary } from '../../shared/model.js';
 import type { ExecResult } from '../sync/exec.js';
 
-import { NO_FOLDER, PICK_TITLE, WAYS } from './actions-open-project.js';
+import { HERE_ID, NO_FOLDER, PICK_TITLE, SESSION_TITLE, WAYS } from './actions-open-project.js';
 import { BROWSE_LABEL } from './actions-projects.js';
 import { readProjects, storagePath } from './storage.js';
 import type { TestApp, TestEnv } from './test-helpers/fixtures.js';
@@ -218,5 +218,53 @@ describe('newProjectSession', () => {
     await test.app.dispatch({ type: 'newProjectSession', projectId: `git:${repo}` }, {});
     expect(test.env.host.progress).toStrictEqual([STARTING]);
     expect(test.env.host.terminals.at(-1)).toMatchObject({ cwd: repo });
+  });
+});
+
+describe('newSession', () => {
+  it('offers this window first, then the other projects, then any folder', async () => {
+    const { test, repo } = await world(inRepo, inNotes);
+    const id = await course(test);
+    test.env.host.workspace = path.join(repo, 'src');
+    await test.app.dispatch({ type: 'newSession' }, {});
+    expect(test.env.host.picks.at(-1)).toStrictEqual({
+      placeholder: SESSION_TITLE,
+      items: [
+        { id: HERE_ID, label: 'src', description: `${path.join(repo, 'src')} (this window)` },
+        { id, label: 'Course', description: NO_FOLDER },
+        { id: 'browse', label: BROWSE_LABEL, description: '' },
+      ],
+    });
+    expect(test.env.host.terminals).toStrictEqual([]);
+  });
+
+  it('starts in the project picked, or in this window, under a progress notification', async () => {
+    const { test, repo, notes } = await world(inRepo);
+    test.env.host.workspace = notes;
+    test.env.host.pickAnswers.push(`git:${repo}`, HERE_ID);
+    await test.app.dispatch({ type: 'newSession' }, {});
+    expect(test.env.host.terminals.at(-1)).toMatchObject({ cwd: repo });
+    await test.app.dispatch({ type: 'newSession' }, {});
+    expect(test.env.host.terminals.at(-1)).toMatchObject({ cwd: notes });
+    expect(test.env.host.progress).toStrictEqual([STARTING, STARTING]);
+  });
+
+  it('starts in a folder from disk, or in home in a window with none', async () => {
+    const { test, notes } = await world();
+    test.env.host.inputAnswers.push('Notes');
+    test.env.host.pickAnswers.push('browse');
+    test.env.host.folderAnswers.push(notes);
+    await test.app.dispatch({ type: 'newSession' }, {});
+    expect(test.env.host.folderPicks).toStrictEqual([SESSION_TITLE]);
+    expect(test.env.host.terminals.at(-1)).toMatchObject({ cwd: notes });
+    test.env.host.workspace = null;
+    test.env.host.pickAnswers.push(HERE_ID);
+    await test.app.dispatch({ type: 'newSession' }, {});
+    expect(test.env.host.picks.at(-1)?.items[0]).toStrictEqual({
+      id: HERE_ID,
+      label: 'Home folder',
+      description: test.env.home,
+    });
+    expect(test.env.host.terminals.at(-1)).toMatchObject({ cwd: test.env.home });
   });
 });

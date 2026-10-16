@@ -183,8 +183,8 @@ export async function startSession(
   });
 }
 
-/** Starts a session in a new worktree of the folder's repository, the workspace's unless another is given. */
-export async function newSession(rt: Runtime, folder = rt.host.workspaceFolder()): Promise<void> {
+/** Starts a session in a new worktree of the folder's repository, or in home with no folder. */
+export async function newSession(rt: Runtime, folder: string | null): Promise<void> {
   await startSession(rt, folder, PLAIN_START);
 }
 
