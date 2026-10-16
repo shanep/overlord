@@ -55,7 +55,12 @@ function sessionStateFor(rt: Runtime, view: SessionView, params: PanelParams): H
       return { type: 'state', view, state: rt.context.build(params) };
     }
     case 'properties': {
-      const state = buildProperties(rt.store, rt.permissions.list(), params.sessionId ?? null);
+      const state = buildProperties(
+        rt.store,
+        rt.permissions.list(),
+        params.sessionId ?? null,
+        (sessionId) => rt.places.pidOf(sessionId),
+      );
       return { type: 'state', view, state };
     }
   }

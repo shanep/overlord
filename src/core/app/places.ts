@@ -1,7 +1,7 @@
 // Keeps each live session's place (VS Code terminal, other terminal or
 // background) current for the fleet. The session registry is cheap to read,
 // so it is polled. `ps` runs only when the interactive processes or the
-// terminals change, and panels hear about it only when a place changes.
+// terminals change, and panels hear about it only when a place or a pid changes.
 
 import type { SessionPlace } from '../../shared/model.js';
 import type { ClaudePaths } from '../paths.js';
@@ -44,6 +44,7 @@ function byNumber(left: number, right: number): number {
 
 export class SessionPlaces {
   private current: Readonly<Record<string, SessionPlace>> = {};
+  private pids: Readonly<Record<string, number>> = {};
   private placements: ReadonlyMap<string, Placement> = new Map();
   private parents: ReadonlyMap<number, number> = new Map();
   private attaches: readonly AttachClient[] = [];
@@ -57,6 +58,11 @@ export class SessionPlaces {
   /** Session id to place, for sessions with a live process. */
   get value(): Readonly<Record<string, SessionPlace>> {
     return this.current;
+  }
+
+  /** The process id of a session that is running now, or null. */
+  pidOf(sessionId: string): number | null {
+    return this.pids[sessionId] ?? null;
   }
 
   /** The shell pid of the VS Code terminal the session runs in, or null. */
@@ -128,8 +134,13 @@ export class SessionPlaces {
       const next = Object.fromEntries(
         [...this.placements].map(([sessionId, placement]) => [sessionId, placement.place]),
       );
-      if (JSON.stringify(next) !== JSON.stringify(this.current)) {
+      const pids = Object.fromEntries(live.map((entry) => [entry.sessionId, entry.pid]));
+      if (
+        JSON.stringify(next) !== JSON.stringify(this.current) ||
+        JSON.stringify(pids) !== JSON.stringify(this.pids)
+      ) {
         this.current = next;
+        this.pids = pids;
         this.deps.onChange();
       }
     } catch (error: unknown) {

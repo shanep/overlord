@@ -6,6 +6,14 @@ import { agent, immediateScheduler, permissionRequest, session } from '../test-h
 
 import { buildProperties } from './properties.js';
 
+function noPid(): null {
+  return null;
+}
+
+function pidOf(sessionId: string): number | null {
+  return sessionId === 's1' ? 4242 : null;
+}
+
 function setup(): { bus: EventBus; store: OverlordStore } {
   const bus = new EventBus();
   return { bus, store: new OverlordStore(bus, { scheduler: immediateScheduler }) };
@@ -14,7 +22,7 @@ function setup(): { bus: EventBus; store: OverlordStore } {
 describe('properties view', () => {
   it('is empty when no CLI tab is active', () => {
     const { store } = setup();
-    expect(buildProperties(store, [permissionRequest('p1')], null)).toStrictEqual({
+    expect(buildProperties(store, [permissionRequest('p1')], null, noPid)).toStrictEqual({
       sessionId: null,
       session: null,
       agents: [],
@@ -24,7 +32,7 @@ describe('properties view', () => {
 
   it('keeps the id of a session Claude Code has not reported yet', () => {
     const { store } = setup();
-    expect(buildProperties(store, [], 'new')).toStrictEqual({
+    expect(buildProperties(store, [], 'new', noPid)).toStrictEqual({
       sessionId: 'new',
       session: null,
       agents: [],
@@ -39,10 +47,18 @@ describe('properties view', () => {
     bus.emit('agent.upserted', agent('s1', 'sub'));
     const mine = permissionRequest('p1');
     const other = permissionRequest('p2', { sessionId: 's2' });
-    const state = buildProperties(store, [mine, other], 's1');
+    const state = buildProperties(store, [mine, other], 's1', noPid);
     expect(state.sessionId).toBe('s1');
     expect(state.session).toStrictEqual(session('s1'));
     expect(state.agents.map((item) => item.id)).toStrictEqual(['sub']);
     expect(state.pendingPermissions).toStrictEqual([mine]);
+  });
+
+  it('shows the live process id, which the transcript does not know', () => {
+    const { bus, store } = setup();
+    bus.emit('session.upserted', session('s1'));
+    expect(buildProperties(store, [], 's1', pidOf).session?.pid).toBe(4242);
+    expect(buildProperties(store, [], 's1', noPid).session?.pid).toBeNull();
+    expect(buildProperties(store, [], 'missing', pidOf).session).toBeNull();
   });
 });

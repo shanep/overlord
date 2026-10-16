@@ -74,6 +74,8 @@ describe('SessionPlaces', () => {
     expect(h.places.terminalFor('here')).toBe(10);
     expect(h.places.terminalFor('elsewhere')).toBeNull();
     expect(h.places.terminalFor('nobody')).toBeNull();
+    expect(h.places.pidOf('bg')).toBe(31);
+    expect(h.places.pidOf('gone')).toBeNull();
 
     await h.places.refresh();
     expect(h.changes).toBe(1);
@@ -115,6 +117,20 @@ describe('SessionPlaces', () => {
     h.places.windowFocused();
     expect(h.places.activeVersion).toBe(version + 1);
     expect(h.changes).toBe(before + 5);
+  });
+
+  it('tells panels when a session restarts under a new pid', async () => {
+    const h = await setup();
+    await register(h.sessionsDir, 31, 'bg', 'bg');
+    h.alive = new Set([31]);
+    await h.places.refresh();
+    expect(h.changes).toBe(1);
+    await register(h.sessionsDir, 32, 'bg', 'bg');
+    h.alive = new Set([32]);
+    await h.places.refresh();
+    expect(h.places.value).toStrictEqual({ bg: 'background' });
+    expect(h.places.pidOf('bg')).toBe(32);
+    expect(h.changes).toBe(2);
   });
 
   it('skips ps when no terminal is open', async () => {
