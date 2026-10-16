@@ -219,6 +219,11 @@
         {
           "id": "overlord.sessionViews",
           "name": "Sessions and Agents"
+        },
+        {
+          "type": "webview",
+          "id": "overlord.properties",
+          "name": "Session Properties"
         }
       ]
     },

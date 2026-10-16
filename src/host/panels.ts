@@ -156,14 +156,21 @@ export class PanelManager implements vscode.Disposable {
   }
 }
 
-/** The Fleet docked in the Overlord sidebar, with the narrow layout. */
-export class FleetSidebar implements vscode.WebviewViewProvider, vscode.Disposable {
-  static readonly viewType = 'overlord.fleet';
-  private view: vscode.WebviewView | null = null;
+export interface SidebarViewOptions {
+  /** The id the view has in package.json. */
+  readonly viewType: string;
+  readonly view: ViewId;
+}
+
+/** An Overlord view docked in the sidebar, with the narrow layout. */
+export class SidebarView implements vscode.WebviewViewProvider, vscode.Disposable {
+  private webviewView: vscode.WebviewView | null = null;
   private ready = false;
+  private params: PanelParams = {};
   private readonly offChange: () => void;
 
   constructor(
+    private readonly options: SidebarViewOptions,
     private readonly extensionUri: vscode.Uri,
     private readonly source: StateSource,
     private readonly onAction: ActionHandler,
@@ -173,23 +180,50 @@ export class FleetSidebar implements vscode.WebviewViewProvider, vscode.Disposab
     });
   }
 
-  resolveWebviewView(view: vscode.WebviewView): void {
+  get viewType(): string {
+    return this.options.viewType;
+  }
+
+  /** Points the view at other params (the properties view follows the active Claude tab). */
+  setParams(params: PanelParams): void {
+    if (JSON.stringify(params) === JSON.stringify(this.params)) {
+      return;
+    }
+    this.params = params;
+    this.push();
+  }
+
+  /** Opens the sidebar on this view without taking focus from the editor. */
+  reveal(): void {
+    if (this.webviewView === null) {
+      void vscode.commands.executeCommand(`${this.options.viewType}.focus`, {
+        preserveFocus: true,
+      });
+      return;
+    }
+    this.webviewView.show(true);
+  }
+
+  resolveWebviewView(webviewView: vscode.WebviewView): void {
+    const { view } = this.options;
     const webviewRoot = vscode.Uri.joinPath(this.extensionUri, 'dist', 'webview');
-    this.view = view;
+    this.webviewView = webviewView;
     this.ready = false;
-    view.webview.options = { enableScripts: true, localResourceRoots: [webviewRoot] };
-    view.webview.html = buildWebviewHtml({
-      view: 'fleet',
-      title: TITLES.fleet,
-      cspSource: view.webview.cspSource,
-      scriptUri: view.webview.asWebviewUri(vscode.Uri.joinPath(webviewRoot, 'main.js')).toString(),
+    webviewView.webview.options = { enableScripts: true, localResourceRoots: [webviewRoot] };
+    webviewView.webview.html = buildWebviewHtml({
+      view,
+      title: TITLES[view],
+      cspSource: webviewView.webview.cspSource,
+      scriptUri: webviewView.webview
+        .asWebviewUri(vscode.Uri.joinPath(webviewRoot, 'main.js'))
+        .toString(),
       styleUri: null,
       nonce: makeNonce((bytes) => randomFillSync(bytes)),
       layout: 'sidebar',
     });
     // Same any-typed event as the panels, narrowed the same way.
     // type-coverage:ignore-next-line
-    view.webview.onDidReceiveMessage(async (message: unknown) => {
+    webviewView.webview.onDidReceiveMessage(async (message: unknown) => {
       if (!isWebviewToHost(message)) {
         return;
       }
@@ -198,23 +232,23 @@ export class FleetSidebar implements vscode.WebviewViewProvider, vscode.Disposab
         this.push();
         return;
       }
-      await this.onAction(message.action, {});
+      await this.onAction(message.action, this.params);
     });
-    view.onDidDispose(() => {
-      this.view = null;
+    webviewView.onDidDispose(() => {
+      this.webviewView = null;
       this.ready = false;
     });
   }
 
   private push(): void {
-    if (this.view === null) {
+    if (this.webviewView === null) {
       return;
     }
-    const message = this.source.stateFor('fleet', {});
-    // The badge shows on the sidebar icon even while the Fleet is collapsed or hidden.
-    this.view.badge = message.view === 'fleet' ? waitingBadge(message.state) : undefined;
+    const message = this.source.stateFor(this.options.view, this.params);
+    // The Fleet's badge shows on the sidebar icon even while the view is collapsed or hidden.
+    this.webviewView.badge = message.view === 'fleet' ? waitingBadge(message.state) : undefined;
     if (this.ready) {
-      void this.view.webview.postMessage(message);
+      void this.webviewView.webview.postMessage(message);
     }
   }
 

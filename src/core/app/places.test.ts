@@ -131,6 +131,9 @@ describe('SessionPlaces', () => {
     await h.places.refresh();
     expect(h.places.value).toStrictEqual({ '8052765a-1f6c-468e': 'vscode' });
     expect(h.places.terminalFor('8052765a-1f6c-468e')).toBe(10);
+    // Focusing that tab makes it the active session, as for a tab Overlord opened.
+    h.places.setActiveTerminal({ sessionId: null, processId: 10 });
+    expect(h.places.activeSession()).toBe('8052765a-1f6c-468e');
     h.terminals = [];
     await h.places.refresh();
     expect(h.places.value).toStrictEqual({ '8052765a-1f6c-468e': 'background' });

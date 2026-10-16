@@ -226,6 +226,14 @@ describe('OverlordApp', () => {
     await app.dispose();
   });
 
+  it('reports the session in the focused terminal for the properties view', async () => {
+    const env = await makeEnv();
+    const { app } = makeApp(env);
+    expect(app.activeSession()).toBeNull();
+    app.setActiveTerminal({ sessionId: 'opened-here', processId: 4242 });
+    expect(app.activeSession()).toBe('opened-here');
+  });
+
   it('watches only user settings without a workspace', async () => {
     const env = await makeEnv();
     const { app, watches } = makeApp(env);

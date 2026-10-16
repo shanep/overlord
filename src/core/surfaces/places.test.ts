@@ -54,7 +54,7 @@ describe('parseAttachClients', () => {
       '  44071 22566 claude attach f5a80612-aaaa',
       '  60491 59514 /bin/zsh -c echo claude attach 99999999',
       '  70000 22566 /usr/bin/claude --resume 8052765a',
-      '  80000 22566 /opt/notclaude attach 12345678',
+      '  80000 22566 /opt/tools/claude attach 12345678',
       'garbage',
     ].join('\n');
     expect(parseAttachClients(stdout)).toStrictEqual([

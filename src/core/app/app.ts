@@ -356,6 +356,11 @@ export class OverlordApp {
     this.rt.places.setActiveTerminal(terminal);
   }
 
+  /** The session in the focused terminal, for the Session Properties view, or null. */
+  activeSession(): string | null {
+    return this.rt.places.activeSession();
+  }
+
   /** Text for the status bar item. */
   statusLine(): string {
     return statusLine(this.fleet());

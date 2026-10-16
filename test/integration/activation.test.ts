@@ -71,7 +71,7 @@ describe('Overlord extension', () => {
     assert.ok(labels.includes('Overlord: Fleet'), `tabs were: ${labels.join(', ')}`);
   });
 
-  it('opens a new Claude Code session as an editor tab with properties beside it', async () => {
+  it('opens a new Claude Code session as an editor tab with its properties in the sidebar', async () => {
     // Tests must never start the real CLI, so point the setting at a stub.
     const stub = stubClaude();
     const config = vscode.workspace.getConfiguration('overlord');
@@ -82,20 +82,17 @@ describe('Overlord extension', () => {
       assert.ok(terminal, 'a Claude Code terminal was created');
       await waitFor(() => vscode.window.activeTerminal?.name === 'Claude Code');
       assert.equal(vscode.window.activeTerminal?.name, 'Claude Code');
-      await waitFor(() => tabLabels().includes('Overlord: Properties'));
+      // Properties live in the sidebar now, so no editor tab opens beside the CLI.
       assert.ok(
-        tabLabels().includes('Overlord: Properties'),
+        !tabLabels().includes('Overlord: Properties'),
         `tabs were: ${tabLabels().join(', ')}`,
-      );
-      const properties = vscode.window.tabGroups.all.find((group) =>
-        group.tabs.some((tab) => tab.label === 'Overlord: Properties'),
       );
       const cli = vscode.window.tabGroups.all.find((group) =>
         // A terminal tab's label follows its process, so find it by input type.
         group.tabs.some((tab) => tab.input instanceof vscode.TabInputTerminal),
       );
-      assert.ok(properties !== undefined && cli !== undefined);
-      assert.ok(properties.viewColumn > cli.viewColumn, 'properties sit to the right of the tab');
+      assert.ok(cli !== undefined, 'the CLI is an editor tab');
+      await vscode.commands.executeCommand('overlord.showProperties');
       await waitFor(() => {
         try {
           return readFileSync(stub.argsFile, 'utf8').length > 0;
@@ -117,8 +114,15 @@ describe('Overlord extension', () => {
     await vscode.commands.executeCommand('overlord.fleet.focus');
     await vscode.commands.executeCommand('overlord.global.focus');
     await vscode.commands.executeCommand('overlord.sessionViews.focus');
+    await vscode.commands.executeCommand('overlord.properties.focus');
     const commands = new Set(await vscode.commands.getCommands(true));
-    for (const view of ['overlord.fleet', 'overlord.global', 'overlord.sessionViews']) {
+    const views = [
+      'overlord.fleet',
+      'overlord.global',
+      'overlord.sessionViews',
+      'overlord.properties',
+    ];
+    for (const view of views) {
       assert.ok(commands.has(`${view}.focus`), `${view} is a contributed view`);
     }
   });

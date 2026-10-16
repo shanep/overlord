@@ -5,13 +5,14 @@ import { randomUUID } from 'node:crypto';
 import * as vscode from 'vscode';
 
 import { OverlordApp } from '../core/app/app.js';
+import type { PanelParams } from '../core/app/host-port.js';
 import { parseTransferUri } from '../core/app/transfer.js';
 import type { HostToWebview, ViewId, WebviewAction } from '../shared/protocol.js';
 
 import { CliTabs } from './cli-tabs.js';
 import { createVscodeHostPort, terminalLaunch } from './host-port.js';
 import { keepAwake } from './keep-awake.js';
-import { FleetSidebar, PanelManager } from './panels.js';
+import { PanelManager, SidebarView } from './panels.js';
 import { reloadOnUpdate } from './self-update.js';
 
 let app: OverlordApp | null = null;
@@ -81,10 +82,18 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // The host port opens panels, and the panel manager needs the app, so the
   // port reaches the manager and the CLI tabs through holders once they exist.
   const panelHolder: { current: PanelManager | null } = { current: null };
+  const propertiesHolder: { current: SidebarView | null } = { current: null };
   const tabsHolder: { current: CliTabs | null } = { current: null };
   const host = createVscodeHostPort({
     context,
     openPanel: (view, params) => {
+      // Session properties live in the sidebar, beside the Fleet, not in a panel.
+      const properties = propertiesHolder.current;
+      if (view === 'properties' && properties !== null) {
+        properties.setParams(params);
+        properties.reveal();
+        return;
+      }
       panelHolder.current?.open(view, params);
     },
     onSessionTerminal: (terminal, sessionId) => {
@@ -94,16 +103,28 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   });
   const overlord = new OverlordApp({ host });
   app = overlord;
-  const panels = new PanelManager(
-    context.extensionUri,
-    {
-      stateFor: (view, params): HostToWebview => overlord.stateFor(view, params),
-      onChange: (listener): (() => void) => overlord.onChange(listener),
-    },
-    async (action, params) => overlord.dispatch(action, params),
-  );
+  const source = {
+    stateFor: (view: ViewId, params: PanelParams): HostToWebview => overlord.stateFor(view, params),
+    onChange: (listener: () => void): (() => void) => overlord.onChange(listener),
+  };
+  const onAction = async (action: WebviewAction, params: PanelParams): Promise<void> =>
+    overlord.dispatch(action, params);
+  const panels = new PanelManager(context.extensionUri, source, onAction);
   panelHolder.current = panels;
-  const tabs = new CliTabs(panels, (target) => {
+  const fleetSidebar = new SidebarView(
+    { viewType: 'overlord.fleet', view: 'fleet' },
+    context.extensionUri,
+    source,
+    onAction,
+  );
+  const propertiesSidebar = new SidebarView(
+    { viewType: 'overlord.properties', view: 'properties' },
+    context.extensionUri,
+    source,
+    onAction,
+  );
+  propertiesHolder.current = propertiesSidebar;
+  const tabs = new CliTabs(propertiesSidebar, (target) => {
     overlord.setActiveTerminal(target);
   });
   tabs.announceActive();
@@ -115,6 +136,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const update = (): void => {
     status.text = `$(pulse) ${overlord.statusLine()}`;
     status.show();
+    // The app knows the focused terminal's session, including tabs Overlord did
+    // not open once a process scan places them, so the properties view follows it.
+    const sessionId = overlord.activeSession();
+    propertiesSidebar.setParams(sessionId === null ? {} : { sessionId });
   };
 
   const dispatch = async (action: WebviewAction): Promise<void> => {
@@ -129,17 +154,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     status,
     reloadOnUpdate(context, overlord.paths),
     keepAwake(),
-    vscode.window.registerWebviewViewProvider(
-      FleetSidebar.viewType,
-      new FleetSidebar(
-        context.extensionUri,
-        {
-          stateFor: (view, params): HostToWebview => overlord.stateFor(view, params),
-          onChange: (listener): (() => void) => overlord.onChange(listener),
-        },
-        async (action, params) => overlord.dispatch(action, params),
-      ),
-      { webviewOptions: { retainContextWhenHidden: true } },
+    fleetSidebar,
+    propertiesSidebar,
+    ...[fleetSidebar, propertiesSidebar].map((sidebar) =>
+      vscode.window.registerWebviewViewProvider(sidebar.viewType, sidebar, {
+        webviewOptions: { retainContextWhenHidden: true },
+      }),
     ),
     vscode.window.registerTreeDataProvider('overlord.global', new ViewListProvider(GLOBAL_VIEWS)),
     vscode.window.registerTreeDataProvider(
