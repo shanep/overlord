@@ -57,7 +57,7 @@ export const PLACE_INFO: Readonly<Record<SessionPlace, PlaceInfo>> = {
 export const WINDOWLESS_INFO = {
   label: 'No window',
   description:
-    'Quiet and open in no terminal, so it leaves the fleet in time. A background session goes once Claude Code stops its idle process, about an hour after you detach. Open it to keep it',
+    'Quiet and open in no terminal, so it leaves the fleet in time. A background session goes once its process stops: when you close its tab with nothing left to do, or about an hour after it detaches some other way. Open it to keep it',
 } as const;
 
 export interface StateInfo {
