@@ -1,20 +1,24 @@
+# Hooks stay fast: they only look at what changed. CI runs the full
+# `npm run check` and mutation gates on every push, so nothing reaches
+# master without them.
 pre-commit:
   parallel: true
   jobs:
     - name: typecheck
-      run: npm run typecheck
+      run: npm run -s typecheck:fast
     - name: lint
       glob: '*.{ts,tsx,mjs,cjs}'
-      run: npx eslint --max-warnings 0 {staged_files}
+      run: npx eslint --max-warnings 0 --cache --cache-location node_modules/.cache/overlord/eslint/ {staged_files}
     - name: format
       glob: '*.{ts,tsx,mjs,cjs,json,md,yml}'
       run: npx prettier --check {staged_files}
     - name: no dashes
-      run: npm run nodash
-    - name: unit tests
-      run: npm test
+      run: npm run -s nodash
+    - name: related tests
+      glob: '*.{ts,tsx}'
+      run: npx vitest related --run --passWithNoTests {staged_files}
 
 pre-push:
   jobs:
-    - name: full check
-      run: npm run check
+    - name: fast check
+      run: npm run -s check:fast
