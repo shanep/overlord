@@ -72,8 +72,18 @@ incremental cache, so a repeat run takes seconds. CI does the same on every
 push, and the full sweep runs nightly.
 
 `npm run check` runs typecheck, ESLint (zero warnings), Prettier, coverage, type coverage at
-100%, knip, dependency-cruiser, cspell, markdownlint and the no-dashes check. The pre-push hook
-runs it too.
+100%, knip, dependency-cruiser, cspell, markdownlint and the no-dashes check. CI runs it on every
+push.
+
+The git hooks only look at what changed, so they stay quick:
+
+- pre-commit (a few seconds): typecheck, lint and format on staged files, and the tests
+  related to them.
+- pre-push (under 10 seconds for a small change): `npm run check:fast`, which runs the tests
+  affected since `origin/master`.
+
+Lint in the hooks uses a cache, so a type change in one file can hide an error in another
+until CI's full lint catches it.
 
 None of the tests call the Claude API. Sessions run against a fake Claude binary in
 `test/fake-claude/` that replays scripted conversations through the real Agent SDK.
