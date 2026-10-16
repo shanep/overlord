@@ -36,6 +36,10 @@ const SHAPES = {
   delete: <path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.7 8.5h5.6l.7-8.5" />,
   /** Stacked layers: running in the background. */
   layers: <path d="M2 6.5 8 3.5l6 3-6 3zM2 9.5l6 3 6-3" />,
+  /** An hourglass: quiet with no window, so it leaves the fleet in time. */
+  hourglass: (
+    <path d="M4 2.5h8M4 13.5h8M5 2.5c0 3.5 6 3 6 5.5s-6 2-6 5.5M11 2.5c0 3.5-6 3-6 5.5s6 2 6 5.5" />
+  ),
 } as const;
 
 export type IconName = keyof typeof SHAPES;

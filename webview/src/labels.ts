@@ -53,6 +53,13 @@ export const PLACE_INFO: Readonly<Record<SessionPlace, PlaceInfo>> = {
   },
 };
 
+/** The marker on a quiet session no terminal shows, which the fleet lets go in time. */
+export const WINDOWLESS_INFO = {
+  label: 'No window',
+  description:
+    'Quiet and open in no terminal, so it leaves the fleet in time. A background session goes once Claude Code stops its idle process, about an hour after you detach. Open it to keep it',
+} as const;
+
 export interface StateInfo {
   readonly label: string;
   /** A glyph so state never depends on color alone. */

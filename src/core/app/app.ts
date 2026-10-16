@@ -216,6 +216,8 @@ export class OverlordApp {
       exec: surfacesExec,
       isAlive: machine.isAlive,
       terminalPids: host.terminalPids,
+      // Sources is built below, and the keeps here and in jobs only run after start.
+      keep: async (sessionIds): Promise<void> => this.sources.keepViewed(sessionIds),
       onChange: notify,
       report,
     });
@@ -224,9 +226,7 @@ export class OverlordApp {
       // Null means a bare claude the login shell cannot find either, so leave it to PATH.
       claudeBin: async (): Promise<string> =>
         executableFor(host.settings.claudePath, await launchEnv(), platform) ?? 'claude',
-      // Sources is built below, and this only runs after start.
-      keep: async (sessionIds, finished): Promise<void> =>
-        this.sources.keepTranscripts(sessionIds, finished),
+      keep: async (ids, finished): Promise<void> => this.sources.keepTranscripts(ids, finished),
       onChange: notify,
       report,
     });

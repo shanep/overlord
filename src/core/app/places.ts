@@ -24,6 +24,8 @@ export interface PlacesDeps {
   readonly isAlive: IsAlive;
   /** Process ids of the shells behind this window's terminals. */
   readonly terminalPids: () => Promise<readonly number[]>;
+  /** Holds the sessions a terminal shows in the fleet, in place of the ones held before. */
+  readonly keep: (sessionIds: readonly string[]) => Promise<void>;
   readonly onChange: () => void;
   readonly report: (source: string, message: string) => void;
 }
@@ -58,6 +60,13 @@ export class SessionPlaces {
   /** Session id to place, for sessions with a live process. */
   get value(): Readonly<Record<string, SessionPlace>> {
     return this.current;
+  }
+
+  /** Sessions open in a terminal, in this window or another, sorted. */
+  private viewed(): string[] {
+    return Object.keys(this.current)
+      .filter((sessionId) => this.current[sessionId] !== 'background')
+      .toSorted((left, right) => left.localeCompare(right));
   }
 
   /** The process id of a session that is running now, or null. */
@@ -141,6 +150,7 @@ export class SessionPlaces {
       ) {
         this.current = next;
         this.pids = pids;
+        await this.deps.keep(this.viewed());
         this.deps.onChange();
       }
     } catch (error: unknown) {

@@ -2,7 +2,7 @@ import type { ReactElement } from 'react';
 
 import type { SessionPlace, SessionState, Surface } from '../../../src/shared/model.js';
 import type { Tone } from '../labels.js';
-import { PLACE_INFO, STATE_INFO, SURFACE_LABELS } from '../labels.js';
+import { PLACE_INFO, STATE_INFO, SURFACE_LABELS, WINDOWLESS_INFO } from '../labels.js';
 
 import { Icon } from './icon.js';
 
@@ -46,6 +46,20 @@ export function PlaceMarker(props: { readonly place: SessionPlace }): ReactEleme
       title={`${info.label}: ${info.description}`}
     >
       <Icon name={info.icon} />
+    </span>
+  );
+}
+
+/** A quiet session no terminal shows, which leaves the fleet in time. */
+export function WindowlessMarker(): ReactElement {
+  return (
+    <span
+      className="place place-neutral"
+      role="img"
+      aria-label={WINDOWLESS_INFO.label}
+      title={`${WINDOWLESS_INFO.label}: ${WINDOWLESS_INFO.description}`}
+    >
+      <Icon name="hourglass" />
     </span>
   );
 }

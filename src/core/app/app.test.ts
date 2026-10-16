@@ -222,6 +222,33 @@ describe('OverlordApp', () => {
     await app.dispose();
   });
 
+  it('keeps a quiet session while a terminal shows it and lets it go once the terminal closes', async () => {
+    const env = await makeEnv();
+    const line = JSON.stringify({ ...userPrompt('u1', 0, 'hello'), sessionId: 'abc' });
+    await writeText(path.join(env.paths.projectsDir, '-work', 'abc.jsonl'), `${line}\n`);
+    await writeJson(path.join(env.paths.sessionsDir, '123.json'), {
+      pid: 123,
+      sessionId: 'abc',
+      kind: 'interactive',
+    });
+    let open = true;
+    const now = Date.now() + (env.host.settings.activeWindowMinutes + 1) * 60_000;
+    const { app } = makeApp(env, {
+      deps: { clock: () => now, isAlive: (pid) => open && pid === 123 },
+    });
+    await app.start();
+    const fleetIds = (): string[] => {
+      const message = app.stateFor('fleet', {});
+      return message.view === 'fleet' ? message.state.sessions.map((item) => item.id) : [];
+    };
+    expect(fleetIds()).toStrictEqual(['abc']);
+    open = false;
+    await app.refresh();
+    await app.refresh();
+    expect(fleetIds()).toStrictEqual([]);
+    await app.dispose();
+  });
+
   it('keeps a waiting background job until Claude Code forgets it and a finished one through the active window', async () => {
     const env = await makeEnv();
     const line = JSON.stringify({ ...userPrompt('u1', 0, 'hello'), sessionId: 'abc' });

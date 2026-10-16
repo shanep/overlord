@@ -55,6 +55,10 @@ describe('FleetTable', () => {
     expect(screen.getByRole('img', { name: 'Background' }).className).toBe('place place-neutral');
     expect(screen.queryByRole('img', { name: 'Terminal' })).toBeNull();
     expect(grid.querySelectorAll('.row-summary')).toHaveLength(0);
+    // Only the finished session no terminal shows gets the hourglass.
+    const windowless = screen.getAllByRole('img', { name: 'No window' });
+    expect(windowless).toHaveLength(1);
+    expect(windowless[0]?.closest('tr')?.textContent).toContain('Old run');
   });
 
   it('shows what a session is working on under its title', () => {

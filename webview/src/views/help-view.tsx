@@ -6,9 +6,15 @@ import type { ReactElement, ReactNode } from 'react';
 
 import type { SessionPlace, SessionState, Surface } from '../../../src/shared/model.js';
 import type { HandoffKind } from '../../../src/shared/protocol.js';
-import { Badge, PlaceMarker, StateBadge, SurfaceBadge } from '../components/badge.js';
+import {
+  Badge,
+  PlaceMarker,
+  StateBadge,
+  SurfaceBadge,
+  WindowlessMarker,
+} from '../components/badge.js';
 import { Icon } from '../components/icon.js';
-import { PLACE_INFO, STATE_INFO, SURFACES } from '../labels.js';
+import { PLACE_INFO, STATE_INFO, SURFACES, WINDOWLESS_INFO } from '../labels.js';
 
 import { STATUS_INFO, STATUS_ORDER } from './config-labels.js';
 import type { Column, SidebarGroup } from './help-content.js';
@@ -153,19 +159,29 @@ function SessionIcons(): ReactElement {
       <Section
         id="help-places"
         title="Where a session runs"
-        intro="The small icon before a live session's title. Only sessions with a running process get one."
+        intro="The small icons before a session's title. Only sessions with a running process get a place. A session open in a terminal stays in the fleet however quiet it gets, and closing the terminal lets it go."
       >
         <MeaningTable
           label="Where a session runs"
           heading="Icon"
-          rows={PLACES.map((place): Row => [
-            place,
-            <span key={place} className="help-pair">
-              <PlaceMarker place={place} />
-              {PLACE_INFO[place].label}
-            </span>,
-            `${PLACE_INFO[place].description}.`,
-          ])}
+          rows={[
+            ...PLACES.map((place): Row => [
+              place,
+              <span key={place} className="help-pair">
+                <PlaceMarker place={place} />
+                {PLACE_INFO[place].label}
+              </span>,
+              `${PLACE_INFO[place].description}.`,
+            ]),
+            [
+              'windowless',
+              <span key="windowless" className="help-pair">
+                <WindowlessMarker />
+                {WINDOWLESS_INFO.label}
+              </span>,
+              `${WINDOWLESS_INFO.description}.`,
+            ],
+          ]}
         />
       </Section>
       <Section

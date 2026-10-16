@@ -298,7 +298,7 @@
           "type": "number",
           "default": 10,
           "minimum": 1,
-          "description": "Drop an idle session from the fleet after this many minutes without activity. A session still mid-turn stays for the full active window."
+          "description": "Drop an idle session from the fleet after this many minutes without activity. A session still mid-turn stays for the full active window, and one open in a terminal stays until the terminal closes."
         },
         "overlord.updateThrottleMs": {
           "type": "number",

@@ -8,7 +8,13 @@ import { useMemo } from 'react';
 import type { ChartTheme } from '../charts/chart-theme.js';
 import { EChart } from '../charts/chart.js';
 import { buildSparkline } from '../charts/sparkline.js';
-import { Badge, PlaceMarker, StateBadge, SurfaceBadge } from '../components/badge.js';
+import {
+  Badge,
+  PlaceMarker,
+  StateBadge,
+  SurfaceBadge,
+  WindowlessMarker,
+} from '../components/badge.js';
 import type { SortState } from '../components/data-table.js';
 import { ariaSort, SortHeader } from '../components/data-table.js';
 import { Icon } from '../components/icon.js';
@@ -19,6 +25,7 @@ import { deltas } from './fleet-history.js';
 import type { RowHistory } from './fleet-history.js';
 import type { FleetRow, VisibleRow } from './fleet-rows.js';
 import { elapsedMs, rowCallsPerMinute } from './fleet-rows.js';
+import { isWindowless } from './windowless.js';
 
 export type RowAction = 'open' | 'context' | 'interrupt' | 'stop' | 'move';
 export type ProjectAction = 'openFolder' | 'setFolder' | 'rename' | 'delete';
@@ -205,6 +212,7 @@ function TitleCell(props: {
       <span style={{ paddingLeft: `${(visible.depth * 1.2).toString()}em` }}>
         <Twisty visible={visible} onToggle={props.onToggle} />
         {row.place === null ? null : <PlaceMarker place={row.place} />}
+        {isWindowless(row) ? <WindowlessMarker /> : null}
         <span className="row-title">{row.title}</span>
       </span>{' '}
       {row.kind === 'session' && row.needsProject ? (

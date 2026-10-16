@@ -2,7 +2,7 @@ import { within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { expectAccessible, renderView } from '../../test/render.js';
-import { PLACE_INFO, STATE_INFO } from '../labels.js';
+import { PLACE_INFO, STATE_INFO, WINDOWLESS_INFO } from '../labels.js';
 
 import { STATUS_INFO } from './config-labels.js';
 import { ROW_BUTTONS, SIDEBAR_GROUPS, WORKFLOW } from './help-content.js';
@@ -37,6 +37,7 @@ describe('HelpView', () => {
     for (const info of Object.values(PLACE_INFO)) {
       expect(within(places).getByRole('img', { name: info.label })).toBeDefined();
     }
+    expect(within(places).getByRole('img', { name: WINDOWLESS_INFO.label })).toBeDefined();
     const config = getByRole('table', { name: 'Config badges' });
     for (const info of Object.values(STATUS_INFO)) {
       expect(within(config).getByText(info.meaning)).toBeDefined();

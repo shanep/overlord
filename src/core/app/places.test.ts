@@ -10,6 +10,7 @@ import { makeEnv, writeJson } from './test-helpers/fixtures.js';
 interface State {
   readonly psCalls: string[][];
   readonly errors: string[];
+  readonly kept: (readonly string[])[];
   changes: number;
   terminals: readonly number[] | Error;
   alive: ReadonlySet<number>;
@@ -22,7 +23,14 @@ interface Harness extends State {
 
 async function setup(psOut = ''): Promise<Harness> {
   const env = await makeEnv();
-  const state: State = { psCalls: [], errors: [], changes: 0, terminals: [], alive: new Set() };
+  const state: State = {
+    psCalls: [],
+    errors: [],
+    kept: [],
+    changes: 0,
+    terminals: [],
+    alive: new Set(),
+  };
   const exec: ExecFunction = async (command, args) => {
     state.psCalls.push([command, ...args]);
     await Promise.resolve();
@@ -38,6 +46,10 @@ async function setup(psOut = ''): Promise<Harness> {
         throw state.terminals;
       }
       return state.terminals;
+    },
+    keep: async (sessionIds): Promise<void> => {
+      await Promise.resolve();
+      state.kept.push(sessionIds);
     },
     onChange: (): void => {
       state.changes += 1;
@@ -90,6 +102,11 @@ describe('SessionPlaces', () => {
     });
     expect(h.changes).toBe(2);
     expect(h.psCalls).toHaveLength(1);
+    // The fleet holds what a terminal shows, never a background session.
+    expect(h.kept).toStrictEqual([
+      ['elsewhere', 'here'],
+      ['elsewhere', 'here'],
+    ]);
     expect(h.errors).toStrictEqual([]);
     expect(PLACES_REFRESH_MS).toBe(5000);
   });

@@ -43,6 +43,8 @@ export class Sources {
   /** Session ids to hold in the fleet, kept here too in case they arrive before the watcher. */
   private kept: readonly string[] = [];
   private finished: readonly string[] = [];
+  /** Sessions open in a terminal, held for as long as the window shows them. */
+  private viewed: readonly string[] = [];
   private hooks: HookServer | null = null;
   private offInstructions: (() => void) | null = null;
   private receiver: OtlpReceiver | null = null;
@@ -76,8 +78,12 @@ export class Sources {
       });
       this.watcher = watcher;
       await watcher.start();
-      await watcher.keep(this.kept, this.finished);
+      await watcher.keep(this.held(), this.finished);
     });
+  }
+
+  private held(): string[] {
+    return [...new Set([...this.kept, ...this.viewed])];
   }
 
   /**
@@ -90,7 +96,16 @@ export class Sources {
   ): Promise<void> {
     this.kept = sessionIds;
     this.finished = finished;
-    await this.watcher?.keep(sessionIds, finished);
+    await this.watcher?.keep(this.held(), finished);
+  }
+
+  /**
+   * Holds the sessions open in a terminal however long they have been quiet,
+   * in place of the ones held before. Closing the window lets one age out.
+   */
+  async keepViewed(sessionIds: readonly string[]): Promise<void> {
+    this.viewed = sessionIds;
+    await this.watcher?.keep(this.held(), this.finished);
   }
 
   async refreshWatcher(): Promise<void> {
