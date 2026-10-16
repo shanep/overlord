@@ -86,7 +86,7 @@ export const SIDEBAR_GROUPS: readonly SidebarGroup[] = [
       },
       {
         name: 'Tuning',
-        icon: 'Light bulb',
+        icon: 'Tools',
         meaning:
           'Tips from measuring every session, with the pros and cons of each tip and when to skip it, plus skills or agents to add. Track a tip to see whether following it made things better or worse.',
       },

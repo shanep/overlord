@@ -193,7 +193,7 @@
         "command": "overlord.openTips",
         "title": "Tuning",
         "category": "Overlord",
-        "icon": "$(lightbulb)"
+        "icon": "$(tools)"
       },
       {
         "command": "overlord.openHelp",
