@@ -142,6 +142,21 @@ describe('worktree setup', { timeout: 30_000 }, () => {
       expect(await readdir(dir)).toStrictEqual(['repo', 'wt']);
     });
 
+    it('warns when the clone cannot move in and nothing else took its place', async () => {
+      await put(target.repoRoot, 'package-lock.json', 'v1\n');
+      await put(target.path, 'package-lock.json', 'v1\n');
+      await put(target.repoRoot, 'node_modules/pkg/index.js', 'cloned\n');
+      // The worktree is removed while the clone runs, so there is nowhere to move it.
+      const removing: Exec = async () => {
+        await rm(target.path, { recursive: true, force: true });
+        return fail('clonefileat: nope');
+      };
+      const warnings = await setUpWorktree(removing, target, {}, 'darwin');
+      expect(warnings).toHaveLength(1);
+      expect(warnings[0]).toMatch(/^Cloning node_modules failed: ENOENT/u);
+      expect(await readdir(dir)).toStrictEqual(['repo']);
+    });
+
     it('runs the setup script with the worktree variables and reports a failure', async () => {
       await put(target.path, SETUP_SCRIPT, 'echo "$OVERLORD_SLOT" > slot.txt\n');
       expect(await setUpWorktree(testExec, target, { OVERLORD_SLOT: '4' })).toStrictEqual([]);
