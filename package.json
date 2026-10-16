@@ -271,6 +271,11 @@
           "default": "claude",
           "description": "Path to the claude binary."
         },
+        "overlord.keepAwake": {
+          "type": "boolean",
+          "default": true,
+          "description": "Stop the computer from sleeping while VS Code has Overlord open, so agents keep running and the machine stays reachable remotely. The display can still turn off. Uses caffeinate on macOS and systemd-inhibit on Linux."
+        },
         "overlord.activeWindowMinutes": {
           "type": "number",
           "default": 30,
