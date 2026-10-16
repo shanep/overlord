@@ -63,7 +63,7 @@ export interface Runtime {
   readonly permissions: PermissionHub;
   /** Where each live session runs, for the fleet. */
   readonly places: SessionPlaces;
-  /** Background jobs waiting on the user or finished, for the fleet. */
+  /** Background jobs waiting on the user, idle or finished, for the fleet. */
   readonly jobs: BackgroundJobs;
   /** Each session's project, and the projects made by hand. */
   readonly projects: ProjectIndex;

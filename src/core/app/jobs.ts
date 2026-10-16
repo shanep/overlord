@@ -27,7 +27,7 @@ export class BackgroundJobs {
 
   constructor(private readonly deps: JobsDeps) {}
 
-  /** Background jobs waiting on the user or finished, oldest first. */
+  /** Background jobs waiting on the user, idle or finished, oldest first. */
   get value(): readonly BackgroundJob[] {
     return this.current;
   }

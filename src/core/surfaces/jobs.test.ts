@@ -35,6 +35,20 @@ describe('backgroundJobs', () => {
     ]);
   });
 
+  it('calls a done job idle while its process still runs, so an open tab is not done', () => {
+    expect(
+      backgroundJobs([
+        entry('between-turns', { pid: 42, status: 'idle' }),
+        entry('asking', { pid: 43, state: 'blocked', startedAt: 20 }),
+        entry('broke', { pid: 44, state: 'failed', startedAt: 30 }),
+      ]).map((job) => [job.sessionId, job.state]),
+    ).toStrictEqual([
+      ['between-turns', 'idle'],
+      ['asking', 'waiting'],
+      ['broke', 'failed'],
+    ]);
+  });
+
   it('leaves out running jobs, jobs with no state and interactive sessions', () => {
     expect(
       backgroundJobs([
