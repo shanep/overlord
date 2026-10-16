@@ -7,7 +7,7 @@ import { readFile } from 'node:fs/promises';
 import { z } from 'zod';
 
 import type { DailyUsage } from '../../shared/model.js';
-import type { UsageState } from '../../shared/protocol.js';
+import type { UsageStats } from '../../shared/protocol.js';
 import type { ClaudePaths } from '../paths.js';
 
 import { hasErrorCode, lenientArray, sourceError } from './common.js';
@@ -74,7 +74,7 @@ interface LongestSession {
 }
 
 export interface UsageHistory {
-  readonly usage: UsageState;
+  readonly usage: UsageStats;
   readonly modelUsage: Readonly<Record<string, ModelUsageTotals>>;
   readonly longestSession: LongestSession | null;
   readonly firstSessionDate: string | null;
@@ -88,7 +88,7 @@ export interface UsageRead {
   readonly errors: readonly SourceError[];
 }
 
-export const EMPTY_USAGE: UsageState = {
+export const EMPTY_USAGE: UsageStats = {
   days: [],
   hourCounts: {},
   totalSessions: 0,

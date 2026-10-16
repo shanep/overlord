@@ -32,6 +32,11 @@ export class AsyncValue<T> {
     return this.current;
   }
 
+  /** True while a load runs. */
+  get loading(): boolean {
+    return this.running !== null;
+  }
+
   /** The latest value, without starting a load. */
   peek(): T {
     return this.current;

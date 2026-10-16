@@ -11,6 +11,8 @@ import type {
 } from '@anthropic-ai/claude-agent-sdk';
 import { query } from '@anthropic-ai/claude-agent-sdk';
 
+import { AsyncQueue } from './input-queue.js';
+
 /** One prompt written to the CLI in streaming input mode. */
 export interface UserInput {
   readonly type: 'user';
@@ -96,6 +98,46 @@ export function toSdkOptions(options: QueryOptions): Options {
 /** The real adapter: runs the SDK's query() in streaming input mode. */
 export const sdkQuery: QueryFunction = (prompt, options) =>
   query({ prompt, options: toSdkOptions(options) });
+
+export interface PlanUsageOptions {
+  readonly cwd: string;
+  /** The full environment for the CLI, as in QueryOptions. */
+  readonly env: Readonly<Record<string, string>>;
+  readonly executablePath: string | null;
+}
+
+/** Reads the plan limits /usage shows. Resolves to the raw control reply. */
+export type PlanUsageFunction = (options: PlanUsageOptions) => Promise<unknown>;
+
+export function toPlanUsageOptions(options: PlanUsageOptions): Options {
+  return {
+    cwd: options.cwd,
+    env: { ...options.env },
+    settingSources: [],
+    persistSession: false,
+    ...(options.executablePath === null
+      ? {}
+      : { pathToClaudeCodeExecutable: options.executablePath }),
+  };
+}
+
+/**
+ * The real adapter: starts a CLI with no prompt, asks for the usage data and
+ * closes it. No settings load and nothing is written to disk, so it costs
+ * about a second.
+ */
+export const sdkPlanUsage: PlanUsageFunction = async (options) => {
+  const input = new AsyncQueue<UserInput>();
+  const running = query({ prompt: input, options: toPlanUsageOptions(options) });
+  try {
+    return await running.usage_EXPERIMENTAL_MAY_CHANGE_DO_NOT_RELY_ON_THIS_API_YET({
+      skipBehaviors: true,
+    });
+  } finally {
+    input.end();
+    running.close();
+  }
+};
 
 export {
   type EffortLevel,

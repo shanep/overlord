@@ -15,6 +15,8 @@ export function meterTone(ratio: number): Tone {
 export function Meter(props: {
   readonly label: string;
   readonly ratio: number | null;
+  /** Overrides the fill tone, for values graded elsewhere. */
+  readonly tone?: Tone;
 }): ReactElement {
   const { label, ratio } = props;
   if (ratio === null) {
@@ -33,7 +35,7 @@ export function Meter(props: {
         aria-valuenow={percent}
       >
         <span
-          className={`meter-fill meter-${meterTone(clamped)}`}
+          className={`meter-fill meter-${props.tone ?? meterTone(clamped)}`}
           style={{ width: `${percent.toString()}%` }}
         />
       </span>

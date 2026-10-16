@@ -341,6 +341,44 @@ kbd {
   font-variant-numeric: tabular-nums;
 }
 
+/* ---- Plan limits ------------------------------------------------------- */
+
+.plan-limits {
+  margin: 6px 0 12px;
+}
+
+.plan-limits h2 {
+  margin: 0 0 6px;
+}
+
+.plan-limits dl {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 4px;
+}
+
+.plan-limit dt {
+  color: var(--ov-muted);
+}
+
+.plan-limit dd {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: center;
+  margin: 0;
+}
+
+.plan-limit .meter-wrap {
+  flex: 1 1 160px;
+  max-width: 360px;
+}
+
+.plan-limit .meter {
+  flex: 1;
+  width: auto;
+}
+
 /* ---- Header stats and banners ----------------------------------------- */
 
 .view-header {

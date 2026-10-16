@@ -17,6 +17,7 @@ import { FakeHost } from './test-helpers/fake-host.js';
 import {
   makeApp,
   makeEnv,
+  NOW,
   ok,
   session,
   settle,
@@ -25,6 +26,7 @@ import {
   writeJson,
   writeText,
 } from './test-helpers/fixtures.js';
+import { PLAN_STALE_MS } from './views/usage.js';
 
 async function installOurHooks(settingsFile: string): Promise<void> {
   await installHooks({ settingsFile, hookCommand: 'node "/ext/dist/overlord-hook.cjs"' });
@@ -270,6 +272,44 @@ describe('OverlordApp', () => {
     app.applySettings();
     expect(app.runtime.launcher.maxConcurrency).toBe(7);
     expect(changed).toHaveBeenCalledTimes(1);
+  });
+
+  it('adds plan limits to the usage view and reads them again once stale', async () => {
+    const env = await makeEnv();
+    let now = NOW;
+    const reply = {
+      subscription_type: 'max',
+      rate_limits_available: true,
+      rate_limits: {
+        limits: [{ kind: 'session', percent: 40, severity: 'normal', resets_at: null }],
+      },
+    };
+    const planUsageFunction = vi.fn(async (): Promise<unknown> => {
+      await Promise.resolve();
+      return reply;
+    });
+    const { app } = makeApp(env, {
+      deps: { planUsageFunction, clock: (): number => now, env: { HOME: '/h', UNSET: undefined } },
+    });
+    await app.refresh();
+    expect(planUsageFunction).toHaveBeenCalledWith({
+      cwd: env.paths.home,
+      env: { HOME: '/h' },
+      executablePath: null,
+    });
+    expect(app.stateFor('usage', {})).toMatchObject({
+      state: { plan: { subscription: 'max', fetchedAt: NOW, limits: [{ percent: 40 }] } },
+    });
+    now += PLAN_STALE_MS;
+    app.stateFor('usage', {});
+    expect(planUsageFunction).toHaveBeenCalledTimes(1);
+    now += 1;
+    app.stateFor('usage', {});
+    app.stateFor('usage', {});
+    await waitFor(() => planUsageFunction.mock.calls.length === 2);
+    await settle();
+    expect(planUsageFunction).toHaveBeenCalledTimes(2);
+    expect(app.stateFor('usage', {})).toMatchObject({ state: { plan: { fetchedAt: now } } });
   });
 
   it('routes hook events to the context view and the permission inbox', async () => {

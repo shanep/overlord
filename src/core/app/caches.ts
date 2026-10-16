@@ -1,6 +1,7 @@
 // The background-loaded data behind the views. Each loader reads the host
 // settings when it runs, so a settings change applies on the next refresh.
 
+import type { PlanLimits } from '../../shared/protocol.js';
 import { EMPTY_USAGE } from '../surfaces/usage.js';
 
 import { AsyncValue } from './async-value.js';
@@ -9,7 +10,7 @@ import { readDrafts, storagePath } from './storage.js';
 import { configRepoDir, emptyConfig, loadConfig } from './views/config.js';
 import { EMPTY_KNOBS, loadKnobs, loadProfiles } from './views/knobs.js';
 import { EMPTY_SESSIONS, loadSessions, PeekCache } from './views/sessions.js';
-import { loadUsage } from './views/usage.js';
+import { loadPlanLimits, loadUsage } from './views/usage.js';
 
 export type CacheRuntime = Omit<Runtime, 'caches' | 'context'>;
 
@@ -80,6 +81,12 @@ export function createCaches(rt: CacheRuntime): Caches {
       name: 'usage',
       initial: EMPTY_USAGE,
       load: async () => loadUsage(rt.paths, rt.report),
+    }),
+    plan: new AsyncValue<PlanLimits | null>({
+      ...common,
+      name: 'plan limits',
+      initial: null,
+      load: async () => loadPlanLimits(rt.planUsage, rt.clock),
     }),
   };
 }

@@ -252,6 +252,14 @@ async function drain() {
   }
 }
 
+// Echoes skip_behaviors so tests can see what the SDK asked for.
+function usageAnswer(request) {
+  return {
+    ...(scenario?.planUsage ?? { rate_limits_available: false, rate_limits: null }),
+    skip_behaviors: request.skip_behaviors ?? false,
+  };
+}
+
 function controlAnswer(request) {
   switch (request.subtype) {
     case 'initialize': {
@@ -279,6 +287,9 @@ function controlAnswer(request) {
     }
     case 'get_context_usage': {
       return scenario.contextUsage ?? { categories: [], totalTokens: 0, maxTokens: 200_000 };
+    }
+    case 'get_usage': {
+      return usageAnswer(request);
     }
     default: {
       return;

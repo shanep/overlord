@@ -162,7 +162,9 @@ describe('AsyncValue', () => {
       onUpdate: vi.fn(),
       onError: vi.fn(),
     });
+    expect(value.loading).toBe(false);
     const first = value.refresh();
+    expect(value.loading).toBe(true);
     const second = value.refresh();
     const third = value.refresh();
     gates[0]?.open(1);
@@ -170,6 +172,7 @@ describe('AsyncValue', () => {
     expect(calls).toBe(2);
     gates[1]?.open(2);
     await Promise.all([first, second, third]);
+    expect(value.loading).toBe(false);
     expect(value.peek()).toBe(2);
     expect(calls).toBe(2);
     await value.refresh();

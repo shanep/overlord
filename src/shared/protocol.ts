@@ -165,11 +165,38 @@ export interface ConfigState {
   };
 }
 
-export interface UsageState {
+export interface UsageStats {
   readonly days: readonly DailyUsage[];
   readonly hourCounts: Readonly<Record<string, number>>;
   readonly totalSessions: number;
   readonly totalMessages: number;
+}
+
+/** One plan limit window, such as the current session or the current week. */
+export interface PlanLimit {
+  /** The server's meter kind, for example "session", "weekly_all" or "weekly_scoped". */
+  readonly kind: string;
+  readonly label: string;
+  /** Share of the window used, 0 to 100. */
+  readonly percent: number;
+  /** Epoch ms when the window resets, or null when unknown. */
+  readonly resetsAt: number | null;
+  /** The server's grading of the meter: "normal", "warning" or "critical". */
+  readonly severity: string;
+}
+
+/** The claude.ai plan limits that /usage shows. */
+export interface PlanLimits {
+  /** "pro", "max", "team" or "enterprise", or null when unknown. */
+  readonly subscription: string | null;
+  readonly limits: readonly PlanLimit[];
+  /** Epoch ms of the read. */
+  readonly fetchedAt: number;
+}
+
+export interface UsageState extends UsageStats {
+  /** Null when plan limits do not apply (API key, Bedrock, Vertex) or could not be read. */
+  readonly plan: PlanLimits | null;
 }
 
 /** One user prompt with abusive or frustrated language in it. */

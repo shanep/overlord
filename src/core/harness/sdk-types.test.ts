@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest';
 
 import { resolved } from '../../../test/fake-claude/fake-query.js';
 
-import { toSdkOptions, type QueryOptions, type ToolPermissionContext } from './sdk-types.js';
+import {
+  toPlanUsageOptions,
+  toSdkOptions,
+  type QueryOptions,
+  type ToolPermissionContext,
+} from './sdk-types.js';
 
 function options(overrides: Partial<QueryOptions> = {}): QueryOptions {
   return {
@@ -91,5 +96,22 @@ describe('toSdkOptions', () => {
       { signal, toolUseId: 'tu1', agentId: null },
       { signal, toolUseId: 'tu2', agentId: 'agent-7' },
     ]);
+  });
+});
+
+describe('toPlanUsageOptions', () => {
+  it('loads no settings, writes no session and passes a binary only when set', () => {
+    const env = { PATH: '/bin' };
+    const bundled = toPlanUsageOptions({ cwd: '/home', env, executablePath: null });
+    expect(bundled).toStrictEqual({
+      cwd: '/home',
+      env: { PATH: '/bin' },
+      settingSources: [],
+      persistSession: false,
+    });
+    expect(bundled.env).not.toBe(env);
+    expect(toPlanUsageOptions({ cwd: '/home', env, executablePath: '/bin/claude' })).toMatchObject({
+      pathToClaudeCodeExecutable: '/bin/claude',
+    });
   });
 });

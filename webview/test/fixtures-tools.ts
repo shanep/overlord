@@ -167,4 +167,5 @@ export const usageState: UsageState = {
   hourCounts: { '9': 12, '10': 30, '14': 8 },
   totalSessions: 10,
   totalMessages: 200,
+  plan: null,
 };

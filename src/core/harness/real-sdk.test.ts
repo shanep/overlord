@@ -19,7 +19,7 @@ import type { SessionEvent, TurnResult } from './events.js';
 import { PermissionInbox } from './inbox.js';
 import { Launcher } from './launcher.js';
 import { mergeEnv } from './options.js';
-import { sdkQuery } from './sdk-types.js';
+import { sdkPlanUsage, sdkQuery } from './sdk-types.js';
 import { SdkSession, type SessionConfig } from './session.js';
 
 const FAKE_DIR = fileURLToPath(new URL('../../../test/fake-claude/', import.meta.url));
@@ -320,6 +320,29 @@ describe('real SDK against the fake Claude binary', () => {
         ['done', 0.0125, 2, 'The repo is Overlord.'],
       ]);
       expect(launcher.spendUsd()).toBeCloseTo(0.025, 10);
+    },
+    TIMEOUT,
+  );
+  it(
+    'reads plan usage from a CLI started with no prompt, then closes it',
+    async () => {
+      const reply = await sdkPlanUsage({
+        cwd: dir,
+        env: mergeEnv(process.env, {
+          FAKE_CLAUDE_SCENARIO: scenario('success'),
+          FAKE_CLAUDE_RECORD: path.join(dir, 'record.json'),
+        }),
+        executablePath: FAKE_CLAUDE,
+      });
+      expect(reply).toStrictEqual({
+        rate_limits_available: false,
+        rate_limits: null,
+        skip_behaviors: true,
+      });
+      const recorded = recordSchema.parse(
+        JSON.parse(await readFile(path.join(dir, 'record.json'), 'utf8')),
+      );
+      expect(recorded.cwd).toBe(dir);
     },
     TIMEOUT,
   );

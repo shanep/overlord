@@ -9,8 +9,9 @@ import type { HostToWebview, ViewId, WebviewAction } from '../../shared/protocol
 import { EventBus } from '../bus.js';
 import { createNodeFileSystem, type FileSystem } from '../context/fs.js';
 import { Launcher } from '../harness/launcher.js';
-import type { QueryFunction } from '../harness/sdk-types.js';
-import { sdkQuery } from '../harness/sdk-types.js';
+import { mergeEnv } from '../harness/options.js';
+import type { PlanUsageFunction, QueryFunction } from '../harness/sdk-types.js';
+import { sdkPlanUsage, sdkQuery } from '../harness/sdk-types.js';
 import { WorktreeManager } from '../harness/worktree.js';
 import { socketPath } from '../hooks/socket-path.js';
 import { defaultClaudePaths, type ClaudePaths } from '../paths.js';
@@ -58,6 +59,8 @@ export interface AppDeps {
   readonly kill?: KillFunction;
   /** The Agent SDK query. Tests pass a fake so no real Claude session ever starts. */
   readonly queryFunction?: QueryFunction;
+  /** Reads plan limits through the SDK. Tests pass a fake for the same reason. */
+  readonly planUsageFunction?: PlanUsageFunction;
   readonly fs?: FileSystem;
   readonly env?: Readonly<Record<string, string | undefined>>;
   readonly hostname?: string;
@@ -187,6 +190,7 @@ export class OverlordApp {
       },
       concurrencyFrom(host.settings.maxConcurrency),
     );
+    const planUsageFunction = deps.planUsageFunction ?? sdkPlanUsage;
     const base: CacheRuntime = {
       paths: this.paths,
       host,
@@ -205,6 +209,12 @@ export class OverlordApp {
       launcher,
       permissions,
       report,
+      planUsage: async (): Promise<unknown> =>
+        planUsageFunction({
+          cwd: paths.home,
+          env: mergeEnv(env, {}),
+          executablePath: executableFor(host.settings.claudePath),
+        }),
       notify,
       // Sources is built below, and this only runs after construction.
       openTranscript: async (sessionId: string): Promise<boolean> =>
@@ -318,6 +328,7 @@ export class OverlordApp {
       caches.sessions.refresh(),
       caches.config.refresh(),
       caches.usage.refresh(),
+      caches.plan.refresh(),
     ]);
     this.rt.context.clear();
   }

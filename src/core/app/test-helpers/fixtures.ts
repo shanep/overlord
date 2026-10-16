@@ -174,6 +174,10 @@ export function makeApp(env: TestEnv, options: AppOptions = {}): TestApp {
       kills.push({ pid, signal });
     },
     queryFunction: queries.queryFunction,
+    planUsageFunction: async (): Promise<unknown> => {
+      await Promise.resolve();
+      return null;
+    },
     env: {},
     hostname: 'test-host',
     platform: 'linux',

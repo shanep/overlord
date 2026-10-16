@@ -2,7 +2,7 @@
 // and hands it around, so each piece takes a single argument.
 
 import type { LaunchProfile } from '../../shared/model.js';
-import type { ConfigState, UsageState } from '../../shared/protocol.js';
+import type { ConfigState, PlanLimits, UsageStats } from '../../shared/protocol.js';
 import type { EventBus } from '../bus.js';
 import type { FileSystem } from '../context/fs.js';
 import type { Launcher } from '../harness/launcher.js';
@@ -26,7 +26,8 @@ export interface Caches {
   readonly drafts: AsyncValue<readonly Draft[]>;
   readonly sessions: AsyncValue<SessionsData>;
   readonly config: AsyncValue<ConfigState>;
-  readonly usage: AsyncValue<UsageState>;
+  readonly usage: AsyncValue<UsageStats>;
+  readonly plan: AsyncValue<PlanLimits | null>;
 }
 
 export interface Runtime {
@@ -51,6 +52,8 @@ export interface Runtime {
   readonly context: ContextViews;
   /** Sends a source.error to the bus, which also lands in the status error list. */
   readonly report: (source: string, message: string) => void;
+  /** Asks the CLI for the plan limits /usage shows. Resolves to the raw reply. */
+  readonly planUsage: () => Promise<unknown>;
   /** Tells open panels to re-render. */
   readonly notify: () => void;
   /** Loads a session's transcript into the store, even an old one. True when it was found. */

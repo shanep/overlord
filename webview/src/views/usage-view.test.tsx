@@ -1,10 +1,12 @@
 import { within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import type { PlanLimits } from '../../../src/shared/protocol.js';
 import { usageState } from '../../test/fixtures-tools.js';
+import { NOW } from '../../test/fixtures.js';
 import { expectAccessible, renderView } from '../../test/render.js';
 
-import { dailyTable, hourTable, totalTokensAll, UsageView } from './usage-view.js';
+import { dailyTable, hourTable, severityTone, totalTokensAll, UsageView } from './usage-view.js';
 
 describe('usage tables', () => {
   it('builds the daily table twin in date order', () => {
@@ -63,8 +65,81 @@ describe('UsageView', () => {
 
   it('says there is no data for an empty history', () => {
     const { getAllByText } = renderView(
-      <UsageView state={{ days: [], hourCounts: {}, totalSessions: 0, totalMessages: 0 }} />,
+      <UsageView
+        state={{ days: [], hourCounts: {}, totalSessions: 0, totalMessages: 0, plan: null }}
+      />,
     );
     expect(getAllByText('No data yet.')).toHaveLength(2);
+  });
+
+  it('leaves the plan section out when there are no plan limits', () => {
+    const empty = renderView(<UsageView state={usageState} />);
+    expect(empty.queryByRole('heading', { name: /Plan limits/ })).toBeNull();
+    const none = renderView(
+      <UsageView
+        state={{ ...usageState, plan: { subscription: 'pro', limits: [], fetchedAt: NOW } }}
+      />,
+    );
+    expect(none.queryByRole('heading', { name: /Plan limits/ })).toBeNull();
+  });
+
+  it('shows each plan limit with its grade and reset time, and passes axe', async () => {
+    const plan: PlanLimits = {
+      subscription: 'max',
+      fetchedAt: NOW - 120_000,
+      limits: [
+        {
+          kind: 'session',
+          label: 'Current session',
+          percent: 90,
+          resetsAt: NOW + 2 * 3_600_000 + 5 * 60_000,
+          severity: 'critical',
+        },
+        {
+          kind: 'weekly_all',
+          label: 'Current week (all models)',
+          percent: 18,
+          resetsAt: null,
+          severity: 'normal',
+        },
+        {
+          kind: 'weekly_scoped',
+          label: 'Current week (Fable)',
+          percent: 75,
+          resetsAt: NOW - 1000,
+          severity: 'warning',
+        },
+      ],
+    };
+    const { getByRole, getByText, container } = renderView(
+      <UsageView state={{ ...usageState, plan }} />,
+    );
+    expect(getByRole('heading', { name: 'Plan limits (max)' })).toBeDefined();
+    const session = getByRole('meter', { name: 'Current session used' });
+    expect(session.getAttribute('aria-valuenow')).toBe('90');
+    expect(session.firstElementChild?.className).toContain('meter-critical');
+    expect(
+      getByRole('meter', { name: 'Current week (Fable) used' }).firstElementChild?.className,
+    ).toContain('meter-warning');
+    expect(
+      getByRole('meter', { name: 'Current week (all models) used' }).firstElementChild?.className,
+    ).toContain('meter-info');
+    expect(getByText('Resets in 2h 05m')).toBeDefined();
+    expect(getByText('Resets in 0ms')).toBeDefined();
+    expect(getByText('Updated 2m ago')).toBeDefined();
+    await expectAccessible(container);
+    const unknown = renderView(
+      <UsageView state={{ ...usageState, plan: { ...plan, subscription: null } }} />,
+    );
+    expect(unknown.getByRole('heading', { name: 'Plan limits' })).toBeDefined();
+  });
+});
+
+describe('severityTone', () => {
+  it('keeps warning and critical and reads anything else as info', () => {
+    expect(severityTone('critical')).toBe('critical');
+    expect(severityTone('warning')).toBe('warning');
+    expect(severityTone('normal')).toBe('info');
+    expect(severityTone('mystery')).toBe('info');
   });
 });

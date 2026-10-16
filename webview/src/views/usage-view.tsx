@@ -1,9 +1,9 @@
-// Usage history: totals, daily tokens by model, and activity by hour.
+// Usage: plan limits, history totals, daily tokens by model, and activity by hour.
 
 import type { ReactElement } from 'react';
 import { useMemo } from 'react';
 
-import type { UsageState } from '../../../src/shared/protocol.js';
+import type { PlanLimit, PlanLimits, UsageState } from '../../../src/shared/protocol.js';
 import { useChartTheme } from '../charts/chart-theme.js';
 import {
   buildDailyUsage,
@@ -13,9 +13,18 @@ import {
   modelSeries,
   OTHER,
 } from '../charts/usage-charts.js';
+import { useNow } from '../clock.js';
 import type { FigureTable } from '../components/chart-figure.js';
 import { ChartFigure } from '../components/chart-figure.js';
-import { formatCompact, formatInteger } from '../format.js';
+import { Meter } from '../components/meter.js';
+import {
+  formatAgo,
+  formatCompact,
+  formatDateTime,
+  formatDuration,
+  formatInteger,
+} from '../format.js';
+import type { Tone } from '../labels.js';
 
 /** Table twin for the daily chart: one row per day, one column per series. */
 export function dailyTable(state: UsageState): FigureTable {
@@ -57,6 +66,56 @@ function Stat(props: { readonly label: string; readonly value: string }): ReactE
   );
 }
 
+/** The server grades each limit; the meter shows its grade, not its own. */
+export function severityTone(severity: string): Tone {
+  if (severity === 'critical' || severity === 'warning') {
+    return severity;
+  }
+  return 'info';
+}
+
+function resetText(limit: PlanLimit, now: number): string {
+  if (limit.resetsAt === null) {
+    return '';
+  }
+  return `Resets in ${formatDuration(Math.max(0, limit.resetsAt - now))}`;
+}
+
+function PlanSection(props: { readonly plan: PlanLimits | null }): ReactElement | null {
+  const { plan } = props;
+  const now = useNow();
+  if (plan === null || plan.limits.length === 0) {
+    return null;
+  }
+  const subscription = plan.subscription === null ? '' : ` (${plan.subscription})`;
+  return (
+    <section className="plan-limits" aria-labelledby="plan-title">
+      <h2 id="plan-title">{`Plan limits${subscription}`}</h2>
+      <dl>
+        {plan.limits.map((limit) => (
+          <div key={`${limit.kind}:${limit.label}`} className="plan-limit">
+            <dt>{limit.label}</dt>
+            <dd>
+              <Meter
+                label={`${limit.label} used`}
+                ratio={limit.percent / 100}
+                tone={severityTone(limit.severity)}
+              />
+              <span
+                className="muted"
+                title={limit.resetsAt === null ? undefined : formatDateTime(limit.resetsAt)}
+              >
+                {resetText(limit, now)}
+              </span>
+            </dd>
+          </div>
+        ))}
+      </dl>
+      <p className="muted">{`Updated ${formatAgo(plan.fetchedAt, now)}`}</p>
+    </section>
+  );
+}
+
 export function UsageView(props: { readonly state: UsageState }): ReactElement {
   const { state } = props;
   const theme = useChartTheme();
@@ -78,6 +137,7 @@ export function UsageView(props: { readonly state: UsageState }): ReactElement {
           <Stat label="Days" value={state.days.length.toString()} />
         </dl>
       </header>
+      <PlanSection plan={state.plan} />
       <div className="charts">
         <ChartFigure
           title="Daily tokens by model"
