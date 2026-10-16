@@ -27,13 +27,13 @@ const WAYS: readonly Way[] = [
     { title: 'Sparkle button', lines: ['New Claude Code Session'] },
     { title: 'Background job', lines: ['`claude --bg', 'in its own worktree'] },
     { title: 'Editor tab', lines: ['`claude attach <id>'] },
-    { title: 'Keeps running', lines: ['Click its Fleet row', 'to attach again'] },
+    { title: 'Stops when idle', lines: ['Mid turn, it keeps', 'going in the background'] },
   ],
   [
     { title: 'Continue', lines: ['In All Sessions, or the', '/overlord command'] },
     { title: 'Background job', lines: ['`claude --bg --resume'] },
     { title: 'Editor tab', lines: ['`claude attach <id>'] },
-    { title: 'Keeps running', lines: ['Same as above'] },
+    { title: 'Stops when idle', lines: ['Same as above'] },
   ],
   [
     { title: 'claude in VS Code', lines: ['You type claude in a', 'VS Code terminal'] },
@@ -202,8 +202,8 @@ function TabDiagram(): ReactElement {
           '`claude attach <id>',
           'Shows the session and',
           'sends it what you type.',
-          'Closing it ends only the',
-          'attach, not the session.',
+          'Closing it stops the',
+          'session only when idle.',
         ]}
       />
       <Box
@@ -264,9 +264,9 @@ function CloseDiagram(): ReactElement {
   return (
     <Flow
       head={head}
-      height={420}
+      height={432}
       title="Closing the tab"
-      description="Closing the tab ends only claude attach. A session that was mid turn keeps working in the background and then goes idle. A session with nothing left to do sits idle in the background. Clicking its Fleet row attaches a new tab. Stop on its row ends the process. The worktree check runs when a tab closes and every 60 seconds: a landed worktree and its branch are removed, and one with edits or unlanded commits stays for you to open, land or discard from the Launcher."
+      description="Closing the tab makes Overlord check what the session has left to do. A session mid turn keeps working in the background, where clicking its Fleet row attaches a new tab and Stop on its row ends it. A session with nothing left to do is stopped with claude stop, which keeps its conversation. Once the process is gone, the worktree check removes a landed worktree and its branch, and keeps one with edits or unlanded commits for you to open, land or discard from the Launcher."
     >
       <Box
         x={20}
@@ -275,7 +275,7 @@ function CloseDiagram(): ReactElement {
         h={100}
         tone="start"
         title="You close the tab"
-        lines={['Only claude attach', 'ends. The session', 'keeps its process.']}
+        lines={['Overlord asks claude', 'agents and the transcript', 'what is left to do.']}
       />
       <Box
         x={270}
@@ -295,64 +295,63 @@ function CloseDiagram(): ReactElement {
         w={230}
         h={110}
         title="Nothing left to do"
-        lines={['It sits idle in the', 'background. Fleet: Idle', 'with the background icon.']}
+        lines={[
+          'Overlord runs claude stop.',
+          'The conversation stays,',
+          'so Continue picks it up.',
+        ]}
       />
       <Arrow head={head} d="M220 195H245V85H270" />
       <Arrow head={head} d="M220 225H245V335H270" />
-      <Arrow
-        head={head}
-        d="M385 140V280"
-        label={{ text: 'finishes the turn', x: 395, y: 215, anchor: 'start' }}
-      />
       <Box
         x={550}
         y={30}
         w={190}
-        h={110}
+        h={100}
         tone="good"
         title="Click its Fleet row"
         lines={['A new tab attaches.', 'You are back where', 'you started.']}
       />
       <Box
         x={550}
-        y={300}
+        y={160}
+        w={190}
+        h={90}
+        title="Stop on its row"
+        lines={['Asks first, then', 'ends the process.']}
+      />
+      <Box
+        x={550}
+        y={280}
         w={190}
         h={110}
-        title="Stop on its row"
-        lines={['Asks first, then ends', 'the process.']}
-      />
-      <Arrow head={head} d="M500 85H550" />
-      <Arrow head={head} d="M500 310H525V115H550" />
-      <Arrow head={head} d="M500 355H550" />
-      <Box
-        x={770}
-        y={160}
-        w={170}
-        h={100}
         title="Worktree check"
-        lines={['When a tab closes,', 'and every 60 s.']}
+        lines={['Right after it stops,', 'and every 60 s.']}
       />
-      <Arrow head={head} d="M740 355H755V210H770" />
+      <Arrow head={head} d="M500 70H550" />
+      <Arrow head={head} d="M500 115H525V205H550" />
+      <Arrow head={head} d="M500 335H550" />
+      <Arrow head={head} d="M645 250V280" />
       <Box
         x={770}
-        y={30}
+        y={200}
         w={170}
-        h={100}
+        h={90}
         tone="good"
         title="Landed"
         lines={['Worktree and branch', 'are removed.']}
       />
       <Box
         x={770}
-        y={300}
+        y={320}
         w={170}
-        h={110}
+        h={100}
         tone="warn"
         title="Not landed"
         lines={['Edits or commits stay.', 'Open, Land or Discard', 'in the Launcher.']}
       />
-      <Arrow head={head} d="M855 160V130" />
-      <Arrow head={head} d="M855 260V300" />
+      <Arrow head={head} d="M740 310H755V245H770" />
+      <Arrow head={head} d="M740 360H770" />
     </Flow>
   );
 }
@@ -368,7 +367,8 @@ export function SessionsSection(): ReactElement {
       <h3>Ways a session starts</h3>
       <p>
         Overlord shows every session, but it only starts some of them. The ones it starts with the
-        sparkle or Continue run in the background, so they outlive their tab.
+        sparkle or Continue run in the background, so they outlive their tab while they still have
+        work to do.
       </p>
       <WaysDiagram />
       <h3>A new session, step by step</h3>
@@ -386,11 +386,13 @@ export function SessionsSection(): ReactElement {
       <TabDiagram />
       <h3>Closing the tab</h3>
       <p>
-        Closing the tab never stops a background session. Overlord removes a worktree only after its
-        process ends and everything in it has landed. Until then the check leaves it alone, since a
-        session is still working in it. A tab that runs claude itself is different: closing it ends
-        the session, and the check runs right away. Closing or reloading VS Code does not stop
-        background jobs either, and the Fleet picks them up again when it opens.
+        Closing the tab stops a background session only when it has nothing left to do: Claude Code
+        says it is resting, and its transcript has no turn or tool call open. Overlord runs claude
+        stop, which keeps the conversation, so Continue in All Sessions picks it back up. A session
+        mid turn or waiting on a permission prompt keeps running, and so does one another tab still
+        shows. Once the process is gone, the worktree check removes a worktree whose work all
+        landed. A tab that runs claude itself ends its session when it closes. Closing or reloading
+        VS Code stops nothing, and the Fleet picks background sessions up again when it opens.
       </p>
       <CloseDiagram />
     </section>

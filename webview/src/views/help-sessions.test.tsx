@@ -44,10 +44,11 @@ describe('SessionsSection', () => {
     expect(container.textContent).not.toContain('`');
   });
 
-  it('says that closing the tab leaves the session running', () => {
+  it('says that closing the tab stops only an idle session', () => {
     const { getByRole } = renderView(<SessionsSection />);
-    const diagram = getByRole('img', { name: /Closing the tab ends only claude attach/u });
-    expect(within(diagram).getByText('Nothing left to do')).toBeDefined();
+    const diagram = getByRole('img', { name: /A session mid turn keeps working/u });
+    expect(within(diagram).getByText('It was mid turn')).toBeDefined();
+    expect(within(diagram).getByText('Overlord runs claude stop.')).toBeDefined();
     expect(within(diagram).getByText('Not landed')).toBeDefined();
   });
 

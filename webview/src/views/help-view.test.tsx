@@ -50,7 +50,8 @@ describe('HelpView', () => {
     expect(within(table).getByText('Interrupt')).toBeDefined();
   });
 
-  it('has no accessibility violations', async () => {
+  // The page is long and full of diagrams, so axe takes several seconds on a busy machine.
+  it('has no accessibility violations', { timeout: 30_000 }, async () => {
     const { container, getByRole } = renderView(<HelpView />);
     expect(getByRole('heading', { level: 1, name: 'Overlord help' })).toBeDefined();
     await expectAccessible(container);

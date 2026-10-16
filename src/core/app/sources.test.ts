@@ -26,12 +26,16 @@ describe('Sources', () => {
       report: rt.report,
       notify: rt.notify,
     });
+    expect(sources.sessionBusy('second')).toBe(false);
     await sources.startWatcher();
     const line = JSON.stringify({ ...userPrompt('u1', 0, 'hello'), sessionId: 'second' });
     await writeText(path.join(env.paths.projectsDir, '-w', 'second.jsonl'), `${line}\n`);
     await waitFor(() =>
       rt.store.fleetState(Date.now()).sessions.some((item) => item.id === 'second'),
     );
+    // A prompt with no reply yet is an open turn.
+    expect(sources.sessionBusy('second')).toBe(true);
+    expect(sources.sessionBusy('nobody')).toBe(false);
     expect(sources.observerMode).toBe(false);
     expect(sources.telemetryPort).toBeNull();
     await sources.stop();

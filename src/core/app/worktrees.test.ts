@@ -146,6 +146,33 @@ describe('worktrees in the app', { timeout: 30_000 }, () => {
       expect(test.app.runtime.sessionWorktrees.get('8c3efb13-full')).toBe(worktree?.id);
     });
 
+    it('stop when their tab closes with nothing left to do, and take the worktree along', async () => {
+      const calls: (readonly string[])[] = [];
+      const test = await setup('repo', async (_command, args) => {
+        await Promise.resolve();
+        calls.push(args);
+        if (args.includes('--bg')) {
+          return { code: 0, stdout: 'backgrounded · 8c3efb13 (idle)\n', stderr: '' };
+        }
+        const listed = [
+          {
+            id: '8c3efb13',
+            pid: 777,
+            sessionId: '8c3efb13-full',
+            kind: 'background',
+            status: 'idle',
+            state: 'done',
+          },
+        ];
+        return { code: 0, stdout: JSON.stringify(listed), stderr: '' };
+      });
+      await test.app.dispatch({ type: 'newSession' }, {});
+      const terminal = lastTerminal(test);
+      await test.app.sessionClosed('8c3efb13-full');
+      expect(calls).toContainEqual(['stop', '8c3efb13']);
+      expect(existsSync(terminal.cwd)).toBe(false);
+    });
+
     it('open no tab, and say so, when the background session never shows up', async () => {
       // An attach tab would exit at once ("No job matching") and vanish, so none opens.
       const test = await setup('repo', async (_command, args) => {

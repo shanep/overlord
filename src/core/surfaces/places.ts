@@ -78,6 +78,11 @@ export function liveEntries(
 /** Ids shorter than this are too vague to tie a client to a session. */
 const MIN_TARGET = 8;
 
+/** True when the client shows this session. */
+export function attachesTo(client: AttachClient, sessionId: string): boolean {
+  return client.target.length >= MIN_TARGET && sessionId.startsWith(client.target);
+}
+
 /** The VS Code terminal showing a background session through `claude attach`, or null. */
 function attachedTerminal(
   sessionId: string,
@@ -85,7 +90,7 @@ function attachedTerminal(
   context: { readonly parents: ReadonlyMap<number, number>; readonly roots: ReadonlySet<number> },
 ): number | null {
   for (const client of attaches) {
-    if (client.target.length >= MIN_TARGET && sessionId.startsWith(client.target)) {
+    if (attachesTo(client, sessionId)) {
       const terminal = rootOf(client.pid, context.parents, context.roots);
       if (terminal !== null) {
         return terminal;

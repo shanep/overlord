@@ -268,8 +268,8 @@ export class OverlordApp {
       },
       notify,
       // Sources is built below, and this only runs after construction.
-      openTranscript: async (sessionId: string): Promise<boolean> =>
-        this.sources.openTranscript(sessionId),
+      openTranscript: async (id: string): Promise<boolean> => this.sources.openTranscript(id),
+      sessionBusy: (id: string): boolean => this.sources.sessionBusy(id),
       claudeCli: deps.claudeCli ?? cliLoader(host.settings, launchEnv, platform),
     };
     const context = new ContextViews({ ...base, onUpdate: notify, onError: report });

@@ -102,6 +102,11 @@ export class Sources {
     return (await this.watcher?.open(sessionId)) ?? false;
   }
 
+  /** True while the session's transcript has a turn open or a tool call without a result. */
+  sessionBusy(sessionId: string): boolean {
+    return this.watcher?.session(sessionId)?.busy() ?? false;
+  }
+
   /** Starts or stops the hook server and the OTLP receiver to match the settings file. */
   async sync(): Promise<void> {
     return this.enqueue(async () => {

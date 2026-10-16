@@ -18,6 +18,7 @@ import { type Lease, WorktreeRegistry } from '../worktrees/registry.js';
 
 import { openClaudeTab } from './claude-tabs.js';
 import { messageOf } from './errors.js';
+import { stopIfIdle } from './idle-stop.js';
 import type { Runtime } from './runtime.js';
 
 /** How often finished worktrees are checked and the landed ones removed. */
@@ -158,8 +159,12 @@ export async function openWorktree(rt: Runtime, id: string): Promise<void> {
   await openSession(rt, await rt.worktrees.hold(id), randomUUID());
 }
 
-/** A session tab closed. Its worktree goes too when everything in it has landed. */
+/**
+ * A session tab closed. An idle background session stops, and its worktree
+ * goes too when everything in it has landed.
+ */
 export async function sessionClosed(rt: Runtime, sessionId: string): Promise<void> {
+  await stopIfIdle(rt, sessionId);
   const id = rt.sessionWorktrees.get(sessionId);
   if (id === undefined) {
     return;
