@@ -236,9 +236,14 @@
           "group": "navigation@2"
         },
         {
-          "command": "overlord.refresh",
+          "command": "overlord.openSessions",
           "when": "view == overlord.fleet",
           "group": "navigation@3"
+        },
+        {
+          "command": "overlord.refresh",
+          "when": "view == overlord.fleet",
+          "group": "navigation@4"
         }
       ],
       "commandPalette": [

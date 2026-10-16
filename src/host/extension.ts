@@ -15,7 +15,7 @@ import { reloadOnUpdate } from './self-update.js';
 
 let app: OverlordApp | null = null;
 
-type ViewEntry = readonly [command: string, view: ViewId | null, label: string, icon: string];
+type ViewEntry = readonly [command: string, view: ViewId, label: string, icon: string];
 
 /** Settings and history that apply across every session. */
 const GLOBAL_VIEWS: readonly ViewEntry[] = [
@@ -25,19 +25,20 @@ const GLOBAL_VIEWS: readonly ViewEntry[] = [
   ['overlord.openFrustration', 'frustration', 'Frustration', 'flame'],
 ];
 
-/** Views about particular sessions and agents. */
-const SESSION_VIEWS: readonly ViewEntry[] = [
-  ['overlord.newClaudeSession', null, 'New Claude Code session', 'sparkle'],
+/** Views opened from buttons on the Fleet sidebar's title bar. */
+const FLEET_TITLE_VIEWS: readonly ViewEntry[] = [
   ['overlord.openFleet', 'fleet', 'Fleet (full view)', 'pulse'],
   ['overlord.openSessions', 'sessions', 'All Sessions', 'list-unordered'],
+];
+
+/** Views about particular sessions and agents. */
+const SESSION_VIEWS: readonly ViewEntry[] = [
   ['overlord.openLauncher', 'launcher', 'Launcher', 'rocket'],
   ['overlord.openContext', 'context', 'Context Inspector', 'search'],
   ['overlord.openMessages', 'messages', 'Agent Messages', 'comment-discussion'],
 ];
 
-const VIEW_COMMANDS = [...GLOBAL_VIEWS, ...SESSION_VIEWS].flatMap(([command, view]) =>
-  view === null ? [] : [[command, view] as const],
-);
+const VIEW_COMMANDS = [...GLOBAL_VIEWS, ...FLEET_TITLE_VIEWS, ...SESSION_VIEWS];
 
 class ViewListProvider implements vscode.TreeDataProvider<ViewEntry> {
   constructor(private readonly entries: readonly ViewEntry[]) {}
