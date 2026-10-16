@@ -49,6 +49,7 @@ export function decideByRules(
 export class PermissionHub {
   readonly inbox: PermissionInbox;
   readonly audit: AuditLog;
+  private pendingAudit: Promise<void> = Promise.resolve();
   private readonly options: PermissionHubOptions;
   private readonly rulesFile: string;
   private hooks: HookPermissions | null = null;
@@ -147,7 +148,7 @@ export class PermissionHub {
     if (decision.ruleId === null) {
       return;
     }
-    this.audit
+    const write = this.audit
       .append({
         at: entry.at,
         requestId: request.id,
@@ -160,6 +161,14 @@ export class PermissionHub {
       .catch((error: unknown) => {
         this.report(`audit log write failed: ${messageOf(error)}`);
       });
+    // Decisions must not wait on the disk, so writes run in the background and
+    // flushAudit lets callers (and tests) wait for them.
+    this.pendingAudit = this.pendingAudit.then(async () => write);
+  }
+
+  /** Resolves once every audit write started so far has finished or failed. */
+  async flushAudit(): Promise<void> {
+    await this.pendingAudit;
   }
 
   private report(message: string): void {

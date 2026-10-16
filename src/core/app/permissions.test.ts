@@ -10,15 +10,7 @@ import { ruleDenyMessage } from '../hooks/mapping.js';
 
 import type { HookPermissions } from './permissions.js';
 import { decideByRules, PermissionHub } from './permissions.js';
-import {
-  makeEnv,
-  NOW,
-  permissionRequest,
-  settle,
-  waitFor,
-  writeText,
-  readJson,
-} from './test-helpers/fixtures.js';
+import { makeEnv, NOW, permissionRequest, writeText, readJson } from './test-helpers/fixtures.js';
 
 const ALLOW: AutoApproveRule = {
   id: 'allow-ls',
@@ -170,7 +162,7 @@ describe('PermissionHub', () => {
     );
     expect(decision).toStrictEqual({ behavior: 'allow', ruleId: 'allow-ls' });
     expect(resolved).toStrictEqual(['auto']);
-    await settle();
+    await inbox.flushAudit();
     const text = await readFile(path.join(storageDir, 'audit.jsonl'), 'utf8');
     const entries: unknown[] = text
       .trim()
@@ -198,7 +190,7 @@ describe('PermissionHub', () => {
     const { hub: inbox, storageDir } = await hub();
     inbox.inbox.setEvaluator(() => ({ behavior: 'allow', ruleId: null }));
     await inbox.inbox.request(permissionRequest('x'), new AbortController().signal);
-    await settle();
+    await inbox.flushAudit();
     await expect(readFile(path.join(storageDir, 'audit.jsonl'), 'utf8')).rejects.toThrow();
   });
 
@@ -208,8 +200,7 @@ describe('PermissionHub', () => {
     // A folder where the log file should be makes the append fail.
     await writeText(path.join(storageDir, 'audit.jsonl', 'blocker'), '');
     await inbox.inbox.request(permissionRequest('x'), new AbortController().signal);
-    // The failed append lands a few ticks later, and later still on a slow CI runner.
-    await waitFor(() => errors.length > 0);
+    await inbox.flushAudit();
     expect(errors).toHaveLength(1);
     expect(errors[0]).toMatch(/^permissions: audit log write failed: /u);
   });
