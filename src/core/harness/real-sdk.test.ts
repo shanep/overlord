@@ -301,7 +301,7 @@ describe('real SDK against the fake Claude binary', () => {
           broker: new PermissionInbox(),
           baseEnv: async (): Promise<Readonly<Record<string, string | undefined>>> =>
             resolved({ ...process.env, FAKE_CLAUDE_SCENARIO: scenario('success') }),
-          executablePath: FAKE_CLAUDE,
+          executablePath: (): string => FAKE_CLAUDE,
         },
         1,
       );

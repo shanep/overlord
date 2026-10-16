@@ -109,7 +109,7 @@ function setup(maxConcurrency = 2, extra: Partial<LauncherDeps> = {}): Setup {
       broker: new PermissionInbox(),
       baseEnv: async (): Promise<Readonly<Record<string, string | undefined>>> =>
         resolved({ PATH: '/bin', FROM_BASE: 'yes', UNSET: undefined }),
-      executablePath: '/fake.mjs',
+      executablePath: (env): string | null => (env['FROM_BASE'] === 'yes' ? '/fake.mjs' : null),
       now: (): number => {
         clock += 10;
         return clock;

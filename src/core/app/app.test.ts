@@ -1,4 +1,5 @@
 import { existsSync } from 'node:fs';
+import { chmod } from 'node:fs/promises';
 import { connect, createServer } from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
@@ -65,10 +66,24 @@ async function waitForPort(app: OverlordApp): Promise<number> {
 }
 
 describe('helpers', () => {
-  it('passes a claude path to the SDK only when it names a binary', () => {
-    expect(executableFor('claude')).toBeNull();
-    expect(executableFor('  ')).toBeNull();
-    expect(executableFor(' /opt/claude ')).toBe('/opt/claude');
+  it('finds a bare claude on the login shell PATH', async () => {
+    const env = await makeEnv();
+    const bin = path.join(env.root, 'bin');
+    const claude = await writeText(path.join(bin, 'claude'), '#!/bin/sh\n');
+    await chmod(claude, 0o755);
+    const shellEnv = { PATH: `/nowhere:${bin}` };
+    expect(executableFor('claude', shellEnv, 'darwin')).toBe(claude);
+    expect(executableFor('  ', shellEnv, 'linux')).toBe(claude);
+  });
+
+  it('leaves the SDK its bundled CLI only when claude is nowhere on PATH', () => {
+    expect(executableFor('claude', { PATH: '/nowhere' }, 'darwin')).toBeNull();
+    expect(executableFor('claude', {}, 'darwin')).toBeNull();
+  });
+
+  it('passes other names and paths through as given', () => {
+    expect(executableFor(' /opt/claude ', {}, 'darwin')).toBe('/opt/claude');
+    expect(executableFor('claude-dev', { PATH: '/nowhere' }, 'linux')).toBe('claude-dev');
   });
 
   it('keeps concurrency a whole number of at least one', () => {

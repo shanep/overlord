@@ -28,7 +28,8 @@ export interface LauncherDeps {
   readonly worktrees?: WorktreeCreator | null;
   /** Loads the environment profiles are merged onto. Defaults to process.env. */
   readonly baseEnv?: () => Promise<Readonly<Record<string, string | undefined>>>;
-  readonly executablePath?: string | null;
+  /** Picks the claude binary, given the loaded base environment. Defaults to the SDK's own. */
+  readonly executablePath?: (env: Readonly<Record<string, string | undefined>>) => string | null;
   readonly now?: () => number;
   readonly newId?: () => string;
 }
@@ -222,7 +223,12 @@ export class Launcher {
         newId: this.newId,
         now: this.now,
       },
-      { ...settings, cwd, title: spec.label, executablePath: this.deps.executablePath ?? null },
+      {
+        ...settings,
+        cwd,
+        title: spec.label,
+        executablePath: this.deps.executablePath?.(baseEnv) ?? null,
+      },
     );
     record.session = session;
     this.update(record, { sessionId: session.id });

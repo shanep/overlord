@@ -8,6 +8,7 @@ import path from 'node:path';
 import type { HostToWebview, ViewId, WebviewAction } from '../../shared/protocol.js';
 import { EventBus } from '../bus.js';
 import { createNodeFileSystem, type FileSystem } from '../context/fs.js';
+import { findOnPath } from '../find-on-path.js';
 import { Launcher } from '../harness/launcher.js';
 import { mergeEnv } from '../harness/options.js';
 import type { PlanUsageFunction, QueryFunction } from '../harness/sdk-types.js';
@@ -80,10 +81,22 @@ export interface AppDeps {
 export const SESSIONS_REFRESH_MS = 30_000;
 const SETTINGS_POLL_MS = 2000;
 
-/** The SDK runs its bundled CLI unless the setting names a specific binary. */
-export function executableFor(claudePath: string): string | null {
-  const trimmed = claudePath.trim();
-  return trimmed === '' || trimmed === 'claude' ? null : trimmed;
+/**
+ * The binary SDK runs use. The host only searched the editor's PATH, so a bare
+ * name is looked up again on the login shell's. A bare `claude` found nowhere
+ * leaves the SDK to its bundled CLI.
+ */
+export function executableFor(
+  claudePath: string,
+  env: Readonly<Record<string, string | undefined>>,
+  platform: NodeJS.Platform,
+): string | null {
+  const name = claudePath.trim() === '' ? 'claude' : claudePath.trim();
+  const found = findOnPath({ name, pathValue: env['PATH'], platform });
+  if (found !== null) {
+    return found;
+  }
+  return name === 'claude' ? null : name;
 }
 
 export function concurrencyFrom(value: number): number {
@@ -189,7 +202,8 @@ export class OverlordApp {
         broker: permissions.inbox,
         worktrees: new WorktreeManager(toHarnessExec(exec)),
         baseEnv: launchEnv,
-        executablePath: executableFor(host.settings.claudePath),
+        executablePath: (runEnv): string | null =>
+          executableFor(host.settings.claudePath, runEnv, platform),
         now: clock,
       },
       concurrencyFrom(host.settings.maxConcurrency),
@@ -213,12 +227,14 @@ export class OverlordApp {
       launcher,
       permissions,
       report,
-      planUsage: async (): Promise<unknown> =>
-        planUsageFunction({
+      planUsage: async (): Promise<unknown> => {
+        const usageEnv = await launchEnv();
+        return planUsageFunction({
           cwd: paths.home,
-          env: mergeEnv(await launchEnv(), {}),
-          executablePath: executableFor(host.settings.claudePath),
-        }),
+          env: mergeEnv(usageEnv, {}),
+          executablePath: executableFor(host.settings.claudePath, usageEnv, platform),
+        });
+      },
       notify,
       // Sources is built below, and this only runs after construction.
       openTranscript: async (sessionId: string): Promise<boolean> =>
