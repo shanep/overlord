@@ -33,6 +33,11 @@ export function defaultModel(rt: Runtime): string {
   return typeof setting?.value === 'string' && setting.value !== '' ? setting.value : DEFAULT_MODEL;
 }
 
+/** Where a run works when the form leaves Folder empty: this window's folder, else home. */
+export function launchFolder(rt: Runtime): string {
+  return rt.host.workspaceFolder() ?? rt.paths.home;
+}
+
 async function freshProfiles(rt: Runtime): Promise<readonly LaunchProfile[]> {
   await rt.caches.profiles.refresh();
   return rt.caches.profiles.peek();
@@ -79,12 +84,14 @@ export const launchActions: ActionHandlers<LaunchActions> = {
       rt.host.showInfo('Nothing to launch.');
       return;
     }
+    const folder = launchFolder(rt);
+    const specs = action.specs.map((spec) => (spec.cwd === '' ? { ...spec, cwd: folder } : spec));
     const profiles = await freshProfiles(rt);
-    if (!(await approveCost(rt, action.specs, profiles))) {
+    if (!(await approveCost(rt, specs, profiles))) {
       return;
     }
-    rt.launcher.launch(action.specs, profiles);
-    rt.host.showInfo(`Queued ${plural(action.specs.length, 'run')}.`);
+    rt.launcher.launch(specs, profiles);
+    rt.host.showInfo(`Queued ${plural(specs.length, 'run')}.`);
   },
   stopRun: async ({ rt }, action) => {
     if (!rt.launcher.stopRun(action.runId)) {

@@ -4,6 +4,7 @@
 // session can only be signalled, and only after the user agrees.
 
 import type { HandoffKind, LaunchRun, SurfaceSession } from '../../shared/protocol.js';
+import { isViewId } from '../../shared/protocol.js';
 import { parsePermissionMode } from '../harness/events.js';
 import { isTerminal } from '../harness/launcher.js';
 import type { SdkSession } from '../harness/session.js';
@@ -22,6 +23,7 @@ type SessionActions =
   | 'openAgent'
   | 'openContext'
   | 'openFile'
+  | 'openView'
   | 'interrupt'
   | 'stop'
   | 'setModel'
@@ -189,6 +191,15 @@ export const sessionActions: ActionHandlers<SessionActions> = {
   },
   openFile: async ({ rt }, action) => {
     await rt.host.openFile(action.path);
+  },
+  // Actions arrive over postMessage, so the view name is checked before it opens.
+  openView: async ({ rt }, action) => {
+    if (!isViewId(action.view)) {
+      rt.host.showInfo(`Overlord does not know the view "${String(action.view)}".`);
+      return;
+    }
+    rt.host.openPanel(action.view, {});
+    await Promise.resolve();
   },
   interrupt: async (context, action) => {
     const target = sdkTarget(context.rt, action.sessionId);

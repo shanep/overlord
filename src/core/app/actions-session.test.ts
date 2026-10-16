@@ -95,12 +95,21 @@ describe('opening panels and files', () => {
     await app.dispatch({ type: 'openContext', sessionId: 's', agentId: null }, {});
     await app.dispatch({ type: 'openContext', sessionId: 's', agentId: 'a' }, {});
     await app.dispatch({ type: 'openFile', path: '/f.md' }, {});
+    await app.dispatch({ type: 'openView', view: 'knobs' }, {});
+    // A view name off the wire is checked, since postMessage carries anything.
+    const unknownView = parsedAction({
+      type: 'action',
+      action: { type: 'openView', view: 'nope' },
+    });
+    await app.dispatch(unknownView, {});
     expect(env.host.panels).toStrictEqual([
       { view: 'agent', params: { sessionId: 's', agentId: 'a' } },
       { view: 'context', params: { sessionId: 's' } },
       { view: 'context', params: { sessionId: 's', agentId: 'a' } },
+      { view: 'knobs', params: {} },
     ]);
     expect(env.host.opened).toStrictEqual(['/f.md']);
+    expect(env.host.infos).toStrictEqual(['Overlord does not know the view "nope".']);
   });
 });
 

@@ -20,6 +20,7 @@ const empty: LauncherState = {
   pendingPermissions: [],
   rules: [],
   maxConcurrency: 2,
+  defaultFolder: '/work',
   worktrees: [],
 };
 
@@ -27,21 +28,36 @@ describe('LauncherView', () => {
   it('renders every section and passes axe', async () => {
     const { container } = renderView(<LauncherView state={launcherState} />);
     expect(screen.getByRole('heading', { level: 1, name: 'Launcher' })).toBeDefined();
+    // A waiting request goes above the runs it holds up.
     expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toStrictEqual([
       'New run',
+      'Permission inbox (1)',
       'Runs',
       'Worktrees',
-      'Permission inbox (1)',
       'Auto-approve rules',
     ]);
+    expect(screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toStrictEqual([
+      '1. What should it do?',
+      '2. Which profiles?',
+      '3. Where?',
+      '4. Name and limit (optional)',
+    ]);
+    expect(screen.getByText(/use the sparkle button/u)).toBeDefined();
     await expectAccessible(container);
   });
 
   it('renders an empty state for every section and passes axe', async () => {
     const { container } = renderView(<LauncherView state={empty} />);
     expect(screen.queryByRole('combobox', { name: 'Load draft' })).toBeNull();
-    expect(screen.getByText('No profiles yet.')).toBeDefined();
-    expect(screen.getByText('No runs yet.')).toBeDefined();
+    expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toStrictEqual([
+      'New run',
+      'Runs',
+      'Worktrees',
+      'Permission inbox (0)',
+      'Auto-approve rules',
+    ]);
+    expect(screen.getByText(/No profiles yet/u)).toBeDefined();
+    expect(screen.getByText('No runs yet. Launch one above and it shows up here.')).toBeDefined();
     expect(screen.getByText('No worktrees. Each new session and run gets its own.')).toBeDefined();
     expect(screen.getByText('No pending requests.')).toBeDefined();
     expect(screen.getByText('No rules. Nothing is approved without asking.')).toBeDefined();
@@ -56,8 +72,38 @@ describe('launch form', () => {
     renderView(<LauncherView state={launcherState} />);
     const launch = screen.getByRole('button', { name: 'Launch 1 run' });
     expect(launch).toHaveProperty('disabled', true);
+    expect(launch.getAttribute('aria-describedby')).toBe('launch-summary');
+    expect(screen.getByText('Write a prompt to launch.')).toBeDefined();
     await userEvent.type(screen.getByRole('textbox', { name: 'Prompt' }), ' '.repeat(3));
     expect(launch).toHaveProperty('disabled', true);
+  });
+
+  it('says what Launch will do and which folder an empty Folder means', async () => {
+    renderView(<LauncherView state={launcherState} />);
+    const folder = screen.getByRole('textbox', { name: 'Folder' });
+    expect(folder).toHaveProperty('placeholder', '/work');
+    expect(screen.getByText('Leave it empty to use /work.')).toBeDefined();
+    await userEvent.type(screen.getByRole('textbox', { name: 'Prompt' }), 'Go');
+    expect(
+      screen.getByText(
+        'Starts 1 run with your usual settings, in its own copy of /work, with no spending limit.',
+      ),
+    ).toBeDefined();
+    await userEvent.type(folder, ' /repo ');
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Fast' }));
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Deep' }));
+    await userEvent.type(screen.getByRole('spinbutton', { name: 'Budget (USD)' }), '2');
+    expect(
+      screen.getByText(
+        'Starts 2 runs, one each for Fast and Deep, each in its own copy of /repo, stopping each one at $2.00.',
+      ),
+    ).toBeDefined();
+  });
+
+  it('sends you to Knobs to make a profile when there are none', async () => {
+    const { api } = renderView(<LauncherView state={empty} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Make a profile' }));
+    expect(api.actions()).toStrictEqual([{ type: 'openView', view: 'knobs' }]);
   });
 
   it('launches a matrix run across the checked profiles', async () => {
@@ -173,7 +219,7 @@ describe('runs', () => {
       .slice(1)
       .map((row) => row.textContent);
     expect(rows).toStrictEqual([
-      'Flaky testFastrunning$0.30 est.41m 35sn/a/repo/.worktrees/r1Stop',
+      'Flaky testFastrunning$0.30 est.41m 35sn/ar1OpenStop',
       'Flaky testnonedone$0.80 est.95m 00sFixed by adding a wait.',
       'Orphangonefailed$0.80 est.95m 00sFixed by adding a wait.',
     ]);
@@ -208,6 +254,17 @@ describe('runs', () => {
       await userEvent.click(within(table).getByRole('button', { name: header }));
       expect(firstCells()).toStrictEqual(order);
     }
+  });
+
+  it('opens a run that has a session, and shows its whole result on hover', async () => {
+    const { api } = renderView(<LauncherView state={launcherState} />);
+    expect(screen.getAllByRole('button', { name: /^Open Flaky test$/u })).toHaveLength(1);
+    expect(screen.getByText('Fixed by adding a wait.')).toHaveProperty(
+      'title',
+      'Fixed by adding a wait.',
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Open Flaky test' }));
+    expect(api.actions()).toStrictEqual([{ type: 'openSession', sessionId: 's9' }]);
   });
 
   it('stops one run', async () => {
@@ -264,7 +321,7 @@ describe('auto-approve rules', () => {
   it('lists rules and toggles and deletes them', async () => {
     const { api } = renderView(<LauncherView state={launcherState} />);
     const rules = within(region('Auto-approve rules'));
-    expect(rules.getByText('Deny rules always win. Every auto-approval is logged.')).toBeDefined();
+    expect(rules.getByText(/Deny rules always win/u)).toBeDefined();
     expect(rules.getByText('any')).toBeDefined();
     expect(rules.getByText('rm *')).toBeDefined();
     const read = rules.getByRole('checkbox', { name: 'Enable rule for Read' });

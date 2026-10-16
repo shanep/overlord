@@ -1,4 +1,4 @@
-// Runs table with stop and a guarded stop all.
+// Runs table with open, stop and a guarded stop all.
 
 import type { ReactElement } from 'react';
 import { useState } from 'react';
@@ -14,23 +14,41 @@ import { usePostAction } from '../vscode-context.js';
 
 import { isActiveRun, RUN_TONES } from './launcher-values.js';
 
-function StopButton(props: { readonly run: LaunchRun }): ReactElement | null {
+function RunActions(props: { readonly run: LaunchRun }): ReactElement {
   const post = usePostAction();
   const { run } = props;
-  if (!isActiveRun(run)) {
-    return null;
-  }
+  const { sessionId } = run;
   return (
-    <button
-      type="button"
-      aria-label={`Stop ${run.spec.label}`}
-      onClick={() => {
-        post({ type: 'stopRun', runId: run.id });
-      }}
-    >
-      Stop
-    </button>
+    <span className="actions">
+      {sessionId === null ? null : (
+        <button
+          type="button"
+          aria-label={`Open ${run.spec.label}`}
+          onClick={() => {
+            post({ type: 'openSession', sessionId });
+          }}
+        >
+          Open
+        </button>
+      )}
+      {isActiveRun(run) ? (
+        <button
+          type="button"
+          aria-label={`Stop ${run.spec.label}`}
+          onClick={() => {
+            post({ type: 'stopRun', runId: run.id });
+          }}
+        >
+          Stop
+        </button>
+      ) : null}
+    </span>
   );
+}
+
+/** The last part of a worktree path, which Overlord never ends with a slash. */
+function baseName(folder: string): string {
+  return folder.slice(folder.lastIndexOf('/') + 1);
 }
 
 function runColumns(profiles: readonly LaunchProfile[]): Column<LaunchRun>[] {
@@ -76,14 +94,24 @@ function runColumns(profiles: readonly LaunchProfile[]): Column<LaunchRun>[] {
       id: 'result',
       header: 'Result',
       cell: (run) =>
-        run.result === null ? <span className="muted">n/a</span> : truncate(run.result, 60),
+        run.result === null ? (
+          <span className="muted">n/a</span>
+        ) : (
+          <span title={run.result}>{truncate(run.result, 60)}</span>
+        ),
     },
     {
       id: 'worktree',
       header: 'Worktree',
-      cell: (run) => <span className="mono">{run.worktreePath ?? ''}</span>,
+      // The folder name is enough to tell runs apart. The whole path is on hover.
+      cell: (run) =>
+        run.worktreePath === null ? null : (
+          <span className="mono" title={run.worktreePath}>
+            {baseName(run.worktreePath)}
+          </span>
+        ),
     },
-    { id: 'actions', header: 'Actions', cell: (run) => <StopButton run={run} /> },
+    { id: 'actions', header: 'Actions', cell: (run) => <RunActions run={run} /> },
   ];
 }
 
@@ -115,6 +143,9 @@ export function RunsTable(props: {
           Stop all
         </button>
       </div>
+      <p className="hint">
+        Open shows what a run is doing. Runs past the first {maxConcurrency} wait their turn.
+      </p>
       {confirming ? (
         <ConfirmBar
           message={`Stop ${active.toString()} active runs?`}
@@ -133,7 +164,7 @@ export function RunsTable(props: {
         columns={runColumns(profiles)}
         rows={runs}
         rowKey={(run) => run.id}
-        empty="No runs yet."
+        empty="No runs yet. Launch one above and it shows up here."
       />
     </section>
   );

@@ -20,7 +20,14 @@ export function PermissionInbox(props: {
   return (
     <section className="section" aria-labelledby="inbox-heading">
       <h2 id="inbox-heading">Permission inbox ({props.requests.length})</h2>
-      {props.requests.length === 0 ? <p className="muted">No pending requests.</p> : null}
+      {props.requests.length === 0 ? (
+        <p className="muted">No pending requests.</p>
+      ) : (
+        <p className="hint">
+          These runs want to use a tool and are waiting for your answer. Always allow adds a rule so
+          the same thing does not ask again.
+        </p>
+      )}
       <ul className="feed">
         {props.requests.map((request) => (
           <li key={request.id}>

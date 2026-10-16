@@ -203,6 +203,8 @@ export interface LauncherState {
   readonly rules: readonly AutoApproveRule[];
   readonly maxConcurrency: number;
   readonly worktrees: readonly WorktreeSummary[];
+  /** Where a run works when the form leaves Folder empty. */
+  readonly defaultFolder: string;
 }
 
 export interface SurfaceSession {
@@ -430,6 +432,7 @@ export type WebviewAction =
   | { readonly type: 'syncPull' }
   | { readonly type: 'adoptConfig'; readonly itemId: string }
   | { readonly type: 'openFile'; readonly path: string }
+  | { readonly type: 'openView'; readonly view: ViewId }
   | { readonly type: 'newAgent' }
   | { readonly type: 'newSkill' }
   | { readonly type: 'rescanFrustration' }

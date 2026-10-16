@@ -135,6 +135,22 @@ describe('launch', () => {
     expect(env.host.infos).toStrictEqual(['Queued 12 runs.']);
   });
 
+  it('runs an empty folder in the workspace folder, or home when there is none', async () => {
+    const env = await makeEnv({ workspace: true });
+    const { app } = makeApp(env);
+    const workspace = env.host.workspaceFolder() ?? '';
+    expect(app.stateFor('launcher', {})).toMatchObject({ state: { defaultFolder: workspace } });
+    await app.dispatch({ type: 'launch', specs: [spec('empty', { cwd: '' }), spec('set')] }, {});
+    expect(app.runtime.launcher.runs().map((run) => run.spec.cwd)).toStrictEqual([
+      workspace,
+      '/repo',
+    ]);
+    const bare = await makeEnv();
+    expect(makeApp(bare).app.stateFor('launcher', {})).toMatchObject({
+      state: { defaultFolder: bare.home },
+    });
+  });
+
   it('prices runs by their profile model', async () => {
     const env = await makeEnv();
     const { app } = makeApp(env);

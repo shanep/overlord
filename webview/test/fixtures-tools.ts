@@ -76,6 +76,7 @@ export const launcherState: LauncherState = {
     },
   ],
   maxConcurrency: 4,
+  defaultFolder: '/work',
   worktrees: [
     {
       id: 'w1',

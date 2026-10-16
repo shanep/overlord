@@ -7,6 +7,7 @@ import type { LaunchForm } from './launcher-values.js';
 import {
   buildSpecs,
   isActiveRun,
+  launchSummary,
   parseBudget,
   runCountLabel,
   runLabel,
@@ -96,5 +97,33 @@ describe('runCountLabel and isActiveRun', () => {
     expect(isActiveRun({ ...running, state: 'queued' })).toBe(true);
     expect(isActiveRun(done)).toBe(false);
     expect(isActiveRun({ ...done, state: 'stopped' })).toBe(false);
+  });
+});
+
+describe('launchSummary', () => {
+  const plan = {
+    prompt: 'Go',
+    folder: '/repo',
+    worktree: false,
+    maxBudgetUsd: null,
+    profileNames: ['Fast'],
+  };
+
+  it('asks for a prompt first', () => {
+    expect(launchSummary({ ...plan, prompt: ' ' })).toBe('Write a prompt to launch.');
+  });
+
+  it('describes one run in the folder itself with a limit', () => {
+    expect(launchSummary({ ...plan, maxBudgetUsd: 1.5 })).toBe(
+      'Starts 1 run with Fast, in /repo, stopping at $1.50.',
+    );
+  });
+
+  it('lists three profiles with commas and an and', () => {
+    expect(
+      launchSummary({ ...plan, worktree: true, profileNames: ['Fast', 'Deep', 'Cheap'] }),
+    ).toBe(
+      'Starts 3 runs, one each for Fast, Deep and Cheap, each in its own copy of /repo, with no spending limit.',
+    );
   });
 });

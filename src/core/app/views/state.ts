@@ -7,6 +7,7 @@ import type {
   LauncherState,
   ViewId,
 } from '../../../shared/protocol.js';
+import { launchFolder } from '../actions-launch.js';
 import type { PanelParams } from '../host-port.js';
 import type { Runtime } from '../runtime.js';
 
@@ -34,6 +35,7 @@ function buildLauncher(rt: Runtime): LauncherState {
     pendingPermissions: rt.permissions.list(),
     rules: rt.permissions.rules(),
     worktrees: rt.caches.worktrees.value,
+    defaultFolder: launchFolder(rt),
   };
 }
 

@@ -3,7 +3,7 @@
 
 import type { LaunchProfile, LaunchSpec } from '../../../src/shared/model.js';
 import type { LaunchRun } from '../../../src/shared/protocol.js';
-import { truncate } from '../format.js';
+import { formatUsd, truncate } from '../format.js';
 import type { Tone } from '../labels.js';
 
 export type BudgetResult =
@@ -61,6 +61,49 @@ export function buildSpecs(form: LaunchForm, selected: readonly LaunchProfile[])
 
 export function runCountLabel(count: number): string {
   return count === 1 ? '1 run' : `${count.toString()} runs`;
+}
+
+/** "Fast", "Fast and Deep", "Fast, Deep and Cheap". */
+function listNames(names: readonly string[]): string {
+  return names.length < 2
+    ? names.join('')
+    : `${names.slice(0, -1).join(', ')} and ${names.slice(-1).join('')}`;
+}
+
+export interface LaunchPlan {
+  readonly prompt: string;
+  /** The folder the runs will work in, with an empty Folder field already filled in. */
+  readonly folder: string;
+  readonly worktree: boolean;
+  readonly maxBudgetUsd: number | null;
+  readonly profileNames: readonly string[];
+}
+
+/** "1 run with your usual settings", "1 run with Fast", "2 runs, one each for Fast and Deep". */
+function describeRuns(names: readonly string[]): string {
+  if (names.length === 0) {
+    return '1 run with your usual settings';
+  }
+  if (names.length === 1) {
+    return `1 run with ${listNames(names)}`;
+  }
+  return `${runCountLabel(names.length)}, one each for ${listNames(names)}`;
+}
+
+/** One sentence saying what Launch will do, or what it still needs. */
+export function launchSummary(plan: LaunchPlan): string {
+  if (plan.prompt.trim() === '') {
+    return 'Write a prompt to launch.';
+  }
+  const several = plan.profileNames.length > 1;
+  const each = several ? 'each ' : '';
+  const place = plan.worktree ? `${each}in its own copy of ${plan.folder}` : `in ${plan.folder}`;
+  const whom = several ? 'each one ' : '';
+  const limit =
+    plan.maxBudgetUsd === null
+      ? 'with no spending limit'
+      : `stopping ${whom}at ${formatUsd(plan.maxBudgetUsd)}`;
+  return `Starts ${describeRuns(plan.profileNames)}, ${place}, ${limit}.`;
 }
 
 export const RUN_TONES: Readonly<Record<LaunchRun['state'], Tone>> = {

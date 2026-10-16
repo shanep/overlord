@@ -144,6 +144,11 @@ export function WorktreesTable(props: {
           {overlapping > 0 ? `, ${overlapping.toString()} touching the same files` : ''}
         </span>
       </div>
+      <p className="hint">
+        Each session and run works in its own copy of the repository. When one finishes, Open starts
+        a session in it to look around, Land puts its commits on the default branch, and Discard
+        throws it away.
+      </p>
       <DataTable
         caption="Worktrees"
         columns={COLUMNS}

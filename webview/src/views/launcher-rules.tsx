@@ -129,7 +129,10 @@ export function RulesEditor(props: { readonly rules: readonly AutoApproveRule[] 
   return (
     <section className="section" aria-labelledby="rules-heading">
       <h2 id="rules-heading">Auto-approve rules</h2>
-      <p className="muted">Deny rules always win. Every auto-approval is logged.</p>
+      <p className="hint">
+        Rules answer permission requests for you, so runs do not stop to ask. Deny rules always win.
+        Every auto-approval is logged.
+      </p>
       <table className="grid">
         <caption className="visually-hidden">Auto-approve rules</caption>
         <thead>

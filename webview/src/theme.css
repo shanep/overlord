@@ -101,6 +101,19 @@ pre,
   color: var(--ov-error);
 }
 
+/* A line under a field or heading saying what it is for. */
+.hint {
+  margin: 0 0 6px;
+  color: var(--ov-muted);
+  font-size: 0.9em;
+}
+
+/* The opening line of a view that says what it is for. */
+.lead {
+  margin: 0 0 8px;
+  max-width: 70ch;
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -196,7 +209,12 @@ label {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  align-items: flex-start;
   margin-bottom: 6px;
+}
+
+.field > input[type='text'] {
+  width: min(100%, 60ch);
 }
 
 .field > span {
@@ -651,6 +669,12 @@ details > summary {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+}
+
+fieldset.chips {
+  margin: 0 0 6px;
+  padding: 0;
+  border: 0;
 }
 
 .legend {
