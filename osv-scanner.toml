@@ -1,7 +1,0 @@
-# braces has no patched release yet. It is a dev-only dependency
-# (markdownlint-cli2 and type-coverage use it to glob our own repo files), and
-# nothing that ships in the extension depends on it. Recheck by the date below.
-[[IgnoredVulns]]
-id = "GHSA-vfj7-8cjw-p6xm"
-ignoreUntil = 2027-01-15
-reason = "Dev-only dependency with no fixed version, never shipped in the extension."
