@@ -50,6 +50,7 @@ export class SessionPlaces {
   private treeKey = '';
   private running: Promise<void> | null = null;
   private active: ActiveTerminal | null = null;
+  private version = 0;
 
   constructor(private readonly deps: PlacesDeps) {}
 
@@ -67,8 +68,26 @@ export class SessionPlaces {
   setActiveTerminal(terminal: ActiveTerminal | null): void {
     if (JSON.stringify(terminal) !== JSON.stringify(this.active)) {
       this.active = terminal;
-      this.deps.onChange();
+      this.bump();
     }
+  }
+
+  /** The window came to the front, so the fleet should point at its session again. */
+  windowFocused(): void {
+    this.bump();
+  }
+
+  /**
+   * Goes up whenever the focused terminal changes or the window comes back
+   * to the front, so the fleet highlights again even when the session is the same.
+   */
+  get activeVersion(): number {
+    return this.version;
+  }
+
+  private bump(): void {
+    this.version += 1;
+    this.deps.onChange();
   }
 
   /** The session in the focused terminal, or null when it shows none Overlord knows. */

@@ -22,6 +22,7 @@ import {
   normalizeRateLimits,
   toFraction,
   withJobStates,
+  windowSession,
   withPlanLimits,
 } from './fleet.js';
 import { buildKnobs, EMPTY_KNOBS, loadKnobs, loadProfiles } from './knobs.js';
@@ -32,6 +33,44 @@ function store(bus: EventBus): OverlordStore {
 }
 
 describe('fleet view', () => {
+  it('picks the newest session in the window folder, then the newest under it', () => {
+    const repo = path.join(path.sep, 'repos', 'app');
+    const nested = path.join(repo, '.claude', 'worktrees', 'x');
+    const sessions = [
+      session('old', { cwd: repo, updatedAt: 1 }),
+      session('new', { cwd: repo, updatedAt: 5 }),
+      session('wt-old', { cwd: nested, updatedAt: 2 }),
+      session('wt-new', { cwd: nested, updatedAt: 9 }),
+      session('sibling', { cwd: `${repo}-other`, updatedAt: 20 }),
+    ];
+    expect(windowSession(sessions, repo)).toBe('new');
+    expect(windowSession(sessions, repo + path.sep)).toBe('new');
+    expect(windowSession(sessions, nested)).toBe('wt-new');
+    expect(windowSession(sessions.slice(2), repo)).toBe('wt-new');
+    expect(windowSession(sessions, path.join(path.sep, 'elsewhere'))).toBeNull();
+    expect(windowSession(sessions, null)).toBeNull();
+  });
+
+  it('highlights the focused terminal session, else the window session', () => {
+    const bus = new EventBus();
+    const fleetStore = store(bus);
+    bus.emit('session.upserted', session('mine', { cwd: '/repos/app' }));
+    const inputs = {
+      store: fleetStore,
+      pending: [],
+      now: NOW,
+      plan: null,
+      places: {},
+      activeSessionId: null,
+      activeVersion: 3,
+      workspaceFolder: '/repos/app',
+      jobs: [],
+    };
+    expect(buildFleet(inputs).activeSessionId).toBe('mine');
+    expect(buildFleet(inputs).activeVersion).toBe(3);
+    expect(buildFleet({ ...inputs, activeSessionId: 'tab' }).activeSessionId).toBe('tab');
+  });
+
   it('turns percentages into fractions and leaves fractions and nulls alone', () => {
     expect(toFraction(null)).toBeNull();
     expect(toFraction(0.4)).toBeCloseTo(0.4, 10);
@@ -59,6 +98,8 @@ describe('fleet view', () => {
       plan: null,
       places,
       activeSessionId: 's1',
+      activeVersion: 0,
+      workspaceFolder: null,
       jobs: [],
     });
     expect(state.activeSessionId).toBe('s1');
@@ -70,6 +111,7 @@ describe('fleet view', () => {
     expect(state.agents).toStrictEqual([]);
     expect(sorted(Object.keys(state))).toStrictEqual([
       'activeSessionId',
+      'activeVersion',
       'agents',
       'pendingPermissions',
       'places',
@@ -95,6 +137,8 @@ describe('fleet view', () => {
       plan: null,
       places: {},
       activeSessionId: null,
+      activeVersion: 0,
+      workspaceFolder: null,
       jobs,
     });
     const byId = new Map(state.sessions.map((item) => [item.id, item]));
@@ -143,6 +187,8 @@ describe('fleet view', () => {
         plan,
         places: {},
         activeSessionId: null,
+        activeVersion: 0,
+        workspaceFolder: null,
         jobs: [],
       }).rateLimits,
     ).toStrictEqual({

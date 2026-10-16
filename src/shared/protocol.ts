@@ -60,8 +60,13 @@ export interface FleetState {
   readonly sessions: readonly SessionSummary[];
   readonly agents: readonly AgentNode[];
   readonly pendingPermissions: readonly PermissionRequest[];
-  /** The session in the focused terminal, so the fleet can highlight it. */
+  /**
+   * The session to highlight: the one in the focused terminal, or else the
+   * one that belongs to this window's folder.
+   */
   readonly activeSessionId: string | null;
+  /** Changes each time the fleet should highlight it again. */
+  readonly activeVersion: number;
   /** Where each session with a live process runs, by session id. */
   readonly places: Readonly<Record<string, SessionPlace>>;
   readonly rateLimits: RateLimits;

@@ -87,7 +87,7 @@ export function FleetView(props: { readonly state: FleetState }): ReactElement {
       following.current = `s:${state.activeSessionId}`;
       setSelected(following.current);
     }
-  }, [state.activeSessionId]);
+  }, [state.activeSessionId, state.activeVersion]);
 
   useEffect(() => {
     if (navigating.current) {

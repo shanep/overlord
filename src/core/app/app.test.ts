@@ -170,6 +170,13 @@ describe('OverlordApp', () => {
     expect(active()).toBeNull();
     app.setActiveTerminal({ sessionId: 'abc', processId: 42 });
     expect(active()).toBe('abc');
+    const version = (): number => {
+      const message = app.stateFor('fleet', {});
+      return message.view === 'fleet' ? message.state.activeVersion : -1;
+    };
+    const before = version();
+    app.runtime.places.windowFocused();
+    expect(version()).toBe(before + 1);
     await app.dispose();
   });
 

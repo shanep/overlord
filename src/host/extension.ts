@@ -208,6 +208,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     register('overlord.importDotfiles', async () => overlord.sync.importDotfiles()),
     register('overlord.bootstrap', async () => overlord.sync.bootstrap()),
     register('overlord.refresh', async () => overlord.refresh()),
+    // Each window runs its own Overlord, so the one coming to the front points
+    // its Fleet at the session that belongs to it.
+    vscode.window.onDidChangeWindowState((state) => {
+      if (state.focused) {
+        overlord.runtime.places.windowFocused();
+      }
+    }),
     vscode.workspace.onDidChangeConfiguration((event) => {
       if (event.affectsConfiguration('overlord')) {
         overlord.applySettings();

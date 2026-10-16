@@ -2,6 +2,8 @@
 // waiting or done, the pending permissions from both sources, and rate limits
 // as 0 to 1 fractions.
 
+import path from 'node:path';
+
 import type { PermissionRequest, SessionPlace, SessionSummary } from '../../../shared/model.js';
 import { ZERO_USAGE } from '../../../shared/model.js';
 import type { FleetState, PlanLimits, RateLimits } from '../../../shared/protocol.js';
@@ -96,18 +98,46 @@ export interface FleetInputs {
   readonly now: number;
   readonly plan: PlanLimits | null;
   readonly places: Readonly<Record<string, SessionPlace>>;
+  /** The session in the focused terminal, when Overlord knows it. */
   readonly activeSessionId: string | null;
+  readonly activeVersion: number;
+  /** This window's workspace folder, whose session is highlighted when no terminal says otherwise. */
+  readonly workspaceFolder: string | null;
   readonly jobs: readonly BackgroundJob[];
+}
+
+function newest(sessions: readonly SessionSummary[]): string | null {
+  return sessions.toSorted((left, right) => right.updatedAt - left.updatedAt).at(0)?.id ?? null;
+}
+
+/**
+ * The session that belongs to a window: the newest one that ran in its
+ * folder, or else the newest one in a folder under it.
+ */
+export function windowSession(
+  sessions: readonly SessionSummary[],
+  folder: string | null,
+): string | null {
+  if (folder === null) {
+    return null;
+  }
+  const root = folder.endsWith(path.sep) ? folder.slice(0, -1) : folder;
+  return (
+    newest(sessions.filter((session) => session.cwd === root)) ??
+    newest(sessions.filter((session) => session.cwd.startsWith(root + path.sep)))
+  );
 }
 
 export function buildFleet(input: FleetInputs): FleetState {
   const base = input.store.fleetState(input.now);
+  const sessions = withJobStates(base.sessions, input.jobs);
   return {
-    sessions: withJobStates(base.sessions, input.jobs),
+    sessions,
     agents: base.agents,
     pendingPermissions: input.pending,
     places: input.places,
-    activeSessionId: input.activeSessionId,
+    activeSessionId: input.activeSessionId ?? windowSession(sessions, input.workspaceFolder),
+    activeVersion: input.activeVersion,
     rateLimits: withPlanLimits(normalizeRateLimits(base.rateLimits), input.plan),
     spendPerHourUsd: base.spendPerHourUsd,
   };
@@ -121,6 +151,8 @@ export function fleetFor(rt: Runtime): FleetState {
     plan: currentPlan(rt),
     places: rt.places.value,
     activeSessionId: rt.places.activeSession(),
+    activeVersion: rt.places.activeVersion,
+    workspaceFolder: rt.host.workspaceFolder(),
     jobs: rt.jobs.value,
   });
 }

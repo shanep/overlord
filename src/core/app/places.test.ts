@@ -111,6 +111,10 @@ describe('SessionPlaces', () => {
     h.places.setActiveTerminal(null);
     expect(h.places.activeSession()).toBeNull();
     expect(h.changes).toBe(before + 4);
+    const version = h.places.activeVersion;
+    h.places.windowFocused();
+    expect(h.places.activeVersion).toBe(version + 1);
+    expect(h.changes).toBe(before + 5);
   });
 
   it('skips ps when no terminal is open', async () => {

@@ -261,6 +261,19 @@ describe('FleetView', () => {
     expect(api.actions()).toStrictEqual([]);
   });
 
+  it('highlights the same session again when the window comes back to the front', async () => {
+    const user = userEvent.setup();
+    const api = new FakeApi();
+    const { rerender } = render(
+      ui({ ...fleetState, activeSessionId: 's1', activeVersion: 1 }, api),
+    );
+    await user.click(rowFor('Write docs'));
+    expect(rowFor('Write docs').getAttribute('aria-selected')).toBe('true');
+    rerender(ui({ ...fleetState, activeSessionId: 's1', activeVersion: 2 }, api));
+    expect(rowFor('Refactor parser').getAttribute('aria-selected')).toBe('true');
+    expect(api.actions()).toStrictEqual([{ type: 'openSession', sessionId: 's2' }]);
+  });
+
   it('expands and collapses with the twisty button', async () => {
     const user = userEvent.setup();
     setup();

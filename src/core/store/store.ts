@@ -123,7 +123,7 @@ export class OverlordStore {
     this.cancelPending = null;
   }
 
-  fleetState(now: number): Omit<FleetState, 'places' | 'activeSessionId'> {
+  fleetState(now: number): Omit<FleetState, 'places' | 'activeSessionId' | 'activeVersion'> {
     return {
       sessions: [...this.sessions.values()].toSorted(
         (left, right) => right.updatedAt - left.updatedAt,
