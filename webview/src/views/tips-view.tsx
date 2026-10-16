@@ -52,7 +52,7 @@ export function TipsView(props: { readonly state: TipsState }): ReactElement {
   return (
     <section aria-labelledby="tips-title">
       <header className="view-header">
-        <h1 id="tips-title">Tips</h1>
+        <h1 id="tips-title">Tuning</h1>
         <dl className="stats">
           <Stat label="Sessions" value={state.sessions.toLocaleString('en-US')} />
           <Stat label="Spend" value={formatCost(state.totalUsd)} />

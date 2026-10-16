@@ -13,7 +13,7 @@ export const tipsActions: ActionHandlers<'rescanTips' | 'createSuggestion' | 'tr
   rescanTips: async ({ rt }) => {
     const state = await rescanTips(rt);
     rt.host.showInfo(
-      `Tips rescan done: ${plural(state.sessions, 'session')}, ${plural(state.tips.length, 'tip')}.`,
+      `Tuning rescan done: ${plural(state.sessions, 'session')}, ${plural(state.tips.length, 'tip')}.`,
     );
   },
   createSuggestion: async ({ rt }, action) => {

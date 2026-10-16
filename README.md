@@ -43,7 +43,7 @@ See [PLAN.md](PLAN.md) for the full design and the decisions behind it.
 - **Config and sync**: every config item with a badge for versioned, local only, external repo
   and so on, synced through a separate git repo so a new machine matches this one.
 - **Usage**: daily tokens by model and activity by hour.
-- **Tips**: advice from measuring every session transcript, such as how much of the spend goes
+- **Tuning**: tips from measuring every session transcript, such as how much of the spend goes
   to re-reading old context, sessions that never compact, huge tool output and denied tools.
   Each tip lists its pros and cons and when to skip it, since following one can mean giving up
   context a long session took hours to build. It also suggests skills and agents for work your

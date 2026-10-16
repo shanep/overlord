@@ -154,7 +154,7 @@ describe('tips actions', () => {
     await transcript(env, S1, [request('m1', 10)]);
     const { app } = makeApp(env);
     await app.dispatch({ type: 'rescanTips' }, {});
-    expect(env.host.infos).toStrictEqual(['Tips rescan done: 1 session, 0 tips.']);
+    expect(env.host.infos).toStrictEqual(['Tuning rescan done: 1 session, 0 tips.']);
   });
 
   it('refuses an unknown suggestion', async () => {

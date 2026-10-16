@@ -85,10 +85,10 @@ export const SIDEBAR_GROUPS: readonly SidebarGroup[] = [
           'Messages your sessions sent each other, the routes between them, and block rules.',
       },
       {
-        name: 'Tips',
+        name: 'Tuning',
         icon: 'Light bulb',
         meaning:
-          'Advice from measuring every session, with the pros and cons of each tip and when to skip it, plus skills or agents to add. Track a tip to see whether following it made things better or worse.',
+          'Tips from measuring every session, with the pros and cons of each tip and when to skip it, plus skills or agents to add. Track a tip to see whether following it made things better or worse.',
       },
       { name: 'Help', icon: 'Question mark', meaning: 'This page.' },
     ],
