@@ -74,6 +74,8 @@ export class AgentThread {
   model: string | null = null;
   effort: string | null = null;
   firstPrompt: string | null = null;
+  /** When the user last typed a prompt here. */
+  lastPromptAt: number | null = null;
   private turnOpen = false;
   private readonly toolMap = new Map<string, ToolCall>();
   /** Tool use id to tool name, for calls still waiting on a result, in start order. */
@@ -228,6 +230,7 @@ export class AgentThread {
     }
     this.turnOpen = true;
     this.firstPrompt ??= item.text;
+    this.lastPromptAt = item.at;
     delta.feed.push({ kind: 'user', id: item.id, at: item.at, text: item.text });
   }
 

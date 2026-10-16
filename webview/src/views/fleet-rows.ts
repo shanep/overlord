@@ -14,6 +14,8 @@ import { isBoolean, isRecord, isString } from '../guards.js';
 import { PLACE_INFO, STATE_RANK, SURFACE_LABELS } from '../labels.js';
 import { cacheHitRatio, callsPerMinute, promptTokens } from '../metrics.js';
 
+import { workingOn } from './working-on.js';
+
 export interface FleetRow {
   readonly key: string;
   readonly kind: 'project' | 'session' | 'agent';
@@ -28,6 +30,8 @@ export interface FleetRow {
   readonly place: SessionPlace | null;
   readonly title: string;
   readonly detail: string;
+  /** On a session's row, one line on what it is working on, or null while nothing says. */
+  readonly summary: string | null;
   readonly model: string | null;
   readonly effort: string | null;
   readonly startedAt: number;
@@ -97,6 +101,7 @@ function sessionRow(
     place,
     title,
     detail: session.cwd,
+    summary: workingOn(session),
     model: session.model,
     effort: session.effort,
     startedAt: session.startedAt,
@@ -128,6 +133,7 @@ function agentRow(agent: AgentNode, session: FleetRow): FleetRow {
     place: null,
     title: agent.agentType,
     detail: agent.description,
+    summary: null,
     model: agent.model,
     effort: null,
     startedAt: agent.startedAt,
@@ -242,6 +248,7 @@ function projectRow(project: ProjectSummary | null, nodes: readonly FleetNode[])
     place: null,
     title,
     detail: project?.folder ?? plural(rows.length, 'session'),
+    summary: null,
     model: null,
     effort: null,
     startedAt: Math.min(...rows.map((row) => row.startedAt)),
@@ -379,6 +386,7 @@ export function rowMatches(row: FleetRow, needle: string): boolean {
   const haystack = [
     row.title,
     row.detail,
+    row.summary ?? '',
     row.model ?? '',
     row.state,
     SURFACE_LABELS[row.surface],

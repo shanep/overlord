@@ -186,6 +186,7 @@ describe('SessionAccumulator', () => {
       contextFill: null,
       recap: null,
       lastPrompt: null,
+      lastPromptAt: null,
     });
     expect(accumulator.agentIds()).toStrictEqual(['empty']);
     expect(accumulator.agents(T0)).toStrictEqual([
@@ -234,6 +235,7 @@ describe('SessionAccumulator', () => {
       contextFill: null,
       recap: null,
       lastPrompt: null,
+      lastPromptAt: T0,
     });
   });
 

@@ -254,6 +254,7 @@ export class SessionAccumulator {
       contextFill: null,
       recap: this.fields.recap,
       lastPrompt: this.fields.lastPrompt,
+      lastPromptAt: main.lastPromptAt,
     };
   }
 

@@ -66,6 +66,8 @@ export interface SessionSummary {
   readonly recap: SessionRecap | null;
   /** The newest prompt the user typed, as Claude Code saved it (cut short when long). */
   readonly lastPrompt: string | null;
+  /** When the user typed it, so a recap written before it reads as out of date. */
+  readonly lastPromptAt: number | null;
 }
 
 /** A main thread or a subagent. The main thread has `parentAgentId` null and `id` equal to the session id. */

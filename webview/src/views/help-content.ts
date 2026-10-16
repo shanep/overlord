@@ -280,7 +280,7 @@ export const WORKFLOW: readonly WorkflowStep[] = [
   {
     title: 'Dig in',
     detail:
-      "Click a row to jump to the session's terminal, or click its Agent view button for the live feed. Click its magnifying glass for the Context Inspector, which shows what is in its context and why. On a Claude Code tab, the info button opens its properties beside it.",
+      "Under each session's title is a line on what it is working on: Claude Code's latest recap, or your last prompt when you asked for something after it. Click a row to jump to the session's terminal, or click its Agent view button for the live feed. Click its magnifying glass for the Context Inspector, which shows what is in its context and why. On a Claude Code tab, the info button opens its properties beside it.",
   },
   {
     title: 'Land the result',

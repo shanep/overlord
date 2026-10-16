@@ -46,6 +46,7 @@ function session(id: string, overrides: Partial<SessionSummary> = {}): SessionSu
     contextFill: null,
     recap: null,
     lastPrompt: null,
+    lastPromptAt: null,
     ...overrides,
   };
 }

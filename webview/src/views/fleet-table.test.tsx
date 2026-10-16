@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { createRef } from 'react';
 import { describe, expect, it } from 'vitest';
 
+import type { FleetState } from '../../../src/shared/protocol.js';
 import { fleetState, NOW } from '../../test/fixtures.js';
 import { readChartTheme } from '../charts/chart-theme.js';
 
@@ -14,28 +15,31 @@ function noop(): void {
   // Handlers are not exercised here.
 }
 
+function renderTable(state: FleetState): HTMLElement {
+  render(
+    <FleetTable
+      rows={flattenTree(buildFleetTree(state), new Set())}
+      selectedKey={null}
+      historyByKey={new Map()}
+      selectedRef={createRef()}
+      sort={DEFAULT_SORT}
+      onSort={noop}
+      now={NOW}
+      theme={theme}
+      onSelect={noop}
+      onActivate={noop}
+      onKey={noop}
+      onToggle={noop}
+      onAction={noop}
+      onProjectAction={noop}
+    />,
+  );
+  return screen.getByRole('treegrid', { name: 'Sessions' });
+}
+
 describe('FleetTable', () => {
   it('renders rows with no history yet and no selection', () => {
-    const rows = flattenTree(buildFleetTree(fleetState), new Set());
-    render(
-      <FleetTable
-        rows={rows}
-        selectedKey={null}
-        historyByKey={new Map()}
-        selectedRef={createRef()}
-        sort={DEFAULT_SORT}
-        onSort={noop}
-        now={NOW}
-        theme={theme}
-        onSelect={noop}
-        onActivate={noop}
-        onKey={noop}
-        onToggle={noop}
-        onAction={noop}
-        onProjectAction={noop}
-      />,
-    );
-    const grid = screen.getByRole('treegrid', { name: 'Sessions' });
+    const grid = renderTable(fleetState);
     expect(grid.querySelectorAll('tr[aria-selected="true"]')).toHaveLength(0);
     expect(grid.querySelectorAll('tbody tr')).toHaveLength(5);
     // Start order has no header, so no column claims the sort.
@@ -49,6 +53,20 @@ describe('FleetTable', () => {
     expect(vscode.closest('td')?.className).toBe('col-title');
     expect(screen.getByRole('img', { name: 'Background' }).className).toBe('place place-neutral');
     expect(screen.queryByRole('img', { name: 'Terminal' })).toBeNull();
+    expect(grid.querySelectorAll('.row-summary')).toHaveLength(0);
+  });
+
+  it('shows what a session is working on under its title', () => {
+    const recap = { text: 'Split the parser in two.', at: NOW - 60_000 };
+    const grid = renderTable({
+      ...fleetState,
+      sessions: fleetState.sessions.map((item) => (item.id === 's1' ? { ...item, recap } : item)),
+    });
+    const lines = grid.querySelectorAll('.row-summary');
+    expect(lines).toHaveLength(1);
+    expect(lines[0]?.textContent).toBe('Split the parser in two.');
+    expect(lines[0]?.getAttribute('title')).toBe('Split the parser in two.');
+    expect(lines[0]?.closest('td')?.className).toBe('col-title');
   });
 });
 

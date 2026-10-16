@@ -237,6 +237,7 @@ export function session(id: string, overrides: Partial<SessionSummary> = {}): Se
     contextFill: null,
     recap: null,
     lastPrompt: null,
+    lastPromptAt: null,
     ...overrides,
   };
 }

@@ -69,6 +69,7 @@ function jobSession(job: BackgroundJob): SessionSummary {
     contextFill: null,
     recap: null,
     lastPrompt: null,
+    lastPromptAt: null,
   };
 }
 

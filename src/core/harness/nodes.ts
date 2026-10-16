@@ -45,6 +45,7 @@ export function initialSummary(config: MapperConfig, at: number): SessionSummary
     contextFill: null,
     recap: null,
     lastPrompt: null,
+    lastPromptAt: null,
   };
 }
 

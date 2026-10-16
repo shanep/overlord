@@ -195,6 +195,15 @@ function TitleCell(props: {
         />
       ) : null}{' '}
       <span className="muted row-detail">{row.detail}</span>
+      {row.summary === null ? null : (
+        <span
+          className="muted row-summary"
+          style={{ paddingLeft: `${(visible.depth * 1.2 + 1.2).toString()}em` }}
+          title={row.summary}
+        >
+          {row.summary}
+        </span>
+      )}
     </td>
   );
 }

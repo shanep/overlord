@@ -676,6 +676,15 @@ details > summary {
   font-weight: 600;
 }
 
+/* One line under a session's title on what it is working on. */
+.row-summary {
+  display: block;
+  max-width: 60ch;
+  overflow: hidden;
+  font-size: 0.9em;
+  text-overflow: ellipsis;
+}
+
 .place {
   display: inline-flex;
   margin-right: 4px;
