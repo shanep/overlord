@@ -43,6 +43,8 @@ export function initialSummary(config: MapperConfig, at: number): SessionSummary
     version: null,
     agentCount: 0,
     contextFill: null,
+    recap: null,
+    lastPrompt: null,
   };
 }
 

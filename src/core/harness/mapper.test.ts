@@ -156,6 +156,8 @@ describe('MessageMapper lifecycle', () => {
       version: null,
       agentCount: 0,
       contextFill: null,
+      recap: null,
+      lastPrompt: null,
     });
     expect(payloads(events, 'agent.upserted')).toStrictEqual([
       {

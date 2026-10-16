@@ -1,5 +1,5 @@
-// Properties panel beside a Claude CLI tab: the facts about the session that
-// tab runs, grouped like an IDE property sheet, plus its subagents.
+// Properties panel beside a Claude CLI tab: what the session is working on,
+// the facts about it grouped like an IDE property sheet, and its subagents.
 
 import type { ReactElement, ReactNode } from 'react';
 
@@ -82,6 +82,39 @@ function usageRows(session: SessionSummary): readonly Row[] {
     ['Cache write', formatCompact(usage.cacheCreation)],
     ['Cost', formatCost(session.costUsd)],
   ];
+}
+
+/**
+ * Claude Code's own recap of the session and the last thing asked of it, so
+ * the user can tell what a tab is doing without reading back through it.
+ */
+function WorkingOn(props: {
+  readonly session: SessionSummary;
+  readonly now: number;
+}): ReactElement | null {
+  const { recap, lastPrompt } = props.session;
+  if (recap === null && lastPrompt === null) {
+    return null;
+  }
+  return (
+    <section className="props-group" aria-label="Working on">
+      <h2>Working on</h2>
+      {recap === null ? null : (
+        <>
+          <p className="props-recap">{recap.text}</p>
+          <p className="muted props-recap-age">Recap {formatAgo(recap.at, props.now)}</p>
+        </>
+      )}
+      {lastPrompt === null ? null : (
+        <dl className="props">
+          <div className="prop">
+            <dt>Last prompt</dt>
+            <dd>{lastPrompt}</dd>
+          </div>
+        </dl>
+      )}
+    </section>
+  );
 }
 
 function Waiting(props: {
@@ -171,6 +204,7 @@ function SessionProperties(props: {
           </button>
         </div>
       </header>
+      <WorkingOn session={session} now={now} />
       <Waiting requests={props.pending} now={now} />
       <Group title="Session" rows={sessionRows(session, now)} />
       <Group title="Workspace" rows={workspaceRows(session)} />

@@ -722,6 +722,16 @@ details > summary {
   overflow-wrap: anywhere;
 }
 
+.props-recap {
+  margin: 0 0 2px;
+  white-space: pre-line;
+}
+
+.props-recap-age {
+  margin: 0 0 6px;
+  font-size: 0.9em;
+}
+
 .props-list {
   margin: 0;
   padding: 0;

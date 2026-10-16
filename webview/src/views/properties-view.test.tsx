@@ -22,7 +22,15 @@ const subagent = agent({
 
 const full: PropertiesState = {
   sessionId: 's1',
-  session: session({ id: 's1', title: 'Refactor parser' }),
+  session: session({
+    id: 's1',
+    title: 'Refactor parser',
+    recap: {
+      text: 'Split the parser in two.\n\nneeds input: keep the old one?',
+      at: NOW - 5 * MINUTE,
+    },
+    lastPrompt: 'Split the parser',
+  }),
   agents: [
     subagent,
     agent({
@@ -44,7 +52,7 @@ function group(name: string): HTMLElement {
 describe('PropertiesView', () => {
   it('has no accessibility violations', async () => {
     const { container } = renderView(<PropertiesView state={full} />);
-    expect(screen.getAllByRole('region')).toHaveLength(6);
+    expect(screen.getAllByRole('region')).toHaveLength(7);
     await expectAccessible(container);
   });
 
@@ -67,6 +75,27 @@ describe('PropertiesView', () => {
     );
     expect(screen.getByText('Waiting for Claude Code')).toBeDefined();
     expect(screen.getByRole('status').textContent).toContain('Session new-id shows up here');
+  });
+
+  it("shows Claude Code's recap and the last prompt first", () => {
+    renderView(<PropertiesView state={full} />);
+    expect(screen.getAllByRole('region')[0]).toBe(group('Working on'));
+    expect(group('Working on').textContent).toBe(
+      'Working onSplit the parser in two.\n\nneeds input: keep the old one?Recap 5m agoLast promptSplit the parser',
+    );
+  });
+
+  it('shows only the last prompt before Claude Code writes a recap, and nothing before that', () => {
+    const base = full.session ?? session({ id: 's1' });
+    const { unmount } = renderView(
+      <PropertiesView state={{ ...full, session: { ...base, recap: null } }} />,
+    );
+    expect(group('Working on').textContent).toBe('Working onLast promptSplit the parser');
+    unmount();
+    renderView(
+      <PropertiesView state={{ ...full, session: { ...base, recap: null, lastPrompt: null } }} />,
+    );
+    expect(screen.queryByRole('region', { name: 'Working on' })).toBeNull();
   });
 
   it('lists the session properties by group', () => {

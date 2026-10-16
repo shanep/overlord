@@ -67,6 +67,8 @@ function jobSession(job: BackgroundJob): SessionSummary {
     version: null,
     agentCount: 0,
     contextFill: null,
+    recap: null,
+    lastPrompt: null,
   };
 }
 

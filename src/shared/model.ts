@@ -34,6 +34,12 @@ export const ZERO_USAGE: TokenUsage = {
 };
 
 /** One row in the fleet view. */
+/** Claude Code's own recap of a session, written when the user comes back to it. */
+export interface SessionRecap {
+  readonly text: string;
+  readonly at: number;
+}
+
 export interface SessionSummary {
   readonly id: string;
   readonly surface: Surface;
@@ -56,6 +62,10 @@ export interface SessionSummary {
   readonly agentCount: number;
   /** Context window fill, 0 to 1, when known. */
   readonly contextFill: number | null;
+  /** Claude Code's newest recap, or null before it writes one. */
+  readonly recap: SessionRecap | null;
+  /** The newest prompt the user typed, as Claude Code saved it (cut short when long). */
+  readonly lastPrompt: string | null;
 }
 
 /** A main thread or a subagent. The main thread has `parentAgentId` null and `id` equal to the session id. */

@@ -9,6 +9,7 @@ import { parseTranscriptLine } from './schemas.js';
 import {
   assistant,
   attachment,
+  iso,
   SESSION,
   sidechain,
   T0,
@@ -49,6 +50,11 @@ function ingestAll(
   for (const fields of records) {
     accumulator.ingest(record(fields), agentId);
   }
+}
+
+/** The record Claude Code writes when it recaps a session for a returning user. */
+function recap(offsetMs: number, content: string): unknown {
+  return { type: 'system', subtype: 'away_summary', content, timestamp: iso(offsetMs) };
 }
 
 function request(costUsd: number | null): ApiRequest {
@@ -178,6 +184,8 @@ describe('SessionAccumulator', () => {
       version: null,
       agentCount: 0,
       contextFill: null,
+      recap: null,
+      lastPrompt: null,
     });
     expect(accumulator.agentIds()).toStrictEqual(['empty']);
     expect(accumulator.agents(T0)).toStrictEqual([
@@ -224,6 +232,8 @@ describe('SessionAccumulator', () => {
       version: '2.1.301',
       agentCount: 3,
       contextFill: null,
+      recap: null,
+      lastPrompt: null,
     });
   });
 
@@ -400,6 +410,21 @@ describe('SessionAccumulator', () => {
     accumulator.ingest(record({ type: 'custom-title', customTitle: 'Mine' }));
     expect(accumulator.summary(T0).title).toBe('Mine');
     expect(accumulator.agents(T0)[0]?.description).toBe('Mine');
+  });
+
+  it("keeps Claude Code's newest recap without its /config hint, and the last prompt", () => {
+    const accumulator = make();
+    expect(accumulator.summary(T0)).toMatchObject({ recap: null, lastPrompt: null });
+    accumulator.ingest(record(recap(1000, 'Built the panel. (disable recaps in /config)')));
+    accumulator.ingest(record(recap(5000, 'Landed it.\n\nneeds input: remove the worktree?')));
+    accumulator.ingest(record(recap(6000, ' (disable recaps in /config)')));
+    accumulator.ingest(record({ type: 'last-prompt', lastPrompt: 'Add a summary' }));
+    expect(accumulator.summary(T0)).toMatchObject({
+      recap: { text: 'Landed it.\n\nneeds input: remove the worktree?', at: T0 + 5000 },
+      lastPrompt: 'Add a summary',
+    });
+    accumulator.ingest(record(recap(9000, 'Sub work.')), 'sub');
+    expect(accumulator.summary(T0).recap?.at).toBe(T0 + 5000);
   });
 
   it('ignores marker records from subagent threads', () => {

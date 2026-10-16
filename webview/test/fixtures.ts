@@ -38,6 +38,8 @@ export function session(overrides: Partial<SessionSummary> & { id: string }): Se
     version: '2.1.301',
     agentCount: 0,
     contextFill: 0.35,
+    recap: null,
+    lastPrompt: null,
     ...overrides,
   };
 }

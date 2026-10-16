@@ -7,6 +7,7 @@ import type {
   ContextSnapshot,
   FeedItem,
   PermissionMode,
+  SessionRecap,
   SessionState,
   SessionSummary,
   Surface,
@@ -18,7 +19,7 @@ import { ZERO_USAGE } from '../../shared/model.js';
 import { ContextTracker } from './context.js';
 import type { PriceTable } from './pricing.js';
 import { DEFAULT_PRICES } from './pricing.js';
-import type { TranscriptRecord } from './schemas.js';
+import { parseTimestamp, type TranscriptRecord } from './schemas.js';
 import type { SpawnLookup, SubagentMeta } from './subagents.js';
 import { buildSubagentNode } from './subagents.js';
 import { addUsage, preview } from './text.js';
@@ -86,6 +87,7 @@ interface SessionFields {
   customTitle: string | null;
   aiTitle: string | null;
   lastPrompt: string | null;
+  recap: SessionRecap | null;
 }
 
 function firstNonNull<T>(
@@ -128,6 +130,20 @@ function hasBaseFields(record: TranscriptRecord): record is BaseRecord {
   return BASE_TYPES.has(record.type);
 }
 
+// Claude Code ends each recap with a hint that only makes sense in its own terminal.
+const RECAP_HINT = '(disable recaps in /config)';
+
+/** The recap in an away_summary record, or null for any other record. */
+function recapOf(record: BaseRecord): SessionRecap | null {
+  if (record.type !== 'system' || record.subtype !== 'away_summary') {
+    return null;
+  }
+  const full = (record.content ?? '').trim();
+  const text = (full.endsWith(RECAP_HINT) ? full.slice(0, -RECAP_HINT.length) : full).trim();
+  const at = parseTimestamp(record.timestamp);
+  return text === '' || at === null ? null : { text, at };
+}
+
 /** Title and mode records carry one field each. Returns true when the record was one of them. */
 function applyMarkerRecord(fields: SessionFields, record: TranscriptRecord): boolean {
   if (record.type === 'permission-mode') {
@@ -167,6 +183,7 @@ export class SessionAccumulator {
     customTitle: null,
     aiTitle: null,
     lastPrompt: null,
+    recap: null,
   };
 
   constructor(options: SessionAccumulatorOptions) {
@@ -235,6 +252,8 @@ export class SessionAccumulator {
       version: this.fields.version,
       agentCount: this.subagents.size,
       contextFill: null,
+      recap: this.fields.recap,
+      lastPrompt: this.fields.lastPrompt,
     };
   }
 
@@ -339,6 +358,7 @@ export class SessionAccumulator {
     if (record.type === 'user') {
       fields.permissionMode = toPermissionMode(record.permissionMode) ?? fields.permissionMode;
     }
+    fields.recap = recapOf(record) ?? fields.recap;
     fields.cwd ??= record.cwd ?? null;
     fields.gitBranch = record.gitBranch ?? fields.gitBranch;
     fields.version = record.version ?? fields.version;
