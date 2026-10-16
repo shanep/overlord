@@ -1,0 +1,191 @@
+/*
+ * The Fleet: summary tiles, the permission banner and the session tree.
+ * Loaded after theme.css, and sidebar.css narrows it for the docked view.
+ */
+
+/* ---- Summary tiles ------------------------------------------------------ */
+
+.fleet-header h1 {
+  margin: 0 0 6px;
+}
+
+.stat-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+  gap: 6px;
+  max-width: 76em;
+  margin: 0 0 8px;
+}
+
+.stat-tiles .stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: stretch;
+  min-width: 0;
+  padding: 5px 8px;
+  border: 1px solid var(--ov-border);
+  border-radius: 4px;
+}
+
+.stat-tiles dt {
+  overflow: hidden;
+  color: var(--ov-muted);
+  font-size: 0.85em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stat-tiles dd {
+  margin: 0;
+  font-size: 1.1em;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-tiles .stat-warning {
+  border-color: var(--ov-warning-border);
+  background: var(--ov-warning-bg);
+}
+
+.stat-tiles .meter-wrap {
+  display: flex;
+}
+
+.stat-tiles .meter {
+  flex: 1 1 0;
+  width: auto;
+  min-width: 0;
+}
+
+.stat-tiles .meter-text {
+  min-width: 0;
+}
+
+/* ---- Pending permissions ------------------------------------------------ */
+
+.banner .permission-title {
+  font-weight: 600;
+}
+
+.banner .permission-input {
+  flex: 1 1 12em;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.banner .permission-buttons {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+/* ---- Toolbar ------------------------------------------------------------ */
+
+.fleet .toolbar .filter {
+  flex: 1 1 14em;
+  max-width: 24em;
+}
+
+.fleet .toolbar .filter input {
+  width: 100%;
+}
+
+/* ---- Session tree ------------------------------------------------------- */
+
+/* The title takes whatever width is left and truncates, so the numeric
+   columns and the actions never get pushed off the edge. */
+.tree-table .col-title {
+  width: 100%;
+  max-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tree-table th,
+.tree-table td {
+  padding: 3px 6px;
+  vertical-align: middle;
+}
+
+.tree-table th {
+  border-bottom-color: var(--ov-border);
+  font-size: 0.9em;
+}
+
+.tree-table td {
+  border-bottom-color: transparent;
+}
+
+/* One custom property per row state, so the sidebar's overlaid actions can
+   paint the same color as the row under them. */
+.tree-table tbody tr,
+.tree-table tbody tr:hover {
+  --row-bg: transparent;
+
+  background: var(--row-bg);
+}
+
+.tree-table tbody tr:hover {
+  --row-bg: var(--ov-hover);
+}
+
+.tree-table tbody tr[aria-selected='true'] {
+  --row-bg: var(--ov-inactive-selected);
+}
+
+.tree-table:focus-within tbody tr[aria-selected='true'] {
+  --row-bg: var(--ov-selected);
+}
+
+.tree-table tbody tr[data-state='done'] {
+  color: var(--ov-muted);
+}
+
+.tree-table tbody tr[data-kind='agent'] .row-title {
+  font-weight: 400;
+}
+
+.tree-table .row-detail {
+  margin-left: 4px;
+}
+
+.tree-table .twisty {
+  color: var(--ov-muted);
+}
+
+/* Row actions show for the row under the pointer, the selected row and the
+   row holding focus, which keeps the grid quiet. */
+.tree-table tbody tr:not(:hover, :focus-within, [aria-selected='true']) .col-actions .actions {
+  visibility: hidden;
+}
+
+.actions .icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  color: inherit;
+  background: transparent;
+}
+
+.actions .icon-button:hover:not(:disabled) {
+  filter: none;
+  background: var(--vscode-toolbar-hoverBackground, var(--ov-hover));
+}
+
+.actions .icon-button:disabled {
+  opacity: 0.35;
+}
+
+.icon {
+  display: block;
+  width: 16px;
+  height: 16px;
+}

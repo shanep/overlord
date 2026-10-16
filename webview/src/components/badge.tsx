@@ -24,7 +24,7 @@ export function StateBadge(props: { readonly state: SessionState }): ReactElemen
       <span aria-hidden="true" className="state-icon">
         {info.icon}
       </span>
-      {info.label}
+      <span className="state-label">{info.label}</span>
     </span>
   );
 }

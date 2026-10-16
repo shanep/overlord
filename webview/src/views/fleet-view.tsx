@@ -162,10 +162,11 @@ export function FleetView(props: { readonly state: FleetState }): ReactElement {
         />
       ) : null}
       <div className="toolbar">
-        <label>
-          Filter
+        <label className="filter">
+          <span className="visually-hidden">Filter</span>
           <input
             type="search"
+            placeholder="Filter sessions"
             value={preferences.filter}
             onChange={(event) => {
               preferences.setFilter(event.target.value);
@@ -183,7 +184,7 @@ export function FleetView(props: { readonly state: FleetState }): ReactElement {
           Hide done
         </label>
         <span className="spacer" />
-        <span className="muted">
+        <span className="muted fleet-keys">
           <kbd>{'↑'}</kbd> <kbd>{'↓'}</kbd> move, <kbd>Enter</kbd> open, <kbd>k</kbd> interrupt
         </span>
       </div>

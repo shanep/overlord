@@ -10,6 +10,7 @@ import { buildSparkline } from '../charts/sparkline.js';
 import { StateBadge, SurfaceBadge } from '../components/badge.js';
 import type { SortState } from '../components/data-table.js';
 import { ariaSort, SortHeader } from '../components/data-table.js';
+import { Icon } from '../components/icon.js';
 import { Meter } from '../components/meter.js';
 import { formatCompact, formatCost, formatDuration, formatPercent } from '../format.js';
 
@@ -59,14 +60,16 @@ function RowActions(props: {
   const button = (action: RowAction, label: string, disabled: boolean): ReactElement => (
     <button
       type="button"
+      className="icon-button"
       tabIndex={tabIndex}
       disabled={disabled}
+      title={label}
       aria-label={`${label} ${row.title}`}
       onClick={() => {
         onAction(row, action);
       }}
     >
-      {label}
+      <Icon name={action} />
     </button>
   );
   return (
@@ -131,6 +134,8 @@ function FleetTableRow(props: FleetTableRowProps): ReactElement {
       aria-level={visible.depth + 1}
       aria-expanded={visible.hasChildren ? visible.expanded : undefined}
       aria-selected={selected}
+      data-kind={row.kind}
+      data-state={row.state}
       tabIndex={selected ? 0 : -1}
       onClick={() => {
         props.onSelect(row.key);
@@ -139,44 +144,50 @@ function FleetTableRow(props: FleetTableRowProps): ReactElement {
         props.onKey(event, row.key);
       }}
     >
-      <td role="gridcell">
+      <td role="gridcell" className="col-state">
         <StateBadge state={row.state} />
       </td>
-      <td role="gridcell">
+      <td role="gridcell" className="col-surface">
         <SurfaceBadge surface={row.surface} />
       </td>
-      <td role="gridcell" className="title-cell" title={row.detail}>
+      <td role="gridcell" className="col-title" title={row.detail}>
         <span style={{ paddingLeft: `${(visible.depth * 1.2).toString()}em` }}>
           <Twisty visible={visible} onToggle={props.onToggle} />
           <span className="row-title">{row.title}</span>
         </span>{' '}
-        <span className="muted">{row.detail}</span>
+        <span className="muted row-detail">{row.detail}</span>
       </td>
-      <td role="gridcell">{row.model ?? ''}</td>
-      <td role="gridcell">{row.effort ?? ''}</td>
-      <td role="gridcell" className="num">
+      <td role="gridcell" className="col-model">
+        {row.model ?? ''}
+      </td>
+      <td role="gridcell" className="col-effort">
+        {row.effort ?? ''}
+      </td>
+      <td role="gridcell" className="col-elapsed num">
         {formatDuration(elapsedMs(row, now))}
       </td>
-      <td role="gridcell">{row.currentTool ?? ''}</td>
-      <td role="gridcell" className="num">
+      <td role="gridcell" className="col-tool">
+        {row.currentTool ?? ''}
+      </td>
+      <td role="gridcell" className="col-calls num">
         {rowCallsPerMinute(row, now).toFixed(1)}
       </td>
-      <td role="gridcell" className="num">
+      <td role="gridcell" className="col-tokens num">
         {`${formatCompact(row.tokensIn)} / ${formatCompact(row.tokensOut)}`}
       </td>
-      <td role="gridcell" className="num">
+      <td role="gridcell" className="col-cache num">
         {formatPercent(row.cacheHit)}
       </td>
-      <td role="gridcell">
+      <td role="gridcell" className="col-context">
         {session ? <Meter label={`Context used by ${row.title}`} ratio={row.contextFill} /> : null}
       </td>
-      <td role="gridcell" className="num">
+      <td role="gridcell" className="col-cost num">
         {session ? formatCost(row.costUsd) : ''}
       </td>
-      <td role="gridcell">
+      <td role="gridcell" className="col-trend">
         <FleetSparkline history={history} theme={theme} label={`Token trend for ${row.title}`} />
       </td>
-      <td role="gridcell">
+      <td role="gridcell" className="col-actions">
         <RowActions row={row} tabIndex={selected ? 0 : -1} onAction={props.onAction} />
       </td>
     </tr>
@@ -211,6 +222,7 @@ export function FleetTable(props: FleetTableProps): ReactElement {
           {COLUMNS.map((column) => (
             <th
               key={column.id}
+              className={`col-${column.id}`}
               role="columnheader"
               scope="col"
               aria-sort={ariaSort(sort, column.id)}
@@ -218,10 +230,10 @@ export function FleetTable(props: FleetTableProps): ReactElement {
               <SortHeader label={column.label} column={column.id} sort={sort} onSort={onSort} />
             </th>
           ))}
-          <th role="columnheader" scope="col">
+          <th role="columnheader" scope="col" className="col-trend">
             Trend
           </th>
-          <th role="columnheader" scope="col">
+          <th role="columnheader" scope="col" className="col-actions">
             Actions
           </th>
         </tr>

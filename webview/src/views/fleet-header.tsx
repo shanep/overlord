@@ -7,15 +7,17 @@ import type { FleetState } from '../../../src/shared/protocol.js';
 import { Badge } from '../components/badge.js';
 import { Meter } from '../components/meter.js';
 import { formatCost, formatDuration, formatValue, truncate } from '../format.js';
+import type { Tone } from '../labels.js';
 
 import { normalizeRatio } from './fleet-rows.js';
 
 function Stat(props: {
   readonly label: string;
+  readonly tone?: Tone;
   readonly children: ReactElement | string;
 }): ReactElement {
   return (
-    <div className="stat">
+    <div className={`stat stat-${props.tone ?? 'neutral'}`}>
       <dt>{props.label}</dt>
       <dd>{props.children}</dd>
     </div>
@@ -32,14 +34,17 @@ export function FleetHeader(props: {
   const subagents = state.agents.filter(
     (agent) => agent.id !== agent.sessionId && agent.state === 'running',
   ).length;
+  const waiting = count('waiting');
   const { fiveHourPct, sevenDayPct, resetsAt } = state.rateLimits;
   return (
-    <header className="view-header">
+    <header className="fleet-header">
       <h1>Fleet</h1>
-      <dl className="stats">
+      <dl className="stat-tiles">
         <Stat label="Running">{`${count('running').toString()} of ${state.sessions.length.toString()}`}</Stat>
-        <Stat label="Waiting">{count('waiting').toString()}</Stat>
-        <Stat label="Subagents running">{subagents.toString()}</Stat>
+        <Stat label="Waiting" tone={waiting > 0 ? 'warning' : 'neutral'}>
+          {waiting.toString()}
+        </Stat>
+        <Stat label="Subagents">{`${subagents.toString()} running`}</Stat>
         <Stat label="Spend per hour">{formatCost(state.spendPerHourUsd)}</Stat>
         <Stat label="5 hour limit">
           <Meter label="5 hour limit used" ratio={normalizeRatio(fiveHourPct)} />
@@ -77,27 +82,29 @@ export function PermissionBanner(props: {
           return (
             <li key={request.id}>
               <Badge label={request.toolName} tone="warning" />
-              <span>{title}</span>
-              <code>{truncate(formatValue(request.input), 80)}</code>
-              <button
-                type="button"
-                className="primary"
-                aria-label={`Allow ${request.toolName} for ${title}`}
-                onClick={() => {
-                  onResolve(request, 'allow');
-                }}
-              >
-                Allow
-              </button>
-              <button
-                type="button"
-                aria-label={`Deny ${request.toolName} for ${title}`}
-                onClick={() => {
-                  onResolve(request, 'deny');
-                }}
-              >
-                Deny
-              </button>
+              <span className="permission-title">{title}</span>
+              <code className="permission-input">{truncate(formatValue(request.input), 80)}</code>
+              <span className="permission-buttons">
+                <button
+                  type="button"
+                  className="primary"
+                  aria-label={`Allow ${request.toolName} for ${title}`}
+                  onClick={() => {
+                    onResolve(request, 'allow');
+                  }}
+                >
+                  Allow
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Deny ${request.toolName} for ${title}`}
+                  onClick={() => {
+                    onResolve(request, 'deny');
+                  }}
+                >
+                  Deny
+                </button>
+              </span>
             </li>
           );
         })}
