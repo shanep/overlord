@@ -32,7 +32,6 @@ const HANDOFFS: readonly HandoffKind[] = [
   'resume-local',
   'open-desktop',
   'teleport-local',
-  'start-cloud',
   'remote-control',
 ];
 

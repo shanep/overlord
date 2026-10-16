@@ -54,7 +54,7 @@ describe('sessions view', () => {
       cwd: null,
       updatedAt: 77,
       archived: false,
-      handoffs: ['resume-local', 'open-desktop', 'start-cloud', 'remote-control'],
+      handoffs: ['resume-local', 'open-desktop', 'remote-control'],
     });
     const known = session('abcdef0123456789', {
       surface: 'desktop-code',

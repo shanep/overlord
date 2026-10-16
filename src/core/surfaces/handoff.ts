@@ -12,8 +12,6 @@ export interface HandoffCommand {
 export interface HandoffOptions {
   /** Defaults to "claude" on PATH. */
   readonly claudeBin?: string;
-  /** Text for a new cloud session. Defaults to the session title. */
-  readonly cloudDescription?: string;
   /** Remote Control session name. Defaults to the session title. */
   readonly remoteName?: string;
 }
@@ -72,15 +70,6 @@ export function teleportLocal(sessionId: string, claudeBin = DEFAULT_BIN): Hando
   };
 }
 
-export function startCloud(description: string, claudeBin = DEFAULT_BIN): HandoffCommand {
-  const text = description.trim();
-  return {
-    command: claudeBin,
-    args: text === '' ? ['--cloud'] : ['--cloud', text],
-    description: 'Start a new Claude Code session on the web',
-  };
-}
-
 export interface RemoteControlInput {
   readonly name?: string | null;
   readonly resumeId?: string | null;
@@ -103,12 +92,7 @@ export function remoteControl(input: RemoteControlInput, claudeBin = DEFAULT_BIN
   };
 }
 
-const LOCAL_HANDOFFS: readonly HandoffKind[] = [
-  'resume-local',
-  'open-desktop',
-  'start-cloud',
-  'remote-control',
-];
+const LOCAL_HANDOFFS: readonly HandoffKind[] = ['resume-local', 'open-desktop', 'remote-control'];
 
 /** Which handoffs make sense for a session, by the surface it lives on. */
 export function handoffsFor(session: Pick<SurfaceSession, 'surface'>): readonly HandoffKind[] {
@@ -156,9 +140,6 @@ export function buildHandoff(
     }
     case 'teleport-local': {
       return teleportLocal(session.id, bin);
-    }
-    case 'start-cloud': {
-      return startCloud(options.cloudDescription ?? session.title, bin);
     }
     case 'remote-control': {
       return remoteControl(

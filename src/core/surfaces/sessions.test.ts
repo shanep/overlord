@@ -72,7 +72,7 @@ describe('liveToSurface', () => {
       cwd: '/w/repo',
       updatedAt: 20,
       archived: false,
-      handoffs: ['resume-local', 'open-desktop', 'start-cloud', 'remote-control'],
+      handoffs: ['resume-local', 'open-desktop', 'remote-control'],
     });
   });
 

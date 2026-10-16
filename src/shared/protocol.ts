@@ -216,8 +216,7 @@ export interface SurfaceSession {
   readonly handoffs: readonly HandoffKind[];
 }
 
-export type HandoffKind =
-  'resume-local' | 'open-desktop' | 'teleport-local' | 'start-cloud' | 'remote-control';
+export type HandoffKind = 'resume-local' | 'open-desktop' | 'teleport-local' | 'remote-control';
 
 export interface SessionsState {
   readonly sessions: readonly SurfaceSession[];

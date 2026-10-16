@@ -12,6 +12,7 @@ import {
   HANDOFF_LABELS,
   projectName,
   SessionsView,
+  surfaceOptions,
 } from './sessions-view.js';
 
 /** Session titles in page order, across every project table. */
@@ -118,10 +119,10 @@ describe('SessionsView', () => {
 
   it('posts a handoff for the chosen session', async () => {
     const { getByRole, api } = renderView(<SessionsView state={sessionsState} />);
-    await userEvent.click(getByRole('button', { name: 'Start in cloud: Refactor parser' }));
+    await userEvent.click(getByRole('button', { name: 'Remote control: Refactor parser' }));
     await userEvent.click(getByRole('button', { name: 'Pull to local: Cloud fix' }));
     expect(api.actions()).toStrictEqual([
-      { type: 'handoff', sessionId: 'x1', kind: 'start-cloud' },
+      { type: 'handoff', sessionId: 'x1', kind: 'remote-control' },
       { type: 'handoff', sessionId: 'x2', kind: 'teleport-local' },
     ]);
     expect(HANDOFF_LABELS['open-desktop']).toBe('Open in Desktop');
@@ -131,7 +132,7 @@ describe('SessionsView', () => {
     const { getByRole, api } = renderView(<SessionsView state={sessionsState} />);
     const button = getByRole('button', { name: 'Continue: Refactor parser' });
     expect(button.className).toBe('primary');
-    expect(getByRole('button', { name: 'Start in cloud: Refactor parser' }).className).toBe('');
+    expect(getByRole('button', { name: 'Remote control: Refactor parser' }).className).toBe('');
     await userEvent.click(button);
     expect(api.actions()).toStrictEqual([
       { type: 'handoff', sessionId: 'x1', kind: 'resume-local' },
@@ -178,6 +179,19 @@ describe('SessionsView', () => {
       'sessions.surface': 'all',
       'sessions.text': 'zzz',
     });
+  });
+
+  it('offers only the surfaces that have sessions, plus the chosen one', () => {
+    const { getByRole } = renderView(<SessionsView state={sessionsState} />);
+    const options = within(getByRole('combobox', { name: 'Surface' })).getAllByRole('option');
+    expect(options.map((option) => option.textContent)).toStrictEqual([
+      'All',
+      'CLI',
+      'Cloud',
+      'claude.ai',
+    ]);
+    expect(surfaceOptions([], 'cowork')).toStrictEqual(['cowork']);
+    expect(surfaceOptions([], 'all')).toStrictEqual([]);
   });
 
   it('falls back to all surfaces for a value that is not a surface', () => {

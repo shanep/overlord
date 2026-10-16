@@ -104,6 +104,38 @@ async function readyToResume(rt: Runtime, session: SurfaceSession): Promise<bool
   return clearOtherCopy(rt, await liveProcess(rt, session.id), session.title);
 }
 
+/**
+ * Handoffs that resume this session's own id on this machine, so they need
+ * its folder and must not start a second copy. Cowork ids are not session
+ * ids, and a teleport pulls a cloud session down instead.
+ */
+function resumesHere(kind: HandoffKind, session: SurfaceSession): boolean {
+  return (
+    kind === 'resume-local' ||
+    kind === 'remote-control' ||
+    (kind === 'open-desktop' && session.surface !== 'cowork')
+  );
+}
+
+/** False, after saying why, when a handoff that resumes the session here cannot. */
+export async function canHandOff(
+  rt: Runtime,
+  kind: HandoffKind,
+  session: SurfaceSession,
+  cwd: string,
+): Promise<boolean> {
+  if (!resumesHere(kind, session)) {
+    return true;
+  }
+  // Claude Code finds a session by the folder it ran in, so resuming
+  // anywhere else fails with a confusing "no conversation found".
+  if ((await rt.fs.kind(cwd)) !== 'directory') {
+    rt.host.showWarning(`Cannot continue "${session.title}": its folder ${cwd} no longer exists.`);
+    return false;
+  }
+  return readyToResume(rt, session);
+}
+
 async function openAgentPanel(rt: Runtime, sessionId: string, agentId: string): Promise<void> {
   // Old sessions are not tailed, so load the transcript before the panel asks for it.
   const known = rt.store
@@ -211,15 +243,7 @@ export const sessionActions: ActionHandlers<SessionActions> = {
       return;
     }
     const cwd = cwdFor(rt, session.id, session.cwd);
-    // Claude Code finds a session by the folder it ran in, so resuming
-    // anywhere else fails with a confusing "no conversation found".
-    if (action.kind === 'resume-local' && (await rt.fs.kind(cwd)) !== 'directory') {
-      rt.host.showWarning(
-        `Cannot continue "${session.title}": its folder ${cwd} no longer exists.`,
-      );
-      return;
-    }
-    if (action.kind === 'resume-local' && !(await readyToResume(rt, session))) {
+    if (!(await canHandOff(rt, action.kind, session, cwd))) {
       return;
     }
     if (action.kind === 'resume-local') {

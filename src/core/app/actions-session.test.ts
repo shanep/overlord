@@ -7,7 +7,14 @@ import type { WebviewAction } from '../../shared/protocol.js';
 import { isWebviewToHost } from '../../shared/protocol.js';
 import type { ExecResult } from '../sync/exec.js';
 
-import { IN_LAUNCHER, NOT_LOCAL, SDK_ONLY, sdkTarget, terminalName } from './actions-session.js';
+import {
+  canHandOff,
+  IN_LAUNCHER,
+  NOT_LOCAL,
+  SDK_ONLY,
+  sdkTarget,
+  terminalName,
+} from './actions-session.js';
 import type { TestApp, TestEnv } from './test-helpers/fixtures.js';
 import {
   makeApp,
@@ -357,16 +364,56 @@ describe('handoff', () => {
         sessionId: 'local',
       },
     ]);
-    const before = test.calls.length;
-    await test.app.dispatch({ type: 'handoff', sessionId: 'local', kind: 'start-cloud' }, {});
-    expect(test.calls).toHaveLength(before);
+    await test.app.dispatch({ type: 'handoff', sessionId: 'local', kind: 'remote-control' }, {});
     expect(env.host.terminals[1]).toMatchObject({
-      name: 'Claude start-cloud: Mine',
-      args: ['--cloud', 'Mine'],
+      name: 'Claude remote-control: Mine',
+      args: ['--remote-control', 'Mine', '--resume', 'local'],
+      sessionId: 'local',
+    });
+    await test.app.dispatch({ type: 'handoff', sessionId: 'local', kind: 'open-desktop' }, {});
+    expect(env.host.terminals[2]).toMatchObject({
+      args: ['--desktop', '--resume', 'local'],
       sessionId: null,
     });
-    await test.app.dispatch({ type: 'handoff', sessionId: 'local', kind: 'remote-control' }, {});
-    expect(env.host.terminals[2]?.sessionId).toBe('local');
+  });
+
+  it('skips the checks for handoffs that do not resume the session here', async () => {
+    const env = await makeEnv();
+    const { app } = liveApp(env);
+    const row = {
+      id: 'c1',
+      surface: 'cowork' as const,
+      title: 'Notes',
+      cwd: null,
+      updatedAt: 1,
+      archived: false,
+      handoffs: [],
+    };
+    const gone = path.join(env.root, 'gone');
+    expect(await canHandOff(app.runtime, 'open-desktop', row, gone)).toBe(true);
+    const cloud = { ...row, surface: 'cloud' as const };
+    expect(await canHandOff(app.runtime, 'teleport-local', cloud, gone)).toBe(true);
+    expect(await canHandOff(app.runtime, 'open-desktop', cloud, gone)).toBe(false);
+    expect(env.host.warnings).toHaveLength(1);
+  });
+
+  it('checks the folder and other copies before Open in Desktop or Remote control', async () => {
+    const env = await makeEnv();
+    const gone = path.join(env.root, 'deleted-project');
+    await registry(env, { pid: 123, sessionId: 'old', cwd: gone, name: 'Old work' });
+    const test = liveApp(env);
+    await test.app.dispatch({ type: 'handoff', sessionId: 'old', kind: 'open-desktop' }, {});
+    await test.app.dispatch({ type: 'handoff', sessionId: 'old', kind: 'remote-control' }, {});
+    expect(env.host.terminals).toStrictEqual([]);
+    expect(env.host.warnings).toHaveLength(2);
+
+    await registry(env, { pid: 123, sessionId: 'old', cwd: env.home, name: 'Old work' });
+    const moved = movableApp(env);
+    // Declining to stop the other copy leaves both where they are.
+    env.host.confirmAnswers.push(false);
+    await moved.test.app.dispatch({ type: 'handoff', sessionId: 'old', kind: 'open-desktop' }, {});
+    expect(moved.killed).toStrictEqual([]);
+    expect(env.host.terminals).toStrictEqual([]);
   });
 
   it('will not continue a session whose folder is gone', async () => {

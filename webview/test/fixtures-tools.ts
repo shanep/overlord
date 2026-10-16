@@ -137,7 +137,7 @@ export const sessionsState: SessionsState = {
       cwd: '/repo',
       updatedAt: NOW - 5 * MINUTE,
       archived: false,
-      handoffs: ['resume-local', 'start-cloud'],
+      handoffs: ['resume-local', 'remote-control'],
     },
     {
       id: 'x2',

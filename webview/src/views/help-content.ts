@@ -242,7 +242,6 @@ export const HANDOFF_MEANINGS: Readonly<Record<HandoffKind, string>> = {
   'resume-local': 'Resumes the session in a terminal here.',
   'open-desktop': 'Opens it in Claude Desktop.',
   'teleport-local': 'Pulls a cloud session down to this machine so you can keep going locally.',
-  'start-cloud': 'Starts a new cloud session that picks up this one.',
   'remote-control':
     'Resumes it with Remote Control so you can steer it from the web or your phone.',
 };
@@ -291,7 +290,7 @@ export const WORKFLOW: readonly WorkflowStep[] = [
   {
     title: 'Pick it back up later',
     detail:
-      'All Sessions lists everything, including sessions from Desktop and the cloud. Use Continue, Pull to local or Start in cloud to move a session where you want it.',
+      'All Sessions lists everything, including sessions from Desktop and the cloud. Use Continue, Open in Desktop, Remote control or Pull to local to pick a session up where you want it.',
   },
   {
     title: 'Keep your machines in sync',

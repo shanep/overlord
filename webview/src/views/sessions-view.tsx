@@ -18,7 +18,6 @@ export const HANDOFF_LABELS: Readonly<Record<HandoffKind, string>> = {
   'resume-local': 'Continue',
   'open-desktop': 'Open in Desktop',
   'teleport-local': 'Pull to local',
-  'start-cloud': 'Start in cloud',
   'remote-control': 'Remote control',
 };
 
@@ -48,6 +47,18 @@ export function filterSessions(
         (entry.cwd ?? '').toLowerCase().includes(needle),
     )
     .toSorted((a, b) => b.updatedAt - a.updatedAt);
+}
+
+/**
+ * The surfaces worth offering in the filter: those with at least one
+ * session, plus the one chosen now so a saved choice still shows.
+ */
+export function surfaceOptions(
+  sessions: readonly SurfaceSession[],
+  chosen: Surface | 'all',
+): readonly Surface[] {
+  const present = new Set(sessions.map((entry) => entry.surface));
+  return SURFACES.filter((entry) => present.has(entry) || entry === chosen);
 }
 
 export interface ProjectGroup {
@@ -216,7 +227,7 @@ export function SessionsView(props: { readonly state: SessionsState }): ReactEle
             }}
           >
             <option value="all">All</option>
-            {SURFACES.map((entry) => (
+            {surfaceOptions(state.sessions, surface).map((entry) => (
               <option key={entry} value={entry}>
                 {SURFACE_LABELS[entry]}
               </option>

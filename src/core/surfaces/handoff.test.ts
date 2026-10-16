@@ -11,7 +11,6 @@ import {
   openDesktop,
   remoteControl,
   resumeLocal,
-  startCloud,
   teleportLocal,
 } from './handoff.js';
 
@@ -32,7 +31,6 @@ const ALL_KINDS: readonly HandoffKind[] = [
   'resume-local',
   'open-desktop',
   'teleport-local',
-  'start-cloud',
   'remote-control',
 ];
 
@@ -93,20 +91,6 @@ describe('single builders', () => {
     expect(teleportLocal('c', 'cc').command).toBe('cc');
   });
 
-  it('startCloud trims the description and drops it when blank', () => {
-    expect(startCloud('  write tests  ')).toStrictEqual({
-      command: 'claude',
-      args: ['--cloud', 'write tests'],
-      description: 'Start a new Claude Code session on the web',
-    });
-    expect(startCloud(' '.repeat(3)).args).toStrictEqual(['--cloud']);
-    expect(startCloud('', 'cc')).toStrictEqual({
-      command: 'cc',
-      args: ['--cloud'],
-      description: 'Start a new Claude Code session on the web',
-    });
-  });
-
   it('remoteControl with a name and a session to resume', () => {
     expect(remoteControl({ name: ' laptop ', resumeId: 's1' })).toStrictEqual({
       command: 'claude',
@@ -139,7 +123,7 @@ describe('single builders', () => {
 
 describe('handoffsFor', () => {
   it('lists the handoffs each surface supports', () => {
-    const local = ['resume-local', 'open-desktop', 'start-cloud', 'remote-control'];
+    const local = ['resume-local', 'open-desktop', 'remote-control'];
     expect(handoffsFor({ surface: 'cli' })).toStrictEqual(local);
     expect(handoffsFor({ surface: 'sdk' })).toStrictEqual(local);
     expect(handoffsFor({ surface: 'overlord' })).toStrictEqual(local);
@@ -169,17 +153,15 @@ describe('buildHandoff', () => {
     const cli = session('cli');
     expect(buildHandoff('resume-local', cli)).toStrictEqual(resumeLocal('abc-123'));
     expect(buildHandoff('open-desktop', cli)).toStrictEqual(openDesktop('abc-123'));
-    expect(buildHandoff('start-cloud', cli)).toStrictEqual(startCloud('Fix the parser'));
     expect(buildHandoff('remote-control', cli)).toStrictEqual(
       remoteControl({ name: 'Fix the parser', resumeId: 'abc-123' }),
     );
   });
 
-  it('uses options for the binary, cloud text and remote name', () => {
+  it('uses options for the binary and remote name', () => {
     const cli = session('sdk');
-    const options = { claudeBin: 'cc', cloudDescription: 'other task', remoteName: 'phone' };
+    const options = { claudeBin: 'cc', remoteName: 'phone' };
     expect(buildHandoff('resume-local', cli, options)?.command).toBe('cc');
-    expect(buildHandoff('start-cloud', cli, options)).toStrictEqual(startCloud('other task', 'cc'));
     expect(buildHandoff('remote-control', cli, options)).toStrictEqual(
       remoteControl({ name: 'phone', resumeId: 'abc-123' }, 'cc'),
     );
