@@ -38,8 +38,11 @@ export interface Lease {
   readonly entry: WorktreeEntry;
   /** Variables a session in the worktree should get. */
   readonly env: Readonly<Record<string, string>>;
-  /** Setup steps that failed. The worktree works without them. */
-  readonly warnings: readonly string[];
+  /**
+   * Settles with the setup steps that failed once setup finishes, and never
+   * rejects. The worktree works without them.
+   */
+  readonly ready: Promise<readonly string[]>;
 }
 
 export interface AcquireRequest {
@@ -154,6 +157,8 @@ function stateOf(inUse: boolean, status: WorktreeStatus): WorktreeState {
 
 export class WorktreeRegistry {
   private readonly lock = new KeyedLock();
+  /** Setup still running, by worktree id. */
+  private readonly settingUp = new Map<string, Promise<readonly string[]>>();
   private repos: Readonly<Record<string, string>> = {};
 
   constructor(private readonly deps: RegistryDeps) {}
@@ -187,7 +192,10 @@ export class WorktreeRegistry {
     return entries.toSorted((a, b) => a.createdAt - b.createdAt);
   }
 
-  /** Makes a worktree for cwd's repository, sets it up and holds it for this process. */
+  /**
+   * Makes a worktree for cwd's repository and holds it for this process. It
+   * resolves once the worktree exists, and setup goes on until lease.ready.
+   */
   async acquire(request: AcquireRequest): Promise<Lease> {
     const repoRoot = await this.deps.git.repoRoot(request.cwd);
     const entries = await this.entries();
@@ -206,8 +214,10 @@ export class WorktreeRegistry {
     await this.save(entry);
     await this.rememberRepo(info.repoRoot);
     const env = worktreeEnv(entry);
-    const warnings = await setUpWorktree(this.deps.exec, info, env);
-    return { entry, env, warnings };
+    const ready = setUpWorktree(this.deps.exec, info, env);
+    this.settingUp.set(entry.id, ready);
+    void ready.then(() => this.settingUp.delete(entry.id));
+    return { entry, env, ready };
   }
 
   /** Holds a worktree that already exists, to open another session in it. */
@@ -218,11 +228,13 @@ export class WorktreeRegistry {
     const slot = freeSlot(others.map((entry) => entry.slot));
     const entry: WorktreeEntry = { ...current, slot, holderPid: this.deps.pid };
     await this.save(entry);
-    return { entry, env: worktreeEnv(entry), warnings: [] };
+    return { entry, env: worktreeEnv(entry), ready: Promise.resolve([]) };
   }
 
   /** Lets go of a worktree and removes it when everything in it has landed. */
   async release(id: string): Promise<WorktreeState | null> {
+    // Removing it while setup still writes into it would leave a mess behind.
+    await this.settingUp.get(id);
     const entry = await this.findOrNull(id);
     if (entry === null) {
       return null;

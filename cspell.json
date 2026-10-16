@@ -27,6 +27,7 @@
   ],
   "words": [
     "APFS",
+    "FDCWD",
     "SHLVL",
     "abeoprs",
     "abia",
@@ -41,6 +42,7 @@
     "btrfs",
     "caffeinate",
     "clangd",
+    "clonefileat",
     "cowork",
     "creds",
     "cwds",
@@ -49,6 +51,7 @@
     "echarts",
     "edutools",
     "fastcheck",
+    "fcntl",
     "frontmatter",
     "gantt",
     "gpgsign",

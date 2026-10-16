@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs';
-import { chmod, mkdir, rm, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { beforeEach, describe, expect, it, onTestFinished } from 'vitest';
@@ -207,10 +207,30 @@ describe('worktrees in the app', { timeout: 30_000 }, () => {
       await git(world.other, 'push', '-q', 'origin', 'main');
       const test = await setup();
       await test.app.dispatch({ type: 'newSession' }, {});
+      await waitFor(() => test.env.host.warnings.length > 0);
       expect(test.env.host.warnings).toHaveLength(1);
       expect(test.env.host.warnings[0]).toMatch(
         /^Running \.overlord\/setup\.sh failed: \.overlord\/setup\.sh exited 2/u,
       );
+    });
+
+    it('open the tab while setup runs, and wait for it before removing the worktree', async () => {
+      await mkdir(path.join(world.other, '.overlord'));
+      await commitFile(
+        world.other,
+        SETUP_SCRIPT,
+        'while [ ! -f go ]; do sleep 0.02; done\necho done > set-up.txt\n',
+      );
+      await git(world.other, 'push', '-q', 'origin', 'main');
+      const test = await setup();
+      await test.app.dispatch({ type: 'newSession' }, {});
+      const terminal = lastTerminal(test);
+      expect(existsSync(path.join(terminal.cwd, 'set-up.txt'))).toBe(false);
+      const closed = test.app.sessionClosed(terminal.sessionId ?? '');
+      await writeFile(path.join(terminal.cwd, 'go'), '');
+      await closed;
+      expect(existsSync(terminal.cwd)).toBe(true);
+      expect(await readFile(path.join(terminal.cwd, 'set-up.txt'), 'utf8')).toBe('done\n');
     });
 
     it('report a release that fails', async () => {

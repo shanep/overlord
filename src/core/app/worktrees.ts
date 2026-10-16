@@ -74,7 +74,8 @@ export function launcherWorktrees(
         }
         throw error;
       }
-      for (const warning of lease.warnings) {
+      // A run starts working at once, so it waits for the whole setup.
+      for (const warning of await lease.ready) {
         report(SOURCE, warning);
       }
       changed();
@@ -97,7 +98,15 @@ export async function tidyWorktrees(rt: Runtime): Promise<void> {
   await rt.caches.worktrees.refresh();
 }
 
+async function showSetupWarnings(rt: Runtime, lease: Lease): Promise<void> {
+  for (const warning of await lease.ready) {
+    rt.host.showWarning(warning);
+  }
+}
+
 async function openSession(rt: Runtime, lease: Lease, newId: string): Promise<void> {
+  // The tab opens while setup finishes, since the user still has to type a prompt.
+  void showSetupWarnings(rt, lease);
   const sessionId = await openClaudeTab(rt, {
     name: 'Claude Code',
     cwd: lease.entry.path,
@@ -128,9 +137,6 @@ export async function newSession(rt: Runtime): Promise<void> {
         kind: 'session',
         label: `Session in ${path.basename(folder)}`,
       });
-      for (const warning of lease.warnings) {
-        rt.host.showWarning(warning);
-      }
       await openSession(rt, lease, id);
       return;
     } catch (error: unknown) {

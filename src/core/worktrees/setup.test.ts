@@ -1,11 +1,20 @@
 import { existsSync } from 'node:fs';
-import { mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from 'node:fs/promises';
+import {
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  realpath,
+  rm,
+  symlink,
+  writeFile,
+} from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import type { ExecResult } from '../sync/exec.js';
+import type { Exec, ExecResult } from '../sync/exec.js';
 
 import { INCLUDE_FILE, SETUP_SCRIPT, setUpWorktree, type SetupTarget } from './setup.js';
 import { fail, git, ok, scriptedExec, testExec } from './test-helpers/git-world.js';
@@ -81,6 +90,56 @@ describe('worktree setup', { timeout: 30_000 }, () => {
       expect(await readFile(path.join(target.path, 'node_modules/pkg/index.js'), 'utf8')).toBe(
         'module\n',
       );
+    });
+
+    it('copies node_modules file by file when the macOS clone fails', async () => {
+      await put(target.repoRoot, 'package-lock.json', 'v1\n');
+      await put(target.path, 'package-lock.json', 'v1\n');
+      await put(target.repoRoot, 'node_modules/pkg/index.js', 'module\n');
+      const calls: string[][] = [];
+      const broken = scriptedExec([(): ExecResult => fail('clonefileat: nope')], calls);
+      expect(await setUpWorktree(broken, target, {}, 'darwin')).toStrictEqual([]);
+      expect(calls).toHaveLength(1);
+      expect(calls[0]?.[0]).toBe('-e');
+      expect(await readFile(path.join(target.path, 'node_modules/pkg/index.js'), 'utf8')).toBe(
+        'module\n',
+      );
+      expect(await readdir(dir)).toStrictEqual(['repo', 'wt']);
+    });
+
+    // The system call number only means clonefileat on macOS.
+    it.runIf(process.platform === 'darwin')('clones node_modules whole on macOS', async () => {
+      await put(target.repoRoot, 'package-lock.json', 'v1\n');
+      await put(target.path, 'package-lock.json', 'v1\n');
+      await put(target.repoRoot, 'node_modules/pkg/index.js', 'module\n');
+      const codes: number[] = [];
+      const watched: Exec = async (command, args, options) => {
+        const result = await testExec(command, args, options);
+        codes.push(result.code);
+        return result;
+      };
+      expect(await setUpWorktree(watched, target, {}, 'darwin')).toStrictEqual([]);
+      expect(codes).toStrictEqual([0]);
+      expect(await readFile(path.join(target.path, 'node_modules/pkg/index.js'), 'utf8')).toBe(
+        'module\n',
+      );
+      expect(await readdir(dir)).toStrictEqual(['repo', 'wt']);
+    });
+
+    it('keeps a node_modules the session installed while the clone ran', async () => {
+      await put(target.repoRoot, 'package-lock.json', 'v1\n');
+      await put(target.path, 'package-lock.json', 'v1\n');
+      await put(target.repoRoot, 'node_modules/pkg/index.js', 'cloned\n');
+      // The session installs its own while the clone runs, and the clone then falls back to copying.
+      const racing: Exec = async () => {
+        await put(target.path, 'node_modules/pkg/index.js', 'installed\n');
+        return fail('clonefileat: nope');
+      };
+      expect(await setUpWorktree(racing, target, {}, 'darwin')).toStrictEqual([]);
+      expect(await readFile(path.join(target.path, 'node_modules/pkg/index.js'), 'utf8')).toBe(
+        'installed\n',
+      );
+      expect(await readdir(dir)).toStrictEqual(['repo', 'wt']);
     });
 
     it('runs the setup script with the worktree variables and reports a failure', async () => {

@@ -97,7 +97,7 @@ describe('registry with git', { timeout: 30_000 }, () => {
         holderPid: ME,
       });
       expect(lease.env['OVERLORD_SLOT']).toBe('0');
-      expect(lease.warnings).toStrictEqual([]);
+      expect(await lease.ready).toStrictEqual([]);
       expect(await readFile(path.join(lease.entry.path, 'slot.txt'), 'utf8')).toBe('0\n');
       expect(await first.entries()).toStrictEqual([lease.entry]);
       const fresh = registry();
@@ -215,7 +215,7 @@ describe('registry with git', { timeout: 30_000 }, () => {
       await reg.acquire({ cwd: world.repo, id: 'w2', kind: 'run', label: 'B' });
       const lease = await reg.hold('w1');
       expect(lease.entry).toMatchObject({ id: 'w1', holderPid: ME, slot: 1 });
-      expect(lease.warnings).toStrictEqual([]);
+      expect(await lease.ready).toStrictEqual([]);
       const held = await reg.summaries();
       expect(held.find((item) => item.id === 'w1')?.state).toBe('active');
       await expect(reg.hold('nope')).rejects.toThrow('Overlord has no worktree nope.');

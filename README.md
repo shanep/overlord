@@ -78,8 +78,12 @@ A new worktree has none of the repo's ignored files, so Overlord sets it up:
 
 - Ignored files that match `.worktreeinclude` (gitignore syntax) are copied from the main checkout.
 - `node_modules` is cloned from the main checkout when the lockfiles match. The clone is
-  copy-on-write where the file system supports it, so it takes seconds.
+  copy-on-write where the file system supports it, so it takes seconds. On macOS the whole tree
+  clones in one call, so it takes about a second.
 - `.overlord/setup.sh` runs in the worktree if the repo has one.
+
+A new session's tab opens while setup runs, since you still have to type a prompt. A launched run
+waits for setup to finish before it starts.
 
 Each session also gets `OVERLORD_SLOT`, a small number no other live worktree has, and
 `OVERLORD_PORT_BASE` (40000 plus 100 per slot), so dev servers and test databases can pick ports
