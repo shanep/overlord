@@ -31,6 +31,7 @@ describe('Badge', () => {
     expect(state?.className).toBe('state state-critical');
     expect(state?.textContent).toBe('✕failed');
     expect(container.querySelector('[aria-hidden="true"]')?.textContent).toBe('✕');
+    expect(state?.getAttribute('title')).toBe('failed: Ended with an error.');
   });
 
   it('names the surface', () => {

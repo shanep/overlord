@@ -22,8 +22,20 @@ describe('labels', () => {
   });
 
   it('gives every state a glyph and ranks waiting first', () => {
-    expect(STATE_INFO.failed).toStrictEqual({ label: 'failed', icon: '✕', tone: 'critical' });
+    expect(STATE_INFO.failed).toStrictEqual({
+      label: 'failed',
+      icon: '✕',
+      tone: 'critical',
+      description: 'Ended with an error.',
+    });
     expect(STATE_RANK.waiting).toBeLessThan(STATE_RANK.running);
     expect(STATE_RANK.running).toBeLessThan(STATE_RANK.done);
+  });
+
+  it('describes every state for the hover tooltip', () => {
+    const descriptions = Object.values(STATE_INFO).map((info) => info.description);
+    expect(descriptions.every((text) => text.length > 0)).toBe(true);
+    expect(new Set(descriptions).size).toBe(descriptions.length);
+    expect(STATE_INFO.unknown.description).toContain('transcript');
   });
 });

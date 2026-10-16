@@ -16,11 +16,11 @@ export function Badge(props: {
   );
 }
 
-/** Session or agent state as a glyph plus a word, colored by tone. */
+/** Session or agent state as a glyph plus a word, colored by tone. Hover explains it. */
 export function StateBadge(props: { readonly state: SessionState }): ReactElement {
   const info = STATE_INFO[props.state];
   return (
-    <span className={`state state-${info.tone}`}>
+    <span className={`state state-${info.tone}`} title={`${info.label}: ${info.description}`}>
       <span aria-hidden="true" className="state-icon">
         {info.icon}
       </span>

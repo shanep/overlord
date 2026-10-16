@@ -113,6 +113,7 @@ function Twisty(props: {
       type="button"
       className="twisty"
       tabIndex={-1}
+      title={verb}
       aria-label={`${verb} ${visible.row.title}`}
       onClick={() => {
         onToggle(visible);

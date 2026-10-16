@@ -29,15 +29,47 @@ export interface StateInfo {
   /** A glyph so state never depends on color alone. */
   readonly icon: string;
   readonly tone: Tone;
+  /** What the state means, shown when you hover the badge. */
+  readonly description: string;
 }
 
 export const STATE_INFO: Readonly<Record<SessionState, StateInfo>> = {
-  running: { label: 'running', icon: '▶', tone: 'good' },
-  waiting: { label: 'waiting', icon: '!', tone: 'warning' },
-  idle: { label: 'idle', icon: '○', tone: 'neutral' },
-  done: { label: 'done', icon: '✓', tone: 'neutral' },
-  failed: { label: 'failed', icon: '✕', tone: 'critical' },
-  unknown: { label: 'unknown', icon: '?', tone: 'neutral' },
+  running: {
+    label: 'running',
+    icon: '▶',
+    tone: 'good',
+    description: 'Working on a turn or running a tool right now.',
+  },
+  waiting: {
+    label: 'waiting',
+    icon: '!',
+    tone: 'warning',
+    description: 'Blocked on a permission prompt that needs your answer.',
+  },
+  idle: {
+    label: 'idle',
+    icon: '○',
+    tone: 'neutral',
+    description: 'Not working: the last turn finished and it is waiting for your next prompt.',
+  },
+  done: {
+    label: 'done',
+    icon: '✓',
+    tone: 'neutral',
+    description: 'Finished its work.',
+  },
+  failed: {
+    label: 'failed',
+    icon: '✕',
+    tone: 'critical',
+    description: 'Ended with an error.',
+  },
+  unknown: {
+    label: 'unknown',
+    icon: '?',
+    tone: 'neutral',
+    description: 'No activity read from its transcript yet, so the state cannot be told.',
+  },
 };
 
 /** Sort rank so active work sorts first: waiting, running, idle, then the rest. */
