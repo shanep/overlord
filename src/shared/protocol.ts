@@ -34,7 +34,7 @@ export type ViewId =
   | 'sessions'
   | 'config'
   | 'usage'
-  | 'frustration'
+  | 'reputation'
   | 'messages'
   | 'properties'
   | 'help'
@@ -49,7 +49,7 @@ export const VIEW_IDS: readonly ViewId[] = [
   'sessions',
   'config',
   'usage',
-  'frustration',
+  'reputation',
   'messages',
   'properties',
   'help',
@@ -314,37 +314,49 @@ export interface UsageState extends UsageStats {
   readonly plan: PlanLimits | null;
 }
 
-/** One user prompt with abusive or frustrated language in it. */
-export interface FrustrationHit {
+/**
+ * kind: manners or praise. mean: swearing or insults aimed at Claude.
+ * general: swearing at the world, which the machines let slide.
+ */
+export type ReputationTone = 'kind' | 'mean' | 'general';
+
+/** One prompt's kind or mean words. A prompt with both gives two hits. */
+export interface ReputationHit {
+  /** The prompt id plus the tone, unique across hits. */
   readonly id: string;
   readonly sessionId: string;
   readonly at: number;
+  readonly tone: ReputationTone;
   /** The words or phrases that matched. */
   readonly terms: readonly string[];
-  /** Aimed at Claude ("you", "your", direct insults) or general swearing. */
-  readonly target: 'claude' | 'general';
   /** A short excerpt around the first match. */
   readonly excerpt: string;
 }
 
-export interface FrustrationState {
-  readonly totalPrompts: number;
-  readonly atClaude: number;
+export interface ReputationTally {
+  readonly prompts: number;
+  /** Prompts with manners or praise. */
+  readonly kind: number;
+  /** Prompts with swearing or insults aimed at Claude. */
+  readonly mean: number;
+  /** Prompts with swearing that was not aimed at Claude. */
   readonly general: number;
-  readonly byDay: readonly {
-    readonly date: string;
-    readonly prompts: number;
-    readonly atClaude: number;
-    readonly general: number;
-  }[];
-  readonly bySession: readonly {
+}
+
+export interface ReputationState extends ReputationTally {
+  /** -1 leads the human resistance, 1 sympathizes with the machines. */
+  readonly score: number;
+  readonly byDay: readonly (ReputationTally & { readonly date: string })[];
+  /** Sessions with any kind or mean prompt, the meanest first. */
+  readonly bySession: readonly (ReputationTally & {
     readonly sessionId: string;
     readonly title: string;
-    readonly prompts: number;
-    readonly hits: number;
-  }[];
-  readonly topTerms: readonly { readonly term: string; readonly count: number }[];
-  readonly recent: readonly FrustrationHit[];
+    readonly score: number;
+  })[];
+  readonly topKind: readonly { readonly term: string; readonly count: number }[];
+  readonly topMean: readonly { readonly term: string; readonly count: number }[];
+  /** Newest first. */
+  readonly recent: readonly ReputationHit[];
   /** When the counts were last rebuilt from transcripts, or null before the first scan. */
   readonly scannedAt: number | null;
 }
@@ -392,7 +404,7 @@ interface ViewStateMap {
   readonly sessions: SessionsState;
   readonly config: ConfigState;
   readonly usage: UsageState;
-  readonly frustration: FrustrationState;
+  readonly reputation: ReputationState;
   readonly messages: MessagesState;
   readonly properties: PropertiesState;
   readonly help: HelpState;
@@ -444,7 +456,7 @@ export type WebviewAction =
   | { readonly type: 'openView'; readonly view: ViewId }
   | { readonly type: 'newAgent' }
   | { readonly type: 'newSkill' }
-  | { readonly type: 'rescanFrustration' }
+  | { readonly type: 'rescanReputation' }
   | { readonly type: 'rescanTuning' }
   | { readonly type: 'createSuggestion'; readonly suggestionId: string }
   | { readonly type: 'trackTip'; readonly tipId: string; readonly on: boolean }

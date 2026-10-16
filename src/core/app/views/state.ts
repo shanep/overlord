@@ -12,10 +12,10 @@ import type { PanelParams } from '../host-port.js';
 import type { Runtime } from '../runtime.js';
 
 import { fleetFor } from './fleet.js';
-import { buildFrustration } from './frustration.js';
 import { buildKnobs } from './knobs.js';
 import { buildMessages } from './messages.js';
 import { buildProperties } from './properties.js';
+import { buildReputation } from './reputation.js';
 import { buildSessions } from './sessions.js';
 import { buildTuning } from './tuning.js';
 import { buildUsage } from './usage.js';
@@ -100,8 +100,8 @@ export function stateFor(rt: Runtime, view: ViewId, params: PanelParams): HostTo
     case 'usage': {
       return { type: 'state', view, state: buildUsage(rt) };
     }
-    case 'frustration': {
-      return { type: 'state', view, state: buildFrustration(rt) };
+    case 'reputation': {
+      return { type: 'state', view, state: buildReputation(rt) };
     }
     case 'messages': {
       return { type: 'state', view, state: buildMessages(rt) };

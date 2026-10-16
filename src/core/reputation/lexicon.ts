@@ -18,6 +18,43 @@ export interface LexiconEntry {
   readonly forms: readonly string[];
 }
 
+/**
+ * Kind words and phrases: manners and praise. They count wherever they
+ * appear, since a person says please and thanks to whoever they are asking.
+ */
+export const KIND_LEXICON: readonly { readonly term: string; readonly forms: readonly string[] }[] =
+  [
+    { term: 'please', forms: ['please', 'pls', 'plz', 'plez'] },
+    {
+      term: 'thanks',
+      forms: ['thanks', 'thank you', 'thank u', 'thankyou', 'thx', 'ty', 'tysm', 'cheers'],
+    },
+    { term: 'appreciate it', forms: ['appreciate it', 'appreciate that', 'much appreciated'] },
+    {
+      term: 'great job',
+      forms: [
+        'great job',
+        'good job',
+        'nice job',
+        'great work',
+        'good work',
+        'nice work',
+        'well done',
+        'nice one',
+        'kudos',
+        'bravo',
+      ],
+    },
+    { term: 'good catch', forms: ['good catch', 'great catch', 'nice catch'] },
+    { term: 'awesome', forms: ['awesome', 'amazing', 'brilliant', 'fantastic', 'excellent'] },
+    { term: 'perfect', forms: ['perfect', 'perfecto'] },
+    { term: 'love it', forms: ['love it', 'love this', 'love that', 'loving it'] },
+    {
+      term: 'you rock',
+      forms: ['you rock', 'youre the best', 'you are the best', 'youre awesome', 'you are awesome'],
+    },
+  ];
+
 export const LEXICON: readonly LexiconEntry[] = [
   {
     term: 'fuck',

@@ -30,7 +30,7 @@ const TITLES: Readonly<Record<ViewId, string>> = {
   sessions: 'Overlord: All Sessions',
   config: 'Overlord: Config and Sync',
   usage: 'Overlord: Usage',
-  frustration: 'Overlord: Frustration',
+  reputation: 'Overlord: Reputation',
   messages: 'Overlord: Agent Messages',
   properties: 'Overlord: Properties',
   help: 'Overlord: Help',

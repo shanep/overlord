@@ -738,6 +738,59 @@ fieldset.chips {
   color: var(--ov-green);
 }
 
+/* ---- Reputation ---------------------------------------------------------- */
+
+.rep-standing {
+  max-width: 48em;
+  margin: 16px 0;
+}
+
+/* The scale runs from the resistance (red) to the machines (green). */
+.rep-scale {
+  position: relative;
+  height: 10px;
+  border-radius: 5px;
+  background: linear-gradient(to right, var(--ov-red), var(--ov-yellow), var(--ov-green));
+}
+
+.rep-marker {
+  position: absolute;
+  top: -5px;
+  width: 4px;
+  height: 20px;
+  margin-left: -2px;
+  border-radius: 2px;
+  background: var(--ov-fg);
+  box-shadow: 0 0 0 2px var(--ov-bg);
+}
+
+.rep-ticks {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  margin: 6px 0 0;
+  padding: 0;
+  color: var(--ov-muted);
+  font-size: 0.85em;
+  list-style: none;
+  text-align: center;
+}
+
+.rep-ticks li[aria-current='true'] {
+  color: var(--ov-fg);
+  font-weight: 600;
+}
+
+.rep-ends {
+  display: flex;
+  justify-content: space-between;
+  color: var(--ov-muted);
+  font-size: 0.8em;
+}
+
+.rep-rank {
+  margin: 12px 0 0;
+}
+
 /* ---- Properties panel ---------------------------------------------------- */
 
 .props-group {

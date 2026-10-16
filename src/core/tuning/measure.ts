@@ -4,8 +4,8 @@
 // and short labels are kept, never prompt or file text.
 // cspell:words uvicorn pytest
 
-import { transcriptPrompts } from '../frustration/prompts.js';
 import { isPlainObject } from '../knobs/json.js';
+import { transcriptPrompts } from '../reputation/prompts.js';
 import type { PriceTable } from '../transcripts/pricing.js';
 import { DEFAULT_PRICES, findPrice } from '../transcripts/pricing.js';
 import type { ContentBlock, TranscriptRecord } from '../transcripts/schemas.js';

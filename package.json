@@ -178,10 +178,10 @@
         "category": "Overlord"
       },
       {
-        "command": "overlord.openFrustration",
-        "title": "Frustration",
+        "command": "overlord.openReputation",
+        "title": "Reputation",
         "category": "Overlord",
-        "icon": "$(flame)"
+        "icon": "$(robot)"
       },
       {
         "command": "overlord.openMessages",

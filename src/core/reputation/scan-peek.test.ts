@@ -17,7 +17,7 @@ vi.mock(import('../transcripts/peek.js'), () => ({
 
 describe('scanInto when the title peek fails', () => {
   it('still counts the prompts and leaves the title empty', async () => {
-    const root = await mkdtemp(path.join(os.tmpdir(), 'overlord-frustration-peek-'));
+    const root = await mkdtemp(path.join(os.tmpdir(), 'overlord-reputation-peek-'));
     onTestFinished(async () => {
       await rm(root, { recursive: true, force: true });
     });

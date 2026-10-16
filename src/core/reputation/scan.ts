@@ -10,7 +10,7 @@ import type { SessionFileInfo } from '../transcripts/scanner.js';
 import { scanSessions } from '../transcripts/scanner.js';
 
 import { historyPrompts, transcriptPrompts } from './prompts.js';
-import type { FileStamp, FrustrationIndex } from './store.js';
+import type { FileStamp, ReputationIndex } from './store.js';
 import { addHistoryPrompt, addPrompt, claimSession } from './store.js';
 
 export interface ScanInputs {
@@ -41,7 +41,7 @@ async function titleOf(info: SessionFileInfo): Promise<string | null> {
   }
 }
 
-async function readTranscript(index: FrustrationIndex, info: SessionFileInfo): Promise<number> {
+async function readTranscript(index: ReputationIndex, info: SessionFileInfo): Promise<number> {
   const lines = await readAllLines(info.transcriptPath);
   claimSession(index, info.sessionId, await titleOf(info));
   const prompts = transcriptPrompts(lines, {
@@ -60,7 +60,7 @@ async function stampOf(file: string): Promise<FileStamp | null> {
   }
 }
 
-async function readHistory(index: FrustrationIndex, file: string): Promise<number | null> {
+async function readHistory(index: ReputationIndex, file: string): Promise<number | null> {
   const stamp = await stampOf(file);
   if (stamp === null || sameStamp(index.files.get(file), stamp)) {
     return null;
@@ -71,7 +71,7 @@ async function readHistory(index: FrustrationIndex, file: string): Promise<numbe
 }
 
 /** Merges new prompts into `index` in place. Running it twice on the same files adds nothing. */
-export async function scanInto(index: FrustrationIndex, inputs: ScanInputs): Promise<ScanResult> {
+export async function scanInto(index: ReputationIndex, inputs: ScanInputs): Promise<ScanResult> {
   const seen = new Set<string>([inputs.historyFile]);
   let filesRead = 0;
   let newPrompts = 0;

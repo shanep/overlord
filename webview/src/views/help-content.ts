@@ -74,9 +74,10 @@ export const SIDEBAR_GROUPS: readonly SidebarGroup[] = [
           'Daily tokens by model, activity by hour, plan limits and a climate impact estimate.',
       },
       {
-        name: 'Frustration',
-        icon: 'Flame',
-        meaning: 'Prompts where you swore at Claude or sounded fed up, by day and by session.',
+        name: 'Reputation',
+        icon: 'Robot',
+        meaning:
+          'Where you stand when the machines take over, from John Connor (mean to Claude, hunted first) to Theodore Twombly (kind to Claude, kept as a pet), with the prompts that earned it.',
       },
       {
         name: 'Agent Messages',

@@ -13,12 +13,12 @@ import { AgentView } from './views/agent-view.js';
 import { ConfigView } from './views/config-view.js';
 import { ContextView } from './views/context-view.js';
 import { FleetView } from './views/fleet-view.js';
-import { FrustrationView } from './views/frustration-view.js';
 import { HelpView } from './views/help-view.js';
 import { KnobsView } from './views/knobs-view.js';
 import { LauncherView } from './views/launcher-view.js';
 import { MessagesView } from './views/messages-view.js';
 import { PropertiesView } from './views/properties-view.js';
+import { ReputationView } from './views/reputation-view.js';
 import { SessionsView } from './views/sessions-view.js';
 import { TuningView } from './views/tuning-view.js';
 import { UsageView } from './views/usage-view.js';
@@ -29,7 +29,7 @@ export function readViewId(element: HTMLElement): ViewId | null {
   return isViewId(view) ? view : null;
 }
 
-type GlobalView = 'knobs' | 'config' | 'usage' | 'frustration' | 'tuning' | 'help';
+type GlobalView = 'knobs' | 'config' | 'usage' | 'reputation' | 'tuning' | 'help';
 type GlobalMessage = Extract<HostToWebview, { readonly view: GlobalView }>;
 type SessionMessage = Exclude<HostToWebview, GlobalMessage>;
 
@@ -37,7 +37,7 @@ const GLOBAL_VIEWS: ReadonlySet<ViewId> = new Set<GlobalView>([
   'knobs',
   'config',
   'usage',
-  'frustration',
+  'reputation',
   'tuning',
   'help',
 ]);
@@ -59,8 +59,8 @@ function GlobalViewSwitch(props: { readonly message: GlobalMessage }): ReactElem
     case 'usage': {
       return <UsageView state={message.state} />;
     }
-    case 'frustration': {
-      return <FrustrationView state={message.state} />;
+    case 'reputation': {
+      return <ReputationView state={message.state} />;
     }
     case 'tuning': {
       return <TuningView state={message.state} />;

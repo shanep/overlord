@@ -1,4 +1,4 @@
-// The frustration, messages, help and Tuning views through the app's view switch. Kept
+// The reputation, messages, help and Tuning views through the app's view switch. Kept
 // apart from app.test.tsx, which another session owns.
 import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
@@ -14,14 +14,17 @@ import { VsCodeProvider } from './vscode-context.js';
 const views: readonly HostToWebview[] = [
   {
     type: 'state',
-    view: 'frustration',
+    view: 'reputation',
     state: {
-      totalPrompts: 0,
-      atClaude: 0,
+      prompts: 0,
+      kind: 0,
+      mean: 0,
       general: 0,
+      score: 0,
       byDay: [],
       bySession: [],
-      topTerms: [],
+      topKind: [],
+      topMean: [],
       recent: [],
       scannedAt: null,
     },

@@ -7,10 +7,10 @@ import type { WebviewAction } from '../../shared/protocol.js';
 import type { ActionContext, ActionHandlers, ActionMap, ActionType } from './action-types.js';
 import { authoringActions } from './actions-authoring.js';
 import { configActions } from './actions-config.js';
-import { frustrationActions } from './actions-frustration.js';
 import { launchActions } from './actions-launch.js';
 import { messageActions } from './actions-messages.js';
 import { projectActions } from './actions-projects.js';
+import { reputationActions } from './actions-reputation.js';
 import { sessionActions } from './actions-session.js';
 import { tuningActions } from './actions-tuning.js';
 import { worktreeActions } from './actions-worktrees.js';
@@ -23,7 +23,7 @@ const HANDLERS: ActionHandlers<ActionType> = {
   ...launchActions,
   ...configActions,
   ...authoringActions,
-  ...frustrationActions,
+  ...reputationActions,
   ...messageActions,
   ...tuningActions,
   ...worktreeActions,

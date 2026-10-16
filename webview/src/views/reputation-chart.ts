@@ -1,9 +1,9 @@
-// The frustration chart: prompts with a hit per day, stacked by whether the
-// language was aimed at Claude or general.
+// The reputation chart: kind prompts and prompts mean to Claude, side by side
+// for each day.
 
 import type { BarSeriesOption, EChartsOption } from 'echarts';
 
-import type { FrustrationState } from '../../../src/shared/protocol.js';
+import type { ReputationState } from '../../../src/shared/protocol.js';
 import {
   BAR_MAX_WIDTH,
   categoryAxis,
@@ -19,25 +19,21 @@ import { seriesColor } from '../charts/chart-theme.js';
 import type { FigureTable } from '../components/chart-figure.js';
 import { formatInteger } from '../format.js';
 
-type Day = FrustrationState['byDay'][number];
+type Day = ReputationState['byDay'][number];
 
-export const AIMED_LABEL = 'Aimed at Claude';
-export const GENERAL_LABEL = 'General';
+export const KIND_LABEL = 'Kind';
+export const MEAN_LABEL = 'Mean to Claude';
+export const GENERAL_LABEL = 'Swearing in general';
 
-interface Stack {
+interface Series {
   readonly name: string;
   readonly value: (day: Day) => number;
 }
 
-const STACKS: readonly Stack[] = [
-  { name: AIMED_LABEL, value: (day) => day.atClaude },
-  { name: GENERAL_LABEL, value: (day) => day.general },
+const SERIES: readonly Series[] = [
+  { name: KIND_LABEL, value: (day) => day.kind },
+  { name: MEAN_LABEL, value: (day) => day.mean },
 ];
-
-/** Hits as a share of prompts with one decimal, since the shares are often small. */
-export function formatShare(hits: number, prompts: number): string {
-  return prompts > 0 ? `${((hits / prompts) * 100).toFixed(1)}%` : 'n/a';
-}
 
 /** Whole numbers only on the count axis. */
 export function countLabel(value: number): string {
@@ -48,21 +44,14 @@ function sortedDays(days: readonly Day[]): Day[] {
   return days.toSorted((left, right) => left.date.localeCompare(right.date));
 }
 
-export function buildFrustrationChart(days: readonly Day[], theme: ChartTheme): EChartsOption {
+export function buildReputationChart(days: readonly Day[], theme: ChartTheme): EChartsOption {
   const sorted = sortedDays(days);
-  const series = STACKS.map((stack, index): BarSeriesOption => ({
+  const series = SERIES.map((item, index): BarSeriesOption => ({
     type: 'bar',
-    name: stack.name,
-    stack: 'hits',
+    name: item.name,
     barMaxWidth: BAR_MAX_WIDTH,
-    itemStyle: {
-      color: seriesColor(theme, index),
-      // A 2px gap in the surface color keeps the stacked segments apart.
-      borderColor: theme.surface,
-      borderWidth: 2,
-      borderRadius: index === STACKS.length - 1 ? [4, 4, 0, 0] : 0,
-    },
-    data: sorted.map((day) => stack.value(day)),
+    itemStyle: { color: seriesColor(theme, index), borderRadius: [4, 4, 0, 0] },
+    data: sorted.map((day) => item.value(day)),
   }));
   return {
     animation: false,
@@ -70,7 +59,7 @@ export function buildFrustrationChart(days: readonly Day[], theme: ChartTheme): 
     grid: grid(true),
     legend: legend(
       theme,
-      STACKS.map((stack) => stack.name),
+      SERIES.map((item) => item.name),
     ),
     tooltip: { ...tooltip(theme, 'axis'), valueFormatter: valueFormatter(formatInteger) },
     xAxis: categoryAxis(
@@ -85,13 +74,13 @@ export function buildFrustrationChart(days: readonly Day[], theme: ChartTheme): 
 /** Table twin for the chart, one row per day. */
 export function dayTable(days: readonly Day[]): FigureTable {
   return {
-    columns: ['Date', 'Prompts', AIMED_LABEL, GENERAL_LABEL, 'Share'],
+    columns: ['Date', 'Prompts', KIND_LABEL, MEAN_LABEL, GENERAL_LABEL],
     rows: sortedDays(days).map((day) => [
       day.date,
       formatInteger(day.prompts),
-      formatInteger(day.atClaude),
+      formatInteger(day.kind),
+      formatInteger(day.mean),
       formatInteger(day.general),
-      formatShare(day.atClaude + day.general, day.prompts),
     ]),
   };
 }

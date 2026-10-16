@@ -6,7 +6,7 @@ import { describe, expect, it, onTestFinished } from 'vitest';
 
 import type { ScanInputs } from './scan.js';
 import { scanInto } from './scan.js';
-import type { FrustrationIndex } from './store.js';
+import type { ReputationIndex } from './store.js';
 import { emptyIndex } from './store.js';
 
 interface Home {
@@ -15,7 +15,7 @@ interface Home {
 }
 
 async function makeHome(): Promise<Home> {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'overlord-frustration-scan-'));
+  const root = await mkdtemp(path.join(os.tmpdir(), 'overlord-reputation-scan-'));
   onTestFinished(async () => {
     await rm(root, { recursive: true, force: true });
   });
@@ -46,7 +46,7 @@ function history(sessionId: string, display: string, timestamp = 1000): string {
   return JSON.stringify({ display, timestamp, sessionId, project: '/work', pastedContents: {} });
 }
 
-function ids(index: FrustrationIndex): string[] {
+function ids(index: ReputationIndex): string[] {
   return [...index.prompts.keys()].toSorted((left, right) => left.localeCompare(right));
 }
 
