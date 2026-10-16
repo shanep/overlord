@@ -36,12 +36,15 @@ const FLEET_TITLE_VIEWS: readonly ViewEntry[] = [
   ['overlord.openSessions', 'sessions', 'All Sessions', 'list-unordered'],
 ];
 
-/** Views about particular sessions and agents. */
-const SESSION_VIEWS: readonly ViewEntry[] = [
+/**
+ * Views opened from the Command Palette only. The Context Inspector is about
+ * one session, so the Fleet rows open it, and the palette opens it on a picker.
+ */
+const PALETTE_VIEWS: readonly ViewEntry[] = [
   ['overlord.openContext', 'context', 'Context Inspector', 'search'],
 ];
 
-const VIEW_COMMANDS = [...GLOBAL_VIEWS, ...FLEET_TITLE_VIEWS, ...SESSION_VIEWS];
+const VIEW_COMMANDS = [...GLOBAL_VIEWS, ...FLEET_TITLE_VIEWS, ...PALETTE_VIEWS];
 
 class ViewListProvider implements vscode.TreeDataProvider<ViewEntry> {
   constructor(private readonly entries: readonly ViewEntry[]) {}
@@ -152,10 +155,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       }),
     ),
     vscode.window.registerTreeDataProvider('overlord.global', new ViewListProvider(GLOBAL_VIEWS)),
-    vscode.window.registerTreeDataProvider(
-      'overlord.sessionViews',
-      new ViewListProvider(SESSION_VIEWS),
-    ),
     ...VIEW_COMMANDS.map(([id, view]) =>
       register(id, (): void => {
         panels.open(view);

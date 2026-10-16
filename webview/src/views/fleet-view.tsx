@@ -154,6 +154,11 @@ export function FleetView(props: { readonly state: FleetState }): ReactElement {
         post({ type: 'openAgent', sessionId: row.sessionId, agentId: row.agentId });
         break;
       }
+      case 'context': {
+        const agentId = row.kind === 'session' ? null : row.agentId;
+        post({ type: 'openContext', sessionId: row.sessionId, agentId });
+        break;
+      }
       case 'move': {
         post({ type: 'moveSession', sessionId: row.sessionId });
         break;

@@ -155,10 +155,14 @@ describe('FleetView', () => {
     expect(screen.getByText('1 pending permission')).toBeDefined();
     await user.click(screen.getByRole('button', { name: 'Agent view Refactor parser' }));
     await user.click(screen.getByRole('button', { name: 'Agent view Explore' }));
+    await user.click(screen.getByRole('button', { name: 'Context Inspector Refactor parser' }));
+    await user.click(screen.getByRole('button', { name: 'Context Inspector Explore' }));
     expect(api.posted.every((message) => message.type === 'action')).toBe(true);
     expect(api.actions()).toStrictEqual([
       { type: 'openAgent', sessionId: 's1', agentId: 's1' },
       { type: 'openAgent', sessionId: 's1', agentId: 'a1' },
+      { type: 'openContext', sessionId: 's1', agentId: null },
+      { type: 'openContext', sessionId: 's1', agentId: 'a1' },
     ]);
     expect(within(rowFor('Explore')).queryByRole('button', { name: 'Stop Explore' })).toBeNull();
     expect(screen.queryByRole('button', { name: /^Attach/u })).toBeNull();

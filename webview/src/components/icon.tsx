@@ -6,6 +6,13 @@ import type { ReactElement } from 'react';
 
 const SHAPES = {
   open: <path d="M9 3h4v4M13 3 7.5 8.5M12 9.5V13H3V4h3.5" />,
+  /** A magnifying glass: the Context Inspector. */
+  context: (
+    <>
+      <circle cx="7" cy="7" r="4" />
+      <path d="m10 10 3.5 3.5" />
+    </>
+  ),
   interrupt: <path d="M6 4v8M10 4v8" />,
   stop: <rect x="4" y="4" width="8" height="8" rx="1" fill="currentColor" />,
   /** A terminal window: the CLI in a VS Code terminal. */

@@ -94,18 +94,6 @@ export const SIDEBAR_GROUPS: readonly SidebarGroup[] = [
     ],
   },
   {
-    title: 'Sessions and Agents',
-    about: 'Views about particular sessions and the agents inside them.',
-    entries: [
-      {
-        name: 'Context Inspector',
-        icon: 'Magnifying glass',
-        meaning:
-          'The system prompt, every memory file that loaded and why, and every file that did not load and why not.',
-      },
-    ],
-  },
-  {
     title: 'Elsewhere in VS Code',
     about: 'Two more ways in that live outside the sidebar.',
     entries: [
@@ -147,6 +135,12 @@ export const ROW_BUTTONS: readonly RowButton[] = [
     name: 'Agent view',
     meaning:
       'Opens the agent view: the live feed of thinking and tool calls, a tool timeline and charts.',
+  },
+  {
+    icon: 'context',
+    name: 'Context Inspector',
+    meaning:
+      'Opens the context inspector: the system prompt, every memory file that loaded and why, and every file that did not load and why not.',
   },
   {
     icon: 'move',
@@ -276,7 +270,7 @@ export const WORKFLOW: readonly WorkflowStep[] = [
   {
     title: 'Dig in',
     detail:
-      "Click a row to jump to the session's terminal, or click its Agent view button for the live feed. Use the Context Inspector to see what is in a session's context and why. On a Claude Code tab, the info button opens its properties beside it.",
+      "Click a row to jump to the session's terminal, or click its Agent view button for the live feed. Click its magnifying glass for the Context Inspector, which shows what is in its context and why. On a Claude Code tab, the info button opens its properties beside it.",
   },
   {
     title: 'Land the result',
@@ -331,8 +325,7 @@ export const SCREEN_AREAS: readonly ScreenArea[] = [
     at: { x: 168, y: 360 },
     name: 'Primary side bar',
     apis: 'Views inside the container: tree views (registerTreeDataProvider), webview views (registerWebviewViewProvider) and welcome text for empty views (viewsWelcome).',
-    overlord:
-      'Fleet and Session Properties are webview views. Global and Sessions and Agents are tree views.',
+    overlord: 'Fleet and Session Properties are webview views. Global is a tree view.',
   },
   {
     number: 4,

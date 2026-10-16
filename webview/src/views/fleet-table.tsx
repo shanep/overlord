@@ -20,11 +20,12 @@ import type { RowHistory } from './fleet-history.js';
 import type { FleetRow, VisibleRow } from './fleet-rows.js';
 import { elapsedMs, rowCallsPerMinute } from './fleet-rows.js';
 
-export type RowAction = 'open' | 'interrupt' | 'stop' | 'move';
+export type RowAction = 'open' | 'context' | 'interrupt' | 'stop' | 'move';
 export type ProjectAction = 'rename' | 'delete';
 
 const ACTION_LABELS: Readonly<Record<RowAction | ProjectAction, string>> = {
   open: 'Agent view',
+  context: 'Context Inspector',
   interrupt: 'Interrupt',
   stop: 'Stop',
   move: 'Move to project',
@@ -114,6 +115,7 @@ function RowActions(props: {
   return (
     <span className="actions">
       {button('open')}
+      {button('context')}
       {row.kind === 'session' ? (
         <>
           {button('move')}

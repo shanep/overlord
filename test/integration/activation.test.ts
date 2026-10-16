@@ -113,15 +113,9 @@ describe('Overlord extension', () => {
     // VS Code adds a focus command for every contributed view.
     await vscode.commands.executeCommand('overlord.fleet.focus');
     await vscode.commands.executeCommand('overlord.global.focus');
-    await vscode.commands.executeCommand('overlord.sessionViews.focus');
     await vscode.commands.executeCommand('overlord.properties.focus');
     const commands = new Set(await vscode.commands.getCommands(true));
-    const views = [
-      'overlord.fleet',
-      'overlord.global',
-      'overlord.sessionViews',
-      'overlord.properties',
-    ];
+    const views = ['overlord.fleet', 'overlord.global', 'overlord.properties'];
     for (const view of views) {
       assert.ok(commands.has(`${view}.focus`), `${view} is a contributed view`);
     }
