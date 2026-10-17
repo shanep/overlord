@@ -71,17 +71,17 @@ describe('ConfigView', () => {
     await expectAccessible(container);
   });
 
-  it('posts sync, authoring, open and adopt actions', async () => {
+  it('posts sync, view, open and adopt actions', async () => {
     const { getByRole, api } = renderView(<ConfigView state={configState} />);
     await userEvent.click(getByRole('button', { name: 'Sync now' }));
-    await userEvent.click(getByRole('button', { name: 'New agent' }));
-    await userEvent.click(getByRole('button', { name: 'New skill' }));
+    await userEvent.click(getByRole('button', { name: 'Skills' }));
+    await userEvent.click(getByRole('button', { name: 'Agents' }));
     await userEvent.click(getByRole('button', { name: '/Users/dev/.claude/skills/canvas' }));
     await userEvent.click(getByRole('button', { name: 'Adopt memory into repo' }));
     expect(api.actions()).toStrictEqual([
       { type: 'syncNow' },
-      { type: 'newAgent' },
-      { type: 'newSkill' },
+      { type: 'openView', view: 'skills' },
+      { type: 'openView', view: 'agents' },
       { type: 'openFile', path: '/Users/dev/.claude/skills/canvas' },
       { type: 'adoptConfig', itemId: 'memory' },
     ]);

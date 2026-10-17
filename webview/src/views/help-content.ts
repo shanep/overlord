@@ -67,6 +67,18 @@ export const SIDEBAR_GROUPS: readonly SidebarGroup[] = [
           'Every config item (CLAUDE.md, skills, agents, hooks and so on) with a sync badge, and push or pull to your config repo.',
       },
       {
+        name: 'Skills',
+        icon: 'Light bulb',
+        meaning:
+          'Every skill installed in user, project and plugin scope, and New skill to make one. Browse premade skills from Anthropic, Superpowers and wshobson/agents, or search skills.sh, and install one where you pick.',
+      },
+      {
+        name: 'Agents',
+        icon: 'Robot head',
+        meaning:
+          'Every agent installed in user, project and plugin scope, and New agent to make one. Browse premade agents from the VoltAgent and wshobson/agents collections and install one where you pick.',
+      },
+      {
         name: 'Usage',
         icon: 'Graph',
         meaning:

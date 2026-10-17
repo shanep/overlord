@@ -4,6 +4,7 @@
 // `action` messages for user intent.
 
 import type { ActivityState } from './activity.js';
+import type { CatalogKind, LibraryState } from './catalog.js';
 import type { ConnectorsState } from './connectors.js';
 import type { HealthLevel, SessionHealth } from './health.js';
 import type {
@@ -46,6 +47,8 @@ export const VIEW_IDS = [
   'tuning',
   'connectors',
   'activity',
+  'skills',
+  'agents',
 ] as const;
 
 export type ViewId = (typeof VIEW_IDS)[number];
@@ -388,6 +391,8 @@ interface ViewStateMap {
   readonly tuning: TuningState;
   readonly connectors: ConnectorsState;
   readonly activity: ActivityState;
+  readonly skills: LibraryState;
+  readonly agents: LibraryState;
 }
 
 export type HostToWebview = {
@@ -438,6 +443,10 @@ export type WebviewAction =
   | { readonly type: 'openView'; readonly view: ViewId }
   | { readonly type: 'newAgent' }
   | { readonly type: 'newSkill' }
+  | { readonly type: 'browseCatalog'; readonly kind: CatalogKind; readonly source: string }
+  | { readonly type: 'searchCatalog'; readonly kind: CatalogKind; readonly query: string }
+  | { readonly type: 'openCatalogLink'; readonly kind: CatalogKind; readonly url: string }
+  | { readonly type: 'installCatalog'; readonly kind: CatalogKind; readonly entryId: string }
   | { readonly type: 'rescanReputation' }
   | { readonly type: 'rescanTuning' }
   | { readonly type: 'createSuggestion'; readonly suggestionId: string }

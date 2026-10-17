@@ -1,8 +1,9 @@
-// The reputation, messages, help, activity, Tuning and Connectors views through the app's view switch. Kept
+// The reputation, messages, help, activity, Tuning, Connectors, Skills and Agents views through the app's view switch. Kept
 // apart from app.test.tsx, which another session owns.
 import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import type { CatalogKind, LibraryState } from '../../src/shared/catalog.js';
 import { EMPTY_REGISTRY } from '../../src/shared/connectors.js';
 import type { HostToWebview } from '../../src/shared/protocol.js';
 import { NOW } from '../test/fixtures.js';
@@ -11,6 +12,23 @@ import { FakeApi } from '../test/render.js';
 import { ViewSwitch } from './app.js';
 import { NowProvider } from './clock.js';
 import { VsCodeProvider } from './vscode-context.js';
+
+function library(kind: CatalogKind): LibraryState {
+  return {
+    kind,
+    installed: [],
+    catalog: {
+      sources: [],
+      source: '',
+      query: null,
+      loading: false,
+      entries: [],
+      error: null,
+      installing: null,
+      notice: null,
+    },
+  };
+}
 
 const views: readonly HostToWebview[] = [
   {
@@ -86,6 +104,8 @@ const views: readonly HostToWebview[] = [
       registry: EMPTY_REGISTRY,
     },
   },
+  { type: 'state', view: 'skills', state: library('skill') },
+  { type: 'state', view: 'agents', state: library('agent') },
 ];
 
 describe('ViewSwitch for the newer views', () => {

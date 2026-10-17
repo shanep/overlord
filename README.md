@@ -59,6 +59,17 @@ See [PLAN.md](PLAN.md) for the full design and the decisions behind it.
   with handoff between local and cloud.
 - **Config and sync**: every config item with a badge for versioned, local only, external repo
   and so on, synced through a separate git repo so a new machine matches this one.
+- **Skills** and **Agents**: every skill or agent installed in user, project and plugin scope,
+  with **New skill** or **New agent** to make one from a template or have Claude draft it. Below
+  that you can browse premade ones and install them. Skills come from Anthropic's own collection
+  (anthropics/skills), Superpowers (obra/superpowers) and the skills in wshobson/agents, or you
+  can search skills.sh, which tracks every public skill and how often people install it. Agents
+  come from VoltAgent/awesome-claude-code-subagents and wshobson/agents. **Install** asks where it
+  goes the same way New does, copies the skill's whole folder (scripts and references included)
+  or the agent's file from GitHub, links it into `~/.claude` when the config repo holds it, and
+  opens it so you can read it first. A skill can carry scripts Claude runs, so read before you
+  install. Listing a collection takes one GitHub API call, signed with the editor's GitHub
+  sign-in when there is one, since anonymous calls are limited to 60 an hour.
 - **Usage**: daily tokens by model and activity by hour.
 - **Activity**: what each running session costs this machine, like Activity Monitor or Task
   Manager. Each session row adds up CPU, memory, disk and network for every process it started

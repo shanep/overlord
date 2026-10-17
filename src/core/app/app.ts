@@ -6,6 +6,7 @@ import path from 'node:path';
 
 import type { FleetState, HostToWebview, ViewId, WebviewAction } from '../../shared/protocol.js';
 import type { EventBus } from '../bus.js';
+import { GitHubReader } from '../catalog/github.js';
 import { callStdioTool } from '../connectors/stdio-mcp.js';
 import { Launcher } from '../harness/launcher.js';
 import { mergeEnv } from '../harness/options.js';
@@ -22,6 +23,7 @@ import type { AppDeps } from './app-deps.js';
 import { coreDeps, machineDeps } from './app-deps.js';
 import type { CacheRuntime } from './caches.js';
 import { createCaches } from './caches.js';
+import { CatalogBrowser } from './catalog-browser.js';
 import { ChangeHub } from './changes.js';
 import { cliLoader, executableFor } from './claude-bin.js';
 import { ConfigSync } from './config-sync.js';
@@ -206,7 +208,20 @@ export class OverlordApp {
     const context = new ContextViews({ ...base, onUpdate: notify, onError: report });
     const activity = createActivity(base, machine.interval);
     const registry = new RegistrySearch({ fetch: base.fetch, notify });
-    this.rt = { ...base, caches: createCaches(base), context, activity, registry };
+    const reader = new GitHubReader({
+      fetch: base.fetch,
+      token: async (): Promise<string | null> =>
+        host.gitHubSession(false).then(
+          (signIn) => signIn?.accessToken ?? null,
+          () => null,
+        ),
+    });
+    const catalogs = {
+      reader,
+      skill: new CatalogBrowser({ kind: 'skill', reader, fetch: base.fetch, notify }),
+      agent: new CatalogBrowser({ kind: 'agent', reader, fetch: base.fetch, notify }),
+    };
+    this.rt = { ...base, caches: createCaches(base), context, activity, registry, catalogs };
     this.cleanups.push(store.onChange(notify), launcher.onChange(notify));
     const coordinator = createCoordinator(this.rt);
     const launchCheck = createLaunchChecker(this.rt);

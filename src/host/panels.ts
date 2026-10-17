@@ -37,6 +37,8 @@ const TITLES: Readonly<Record<ViewId, string>> = {
   tuning: 'Overlord: Tuning',
   connectors: 'Overlord: Connectors (MCP)',
   activity: 'Overlord: Activity',
+  skills: 'Overlord: Skills',
+  agents: 'Overlord: Agents',
 };
 
 function isViewKey(value: string): value is ViewId {

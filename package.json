@@ -224,6 +224,18 @@
         "icon": "$(tools)"
       },
       {
+        "command": "overlord.openSkills",
+        "title": "Skills",
+        "category": "Overlord",
+        "icon": "$(lightbulb)"
+      },
+      {
+        "command": "overlord.openAgents",
+        "title": "Agents",
+        "category": "Overlord",
+        "icon": "$(hubot)"
+      },
+      {
         "command": "overlord.openConnectors",
         "title": "Connectors (MCP)",
         "category": "Overlord",

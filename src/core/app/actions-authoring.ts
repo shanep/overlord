@@ -17,7 +17,7 @@ import type { PickItem } from './host-port.js';
 import type { Runtime } from './runtime.js';
 import { configRepoDir, connectedRoot } from './views/config.js';
 
-interface Destination {
+export interface Destination {
   readonly scope: AuthoringScope;
   readonly dirs: TargetDirs;
   /** The config repo root when a user scope file goes into the repo. */
@@ -42,7 +42,8 @@ function scopeItems(repoRoot: string | null, workspace: string | null): PickItem
   ];
 }
 
-async function pickDestination(rt: Runtime): Promise<Destination | null> {
+/** Asks whether the file goes in user, project or plugin scope. Null when the user backed out. */
+export async function pickDestination(rt: Runtime): Promise<Destination | null> {
   const repoRoot = await connectedRoot(
     rt.exec,
     configRepoDir(rt.host.settings.configRepoPath, rt.paths.home),
@@ -72,7 +73,7 @@ async function pickDestination(rt: Runtime): Promise<Destination | null> {
 }
 
 /** Links a user scope file written into the config repo back into ~/.claude. */
-async function linkIntoClaude(
+export async function linkIntoClaude(
   rt: Runtime,
   kind: AuthoringKind,
   name: string,

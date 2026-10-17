@@ -138,18 +138,18 @@ function RepoHeader(props: { readonly state: ConfigState }): ReactElement {
         <button
           type="button"
           onClick={() => {
-            post({ type: 'newAgent' });
+            post({ type: 'openView', view: 'skills' });
           }}
         >
-          New agent
+          Skills
         </button>
         <button
           type="button"
           onClick={() => {
-            post({ type: 'newSkill' });
+            post({ type: 'openView', view: 'agents' });
           }}
         >
-          New skill
+          Agents
         </button>
       </div>
     </div>

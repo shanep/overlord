@@ -1,0 +1,200 @@
+{
+  "kind": "agent",
+  "installed": [
+    {
+      "id": "agent:pdf",
+      "kind": "agent",
+      "name": "auth-integration-engineer",
+      "scope": "user",
+      "path": "/Users/dev/.claude/agents/auth-integration-engineer",
+      "realPath": "/Users/dev/.overlord-config/agents/auth-integration-engineer",
+      "status": "versioned",
+      "repo": null
+    },
+    {
+      "id": "agent:canvas",
+      "kind": "agent",
+      "name": "canvas-grading-with-a-long-name",
+      "scope": "user",
+      "path": "/Users/dev/.claude/agents/canvas-grading-with-a-long-name",
+      "realPath": null,
+      "status": "local-only",
+      "repo": null
+    },
+    {
+      "id": "agent:proj",
+      "kind": "agent",
+      "name": "release-notes",
+      "scope": "project",
+      "path": "/Users/dev/repos/overlord/.claude/agents/release-notes",
+      "realPath": null,
+      "status": "modified",
+      "repo": null
+    },
+    {
+      "id": "agent:plugin",
+      "kind": "agent",
+      "name": "code-review",
+      "scope": "plugin",
+      "path": "/Users/dev/.claude/plugins/cache/x/agents/code-review",
+      "realPath": null,
+      "status": "plugin",
+      "repo": null
+    }
+  ],
+  "catalog": {
+    "sources": [
+      {
+        "id": "VoltAgent/awesome-claude-code-subagents",
+        "label": "VoltAgent",
+        "description": "A curated catalog of subagents in categories: core development, languages, infrastructure, quality and security, data and AI, and more.",
+        "url": "https://github.com/VoltAgent/awesome-claude-code-subagents",
+        "search": false
+      },
+      {
+        "id": "wshobson/agents",
+        "label": "wshobson/agents",
+        "description": "The agents from a large plugin collection, grouped by plugin, from architects and reviewers to language and cloud specialists.",
+        "url": "https://github.com/wshobson/agents",
+        "search": false
+      }
+    ],
+    "source": "VoltAgent/awesome-claude-code-subagents",
+    "query": null,
+    "loading": false,
+    "entries": [
+      {
+        "id": "VoltAgent/awesome-claude-code-subagents:categories/08-business-product/assumption-mapping.md",
+        "name": "assumption-mapping",
+        "description": "Use when the user needs to identify and prioritize risky assumptions in a product idea, feature, or strategy. Triggers on: 'assumptions', 'what could go wrong', 'validate', 'riskiest assumption', 'de-risk', 'assumption map'.",
+        "repo": "VoltAgent/awesome-claude-code-subagents",
+        "group": "business-product",
+        "installs": null,
+        "url": "https://github.com/VoltAgent/awesome-claude-code-subagents/blob/HEAD/categories/08-business-product/assumption-mapping.md"
+      },
+      {
+        "id": "VoltAgent/awesome-claude-code-subagents:categories/08-business-product/backlog-grooming.md",
+        "name": "backlog-grooming",
+        "description": "Use when the user needs to groom, refine, or clean up a product backlog. Triggers on: 'groom backlog', 'backlog refinement', 'backlog grooming', 'clean up backlog', 'refine stories', 'sprint refinement', 'backlog management'.",
+        "repo": "VoltAgent/awesome-claude-code-subagents",
+        "group": "business-product",
+        "installs": null,
+        "url": "https://github.com/VoltAgent/awesome-claude-code-subagents/blob/HEAD/categories/08-business-product/backlog-grooming.md"
+      },
+      {
+        "id": "VoltAgent/awesome-claude-code-subagents:categories/01-core-development/api-designer.md",
+        "name": "api-designer",
+        "description": "Use this agent when designing new APIs, creating API specifications, or refactoring existing API architecture for scalability and developer experience. Invoke when you need REST/GraphQL endpoint design, OpenAPI documentation, authentication patterns, or API versioning strategies.",
+        "repo": "VoltAgent/awesome-claude-code-subagents",
+        "group": "core-development",
+        "installs": null,
+        "url": "https://github.com/VoltAgent/awesome-claude-code-subagents/blob/HEAD/categories/01-core-development/api-designer.md"
+      },
+      {
+        "id": "VoltAgent/awesome-claude-code-subagents:categories/01-core-development/auth-integration-engineer.md",
+        "name": "auth-integration-engineer",
+        "description": "Use this agent when implementing authentication and authorization \u2014 OAuth 2.1/OIDC flows, SAML enterprise SSO, session and token management, multi-tenant permission models, or MFA and passwordless login.",
+        "repo": "VoltAgent/awesome-claude-code-subagents",
+        "group": "core-development",
+        "installs": null,
+        "url": "https://github.com/VoltAgent/awesome-claude-code-subagents/blob/HEAD/categories/01-core-development/auth-integration-engineer.md"
+      },
+      {
+        "id": "VoltAgent/awesome-claude-code-subagents:categories/05-data-ai/ai-engineer.md",
+        "name": "ai-engineer",
+        "description": "Use this agent when architecting, implementing, or optimizing end-to-end AI systems\u2014from model selection and training pipelines to production deployment and monitoring.",
+        "repo": "VoltAgent/awesome-claude-code-subagents",
+        "group": "data-ai",
+        "installs": null,
+        "url": "https://github.com/VoltAgent/awesome-claude-code-subagents/blob/HEAD/categories/05-data-ai/ai-engineer.md"
+      },
+      {
+        "id": "VoltAgent/awesome-claude-code-subagents:categories/05-data-ai/data-analyst.md",
+        "name": "data-analyst",
+        "description": "Use when you need to extract insights from business data, create dashboards and reports, or perform statistical analysis to support decision-making.",
+        "repo": "VoltAgent/awesome-claude-code-subagents",
+        "group": "data-ai",
+        "installs": null,
+        "url": "https://github.com/VoltAgent/awesome-claude-code-subagents/blob/HEAD/categories/05-data-ai/data-analyst.md"
+      },
+      {
+        "id": "VoltAgent/awesome-claude-code-subagents:categories/06-developer-experience/build-engineer.md",
+        "name": "build-engineer",
+        "description": "Use this agent when you need to optimize build performance, reduce compilation times, or scale build systems across growing teams.",
+        "repo": "VoltAgent/awesome-claude-code-subagents",
+        "group": "developer-experience",
+        "installs": null,
+        "url": "https://github.com/VoltAgent/awesome-claude-code-subagents/blob/HEAD/categories/06-developer-experience/build-engineer.md"
+      },
+      {
+        "id": "VoltAgent/awesome-claude-code-subagents:categories/06-developer-experience/cli-developer.md",
+        "name": "cli-developer",
+        "description": "Use this agent when building command-line tools and terminal applications that require intuitive command design, cross-platform compatibility, and optimized developer experience.",
+        "repo": "VoltAgent/awesome-claude-code-subagents",
+        "group": "developer-experience",
+        "installs": null,
+        "url": "https://github.com/VoltAgent/awesome-claude-code-subagents/blob/HEAD/categories/06-developer-experience/cli-developer.md"
+      },
+      {
+        "id": "VoltAgent/awesome-claude-code-subagents:categories/03-infrastructure/azure-infra-engineer.md",
+        "name": "azure-infra-engineer",
+        "description": "Use when designing, deploying, or managing Azure infrastructure with focus on network architecture, Entra ID integration, PowerShell automation, and Bicep IaC.",
+        "repo": "VoltAgent/awesome-claude-code-subagents",
+        "group": "infrastructure",
+        "installs": null,
+        "url": "https://github.com/VoltAgent/awesome-claude-code-subagents/blob/HEAD/categories/03-infrastructure/azure-infra-engineer.md"
+      },
+      {
+        "id": "VoltAgent/awesome-claude-code-subagents:categories/03-infrastructure/cloud-architect.md",
+        "name": "cloud-architect",
+        "description": "Use this agent when you need to design, evaluate, or optimize cloud infrastructure architecture at scale. Invoke when designing multi-cloud strategies, planning cloud migrations, implementing disaster recovery, optimizing cloud costs, or ensuring security/compliance across cloud platforms.",
+        "repo": "VoltAgent/awesome-claude-code-subagents",
+        "group": "infrastructure",
+        "installs": null,
+        "url": "https://github.com/VoltAgent/awesome-claude-code-subagents/blob/HEAD/categories/03-infrastructure/cloud-architect.md"
+      },
+      {
+        "id": "VoltAgent/awesome-claude-code-subagents:categories/02-language-specialists/angular-architect.md",
+        "name": "angular-architect",
+        "description": "Use when architecting enterprise Angular 15+ applications with complex state management, optimizing RxJS patterns, designing micro-frontend systems, or solving performance and scalability challenges in large codebases.",
+        "repo": "VoltAgent/awesome-claude-code-subagents",
+        "group": "language-specialists",
+        "installs": null,
+        "url": "https://github.com/VoltAgent/awesome-claude-code-subagents/blob/HEAD/categories/02-language-specialists/angular-architect.md"
+      },
+      {
+        "id": "VoltAgent/awesome-claude-code-subagents:categories/02-language-specialists/cpp-pro.md",
+        "name": "cpp-pro",
+        "description": "Use this agent when building high-performance C++ systems requiring modern C++20/23 features, template metaprogramming, or zero-overhead abstractions for systems programming, embedded systems, or performance-critical applications.",
+        "repo": "VoltAgent/awesome-claude-code-subagents",
+        "group": "language-specialists",
+        "installs": null,
+        "url": "https://github.com/VoltAgent/awesome-claude-code-subagents/blob/HEAD/categories/02-language-specialists/cpp-pro.md"
+      },
+      {
+        "id": "VoltAgent/awesome-claude-code-subagents:categories/09-meta-orchestration/agent-installer.md",
+        "name": "agent-installer",
+        "description": "Use this agent when the user wants to discover, browse, or install Claude Code agents from the awesome-claude-code-subagents repository.",
+        "repo": "VoltAgent/awesome-claude-code-subagents",
+        "group": "meta-orchestration",
+        "installs": null,
+        "url": "https://github.com/VoltAgent/awesome-claude-code-subagents/blob/HEAD/categories/09-meta-orchestration/agent-installer.md"
+      },
+      {
+        "id": "VoltAgent/awesome-claude-code-subagents:categories/09-meta-orchestration/agent-organizer.md",
+        "name": "agent-organizer",
+        "description": "Use when you need to break a complex task into subtasks, match each to the capabilities of available subagents, and write a concrete team/workflow plan as Markdown.",
+        "repo": "VoltAgent/awesome-claude-code-subagents",
+        "group": "meta-orchestration",
+        "installs": null,
+        "url": "https://github.com/VoltAgent/awesome-claude-code-subagents/blob/HEAD/categories/09-meta-orchestration/agent-organizer.md"
+      }
+    ],
+    "error": null,
+    "installing": null,
+    "notice": {
+      "ok": true,
+      "text": "Installed auth-integration-engineer from VoltAgent/awesome-claude-code-subagents into /Users/dev/.claude/agents/auth-integration-engineer. New sessions can use it. Read it over in the editor."
+    }
+  }
+}

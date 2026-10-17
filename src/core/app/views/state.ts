@@ -14,6 +14,7 @@ import type { Runtime } from '../runtime.js';
 import { buildConnectors } from './connectors.js';
 import { fleetFor } from './fleet.js';
 import { buildKnobs } from './knobs.js';
+import { buildLibrary } from './library.js';
 import { buildMessages } from './messages.js';
 import { buildProperties } from './properties.js';
 import { buildReputation } from './reputation.js';
@@ -145,6 +146,12 @@ export function stateFor(rt: Runtime, view: ViewId, params: PanelParams): HostTo
     case 'config': {
       const state = { ...rt.caches.config.value, sync: rt.configSync.status() };
       return { type: 'state', view, state };
+    }
+    case 'skills': {
+      return { type: 'state', view, state: buildLibrary(rt, 'skill') };
+    }
+    case 'agents': {
+      return { type: 'state', view, state: buildLibrary(rt, 'agent') };
     }
   }
 }

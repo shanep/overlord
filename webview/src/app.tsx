@@ -19,6 +19,7 @@ import { FleetView } from './views/fleet-view.js';
 import { HelpView } from './views/help-view.js';
 import { KnobsView } from './views/knobs-view.js';
 import { LauncherView } from './views/launcher-view.js';
+import { LibraryView } from './views/library-view.js';
 import { MessagesView } from './views/messages-view.js';
 import { PropertiesView } from './views/properties-view.js';
 import { ReputationView } from './views/reputation-view.js';
@@ -33,13 +34,24 @@ export function readViewId(element: HTMLElement): ViewId | null {
 }
 
 type GlobalView =
-  'knobs' | 'config' | 'usage' | 'activity' | 'reputation' | 'tuning' | 'connectors' | 'help';
+  | 'knobs'
+  | 'config'
+  | 'skills'
+  | 'agents'
+  | 'usage'
+  | 'activity'
+  | 'reputation'
+  | 'tuning'
+  | 'connectors'
+  | 'help';
 type GlobalMessage = Extract<HostToWebview, { readonly view: GlobalView }>;
 type SessionMessage = Exclude<HostToWebview, GlobalMessage>;
 
 const GLOBAL_VIEWS: ReadonlySet<ViewId> = new Set<GlobalView>([
   'knobs',
   'config',
+  'skills',
+  'agents',
   'usage',
   'activity',
   'reputation',
@@ -61,6 +73,10 @@ function GlobalViewSwitch(props: { readonly message: GlobalMessage }): ReactElem
     }
     case 'config': {
       return <ConfigView state={message.state} />;
+    }
+    case 'skills':
+    case 'agents': {
+      return <LibraryView state={message.state} />;
     }
     case 'usage': {
       return <UsageView state={message.state} />;

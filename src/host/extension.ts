@@ -28,6 +28,8 @@ type ViewEntry = readonly [command: string, view: ViewId, label: string, icon: s
 const GLOBAL_VIEWS: readonly ViewEntry[] = [
   ['overlord.openKnobs', 'knobs', 'Knobs', 'settings-gear'],
   ['overlord.openConfig', 'config', 'Config and Sync', 'repo'],
+  ['overlord.openSkills', 'skills', 'Skills', 'lightbulb'],
+  ['overlord.openAgents', 'agents', 'Agents', 'hubot'],
   ['overlord.openUsage', 'usage', 'Usage', 'graph'],
   ['overlord.openActivity', 'activity', 'Activity', 'dashboard'],
   ['overlord.openReputation', 'reputation', 'Reputation', 'robot'],

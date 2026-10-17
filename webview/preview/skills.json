@@ -1,0 +1,214 @@
+{
+  "kind": "skill",
+  "installed": [
+    {
+      "id": "skill:pdf",
+      "kind": "skill",
+      "name": "canvas-design",
+      "scope": "user",
+      "path": "/Users/dev/.claude/skills/canvas-design",
+      "realPath": "/Users/dev/.overlord-config/skills/canvas-design",
+      "status": "versioned",
+      "repo": null
+    },
+    {
+      "id": "skill:canvas",
+      "kind": "skill",
+      "name": "canvas-grading-with-a-long-name",
+      "scope": "user",
+      "path": "/Users/dev/.claude/skills/canvas-grading-with-a-long-name",
+      "realPath": null,
+      "status": "local-only",
+      "repo": null
+    },
+    {
+      "id": "skill:proj",
+      "kind": "skill",
+      "name": "release-notes",
+      "scope": "project",
+      "path": "/Users/dev/repos/overlord/.claude/skills/release-notes",
+      "realPath": null,
+      "status": "modified",
+      "repo": null
+    },
+    {
+      "id": "skill:plugin",
+      "kind": "skill",
+      "name": "code-review",
+      "scope": "plugin",
+      "path": "/Users/dev/.claude/plugins/cache/x/skills/code-review",
+      "realPath": null,
+      "status": "plugin",
+      "repo": null
+    }
+  ],
+  "catalog": {
+    "sources": [
+      {
+        "id": "anthropics/skills",
+        "label": "Anthropic",
+        "description": "Anthropic's own skills: documents (PDF, Word, Excel, PowerPoint), art and design, building MCP servers and more skills, and testing web apps.",
+        "url": "https://github.com/anthropics/skills",
+        "search": false
+      },
+      {
+        "id": "obra/superpowers",
+        "label": "Superpowers",
+        "description": "A working method for coding agents: brainstorm, write a plan, test first, debug systematically, review, and finish a branch.",
+        "url": "https://github.com/obra/superpowers",
+        "search": false
+      },
+      {
+        "id": "wshobson/agents",
+        "label": "wshobson/agents",
+        "description": "The skills from a large plugin collection, grouped by plugin: languages, frameworks, cloud, security, testing and more.",
+        "url": "https://github.com/wshobson/agents",
+        "search": false
+      },
+      {
+        "id": "skills.sh",
+        "label": "Search skills.sh",
+        "description": "The open skills directory: every public skill it has seen, ranked by how often people install it. Search by name.",
+        "url": "https://skills.sh",
+        "search": true
+      }
+    ],
+    "source": "anthropics/skills",
+    "query": null,
+    "loading": false,
+    "entries": [
+      {
+        "id": "anthropics/skills:skills/academy-guide/SKILL.md",
+        "name": "academy-guide",
+        "description": "Stop and check this skill before finishing any reply to a question about how to use Claude or a Claude product \u2014 it recommends matching courses, tutorials, and use cases from Claude Academy (academy.claude.com), Anthropic's learning hub. Trigger on: \"how do I\", \"how can I\", \"getting started with\",\u2026",
+        "repo": "anthropics/skills",
+        "group": "",
+        "installs": null,
+        "url": "https://github.com/anthropics/skills/tree/HEAD/skills/academy-guide"
+      },
+      {
+        "id": "anthropics/skills:skills/algorithmic-art/SKILL.md",
+        "name": "algorithmic-art",
+        "description": "Creating algorithmic art using p5.js with seeded randomness and interactive parameter exploration. Use this when users request creating art using code, generative art, algorithmic art, flow fields, or particle systems. Create original algorithmic art rather than copying existing artists' work to\u2026",
+        "repo": "anthropics/skills",
+        "group": "",
+        "installs": null,
+        "url": "https://github.com/anthropics/skills/tree/HEAD/skills/algorithmic-art"
+      },
+      {
+        "id": "anthropics/skills:skills/brand-guidelines/SKILL.md",
+        "name": "brand-guidelines",
+        "description": "Applies Anthropic's official brand colors and typography to any sort of artifact that may benefit from having Anthropic's look-and-feel. Use it when brand colors or style guidelines, visual formatting, or company design standards apply.",
+        "repo": "anthropics/skills",
+        "group": "",
+        "installs": null,
+        "url": "https://github.com/anthropics/skills/tree/HEAD/skills/brand-guidelines"
+      },
+      {
+        "id": "anthropics/skills:skills/canvas-design/SKILL.md",
+        "name": "canvas-design",
+        "description": "Create beautiful visual art in .png and .pdf documents using design philosophy. You should use this skill when the user asks to create a poster, piece of art, design, or other static piece. Create original visual designs, never copying existing artists' work to avoid copyright violations.",
+        "repo": "anthropics/skills",
+        "group": "",
+        "installs": null,
+        "url": "https://github.com/anthropics/skills/tree/HEAD/skills/canvas-design"
+      },
+      {
+        "id": "anthropics/skills:skills/claude-api/SKILL.md",
+        "name": "claude-api",
+        "description": "Reference for the Claude API / Anthropic SDK \u2014 model ids, pricing, params, streaming, tool use, MCP, agents, caching, token counting, model migration. TRIGGER \u2014 read BEFORE opening the target file; don't skip because it \"looks like a one-liner\" \u2014 whenever: the prompt names Claude/Anthropic in any\u2026",
+        "repo": "anthropics/skills",
+        "group": "",
+        "installs": null,
+        "url": "https://github.com/anthropics/skills/tree/HEAD/skills/claude-api"
+      },
+      {
+        "id": "anthropics/skills:skills/discernment-nudge/SKILL.md",
+        "name": "discernment-nudge",
+        "description": "After you give a substantive answer or draft that the user may act on \u2014 advice or recommendations, drafted artifacts such as goals, plans, pitches, proposals, or emails, estimates or projections, analysis or interpretation of data, factual claims they may rely on, or a multi-step argument \u2014 invoke\u2026",
+        "repo": "anthropics/skills",
+        "group": "",
+        "installs": null,
+        "url": "https://github.com/anthropics/skills/tree/HEAD/skills/discernment-nudge"
+      },
+      {
+        "id": "anthropics/skills:skills/doc-coauthoring/SKILL.md",
+        "name": "doc-coauthoring",
+        "description": "Guide users through a structured workflow for co-authoring documentation. Use when user wants to write documentation, proposals, technical specs, decision docs, or similar structured content. This workflow helps users efficiently transfer context, refine content through iteration, and verify the\u2026",
+        "repo": "anthropics/skills",
+        "group": "",
+        "installs": null,
+        "url": "https://github.com/anthropics/skills/tree/HEAD/skills/doc-coauthoring"
+      },
+      {
+        "id": "anthropics/skills:skills/docx/SKILL.md",
+        "name": "docx",
+        "description": "Use this skill whenever the user wants to create, read, edit, or manipulate Word documents (.docx files) or Word templates (.dotx files). Triggers include: any mention of 'Word doc', 'word document', '.docx', '.dotx', or requests to produce professional documents with formatting like tables of\u2026",
+        "repo": "anthropics/skills",
+        "group": "",
+        "installs": null,
+        "url": "https://github.com/anthropics/skills/tree/HEAD/skills/docx"
+      },
+      {
+        "id": "anthropics/skills:skills/frontend-design/SKILL.md",
+        "name": "frontend-design",
+        "description": "Guidance for distinctive, intentional visual design when building new UI or reshaping an existing one. Helps with aesthetic direction, typography, and making choices that don't read as templated defaults.",
+        "repo": "anthropics/skills",
+        "group": "",
+        "installs": null,
+        "url": "https://github.com/anthropics/skills/tree/HEAD/skills/frontend-design"
+      },
+      {
+        "id": "anthropics/skills:skills/internal-comms/SKILL.md",
+        "name": "internal-comms",
+        "description": "A set of resources to help me write all kinds of internal communications, using the formats that my company likes to use. Claude should use this skill whenever asked to write some sort of internal communications (status reports, leadership updates, 3P updates, company newsletters, FAQs, incident\u2026",
+        "repo": "anthropics/skills",
+        "group": "",
+        "installs": null,
+        "url": "https://github.com/anthropics/skills/tree/HEAD/skills/internal-comms"
+      },
+      {
+        "id": "anthropics/skills:skills/mcp-builder/SKILL.md",
+        "name": "mcp-builder",
+        "description": "Guide for creating high-quality MCP (Model Context Protocol) servers that enable LLMs to interact with external services through well-designed tools. Use when building MCP servers to integrate external APIs or services, whether in Python (FastMCP) or Node/TypeScript (MCP SDK).",
+        "repo": "anthropics/skills",
+        "group": "",
+        "installs": null,
+        "url": "https://github.com/anthropics/skills/tree/HEAD/skills/mcp-builder"
+      },
+      {
+        "id": "anthropics/skills:skills/pdf/SKILL.md",
+        "name": "pdf",
+        "description": "Use this skill whenever the user wants to do anything with PDF files. This includes reading or extracting text/tables from PDFs, combining or merging multiple PDFs into one, splitting PDFs apart, rotating pages, adding watermarks, creating new PDFs, filling PDF forms, encrypting/decrypting PDFs,\u2026",
+        "repo": "anthropics/skills",
+        "group": "",
+        "installs": null,
+        "url": "https://github.com/anthropics/skills/tree/HEAD/skills/pdf"
+      },
+      {
+        "id": "anthropics/skills:skills/pptx/SKILL.md",
+        "name": "pptx",
+        "description": "Use this skill any time a .pptx or .potx file is involved in any way \u2014 as input, output, or both. This includes: creating slide decks, pitch decks, or presentations; reading, parsing, or extracting text from any .pptx or .potx file (even if the extracted content will be used elsewhere, like in an\u2026",
+        "repo": "anthropics/skills",
+        "group": "",
+        "installs": null,
+        "url": "https://github.com/anthropics/skills/tree/HEAD/skills/pptx"
+      },
+      {
+        "id": "anthropics/skills:skills/skill-creator/SKILL.md",
+        "name": "skill-creator",
+        "description": "Create new skills, modify and improve existing skills, and measure skill performance. Use when users want to create a skill from scratch, edit, or optimize an existing skill, run evals to test a skill, benchmark skill performance with variance analysis, or optimize a skill's description for better\u2026",
+        "repo": "anthropics/skills",
+        "group": "",
+        "installs": null,
+        "url": "https://github.com/anthropics/skills/tree/HEAD/skills/skill-creator"
+      }
+    ],
+    "error": null,
+    "installing": null,
+    "notice": {
+      "ok": true,
+      "text": "Installed canvas-design from anthropics/skills into /Users/dev/.claude/skills/canvas-design. New sessions can use it. Read it over in the editor."
+    }
+  }
+}

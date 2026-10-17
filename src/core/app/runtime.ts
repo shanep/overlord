@@ -11,6 +11,7 @@ import type {
 } from '../../shared/protocol.js';
 import type { ActivityMonitor } from '../activity/monitor.js';
 import type { EventBus } from '../bus.js';
+import type { GitHubReader } from '../catalog/github.js';
 import type { StdioToolCaller } from '../connectors/stdio-mcp.js';
 import type { FileSystem } from '../context/fs.js';
 import type { Launcher } from '../harness/launcher.js';
@@ -22,6 +23,7 @@ import type { FetchFunction } from '../sync/github.js';
 import type { WorktreeRegistry } from '../worktrees/registry.js';
 
 import type { AsyncValue } from './async-value.js';
+import type { CatalogBrowser } from './catalog-browser.js';
 import type { HostPort } from './host-port.js';
 import type { BackgroundJobs } from './jobs.js';
 import type { PermissionHub } from './permissions.js';
@@ -85,6 +87,8 @@ export interface Runtime {
   readonly context: ContextViews;
   /** The MCP registry search in the Connectors view. */
   readonly registry: RegistrySearch;
+  /** The premade skills and agents in the Skills and Agents views. */
+  readonly catalogs: Catalogs;
   readonly configSync: ConfigSyncHandle;
   /** Calls the GitHub REST API and the MCP registry. Tests pass a fake so nothing reaches the network. */
   readonly fetch: FetchFunction;
@@ -104,6 +108,12 @@ export interface Runtime {
   readonly claudeCli: () => Promise<ClaudeCli>;
   /** Calls one tool on a stdio MCP server, for the Claude in Chrome check. */
   readonly callTool: StdioToolCaller;
+}
+
+export interface Catalogs {
+  readonly reader: GitHubReader;
+  readonly skill: CatalogBrowser;
+  readonly agent: CatalogBrowser;
 }
 
 export interface ClaudeCli {

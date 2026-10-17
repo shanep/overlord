@@ -13,7 +13,10 @@ import { EMPTY_KNOBS, loadKnobs, loadProfiles } from './views/knobs.js';
 import { EMPTY_SESSIONS, loadSessions, PeekCache } from './views/sessions.js';
 import { loadPlanLimits, loadUsage } from './views/usage.js';
 
-export type CacheRuntime = Omit<Runtime, 'caches' | 'context' | 'activity' | 'registry'>;
+export type CacheRuntime = Omit<
+  Runtime,
+  'caches' | 'context' | 'activity' | 'registry' | 'catalogs'
+>;
 
 function repoDir(rt: CacheRuntime): string {
   return configRepoDir(rt.host.settings.configRepoPath, rt.paths.home);
