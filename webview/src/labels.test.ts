@@ -32,6 +32,12 @@ describe('labels', () => {
     expect(STATE_RANK.running).toBeLessThan(STATE_RANK.done);
   });
 
+  it('sets unfinished apart from idle and ranks it above, since it may need you', () => {
+    expect(STATE_INFO.unfinished.tone).toBe('warning');
+    expect(STATE_INFO.unfinished.icon).not.toBe(STATE_INFO.idle.icon);
+    expect(STATE_RANK.unfinished).toBeLessThan(STATE_RANK.idle);
+  });
+
   it('describes every state for the hover tooltip', () => {
     const descriptions = Object.values(STATE_INFO).map((info) => info.description);
     expect(descriptions.every((text) => text.length > 0)).toBe(true);

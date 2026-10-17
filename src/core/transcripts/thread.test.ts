@@ -101,6 +101,37 @@ describe('AgentThread', () => {
     expect(thread.state(T0 + 1001, 1000)).toBe('unfinished');
   });
 
+  it('ends the turn and the open tool call when you press Esc', () => {
+    const thread = makeThread();
+    thread.ingest(record(userPrompt('u1', 0, 'do it')));
+    thread.ingest(
+      record(
+        assistant({
+          uuid: 'a1',
+          at: 10,
+          messageId: 'm1',
+          stop: 'tool_use',
+          content: [toolUse('t1', 'Bash', { command: 'make' })],
+        }),
+      ),
+    );
+    expect(thread.currentTool()).toBe('Bash');
+    const stop = '[Request interrupted by user for tool use]';
+    const delta = thread.ingest(
+      record(
+        userPrompt('u2', 20, '', {
+          message: { role: 'user', content: [{ type: 'text', text: stop }] },
+        }),
+      ),
+    );
+    expect(delta.feed).toStrictEqual([{ kind: 'user', id: 'u2:0', at: T0 + 20, text: stop }]);
+    expect(thread.busy).toBe(false);
+    expect(thread.currentTool()).toBeNull();
+    expect(thread.state(T0 + 5000, 1000)).toBe('idle');
+    // Esc is not a prompt you typed.
+    expect(thread.lastPromptAt).toBe(T0);
+  });
+
   it('marks meta and compact summary prompts as system items without opening the turn', () => {
     const thread = feed(
       makeThread(),

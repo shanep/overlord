@@ -122,6 +122,22 @@ describe('fleet view', () => {
     expect(live[5]).toBe(sessions[5]);
   });
 
+  it('calls a running session unfinished once its process has exited', () => {
+    const sessions = [
+      session('killed', { state: 'running' }),
+      session('finished', { state: 'idle' }),
+      session('back', { state: 'running' }),
+      session('elsewhere', { state: 'running' }),
+    ];
+    const live = withLiveStates(sessions, { back: 'busy' }, [], new Set(['killed', 'finished']));
+    expect(live.map((item) => item.state)).toStrictEqual([
+      'unfinished',
+      'idle',
+      'running',
+      'running',
+    ]);
+  });
+
   it('turns percentages into fractions and leaves fractions and nulls alone', () => {
     expect(toFraction(null)).toBeNull();
     expect(toFraction(0.4)).toBeCloseTo(0.4, 10);

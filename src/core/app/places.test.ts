@@ -234,6 +234,26 @@ describe('SessionPlaces', () => {
     expect(h.changes).toBe(1);
   });
 
+  it('remembers a session whose process exited until it runs again', async () => {
+    const h = await setup();
+    await register(h.sessionsDir, 31, 'a', 'bg');
+    await register(h.sessionsDir, 32, 'b', 'bg');
+    h.alive = new Set([31, 32]);
+    await h.places.refresh();
+    expect([...h.places.ended]).toStrictEqual([]);
+    h.alive = new Set([32]);
+    await h.places.refresh();
+    expect([...h.places.ended]).toStrictEqual(['a']);
+    // A session that was never seen alive did not exit here.
+    await register(h.sessionsDir, 33, 'c', 'bg');
+    await h.places.refresh();
+    expect([...h.places.ended]).toStrictEqual(['a']);
+    await register(h.sessionsDir, 34, 'a', 'bg');
+    h.alive = new Set([32, 34]);
+    await h.places.refresh();
+    expect([...h.places.ended]).toStrictEqual([]);
+  });
+
   it('reports a failure and keeps the last places', async () => {
     const h = await setup();
     await register(h.sessionsDir, 31, 'bg', 'bg');
