@@ -14,6 +14,29 @@ async function waitFor(check: () => boolean): Promise<void> {
   }
 }
 
+/**
+ * Runs a command that asks with a quick pick and takes the first item, the
+ * way Enter would, since nobody is here to answer it. Accepting before the
+ * pick opens does nothing, so it keeps trying until the command finishes.
+ */
+async function runAndAccept(command: string): Promise<void> {
+  const running = Promise.resolve(vscode.commands.executeCommand(command));
+  const finished = running.then(() => true);
+  const deadline = Date.now() + 5000;
+  while (Date.now() < deadline) {
+    await vscode.commands.executeCommand('workbench.action.acceptSelectedQuickOpenItem');
+    const tick = new Promise<boolean>((resolve) => {
+      setTimeout(() => {
+        resolve(false);
+      }, 100);
+    });
+    if (await Promise.race([finished, tick])) {
+      break;
+    }
+  }
+  await running;
+}
+
 function tabLabels(): string[] {
   return vscode.window.tabGroups.all.flatMap((group) => group.tabs.map((tab) => tab.label));
 }
@@ -93,7 +116,8 @@ describe('Overlord extension', () => {
     const config = vscode.workspace.getConfiguration('overlord');
     await config.update('claudePath', stub.bin, vscode.ConfigurationTarget.Global);
     try {
-      await vscode.commands.executeCommand('overlord.newClaudeSession');
+      // It asks which folder first, and the first choice is this window.
+      await runAndAccept('overlord.newClaudeSession');
       const terminal = vscode.window.terminals.find((entry) => entry.name === 'Claude Code');
       assert.ok(terminal, 'a Claude Code terminal was created');
       await waitFor(() => vscode.window.activeTerminal?.name === 'Claude Code');
