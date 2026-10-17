@@ -9,7 +9,7 @@ import path from 'node:path';
 
 import { parse } from 'smol-toml';
 
-import { isRecord } from '../../connectors/mcp-files.js';
+import { isRecord, stringList } from '../../connectors/mcp-files.js';
 import type { SyncedMcpServer, SyncFacet } from '../sync-types.js';
 
 import { codexHome } from './mcp.js';
@@ -36,9 +36,7 @@ function asServerJson(table: Table): Table | null {
   const env = strings(table['env']);
   const headers = strings(table['http_headers']);
   if (typeof table['command'] === 'string') {
-    const args = Array.isArray(table['args'])
-      ? table['args'].filter((argument): argument is string => typeof argument === 'string')
-      : [];
+    const args = [...stringList(table['args'])];
     return {
       type: 'stdio',
       command: table['command'],
