@@ -460,6 +460,7 @@ export type WebviewAction =
     }
   | { readonly type: 'setInboundPolicy'; readonly value: string | null }
   | { readonly type: 'newSession' }
+  | { readonly type: 'newBridgeChat' }
   | { readonly type: 'landWorktree'; readonly id: string }
   | { readonly type: 'discardWorktree'; readonly id: string }
   | { readonly type: 'openWorktree'; readonly id: string }

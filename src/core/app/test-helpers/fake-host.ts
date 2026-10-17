@@ -46,6 +46,8 @@ export class FakeHost implements HostPort {
   readonly windows: string[] = [];
   readonly progress: string[] = [];
   readonly terminals: TerminalRequest[] = [];
+  /** The bridge, when a test gives the host one. */
+  resolveBridgeEnv?: (env: Readonly<Record<string, string>>) => Promise<Record<string, string>>;
   readonly shown: TerminalTarget[] = [];
   /** Session ids with a tab Overlord opened, which showTerminal finds. */
   terminalTabs: readonly string[] = [];

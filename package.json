@@ -109,6 +109,12 @@
         "category": "Overlord"
       },
       {
+        "command": "overlord.newBoisestateChat",
+        "title": "New Boise State Chat",
+        "category": "Overlord",
+        "icon": "$(comment-discussion)"
+      },
+      {
         "command": "overlord.setBoisestateKey",
         "title": "Set Boise State API Key",
         "category": "Overlord"

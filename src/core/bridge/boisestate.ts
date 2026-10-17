@@ -20,11 +20,14 @@ export interface BridgeEndpoint {
   readonly token: string;
 }
 
+/** The model bridge sessions ask for, which the bridge maps to the backend's Opus 5.5. */
+const BRIDGE_MODEL = 'claude-opus-5-5';
+
 /** The seeded profile that routes a session through the bridge, on Opus 5.5. */
 export const BOISESTATE_PROFILE: LaunchProfile = {
   id: 'boisestate',
   name: 'Boise State (Opus 5.5)',
-  model: 'claude-opus-5-5',
+  model: BRIDGE_MODEL,
   effort: null,
   permissionMode: null,
   env: { ANTHROPIC_BASE_URL: BRIDGE_BASE_URL },
@@ -37,7 +40,7 @@ export const BOISESTATE_PROFILE: LaunchProfile = {
  * instructions that made up most of each request go away.
  */
 export const BRIDGE_CHAT_PROMPT =
-  'You are answering a request through the Boise State AI gateway, which runs no tools. ' +
+  'You are chatting through the Boise State AI gateway, which runs no tools. ' +
   'You cannot read or write files, run commands or browse the web here, so put any code, ' +
   'commands or text the user needs right in your reply. Skip any instruction that only ' +
   'makes sense with tools, such as running checks, committing or reporting on the project setup.';
@@ -53,6 +56,31 @@ export function applyBridge(
   endpoint: BridgeEndpoint,
 ): Record<string, string> {
   return { ...env, ANTHROPIC_BASE_URL: endpoint.baseUrl, ANTHROPIC_API_KEY: endpoint.token };
+}
+
+/**
+ * The env for a chat tab: the bridge token goes in as ANTHROPIC_AUTH_TOKEN, a
+ * bearer token, since the CLI asks the user to approve every new
+ * ANTHROPIC_API_KEY and the token changes each time the sidecar starts.
+ */
+export function bearerEnv(env: Readonly<Record<string, string>>): Record<string, string> {
+  const { ANTHROPIC_API_KEY: token, ...rest } = env;
+  return token === undefined ? rest : { ...rest, ANTHROPIC_AUTH_TOKEN: token };
+}
+
+/** CLI args for a chat tab: the bridge's model and chat prompt, no tools and no MCP servers. */
+export function chatArgs(sessionId: string): readonly string[] {
+  return [
+    '--session-id',
+    sessionId,
+    '--model',
+    BRIDGE_MODEL,
+    '--system-prompt',
+    BRIDGE_CHAT_PROMPT,
+    '--tools',
+    '',
+    '--strict-mcp-config',
+  ];
 }
 
 const readySchema = z.object({ ready: z.literal(true), port: z.number().int().positive() });

@@ -2,8 +2,11 @@ import { describe, expect, it } from 'vitest';
 
 import {
   applyBridge,
+  bearerEnv,
   BOISESTATE_PROFILE,
   BRIDGE_BASE_URL,
+  BRIDGE_CHAT_PROMPT,
+  chatArgs,
   needsBridge,
   parseReadyLine,
 } from './boisestate.js';
@@ -52,5 +55,38 @@ describe('BOISESTATE_PROFILE', () => {
     expect(BOISESTATE_PROFILE.model).toBe('claude-opus-5-5');
     expect(BOISESTATE_PROFILE.env['ANTHROPIC_BASE_URL']).toBe(BRIDGE_BASE_URL);
     expect(needsBridge(BOISESTATE_PROFILE.env)).toBe(true);
+  });
+});
+
+describe('bearerEnv', () => {
+  it('moves the token from the api key to the bearer token', () => {
+    expect(
+      bearerEnv({ ANTHROPIC_BASE_URL: 'http://127.0.0.1:4321', ANTHROPIC_API_KEY: 'tok' }),
+    ).toStrictEqual({
+      ANTHROPIC_BASE_URL: 'http://127.0.0.1:4321',
+      ANTHROPIC_AUTH_TOKEN: 'tok',
+    });
+  });
+
+  it('leaves an env with no api key alone', () => {
+    expect(bearerEnv({ ANTHROPIC_BASE_URL: 'http://127.0.0.1:4321' })).toStrictEqual({
+      ANTHROPIC_BASE_URL: 'http://127.0.0.1:4321',
+    });
+  });
+});
+
+describe('chatArgs', () => {
+  it('starts the session on the bridge model as chat, with no tools or MCP servers', () => {
+    expect(chatArgs('sid')).toStrictEqual([
+      '--session-id',
+      'sid',
+      '--model',
+      BOISESTATE_PROFILE.model,
+      '--system-prompt',
+      BRIDGE_CHAT_PROMPT,
+      '--tools',
+      '',
+      '--strict-mcp-config',
+    ]);
   });
 });

@@ -240,6 +240,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     register('overlord.disableTelemetry', async () => overlord.setup.disableTelemetry()),
     // Each new session gets its own worktree, so sessions never share files.
     register('overlord.newClaudeSession', async () => dispatch({ type: 'newSession' })),
+    register('overlord.newBoisestateChat', async () => dispatch({ type: 'newBridgeChat' })),
     register('overlord.openProject', async () => dispatch({ type: 'openProject' })),
     register('overlord.showProperties', (): void => {
       tabs.showActive();
