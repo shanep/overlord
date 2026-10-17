@@ -15,6 +15,7 @@ const STATUS_WORDS: Readonly<Record<Connector['status'], string>> = {
   disabled: 'disabled',
   missing: 'not available',
   unknown: 'status unknown',
+  unchecked: 'set up, not checked',
 };
 
 export const CHECK_RULE = [

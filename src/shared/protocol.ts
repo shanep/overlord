@@ -470,10 +470,12 @@ export type WebviewAction =
       readonly server: string;
       /** Which of the server's install options. */
       readonly option: number;
-      /** The name to give it in Claude Code. */
+      /** The name to give it in the agent. */
       readonly name: string;
       /** What the user typed, keyed by input id. */
       readonly values: Readonly<Record<string, string>>;
+      /** The agent to add it to. Unset means Claude Code. */
+      readonly agent?: AgentId;
     }
   | { readonly type: 'setInboundPolicy'; readonly value: string | null }
   | { readonly type: 'newSession'; readonly agent?: AgentId }

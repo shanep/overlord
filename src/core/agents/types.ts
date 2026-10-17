@@ -4,6 +4,7 @@
 // reshape.
 
 import type { AgentCapabilities, AgentId, ModeOption } from '../../shared/agents.js';
+import type { Connector } from '../../shared/connectors.js';
 import type {
   AgentNode,
   ApiRequest,
@@ -449,6 +450,86 @@ export interface InstructionPolicy {
 }
 
 /**
+ * Where a server is set up. User servers reach every project, project ones
+ * come from a file in the folder, and local ones are kept for one folder
+ * outside it, like Claude Code's `--scope local`.
+ */
+export type McpScope = 'user' | 'project' | 'local';
+
+/** A server as add takes it: the shape `claude mcp add-json` reads. */
+export type McpServerConfig =
+  | {
+      readonly type: 'stdio';
+      readonly command: string;
+      readonly args: readonly string[];
+      readonly env?: Readonly<Record<string, string>>;
+    }
+  | {
+      readonly type: 'http' | 'sse';
+      readonly url: string;
+      readonly headers?: Readonly<Record<string, string>>;
+    };
+
+/** One server as the agent's own files set it up. */
+export interface McpServer {
+  readonly name: string;
+  readonly scope: McpScope;
+  /** The file it came from. */
+  readonly file: string;
+  readonly transport: 'stdio' | 'http' | 'sse';
+  /** The command line or the URL. */
+  readonly target: string;
+  /** Pending waits for the user to approve a project file's server, off is turned off. */
+  readonly state: 'on' | 'pending' | 'off';
+}
+
+/** What the agent's MCP files hold, with a line for each file that would not parse. */
+export interface McpRead {
+  readonly servers: readonly McpServer[];
+  readonly errors: readonly string[];
+}
+
+/** Where to look for an agent's MCP files. */
+export interface McpPlace extends ObserverContext {
+  /** The folder whose project servers count, or null for user servers alone. */
+  readonly cwd: string | null;
+}
+
+/** What add and remove run the agent's CLI with. */
+export interface McpWrite {
+  readonly exec: Exec;
+  readonly cli: AgentCli;
+  /** Where the CLI runs, which decides the folder a project or local scope means. */
+  readonly cwd: string;
+}
+
+/**
+ * An agent's MCP servers. List reads the agent's files directly and adds only
+ * what its CLI knows beyond them, such as health. Add and remove go through
+ * the agent's own CLI, so the agent writes its own file. Workstream E3 owns it.
+ */
+export interface McpStore {
+  /** The scopes add takes, the one the registry browser uses first. */
+  readonly scopes: readonly McpScope[];
+  /** The servers in the agent's files. Never runs the agent and never throws. */
+  read: (place: McpPlace) => Promise<McpRead>;
+  /** Rows for the Connectors view and the session briefing. Never throws. */
+  list: (input: McpWrite & { readonly place: McpPlace }) => Promise<Connector[]>;
+  add: (
+    input: McpWrite & {
+      readonly name: string;
+      readonly server: McpServerConfig;
+      readonly scope: McpScope;
+    },
+  ) => Promise<SettingsWriteResult>;
+  remove: (
+    input: McpWrite & { readonly name: string; readonly scope: McpScope },
+  ) => Promise<SettingsWriteResult>;
+  /** Args that sign in to a server in a terminal, left out when the agent has no such command. */
+  readonly signInArgs?: (name: string) => readonly string[];
+}
+
+/**
  * Settings layers, knobs, MCP servers and skills. Workstreams E2 to E5 own it.
  * @public
  */
@@ -457,6 +538,8 @@ export interface ConfigFacet {
   readonly settingsFormat: SettingsFormat;
   /** Knob catalog, settings layers and precedence, and launch overrides. Workstream E2 owns it. */
   readonly knobs?: KnobsFacet;
+  /** The agent's MCP servers. Workstream E3 owns it. */
+  readonly mcp?: McpStore;
 }
 
 export interface AgentAdapter {

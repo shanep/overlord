@@ -1,30 +1,18 @@
 // Turns an install plan from the registry and what the user typed into the
-// JSON `claude mcp add-json` takes. An argument, variable or header whose
-// optional input is empty is left out whole, so a flag never goes without its
-// value.
+// server config an agent's MCP store adds, in the JSON shape
+// `claude mcp add-json` takes. An argument, variable or header whose optional
+// input is empty is left out whole, so a flag never goes without its value.
 
 import type { InstallInput } from '../../shared/connectors.js';
+import type { McpServerConfig } from '../agents/types.js';
 
 import type { ArgumentGroup, Entry, InstallPlan, Template } from './registry.js';
 
-/** Claude Code names: letters, digits, dashes and underscores. */
+/** Server names: letters, digits, dashes and underscores, which every agent takes. */
 export const NAME_PATTERN = /^[\w-]{1,64}$/u;
 
-type ServerConfig =
-  | {
-      readonly type: 'stdio';
-      readonly command: string;
-      readonly args: readonly string[];
-      readonly env?: Record<string, string>;
-    }
-  | {
-      readonly type: 'http' | 'sse';
-      readonly url: string;
-      readonly headers?: Record<string, string>;
-    };
-
 export type BuildResult =
-  | { readonly ok: true; readonly config: ServerConfig }
+  | { readonly ok: true; readonly config: McpServerConfig }
   | { readonly ok: false; readonly error: string };
 
 type Values = Readonly<Record<string, string>>;

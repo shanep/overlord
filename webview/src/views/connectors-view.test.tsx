@@ -3,8 +3,10 @@ import { describe, expect, it } from 'vitest';
 
 import type { Connector, ConnectorsState } from '../../../src/shared/connectors.js';
 import { EMPTY_REGISTRY } from '../../../src/shared/connectors.js';
+import { codexAgent } from '../../test/fixtures-agents.js';
 import { NOW } from '../../test/fixtures.js';
 import { expectAccessible, renderView } from '../../test/render.js';
+import { CLAUDE_FALLBACK } from '../claude-fallback.js';
 
 import { ConnectorsView, KIND_LABELS, STATUS_INFO } from './connectors-view.js';
 
@@ -30,6 +32,7 @@ const STATE: ConnectorsState = {
   checkedAt: NOW - 2 * 60_000,
   checking: false,
   folder: '/work/repo',
+  mcpAgents: ['claude-code'],
   registry: EMPTY_REGISTRY,
   connectors: [
     connector({
@@ -93,6 +96,7 @@ describe('ConnectorsView', () => {
           checkedAt: null,
           checking: true,
           folder: null,
+          mcpAgents: ['claude-code'],
           registry: EMPTY_REGISTRY,
         }}
       />,
@@ -109,6 +113,7 @@ describe('ConnectorsView', () => {
           checkedAt: null,
           checking: false,
           folder: null,
+          mcpAgents: ['claude-code'],
           registry: EMPTY_REGISTRY,
         }}
       />,
@@ -117,8 +122,40 @@ describe('ConnectorsView', () => {
     expect(fresh.container.textContent).toContain('No connectors found.');
   });
 
+  it('names the agent on each card and keeps unchecked servers apart once Codex has rows', async () => {
+    const state: ConnectorsState = {
+      ...STATE,
+      connectors: [
+        ...STATE.connectors,
+        connector({
+          id: 'codex/mcp:docs',
+          name: 'docs',
+          status: 'unchecked',
+          detail: 'Set up in /h/.codex/config.toml.',
+          agent: 'codex',
+        }),
+      ],
+    };
+    const { container, getByRole } = renderView(<ConnectorsView state={state} />, undefined, [
+      CLAUDE_FALLBACK,
+      codexAgent,
+    ]);
+    const unchecked = getByRole('list', { name: 'Set up, not checked 1' });
+    expect(names(unchecked)).toStrictEqual(['docs']);
+    expect(unchecked.textContent).toContain('MCP server · Codex');
+    expect(unchecked.textContent).toContain('Not checked');
+    expect(getByRole('list', { name: 'Ready 1' }).textContent).toContain(
+      'claude.ai connector · Claude',
+    );
+    expect(getByRole('list', { name: 'Needs attention 2' }).textContent).toContain(
+      'Browser · Claude',
+    );
+    expect(container.textContent).toContain('Codex servers come from their own config files');
+    await expectAccessible(container);
+  });
+
   it('has a label for every status and kind', () => {
-    expect(Object.keys(STATUS_INFO)).toHaveLength(7);
+    expect(Object.keys(STATUS_INFO)).toHaveLength(8);
     expect(KIND_LABELS.headless).toBe('Browser');
     expect(KIND_LABELS.mcp).toBe('MCP server');
   });

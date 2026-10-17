@@ -4,15 +4,13 @@ import path from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
+import { claudeMcp, MCP_LIST_TIMEOUT_MS } from '../agents/claude/mcp.js';
+import type { McpStore } from '../agents/types.js';
+import { resolveClaudePaths } from '../paths.js';
 import type { Exec, ExecOptions, ExecResult } from '../sync/exec.js';
 
-import type { CheckInput } from './check.js';
-import {
-  CHROME_TIMEOUT_MS,
-  checkConnectors,
-  extensionInstalled,
-  MCP_LIST_TIMEOUT_MS,
-} from './check.js';
+import type { CheckInput, McpSource } from './check.js';
+import { CHROME_TIMEOUT_MS, checkConnectors, extensionInstalled } from './check.js';
 import type { StdioToolCall } from './stdio-mcp.js';
 
 const listsGmail: Exec = async () => {
@@ -42,10 +40,21 @@ describe('checkConnectors', () => {
     await rm(home, { recursive: true, force: true });
   });
 
-  function input(exec: Exec, answer: () => Promise<string>): CheckInput {
+  function input(
+    exec: Exec,
+    answer: () => Promise<string>,
+    more: readonly McpSource[] = [],
+  ): CheckInput {
+    const cli = { bin: '/bin/claude', env: { PATH: '' } };
     return {
-      bin: '/bin/claude',
-      env: { PATH: '' },
+      claude: cli,
+      mcp: [{ agent: 'claude-code', store: claudeMcp, cli }, ...more],
+      place: {
+        home,
+        env: { PATH: '' },
+        claude: resolveClaudePaths({ home, platform: 'linux', env: {} }),
+        cwd: '/work',
+      },
       cwd: '/work',
       home,
       claudeJson,
@@ -128,6 +137,42 @@ describe('checkConnectors', () => {
     );
     const timedOut = results[2];
     expect(timedOut?.detail).toBe('Could not list the MCP servers: claude mcp list exited 124');
+  });
+
+  it('adds each other agent after Claude Code, and turns a store that throws into a row', async () => {
+    const throws: McpStore = {
+      ...claudeMcp,
+      list: async () => {
+        await Promise.resolve();
+        throw new Error('broken');
+      },
+    };
+    const rows = await checkConnectors(
+      input(listsGmail, async () => {
+        await Promise.resolve();
+        return '[]';
+      }, [{ agent: 'codex', store: throws, cli: { bin: '/bin/codex', env: {} } }]),
+    );
+    expect(rows.map((row) => [row.id, row.status, row.agent])).toStrictEqual([
+      ['chrome:claude-in-chrome', 'missing', undefined],
+      ['headless:chrome', 'missing', undefined],
+      ['mcp:gmail', 'ok', undefined],
+      ['codex/mcp:list', 'failed', 'codex'],
+    ]);
+    expect(rows[3]?.detail).toBe('Could not list the MCP servers: broken');
+  });
+
+  it('leaves Claude in Chrome out when Claude Code is not checked', async () => {
+    const rows = await checkConnectors({
+      ...input(listsNothing, async () => {
+        await Promise.resolve();
+        return '[]';
+      }),
+      claude: null,
+      mcp: [],
+    });
+    expect(rows.map((row) => row.id)).toStrictEqual(['headless:chrome']);
+    expect(toolCalls).toStrictEqual([]);
   });
 
   it('skips the Chrome probe when the extension is not installed', async () => {

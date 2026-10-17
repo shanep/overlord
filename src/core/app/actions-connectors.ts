@@ -1,11 +1,19 @@
 // Actions for the Connectors view: check again, sign in to a connector in a
 // terminal, open Chrome so the Claude extension can attach, and search the MCP
-// registry and install a server from it into user scope.
+// registry and install a server from it into the user scope of the agent
+// picked.
 
+import type { AgentId } from '../../shared/agents.js';
+import { CLAUDE_CODE } from '../../shared/agents.js';
 import type { Connector } from '../../shared/connectors.js';
+import { connectorAgent } from '../../shared/connectors.js';
+import { agents } from '../agents/index.js';
+import type { AgentAdapter, AgentCli, McpStore } from '../agents/types.js';
 import { buildConfig, NAME_PATTERN } from '../connectors/install.js';
+import { mergeEnv } from '../harness/options.js';
 
 import type { ActionHandlers, ActionMap } from './action-types.js';
+import { agentPath } from './claude-bin.js';
 import { messageOf } from './errors.js';
 import type { Runtime } from './runtime.js';
 import { recheckConnectors } from './views/connectors.js';
@@ -20,12 +28,48 @@ const LINUX_OPEN_CHROME = [
   'done; exit 1',
 ].join(' ');
 
+interface McpAgent {
+  readonly adapter: AgentAdapter;
+  readonly store: McpStore;
+}
+
+function mcpAgent(id: AgentId): McpAgent {
+  const adapter = agents.get(id);
+  const store = adapter?.config?.mcp;
+  if (adapter === null || store === undefined) {
+    throw new Error(`Overlord cannot manage MCP servers for ${adapter?.name ?? id}.`);
+  }
+  return { adapter, store };
+}
+
+/** The agent's binary and environment. Claude Code's comes from the host, as before. */
+async function mcpCli(rt: Runtime, adapter: AgentAdapter): Promise<AgentCli> {
+  if (adapter.id === CLAUDE_CODE) {
+    return rt.claudeCli();
+  }
+  const env = await rt.loginEnv();
+  const detected = await adapter.detect({
+    env,
+    platform: rt.platform,
+    path: agentPath(rt.host.settings, adapter.id),
+  });
+  if (detected.bin === null) {
+    throw new Error(`${adapter.name} is not installed.`);
+  }
+  return { bin: detected.bin, env: mergeEnv(env, {}) };
+}
+
 async function signIn(rt: Runtime, connector: Connector): Promise<void> {
-  const cli = await rt.claudeCli();
+  const { adapter, store } = mcpAgent(connectorAgent(connector) ?? CLAUDE_CODE);
+  if (store.signInArgs === undefined) {
+    rt.host.showError(`${adapter.name} has no command to sign in to ${connector.name}.`);
+    return;
+  }
+  const cli = await mcpCli(rt, adapter);
   rt.host.runInTerminal({
     name: `Sign in: ${connector.name}`,
     command: cli.bin,
-    args: ['mcp', 'login', connector.name],
+    args: [...store.signInArgs(connector.name)],
     cwd: rt.host.workspaceFolder() ?? rt.paths.home,
     sessionId: null,
   });
@@ -45,9 +89,10 @@ async function openChrome(rt: Runtime): Promise<void> {
   await recheckConnectors(rt);
 }
 
-const INSTALL_TIMEOUT_MS = 30_000;
-
-/** Adds the server to user scope, so every session in every folder gets it. */
+/**
+ * Adds the server to the agent's first scope, user for every agent today, so
+ * every session in every folder gets it. Resolves to what the notice names.
+ */
 async function install(rt: Runtime, action: ActionMap['installConnector']): Promise<string> {
   const entry = rt.registry.entry(action.server);
   const option = entry?.server.options[action.option];
@@ -63,17 +108,19 @@ async function install(rt: Runtime, action: ActionMap['installConnector']): Prom
   if (!built.ok) {
     throw new Error(built.error);
   }
-  const cli = await rt.claudeCli();
-  const result = await rt.exec(
-    cli.bin,
-    ['mcp', 'add-json', '--scope', 'user', name, JSON.stringify(built.config)],
-    { cwd: rt.paths.home, env: cli.env, timeoutMs: INSTALL_TIMEOUT_MS },
-  );
-  if (result.code !== 0) {
-    const detail = result.stderr.trim() || result.stdout.trim() || `exit ${String(result.code)}`;
-    throw new Error(`claude mcp add-json failed: ${detail}`);
+  const { adapter, store } = mcpAgent(action.agent ?? CLAUDE_CODE);
+  const result = await store.add({
+    exec: rt.exec,
+    cli: await mcpCli(rt, adapter),
+    cwd: rt.paths.home,
+    name,
+    server: built.config,
+    scope: store.scopes[0] ?? 'user',
+  });
+  if (!result.ok) {
+    throw new Error(result.error);
   }
-  return name;
+  return adapter.id === CLAUDE_CODE ? name : `${name} to ${adapter.short}`;
 }
 
 export const connectorActions: ActionHandlers<

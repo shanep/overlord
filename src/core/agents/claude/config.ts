@@ -9,6 +9,8 @@ import type { KnobsFacet, LayerSource, SettingsPlace } from '../../knobs/facet.j
 import { toLaunchOptions } from '../../knobs/launch.js';
 import type { ConfigFacet } from '../types.js';
 
+import { claudeMcp } from './mcp.js';
+
 function projectFile(name: string): (place: SettingsPlace) => string | null {
   return ({ projectDir }) => (projectDir === null ? null : path.join(projectDir, '.claude', name));
 }
@@ -71,4 +73,5 @@ export const claudeKnobs: KnobsFacet = {
 export const claudeConfig: ConfigFacet = {
   settingsFormat: 'json',
   knobs: claudeKnobs,
+  mcp: claudeMcp,
 };

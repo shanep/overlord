@@ -11,6 +11,7 @@ const config: KnipConfig = {
     'scripts/*.mjs',
     'stryker.fast.config.mjs',
     'test/fake-claude/*.mjs',
+    'test/fake-agents/**/*.mjs',
     'test/integration/**/*.ts',
   ],
   // @vscode/test-electron is loaded by @vscode/test-cli at runtime, not imported.

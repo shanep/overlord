@@ -1,7 +1,10 @@
-// What the Connectors view shows: every MCP server and claude.ai connector
-// Claude Code knows about, plus Claude in Chrome and a headless Chrome, each
-// with whether a session could use it right now, and a search of the public
-// MCP registry for servers to add.
+// What the Connectors view shows: every MCP server each agent knows about,
+// claude.ai connectors and Claude in Chrome for Claude Code, and a headless
+// Chrome any agent can drive, each with whether a session could use it right
+// now, and a search of the public MCP registry for servers to add.
+
+import type { AgentId } from './agents.js';
+import { CLAUDE_CODE } from './agents.js';
 
 /** Where a connector comes from. */
 export type ConnectorKind = 'mcp' | 'claude.ai' | 'chrome' | 'headless';
@@ -9,10 +12,11 @@ export type ConnectorKind = 'mcp' | 'claude.ai' | 'chrome' | 'headless';
 /**
  * `ok` means a session can use it now. `needs-auth` wants a sign in,
  * `pending` waits on approval of a project .mcp.json, `missing` means it is
- * not set up or nothing is attached, and `unknown` is a status we could not read.
+ * not set up or nothing is attached, `unknown` is a status we could not read,
+ * and `unchecked` is set up in an agent whose CLI does not report health.
  */
 export type ConnectorStatus =
-  'ok' | 'needs-auth' | 'failed' | 'pending' | 'disabled' | 'missing' | 'unknown';
+  'ok' | 'needs-auth' | 'failed' | 'pending' | 'disabled' | 'missing' | 'unknown' | 'unchecked';
 
 /** A one click fix the view can offer. */
 export type ConnectorFix = 'sign-in' | 'open-chrome';
@@ -28,6 +32,21 @@ export interface Connector {
   /** What the status means here, or what to do about it. */
   readonly detail: string;
   readonly fix: ConnectorFix | null;
+  /** The agent whose config holds it. Unset means Claude Code, as every row was before other agents. */
+  readonly agent?: AgentId;
+}
+
+/** The agent a row belongs to, or null for a headless Chrome, which any agent can drive. */
+export function connectorAgent(connector: Connector): AgentId | null {
+  return connector.kind === 'headless' ? null : (connector.agent ?? CLAUDE_CODE);
+}
+
+/** The rows a session of this agent can reach. */
+export function connectorsFor(agent: AgentId, connectors: readonly Connector[]): Connector[] {
+  return connectors.filter((connector) => {
+    const owner = connectorAgent(connector);
+    return owner === null || owner === agent;
+  });
 }
 
 /** How a server from the MCP registry runs: a remote URL, or a package run on this machine. */
@@ -62,7 +81,7 @@ export interface RegistryServer {
   readonly description: string;
   readonly version: string;
   readonly repository: string | null;
-  /** The name to give it in Claude Code, which the user can change. */
+  /** The name to give it in the agent, which the user can change. */
   readonly suggestedName: string;
   /** Empty when every way it ships is one Overlord cannot install, such as an .mcpb bundle. */
   readonly options: readonly InstallOption[];
@@ -108,5 +127,7 @@ export interface ConnectorsState {
   readonly checking: boolean;
   /** The folder `claude mcp list` ran in, which decides the project scoped servers. */
   readonly folder: string | null;
+  /** The agents a registry server can be added to: Claude Code, then each other installed one with an MCP store. */
+  readonly mcpAgents: readonly AgentId[];
   readonly registry: RegistryState;
 }

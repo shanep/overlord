@@ -113,6 +113,7 @@ const views: readonly ViewStateMessage[] = [
       checkedAt: null,
       checking: false,
       folder: null,
+      mcpAgents: ['claude-code'],
       registry: EMPTY_REGISTRY,
     },
   },

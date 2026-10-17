@@ -1,26 +1,37 @@
-// One check of every connector: the MCP servers and claude.ai connectors from
-// `claude mcp list`, Claude in Chrome from its own server, and a headless
-// Chrome on disk. The three run side by side, and each failure becomes a row
-// that says what went wrong instead of failing the whole check.
+// One check of every connector: each agent's MCP servers from its MCP store
+// (for Claude Code that includes the claude.ai connectors `claude mcp list`
+// reports), Claude in Chrome from its own server, and a headless Chrome on
+// disk. They run side by side, and each failure becomes a row that says what
+// went wrong instead of failing the whole check.
 
 import { readFile } from 'node:fs/promises';
 
+import type { AgentId } from '../../shared/agents.js';
 import type { Connector } from '../../shared/connectors.js';
+import type { AgentCli, McpPlace, McpStore } from '../agents/types.js';
 import type { Exec } from '../sync/exec.js';
 
 import { CHROME_MCP_FLAG, CHROME_TOOL, chromeConnector } from './chrome.js';
 import { findHeadlessChrome, headlessConnector } from './headless.js';
-import { parseMcpList } from './mcp-list.js';
 import type { StdioToolCaller } from './stdio-mcp.js';
 
-/** `claude mcp list` checks every server in parallel, each with its own timeout. */
-export const MCP_LIST_TIMEOUT_MS = 90_000;
 export const CHROME_TIMEOUT_MS = 20_000;
 
+/** One agent's MCP store and the binary its CLI runs as. */
+export interface McpSource {
+  readonly agent: AgentId;
+  readonly store: McpStore;
+  readonly cli: AgentCli;
+}
+
 export interface CheckInput {
-  readonly bin: string;
-  readonly env: Readonly<Record<string, string>>;
-  /** Where `claude mcp list` runs, which decides the project scoped servers. */
+  /** Claude Code's binary, which serves Claude in Chrome, or null to leave Chrome out. */
+  readonly claude: AgentCli | null;
+  /** Each agent's servers, in order. Claude Code's come first. */
+  readonly mcp: readonly McpSource[];
+  /** Where the agents' files are and the folder that decides the project servers. */
+  readonly place: McpPlace;
+  /** Where the MCP commands run. */
   readonly cwd: string;
   readonly home: string;
   readonly claudeJson: string;
@@ -33,27 +44,28 @@ function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-async function mcpServers(input: CheckInput): Promise<Connector[]> {
-  const result = await input.exec(input.bin, ['mcp', 'list'], {
-    cwd: input.cwd,
-    env: input.env,
-    timeoutMs: MCP_LIST_TIMEOUT_MS,
-  });
-  if (result.code !== 0) {
-    const detail = result.stderr.trim() || `claude mcp list exited ${String(result.code)}`;
+async function mcpServers(input: CheckInput, source: McpSource): Promise<Connector[]> {
+  try {
+    return await source.store.list({
+      exec: input.exec,
+      cli: source.cli,
+      cwd: input.cwd,
+      place: input.place,
+    });
+  } catch (error) {
     return [
       {
-        id: 'mcp:list',
+        id: `${source.agent}/mcp:list`,
         name: 'MCP servers',
         kind: 'mcp',
-        target: 'claude mcp list',
+        target: '',
         status: 'failed',
-        detail: `Could not list the MCP servers: ${detail}`,
+        detail: `Could not list the MCP servers: ${messageOf(error)}`,
         fix: null,
+        agent: source.agent,
       },
     ];
   }
-  return parseMcpList(result.stdout);
 }
 
 /** cachedChromeExtensionInstalled from ~/.claude.json, or null when it is not there. */
@@ -70,7 +82,7 @@ export async function extensionInstalled(claudeJson: string): Promise<boolean | 
   }
 }
 
-async function chrome(input: CheckInput): Promise<Connector> {
+async function chrome(input: CheckInput, cli: AgentCli): Promise<Connector> {
   const installed = await extensionInstalled(input.claudeJson);
   if (installed === false) {
     return chromeConnector({ answer: { text: '[]' }, extensionInstalled: false });
@@ -79,9 +91,9 @@ async function chrome(input: CheckInput): Promise<Connector> {
   try {
     answer = {
       text: await input.callTool({
-        command: input.bin,
+        command: cli.bin,
         args: [CHROME_MCP_FLAG],
-        env: input.env,
+        env: cli.env,
         cwd: input.home,
         tool: CHROME_TOOL,
         timeoutMs: CHROME_TIMEOUT_MS,
@@ -95,9 +107,13 @@ async function chrome(input: CheckInput): Promise<Connector> {
 
 export async function checkConnectors(input: CheckInput): Promise<Connector[]> {
   const [browser, headless, servers] = await Promise.all([
-    chrome(input),
-    findHeadlessChrome({ home: input.home, platform: input.platform, env: input.env }),
-    mcpServers(input),
+    input.claude === null ? null : chrome(input, input.claude),
+    findHeadlessChrome({
+      home: input.home,
+      platform: input.platform,
+      env: input.claude?.env ?? input.place.env,
+    }),
+    Promise.all(input.mcp.map(async (source) => mcpServers(input, source))),
   ]);
-  return [browser, headlessConnector(headless), ...servers];
+  return [...(browser === null ? [] : [browser]), headlessConnector(headless), ...servers.flat()];
 }

@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest';
 
 import type { RegistryServer, RegistryState } from '../../../src/shared/connectors.js';
 import { EMPTY_REGISTRY } from '../../../src/shared/connectors.js';
+import { codexAgent } from '../../test/fixtures-agents.js';
 import { expectAccessible, renderView } from '../../test/render.js';
+import { CLAUDE_FALLBACK } from '../claude-fallback.js';
 
 import { RegistrySection } from './connectors-registry.js';
 
@@ -53,6 +55,8 @@ const BUNDLE: RegistryServer = {
   options: [],
 };
 
+const CLAUDE_ONLY = ['claude-code'];
+
 function found(overrides: Partial<RegistryState> = {}): RegistryState {
   return { ...EMPTY_REGISTRY, query: 'sentry', results: [SENTRY, BUNDLE], ...overrides };
 }
@@ -60,7 +64,7 @@ function found(overrides: Partial<RegistryState> = {}): RegistryState {
 describe('RegistrySection', () => {
   it('searches by name and shows nothing until it has', () => {
     const { getByRole, queryByRole, api } = renderView(
-      <RegistrySection registry={EMPTY_REGISTRY} />,
+      <RegistrySection mcpAgents={CLAUDE_ONLY} registry={EMPTY_REGISTRY} />,
     );
     expect(queryByRole('list', { name: 'Registry results' })).toBeNull();
     fireEvent.change(getByRole('searchbox', { name: 'Server name' }), {
@@ -72,7 +76,7 @@ describe('RegistrySection', () => {
 
   it('installs the option picked with what was typed, and passes axe', async () => {
     const { container, getByRole, getByLabelText, api } = renderView(
-      <RegistrySection registry={found({ more: true })} />,
+      <RegistrySection mcpAgents={CLAUDE_ONLY} registry={found({ more: true })} />,
     );
     expect(container.textContent).toContain('Not installable from here');
     expect(container.textContent).toContain('2 servers whose name has "sentry" so far');
@@ -102,7 +106,7 @@ describe('RegistrySection', () => {
 
   it('will not install under a name Claude Code rejects, and closes on Cancel', () => {
     const { getByRole, getByLabelText, queryByRole } = renderView(
-      <RegistrySection registry={found()} />,
+      <RegistrySection mcpAgents={CLAUDE_ONLY} registry={found()} />,
     );
     fireEvent.click(getByRole('button', { name: 'Install…' }));
     fireEvent.change(getByLabelText('Name in Claude Code'), { target: { value: 'has space' } });
@@ -117,6 +121,7 @@ describe('RegistrySection', () => {
   it('shows an install in progress, how it went, errors and empty results', () => {
     const view = renderView(
       <RegistrySection
+        mcpAgents={CLAUDE_ONLY}
         registry={found({
           installing: SENTRY.name,
           notice: { ok: true, text: 'Added sentry for every project.' },
@@ -128,6 +133,7 @@ describe('RegistrySection', () => {
     view.unmount();
     const failed = renderView(
       <RegistrySection
+        mcpAgents={CLAUDE_ONLY}
         registry={found({ results: [], error: 'Could not search the MCP registry: offline' })}
       />,
     );
@@ -135,23 +141,31 @@ describe('RegistrySection', () => {
       'Could not search the MCP registry: offline',
     );
     failed.unmount();
-    const empty = renderView(<RegistrySection registry={found({ results: [] })} />);
+    const empty = renderView(
+      <RegistrySection mcpAgents={CLAUDE_ONLY} registry={found({ results: [] })} />,
+    );
     expect(empty.container.textContent).toContain('No servers match that name.');
     empty.unmount();
     const searching = renderView(
-      <RegistrySection registry={found({ results: [], searching: true })} />,
+      <RegistrySection
+        mcpAgents={CLAUDE_ONLY}
+        registry={found({ results: [], searching: true })}
+      />,
     );
     expect(searching.getByRole('button', { name: 'Searching…' })).toHaveProperty('disabled', true);
     searching.unmount();
     const refused = renderView(
-      <RegistrySection registry={found({ notice: { ok: false, text: 'Fill in X first.' } })} />,
+      <RegistrySection
+        mcpAgents={CLAUDE_ONLY}
+        registry={found({ notice: { ok: false, text: 'Fill in X first.' } })}
+      />,
     );
     expect(refused.getByRole('alert').textContent).toContain('Not added');
   });
 
   it('browses everything, pages, filters by how a server runs and opens its repository', () => {
     const { getByRole, getAllByRole, container, api } = renderView(
-      <RegistrySection registry={found({ query: '', more: true })} />,
+      <RegistrySection mcpAgents={CLAUDE_ONLY} registry={found({ query: '', more: true })} />,
     );
     expect(container.textContent).toContain('2 servers from the registry so far');
     fireEvent.click(getByRole('button', { name: 'Browse all' }));
@@ -178,11 +192,40 @@ describe('RegistrySection', () => {
   it('keeps the results when a page fails to load, and says so', () => {
     const { getByRole, getAllByRole } = renderView(
       <RegistrySection
+        mcpAgents={CLAUDE_ONLY}
         registry={found({ loadingMore: true, more: true, error: 'Could not load more: offline' })}
       />,
     );
     expect(getAllByRole('listitem')).toHaveLength(2);
     expect(getByRole('alert').textContent).toBe('Could not load more: offline');
     expect(getByRole('button', { name: 'Loading…' })).toHaveProperty('disabled', true);
+  });
+
+  it('asks which agent to add to once another one has an MCP store', async () => {
+    const { container, getByRole, getByLabelText, queryByRole, api } = renderView(
+      <RegistrySection mcpAgents={['claude-code', 'codex']} registry={found()} />,
+      undefined,
+      [CLAUDE_FALLBACK, codexAgent],
+    );
+    expect(container.textContent).toContain('the mcp add command of the agent you pick.');
+    fireEvent.click(getByRole('button', { name: 'Install…' }));
+    const pick = getByRole('combobox', { name: 'Add to' });
+    expect(getByLabelText('Name in Claude Code')).toBeDefined();
+    fireEvent.change(pick, { target: { value: 'codex' } });
+    expect(getByLabelText('Name in Codex CLI')).toBeDefined();
+    await expectAccessible(container);
+    fireEvent.click(getByRole('button', { name: 'Install' }));
+    expect(api.actions()).toStrictEqual([
+      {
+        type: 'installConnector',
+        server: 'io.github.getsentry/sentry-mcp',
+        option: 0,
+        name: 'sentry',
+        values: {},
+        agent: 'codex',
+      },
+    ]);
+    fireEvent.click(getByRole('button', { name: 'Close' }));
+    expect(queryByRole('combobox', { name: 'Add to' })).toBeNull();
   });
 });

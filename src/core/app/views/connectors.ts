@@ -3,7 +3,10 @@
 // CONNECTORS_REFRESH_MS after start, and when Recheck is pressed. The hook
 // reply reads the last result and never waits on a check.
 
+import type { AgentId } from '../../../shared/agents.js';
+import { CLAUDE_CODE } from '../../../shared/agents.js';
 import type { ConnectorsState } from '../../../shared/connectors.js';
+import { connectorsFor } from '../../../shared/connectors.js';
 import { connectorBriefing } from '../../connectors/briefing.js';
 import type { Runtime } from '../runtime.js';
 
@@ -20,9 +23,16 @@ export function clockTime(at: number): string {
   return new Date(at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 }
 
-/** The SessionStart note, from the last check. Reading it starts the first check. */
-export function sessionBriefing(rt: Runtime): string {
-  return connectorBriefing(rt.caches.connectors.value, clockTime);
+/**
+ * The SessionStart note for a session of the agent, from the last check, with
+ * only the rows that agent can reach. Reading it starts the first check.
+ */
+export function sessionBriefing(rt: Runtime, agent: AgentId = CLAUDE_CODE): string {
+  const { value } = rt.caches.connectors;
+  return connectorBriefing(
+    { checkedAt: value.checkedAt, connectors: connectorsFor(agent, value.connectors) },
+    clockTime,
+  );
 }
 
 /** Checks again now, showing the view as checking while it runs. */

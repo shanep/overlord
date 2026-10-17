@@ -8,7 +8,7 @@ import { agentInfo, detectAgents } from '../agents/registry.js';
 import { EMPTY_USAGE } from '../surfaces/usage.js';
 
 import { AsyncValue } from './async-value.js';
-import { agentPath } from './claude-bin.js';
+import { agentEnabled, agentPath } from './claude-bin.js';
 import type { Caches, Runtime } from './runtime.js';
 import { readDrafts, storagePath } from './storage.js';
 import { configRepoDir, emptyConfig, loadConfig } from './views/config.js';
@@ -111,9 +111,12 @@ export function createCaches(rt: CacheRuntime): Caches {
       load: async () =>
         loadConnectors({
           claudeCli: rt.claudeCli,
+          loginEnv: rt.loginEnv,
+          registry: agents,
+          agentPath: (id) => agentPath(host.settings, id),
+          agentEnabled: (id) => agentEnabled(host.settings, id),
           workspace: host.workspaceFolder(),
-          home: rt.paths.home,
-          claudeJson: rt.paths.claudeJson,
+          paths: rt.paths,
           platform: rt.platform,
           exec: rt.exec,
           callTool: rt.callTool,

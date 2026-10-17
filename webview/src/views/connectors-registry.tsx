@@ -1,10 +1,12 @@
 // The registry section under your connectors: browse or search the public MCP
-// registry as a grid of cards, fill in what a server needs, and add it to
-// user scope.
+// registry as a grid of cards, fill in what a server needs, and add it to the
+// user scope of Claude Code or another installed agent with an MCP store.
 
 import type { ReactElement, SubmitEvent } from 'react';
 import { useState } from 'react';
 
+import type { AgentId } from '../../../src/shared/agents.js';
+import { CLAUDE_CODE } from '../../../src/shared/agents.js';
 import type {
   InstallInput,
   InstallKind,
@@ -15,6 +17,8 @@ import { Badge } from '../components/badge.js';
 import type { SegmentedOption } from '../components/card.js';
 import { Avatar, Card, CardGrid, Notice, Segmented } from '../components/card.js';
 import { usePostAction } from '../vscode-context.js';
+
+import { AgentPick, InstallSameAs, useAgentChoice } from './connectors-agent-pick.js';
 
 const INSTALL_KIND_LABELS: Readonly<Record<InstallKind, string>> = {
   http: 'Remote (HTTP)',
@@ -93,10 +97,13 @@ function InputField(props: {
 function InstallForm(props: {
   readonly server: RegistryServer;
   readonly installing: boolean;
+  readonly mcpAgents: readonly AgentId[];
   readonly onCancel: () => void;
 }): ReactElement {
   const { server } = props;
   const post = usePostAction();
+  const agentChoice = useAgentChoice(props.mcpAgents);
+  const { target } = agentChoice;
   const [choice, setChoice] = useState(0);
   const [name, setName] = useState(server.suggestedName);
   const option = server.options[choice] ?? server.options[0];
@@ -110,10 +117,12 @@ function InstallForm(props: {
   const nameOk = NAME_PATTERN.test(name.trim());
   const submit = (event: SubmitEvent): void => {
     event.preventDefault();
-    post({ type: 'installConnector', server: server.name, option: choice, name, values });
+    const agent = target.id === CLAUDE_CODE ? {} : { agent: target.id };
+    post({ type: 'installConnector', server: server.name, option: choice, name, values, ...agent });
   };
   return (
     <form className="card-form" onSubmit={submit} aria-label={`Install ${server.title}`}>
+      <AgentPick choice={agentChoice} />
       {server.options.length > 1 ? (
         <label className="field">
           <span>Install as</span>
@@ -140,7 +149,7 @@ function InstallForm(props: {
       <div className="form-grid">
         <div>
           <label className="field">
-            <span>Name in Claude Code</span>
+            <span>Name in {target.name}</span>
             <input
               type="text"
               value={name}
@@ -188,6 +197,7 @@ function InstallForm(props: {
 
 function Result(props: {
   readonly server: RegistryServer;
+  readonly mcpAgents: readonly AgentId[];
   readonly open: boolean;
   readonly installing: boolean;
   readonly busy: boolean;
@@ -246,13 +256,21 @@ function Result(props: {
         )}
       </div>
       {props.open ? (
-        <InstallForm server={server} installing={props.installing} onCancel={props.onToggle} />
+        <InstallForm
+          server={server}
+          installing={props.installing}
+          mcpAgents={props.mcpAgents}
+          onCancel={props.onToggle}
+        />
       ) : null}
     </Card>
   );
 }
 
-function Results(props: { readonly registry: RegistryState }): ReactElement | null {
+function Results(props: {
+  readonly registry: RegistryState;
+  readonly mcpAgents: readonly AgentId[];
+}): ReactElement | null {
   const { registry } = props;
   const post = usePostAction();
   const [open, setOpen] = useState<string | null>(null);
@@ -296,6 +314,7 @@ function Results(props: { readonly registry: RegistryState }): ReactElement | nu
           <Result
             key={server.name}
             server={server}
+            mcpAgents={props.mcpAgents}
             open={open === server.name}
             installing={registry.installing === server.name}
             busy={registry.installing !== null}
@@ -335,7 +354,11 @@ function InstallNoticeLine(props: { readonly registry: RegistryState }): ReactEl
   );
 }
 
-export function RegistrySection(props: { readonly registry: RegistryState }): ReactElement {
+export function RegistrySection(props: {
+  readonly registry: RegistryState;
+  /** The agents a server can be added to. Claude Code alone keeps the form as it was. */
+  readonly mcpAgents: readonly AgentId[];
+}): ReactElement {
   const { registry } = props;
   const post = usePostAction();
   const [query, setQuery] = useState(registry.query ?? '');
@@ -350,8 +373,8 @@ export function RegistrySection(props: { readonly registry: RegistryState }): Re
       </h2>
       <p className="muted reg-lede">
         From the public MCP registry. Install adds a server for every project, the same as{' '}
-        <code>claude mcp add --scope user</code>. Packages run on this machine with your
-        permissions, so add only servers you trust.
+        <InstallSameAs several={props.mcpAgents.length > 1} />. Packages run on this machine with
+        your permissions, so add only servers you trust.
       </p>
       <form className="search-bar" role="search" onSubmit={search}>
         <input
@@ -383,7 +406,7 @@ export function RegistrySection(props: { readonly registry: RegistryState }): Re
           {registry.error}
         </p>
       )}
-      <Results registry={registry} />
+      <Results registry={registry} mcpAgents={props.mcpAgents} />
     </section>
   );
 }

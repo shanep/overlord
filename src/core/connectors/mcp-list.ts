@@ -40,6 +40,7 @@ const DETAILS: Readonly<Record<ConnectorStatus, string>> = {
   disabled: 'Turned off for this project.',
   missing: 'Not set up.',
   unknown: 'Claude Code reported a status Overlord does not know.',
+  unchecked: 'Set up, but not checked.',
 };
 
 /** The status words after the mark, for example "Failed to connect". */

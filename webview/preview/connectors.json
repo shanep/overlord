@@ -58,6 +58,7 @@
   "checkedAt": 1792000000000,
   "checking": false,
   "folder": null,
+  "mcpAgents": ["claude-code"],
   "registry": {
     "query": "",
     "searching": false,
