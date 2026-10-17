@@ -77,6 +77,11 @@ describe('cellClass', () => {
     expect(cellClass({ id: 'a', header: 'A', cell, wrap: true })).toBe('wrap');
     expect(cellClass({ id: 'a', header: 'A', cell, numeric: true, wrap: true })).toBe('num wrap');
   });
+
+  it('marks columns that drop out of a narrow table', () => {
+    expect(cellClass({ id: 'a', header: 'A', cell, drop: 1 })).toBe('drop-1');
+    expect(cellClass({ id: 'a', header: 'A', cell, numeric: true, drop: 2 })).toBe('num drop-2');
+  });
 });
 
 describe('nextSort and ariaSort', () => {

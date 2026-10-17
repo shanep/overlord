@@ -14,6 +14,7 @@ import {
   MAX_GRAPH_ROUTES,
   nodeLabel,
   nodeSize,
+  ringPlace,
 } from './messages-graph.js';
 // Registers the graph series with ECharts.
 import './messages-view.js';
@@ -79,7 +80,7 @@ describe('graph data', () => {
 });
 
 describe('buildRouteGraph', () => {
-  it('draws one node per session and one labeled arrow per route', () => {
+  it('draws one node per session and one arrow per route, counted when more than one', () => {
     const option = buildRouteGraph(routes, theme);
     expect(option).not.toHaveProperty('legend');
     expect(option).toMatchObject({
@@ -88,7 +89,7 @@ describe('buildRouteGraph', () => {
         {
           type: 'graph',
           name: 'Messages between sessions',
-          layout: 'force',
+          layout: 'none',
           edgeSymbol: ['none', 'arrow'],
           edgeLabel: { show: true, formatter: '{c}', color: theme.muted },
           label: { show: true, color: theme.foreground },
@@ -99,9 +100,12 @@ describe('buildRouteGraph', () => {
               name: 'Release prep',
               value: 7,
               symbolSize: 40,
+              x: 0,
+              y: -100,
+              label: { position: 'top' },
               tooltip: { formatter: 'Release prep: 7 messages' },
             },
-            { id: 'Docs pass', name: 'Docs pass', value: 5 },
+            { id: 'Docs pass', name: 'Docs pass', value: 5, label: { position: 'right' } },
             {
               id: LONG,
               name: 'Fix the flaky login test on…',
@@ -114,6 +118,7 @@ describe('buildRouteGraph', () => {
               target: 'Docs pass',
               value: 4,
               lineStyle: { width: 4 },
+              label: { show: true },
               tooltip: { formatter: 'Release prep to Docs pass: 4 messages' },
             },
             { source: 'Release prep', target: LONG, value: 2, lineStyle: { width: 2.5 } },
@@ -121,12 +126,23 @@ describe('buildRouteGraph', () => {
               source: 'Docs pass',
               target: 'Release prep',
               value: 1,
+              label: { show: false },
               tooltip: { formatter: 'Docs pass to Release prep: 1 message' },
             },
           ],
         },
       ],
     });
+  });
+
+  it('puts sessions on a ring with each label on the outside', () => {
+    expect(ringPlace(0, 1)).toStrictEqual({ x: 0, y: 0, side: 'right' });
+    expect(ringPlace(0, 2)).toStrictEqual({ x: 0, y: -100, side: 'top' });
+    expect(ringPlace(1, 2)).toMatchObject({ y: 100, side: 'bottom' });
+    expect(ringPlace(1, 4)).toMatchObject({ x: 100, side: 'right' });
+    expect(ringPlace(3, 4)).toMatchObject({ x: -100, side: 'left' });
+    expect(ringPlace(1, 6).side).toBe('right');
+    expect(ringPlace(4, 6).side).toBe('left');
   });
 
   it('handles no routes', () => {
@@ -139,6 +155,7 @@ describe('buildRouteGraph', () => {
     );
     expect(container.textContent).toContain('Docs pass');
     // Edge labels only render when the links resolve to node ids.
-    expect(container.textContent).toContain('Fix the flaky login test on…421');
+    expect(container.textContent).toContain('Fix the flaky login test on…42');
+    expect(container.textContent).not.toContain('421');
   });
 });

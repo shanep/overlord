@@ -100,6 +100,7 @@ const COLUMNS: readonly Column<WorktreeSummary>[] = [
   {
     id: 'label',
     header: 'Label',
+    wrap: true,
     cell: (item) => (
       <span title={item.path}>
         {item.label} <span className="muted mono">{item.branch}</span>
@@ -110,6 +111,7 @@ const COLUMNS: readonly Column<WorktreeSummary>[] = [
   {
     id: 'repo',
     header: 'Repository',
+    drop: 1,
     cell: (item) => <span title={item.repoRoot}>{projectName(item.repoRoot)}</span>,
     sortValue: (item) => item.repoRoot,
   },
@@ -129,11 +131,12 @@ const COLUMNS: readonly Column<WorktreeSummary>[] = [
     id: 'slot',
     header: 'Slot',
     numeric: true,
+    drop: 1,
     cell: (item) => item.slot,
     sortValue: (item) => item.slot,
   },
-  { id: 'changes', header: 'Changes', cell: describeChanges },
-  { id: 'overlaps', header: 'Overlaps', cell: (item) => <Overlaps item={item} /> },
+  { id: 'changes', header: 'Changes', drop: 2, cell: describeChanges },
+  { id: 'overlaps', header: 'Overlaps', wrap: true, cell: (item) => <Overlaps item={item} /> },
   { id: 'actions', header: 'Actions', cell: (item) => <Actions item={item} /> },
 ];
 

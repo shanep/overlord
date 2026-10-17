@@ -12,11 +12,21 @@ export interface Column<T> {
   readonly numeric?: boolean;
   /** Let long text wrap instead of widening the table. */
   readonly wrap?: boolean;
+  /**
+   * Hide the column when a table in a `table-card` gets narrow: 1 goes first,
+   * below 900 px, and 2 goes next, below 720 px. Leave it off for columns that
+   * must always show.
+   */
+  readonly drop?: 1 | 2;
 }
 
-/** The class for a column's cells: num for numbers, wrap for long text. */
+/** The class for a column's cells: num for numbers, wrap for long text, drop-n to hide when narrow. */
 export function cellClass<T>(column: Column<T>): string | undefined {
-  const names = [column.numeric === true ? 'num' : '', column.wrap === true ? 'wrap' : ''];
+  const names = [
+    column.numeric === true ? 'num' : '',
+    column.wrap === true ? 'wrap' : '',
+    column.drop === undefined ? '' : `drop-${String(column.drop)}`,
+  ];
   const joined = names.filter((name) => name !== '').join(' ');
   return joined === '' ? undefined : joined;
 }

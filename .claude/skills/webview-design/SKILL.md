@@ -46,7 +46,10 @@ for small labels. For a form inside an open card, use `card-form`, `form-grid` a
 
 For tables and sections, `panel` frames a section with a heading (`panel-head`), and
 `<details className="panel">` makes it fold away with a count in the summary.
-`table-card` frames a bare sortable table so it sits well next to cards. `chip-list` is a
+`table-card` frames a bare sortable table so it sits well next to cards. Inside one, mark
+the least useful columns `drop: 1` (gone below 900 px) or `drop: 2` (gone below 720 px)
+and long text `wrap: true`, so the table fits a narrow panel instead of scrolling
+sideways. `chip-list` is a
 row of chips with no bullets, `pill-check` draws a checkbox as a toggle pill, and
 `choice-grid` with `choice` lays radio buttons out as cards, each with room for a line
 of explanation.

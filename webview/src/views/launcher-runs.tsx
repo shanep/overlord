@@ -60,10 +60,11 @@ function runColumns(profiles: readonly LaunchProfile[]): Column<LaunchRun>[] {
     {
       id: 'label',
       header: 'Label',
+      wrap: true,
       cell: (run) => run.spec.label,
       sortValue: (run) => run.spec.label,
     },
-    { id: 'profile', header: 'Profile', cell: profileName, sortValue: profileName },
+    { id: 'profile', header: 'Profile', drop: 2, cell: profileName, sortValue: profileName },
     {
       id: 'state',
       header: 'State',
@@ -81,6 +82,7 @@ function runColumns(profiles: readonly LaunchProfile[]): Column<LaunchRun>[] {
       id: 'turns',
       header: 'Turns',
       numeric: true,
+      drop: 1,
       cell: (run) => run.turns,
       sortValue: (run) => run.turns,
     },
@@ -88,6 +90,7 @@ function runColumns(profiles: readonly LaunchProfile[]): Column<LaunchRun>[] {
       id: 'time',
       header: 'Time',
       numeric: true,
+      drop: 2,
       cell: (run) => formatDuration(run.durationMs),
       sortValue: (run) => run.durationMs,
     },
@@ -105,6 +108,7 @@ function runColumns(profiles: readonly LaunchProfile[]): Column<LaunchRun>[] {
     {
       id: 'worktree',
       header: 'Worktree',
+      drop: 1,
       // The folder name is enough to tell runs apart. The whole path is on hover.
       cell: (run) =>
         run.worktreePath === null ? null : (

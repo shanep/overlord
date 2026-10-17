@@ -1967,6 +1967,31 @@ details.panel[open] > summary,
   border: 1px solid var(--ov-border);
   border-radius: 6px;
   background: var(--vscode-editorWidget-background, var(--ov-panel));
+  container-type: inline-size;
+}
+
+/* Wrapped text keeps enough width to read as sentences, not a word per line. */
+.table-card td.wrap {
+  min-width: 18ch;
+}
+
+/* Row buttons stack when the table runs out of room instead of pushing it wider. */
+.table-card .actions {
+  flex-wrap: wrap;
+  white-space: normal;
+}
+
+/* Columns marked drop: 1 or 2 in DataTable go as the table narrows, least useful first. */
+@container (width < 900px) {
+  .table-card .drop-1 {
+    display: none;
+  }
+}
+
+@container (width < 720px) {
+  .table-card .drop-2 {
+    display: none;
+  }
 }
 
 /* A checkbox drawn as a pill you toggle, for picking several of a few options. */
