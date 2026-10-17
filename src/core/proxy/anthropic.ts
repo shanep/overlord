@@ -74,13 +74,24 @@ function flattenContent(content: MessageContent): string {
   return parts.join('');
 }
 
+// Claude Code starts its system prompt with this line, which Anthropic's API
+// strips. boisestate.ai instead drops the whole system prompt when it starts
+// with it, so the bridge strips it too.
+const BILLING_LINE = /^x-anthropic-billing-header:[^\n]*\n?/u;
+
 function flattenSystem(system: SystemPrompt): string | null {
   if (system === undefined) {
     return null;
   }
   const joined =
-    typeof system === 'string' ? system : system.map((block) => block.text ?? '').join('');
-  return joined === '' ? null : joined;
+    typeof system === 'string'
+      ? system
+      : system
+          .map((block) => block.text ?? '')
+          .filter((text) => !BILLING_LINE.test(text))
+          .join('');
+  const kept = joined.replace(BILLING_LINE, '');
+  return kept === '' ? null : kept;
 }
 
 export type ParseResult =

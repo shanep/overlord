@@ -122,6 +122,31 @@ describe('parseAnthropicRequest', () => {
     expect(result.chat.systemPrompt).toBe('top\n\na reminder');
   });
 
+  it("strips Claude Code's billing line, which makes the backend drop the system prompt", () => {
+    const header = 'x-anthropic-billing-header: cc_version=2.1; cc_entrypoint=cli;';
+    const asBlocks = parseAnthropicRequest({
+      system: [
+        { type: 'text', text: header },
+        { type: 'text', text: 'be brief' },
+      ],
+      messages: [{ role: 'user', content: 'hi' }],
+    });
+    const asString = parseAnthropicRequest({
+      system: `${header}\nbe brief`,
+      messages: [{ role: 'user', content: 'hi' }],
+    });
+    const only = parseAnthropicRequest({
+      system: header,
+      messages: [{ role: 'user', content: 'hi' }],
+    });
+    if (!asBlocks.ok || !asString.ok || !only.ok) {
+      throw new Error('expected ok');
+    }
+    expect(asBlocks.chat.systemPrompt).toBe('be brief');
+    expect(asString.chat.systemPrompt).toBe('be brief');
+    expect(only.chat.systemPrompt).toBeNull();
+  });
+
   it('treats a missing or empty system prompt as null', () => {
     const missing = parseAnthropicRequest({ messages: [{ role: 'user', content: 'hi' }] });
     const empty = parseAnthropicRequest({
