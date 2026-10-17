@@ -15,7 +15,7 @@ const DIAGRAMS = [
 describe('SessionsSection', () => {
   it('draws one diagram per part of a session', () => {
     const { getByRole } = renderView(<SessionsSection />);
-    const section = getByRole('region', { name: 'How a session works' });
+    const section = getByRole('region', { name: 'How a Claude Code session works' });
     const names = within(section)
       .getAllByRole('img')
       .map((svg) => svg.querySelector('title')?.textContent);
@@ -54,7 +54,9 @@ describe('SessionsSection', () => {
 
   it('has no accessibility violations', async () => {
     const { container, getByRole } = renderView(<SessionsSection />);
-    expect(getByRole('heading', { level: 2, name: 'How a session works' })).toBeDefined();
+    expect(
+      getByRole('heading', { level: 2, name: 'How a Claude Code session works' }),
+    ).toBeDefined();
     await expectAccessible(container);
   });
 });

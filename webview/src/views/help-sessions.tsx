@@ -1,10 +1,11 @@
-// The "How a session works" part of the help page: how sessions start, how a
-// tab ties to its session, and what closing the tab does. The steps follow
+// The "How a Claude Code session works" part of the help page: how sessions
+// start, how a tab ties to its session, and what closing the tab does. The steps follow
 // src/core/app/claude-tabs.ts, worktrees.ts and worktrees/registry.ts, so
 // change these drawings when those change.
 
 import type { ReactElement } from 'react';
 
+import { CLAUDE_SESSIONS_ID } from './help-agents.js';
 import type { Tone } from './help-flow.js';
 import { Arrow, Box, Flow } from './help-flow.js';
 import { SCREEN_MAP_ID } from './help-screen.js';
@@ -369,13 +370,13 @@ function CloseDiagram(): ReactElement {
 
 export function SessionsSection(): ReactElement {
   return (
-    <section className="section help-section" aria-labelledby="help-sessions">
-      <h2 id="help-sessions">How a session works</h2>
+    <section className="section help-section" aria-labelledby={CLAUDE_SESSIONS_ID}>
+      <h2 id={CLAUDE_SESSIONS_ID}>How a Claude Code session works</h2>
       <p className="muted">
-        What happens from the sparkle to a tidied up worktree. A session Overlord starts runs as a
-        Claude Code background job, and its editor tab is only a window onto it. An orange number on
-        a box is where that piece is on the screen map in{' '}
-        <a href={`#${SCREEN_MAP_ID}`}>Where things are</a>.
+        What happens from the sparkle to a tidied up worktree. A Claude Code session Overlord starts
+        runs as a background job, and its editor tab is only a window onto it. Other agents run in
+        their tab, like a claude you start in a VS Code terminal. An orange number on a box is where
+        that piece is on the screen map in <a href={`#${SCREEN_MAP_ID}`}>Where things are</a>.
       </p>
       <h3>Ways a session starts</h3>
       <p>

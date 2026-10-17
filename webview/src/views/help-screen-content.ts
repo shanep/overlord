@@ -53,7 +53,7 @@ export const SCREEN_AREAS: readonly ScreenArea[] = [
     at: { x: 702, y: 80 },
     name: 'Editor title bar',
     apis: 'Icon buttons at the right end of the tab row (menus editor/title), shown only when a when clause matches the active tab.',
-    overlord: 'The info button on a Claude Code tab.',
+    overlord: "The info button on an agent's terminal tab.",
   },
   {
     number: 6,
@@ -61,7 +61,7 @@ export const SCREEN_AREAS: readonly ScreenArea[] = [
     name: 'Editor area',
     apis: 'Whole tabs: webview panels (createWebviewPanel), custom editors for a file type (customEditors) and terminals opened as tabs (createTerminal with a viewColumn).',
     overlord:
-      'Every full page: Fleet (full view), the agent view, Launcher, Knobs, Usage, this help and the rest. Claude Code sessions run as terminal tabs here.',
+      'Every full page: Fleet (full view), the agent view, Launcher, Knobs, Usage, this help and the rest. Agent sessions run as terminal tabs here.',
   },
   {
     number: 7,
@@ -175,25 +175,25 @@ export const PIECES: readonly Piece[] = [
     name: 'Session Properties',
     area: 3,
     what: 'What the selected session is working on, its model, state, worktree and more.',
-    open: 'At the bottom of the sidebar. It follows the Claude Code tab you are on.',
+    open: 'At the bottom of the sidebar. It follows the agent tab you are on.',
   },
   {
     name: 'Fleet title buttons',
     area: 4,
-    what: 'New Claude Code session (the sparkle), Launcher, Fleet (full view), All Sessions and Refresh.',
+    what: 'New Claude Code session (the sparkle), Launcher, Fleet (full view), All Sessions and Refresh. With more than one agent, New session above the list starts any of them.',
     open: 'The top of the Fleet.',
   },
   {
     name: 'Info button',
     area: 5,
     what: 'Opens Session Properties beside the tab.',
-    open: 'The title bar of a Claude Code tab.',
+    open: "The title bar of an agent's terminal tab.",
   },
   {
-    name: 'Claude Code tab',
+    name: 'Agent tab',
     area: 6,
-    what: 'A terminal tab running claude attach, where you talk to the session.',
-    open: "The sparkle, Continue in All Sessions, or clicking a background session's Fleet row.",
+    what: 'A terminal tab where you talk to the session. It runs claude attach for a Claude Code background session, or the agent CLI itself.',
+    open: "The sparkle, New session, Continue in All Sessions, or clicking a background session's Fleet row.",
   },
   {
     name: 'Agent view',

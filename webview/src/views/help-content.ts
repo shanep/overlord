@@ -45,7 +45,7 @@ export const SIDEBAR_GROUPS: readonly SidebarGroup[] = [
         name: 'All Sessions',
         icon: 'List',
         meaning:
-          'CLI, Desktop, Cowork, cloud sessions and claude.ai chats in one list, with handoff buttons.',
+          'Sessions from every agent CLI, plus Claude Desktop, Cowork, cloud sessions and claude.ai chats, in one list with handoff buttons.',
       },
       { name: 'Refresh', icon: 'Circular arrow', meaning: 'Rereads sessions and config now.' },
     ],
@@ -112,7 +112,7 @@ export const SIDEBAR_GROUPS: readonly SidebarGroup[] = [
         name: 'Connectors (MCP)',
         icon: 'Plug',
         meaning:
-          'Every MCP server and claude.ai connector, plus Claude in Chrome and a headless Chrome, with whether each works right now. Sign in or Open Chrome fixes the common problems. Browse or search the public MCP registry at the bottom to add a server for every project. Each new session is told what is ready and asked to check what its task needs before it starts.',
+          'Every MCP server each agent has and every claude.ai connector, plus Claude in Chrome and a headless Chrome, with whether each works right now. Sign in or Open Chrome fixes the common problems. Browse or search the public MCP registry at the bottom to add a server for every project. Each new session is told what is ready and asked to check what its task needs before it starts.',
       },
       { name: 'Help', icon: 'Question mark', meaning: 'This page.' },
     ],
@@ -131,15 +131,15 @@ export const SIDEBAR_GROUPS: readonly SidebarGroup[] = [
         name: 'Show Session Properties',
         icon: 'Info (i)',
         meaning:
-          "In the title bar of a Claude Code tab. Opens the Properties panel beside the tab for that session, starting with what it is working on (Claude Code's latest recap and your last prompt), then a health check that says when the session is wearing out and what to do.",
+          "In the title bar of an agent's terminal tab. Opens the Properties panel beside the tab for that session, starting with what it is working on (the agent's latest recap, when it writes one, and your last prompt), then a health check that says when the session is wearing out and what to do.",
       },
     ],
   },
 ];
 
 export const SURFACE_MEANINGS: Readonly<Record<Surface, string>> = {
-  cli: 'The claude CLI in a terminal.',
-  sdk: 'A program built on the Agent SDK.',
+  cli: 'An agent CLI, such as claude or codex, in a terminal.',
+  sdk: 'A program built on the Claude Agent SDK.',
   overlord: 'A run the Launcher started.',
   'desktop-code': 'The Code tab in Claude Desktop.',
   cowork: 'A Cowork session in Claude Desktop.',
@@ -172,10 +172,15 @@ export const FLEET_COLUMNS: readonly Column[] = [
   { name: 'Tokens in/out', meaning: 'Input and output tokens so far.' },
   {
     name: 'Cache',
-    meaning: 'Share of input tokens read from the prompt cache. Higher is cheaper.',
+    meaning:
+      'Share of input tokens read from the prompt cache. Higher is cheaper. A dash means the agent does not report cache reads.',
   },
   { name: 'Context', meaning: 'How full the context window is.' },
-  { name: 'Cost', meaning: 'An estimate at list price, not your bill.' },
+  {
+    name: 'Cost',
+    meaning:
+      "An estimate at list price, or the agent's own figure when it reports one. It is not your bill. A dash means the agent gives no cost.",
+  },
   {
     name: 'Trend',
     meaning: 'Token growth over the last few updates. It needs three samples to draw.',
@@ -190,7 +195,11 @@ export const FLEET_STATS: readonly Column[] = [
   },
   { name: 'Subagents', meaning: 'Subagents running across every session.' },
   { name: 'Spend per hour', meaning: 'The estimated cost rate across the fleet.' },
-  { name: '5 hour and 7 day limit', meaning: 'How much of your plan limits you have used.' },
+  {
+    name: '5 hour and 7 day limit',
+    meaning:
+      "How much of Claude Code's plan limits you have used. Other agents' limits, such as Codex's, get a tile each with the agent's name.",
+  },
   { name: 'Resets in', meaning: 'Time until the 5 hour limit resets.' },
 ];
 
@@ -225,12 +234,12 @@ export const WORKFLOW: readonly WorkflowStep[] = [
   {
     title: 'Set up once',
     detail:
-      'Run "Overlord: Set Up Hooks and Telemetry" from the command palette. Hooks send permission requests and memory loads to Overlord, and telemetry gives it cost per request. Both write to ~/.claude/settings.json, so they stay off until you turn them on.',
+      'Install the agent CLIs you use (claude, codex or copilot) and sign in to each once in a terminal. Overlord finds them on your PATH. For Claude Code, run "Overlord: Set Up Hooks and Telemetry" from the command palette. Hooks send permission requests and memory loads to Overlord, and telemetry gives it cost per request. Both write to ~/.claude/settings.json, so they stay off until you turn them on.',
   },
   {
     title: 'Start the work',
     detail:
-      'For one session, click the sparkle and type to Claude in the tab that opens. To work in a project other than this window\'s, click Open project above the Fleet (or run "Overlord: Open Project..."), pick the project, then start a session there, open it in a new window, or add it to this one. The list holds every project Overlord has seen, even once its sessions are gone, and Choose a folder adds a new one. For a batch, open the Launcher, write the prompt, tick one or more profiles (each one gets its own run), tick "Own git worktree" so parallel runs do not stomp on each other, set a budget if you want one, and click Launch.',
+      'For one session, click the sparkle and type to Claude in the tab that opens. With more than one agent installed, New session above the Fleet starts the one you pick. To work in a project other than this window\'s, click Open project above the Fleet (or run "Overlord: Open Project..."), pick the project, then start a session there, open it in a new window, or add it to this one. The list holds every project Overlord has seen, even once its sessions are gone, and Choose a folder adds a new one. For a batch, open the Launcher, write the prompt, tick one or more profiles (each one gets its own run), tick "Own git worktree" so parallel runs do not stomp on each other, set a budget if you want one, and click Launch.',
   },
   {
     title: 'Watch the Fleet',
@@ -245,12 +254,12 @@ export const WORKFLOW: readonly WorkflowStep[] = [
   {
     title: 'Answer permissions',
     detail:
-      "A waiting session (!) is blocked on you. Click Allow or Deny in the yellow banner on the Fleet or in the Launcher inbox. For tools you always allow, add an auto-approve rule in the Launcher. A request you leave alone falls back to Claude Code's own prompt after 10 minutes.",
+      "A waiting session (!) is blocked on you. Click Allow or Deny in the yellow banner on the Fleet or in the Launcher inbox. For tools you always allow, add an auto-approve rule in the Launcher. Only agents with Permission inbox in the Agents table send requests here. A Claude Code request you leave alone falls back to Claude Code's own prompt after 10 minutes.",
   },
   {
     title: 'Dig in',
     detail:
-      "Under each session's title is a line on what it is working on: Claude Code's latest recap, or your last prompt when you asked for something after it. Clear Show working on in the View menu to hide it. Click a row to jump to the session's terminal, or click its Agent view button for the live feed. Click its magnifying glass for the Context Inspector, which shows what is in its context and why. On a Claude Code tab, the info button opens its properties beside it.",
+      "Under each session's title is a line on what it is working on: the agent's latest recap, or your last prompt when you asked for something after it. Clear Show working on in the View menu to hide it. Click a row to jump to the session's terminal, or click its Agent view button for the live feed. Click its magnifying glass for the Context Inspector, which shows what is in its context and why. On an agent's terminal tab, the info button opens its properties beside it.",
   },
   {
     title: 'Land the result',
@@ -260,7 +269,7 @@ export const WORKFLOW: readonly WorkflowStep[] = [
   {
     title: 'Pick it back up later',
     detail:
-      'All Sessions lists everything, including sessions from Desktop and the cloud. Use Continue, Open in Desktop, Remote control or Pull to local to pick a session up where you want it.',
+      'All Sessions lists everything, including Claude sessions from Desktop and the cloud. Use Continue, Open in Desktop, Remote control or Pull to local to pick a session up where you want it. Each agent only gets the buttons it supports.',
   },
   {
     title: 'Keep your machines in sync',

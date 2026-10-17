@@ -1,13 +1,17 @@
-// The help page: what every icon and badge means, where each view lives, and
-// how a day with Overlord usually goes, how a session lives and ends, and a map of where Overlord can grow. Badges render with the real
-// components, so the page cannot drift from what the other views show. The
-// search box in the header cuts the page down to what matches (help-search.ts).
+// The help page: what every icon and badge means, where each view lives, how
+// a day with Overlord usually goes, what works for each agent CLI, how a
+// Claude Code session lives and ends, and a map of where Overlord can grow.
+// Badges render with the real components, so the page cannot drift from what
+// the other views show. A section about something only some agents can do
+// shows only when a known agent can do it. The search box in the header cuts
+// the page down to what matches (help-search.ts).
 
 import type { ReactElement, ReactNode } from 'react';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 
+import type { AgentInfo } from '../../../src/shared/agents.js';
 import type { SessionPlace, SessionState, Surface } from '../../../src/shared/model.js';
-import type { HandoffKind } from '../../../src/shared/protocol.js';
+import { knownAgents, useAgents } from '../agents.js';
 import {
   Badge,
   PlaceMarker,
@@ -17,9 +21,10 @@ import {
 } from '../components/badge.js';
 import { Card } from '../components/card.js';
 import { Icon } from '../components/icon.js';
-import { PLACE_INFO, STATE_INFO, SURFACES, WINDOWLESS_INFO } from '../labels.js';
+import { PLACE_INFO, STATE_INFO, WINDOWLESS_INFO } from '../labels.js';
 
 import { STATUS_INFO, STATUS_ORDER } from './config-labels.js';
+import { AgentsSection, CLAUDE_SESSIONS_ID } from './help-agents.js';
 import type { Column, SidebarGroup } from './help-content.js';
 import {
   FLEET_COLUMNS,
@@ -31,20 +36,22 @@ import {
   WORKFLOW,
 } from './help-content.js';
 import { ExtendSection } from './help-extend.js';
+import {
+  agentNames,
+  HANDOFFS_ID,
+  offeredHandoffs,
+  shownSurfaces,
+  skippedSections,
+} from './help-gates.js';
 import { ROW_BUTTONS } from './help-row-buttons.js';
 import { SCREEN_MAP_ID, ScreenSection } from './help-screen.js';
+import { SearchBox } from './help-search-box.js';
 import { searchHelp } from './help-search.js';
 import { SessionsSection } from './help-sessions.js';
 import { HANDOFF_LABELS } from './sessions-view.js';
 
 const STATES: readonly SessionState[] = ['running', 'waiting', 'idle', 'done', 'failed', 'unknown'];
 const PLACES: readonly SessionPlace[] = ['vscode', 'terminal', 'background'];
-const HANDOFFS: readonly HandoffKind[] = [
-  'resume-local',
-  'open-desktop',
-  'teleport-local',
-  'remote-control',
-];
 
 type Row = readonly [key: string, first: ReactNode, meaning: string];
 
@@ -149,7 +156,7 @@ function WorkflowSection(): ReactElement {
   );
 }
 
-function SessionIcons(): ReactElement {
+function SessionIcons(props: { readonly agents: readonly AgentInfo[] }): ReactElement {
   return (
     <>
       <Section
@@ -198,12 +205,12 @@ function SessionIcons(): ReactElement {
       <Section
         id="help-surfaces"
         title="Surfaces"
-        intro="Which Claude product a session came from."
+        intro="Where a session came from. Any agent can run in a terminal or the Launcher, and the rest are Claude products."
       >
         <MeaningTable
           label="Surfaces"
           heading="Badge"
-          rows={SURFACES.map((surface: Surface): Row => [
+          rows={shownSurfaces(props.agents).map((surface: Surface): Row => [
             surface,
             <SurfaceBadge key={surface} surface={surface} />,
             SURFACE_MEANINGS[surface],
@@ -264,20 +271,23 @@ function FleetHelp(): ReactElement {
   );
 }
 
-function OtherBadges(): ReactElement {
+function OtherBadges(props: { readonly agents: readonly AgentInfo[] }): ReactElement {
+  const handoffs = offeredHandoffs(props.agents);
   return (
     <>
-      <Section
-        id="help-handoffs"
-        title="Handoff buttons"
-        intro="In All Sessions. Each session only gets the buttons that make sense for its surface."
-      >
-        <MeaningTable
-          label="Handoff buttons"
-          heading="Button"
-          rows={HANDOFFS.map((kind): Row => [kind, HANDOFF_LABELS[kind], HANDOFF_MEANINGS[kind]])}
-        />
-      </Section>
+      {handoffs.length === 0 ? null : (
+        <Section
+          id={HANDOFFS_ID}
+          title="Handoff buttons"
+          intro="In All Sessions. Each session only gets the buttons its agent and surface allow."
+        >
+          <MeaningTable
+            label="Handoff buttons"
+            heading="Button"
+            rows={handoffs.map((kind): Row => [kind, HANDOFF_LABELS[kind], HANDOFF_MEANINGS[kind]])}
+          />
+        </Section>
+      )}
       <Section
         id="help-config"
         title="Config badges"
@@ -304,8 +314,9 @@ function OtherBadges(): ReactElement {
 /** The sections in page order, for the links at the top. */
 const CONTENTS: readonly (readonly [id: string, title: string])[] = [
   ['help-workflow', 'A typical workflow'],
+  ['help-agents', 'Agents'],
   [SCREEN_MAP_ID, 'Where things are'],
-  ['help-sessions', 'How a session works'],
+  [CLAUDE_SESSIONS_ID, 'How a Claude Code session works'],
   ['help-sidebar', 'The sidebar'],
   ['help-states', 'Session states'],
   ['help-places', 'Where a session runs'],
@@ -316,14 +327,21 @@ const CONTENTS: readonly (readonly [id: string, title: string])[] = [
   ['help-extend', 'Extending Overlord'],
 ];
 
-/** The contents, cut down to the sections a search left showing. */
-function Contents(props: { readonly shown: ReadonlySet<string> | null }): ReactElement {
-  const { shown } = props;
+/**
+ * The contents, without the sections no known agent needs, cut down to the
+ * sections a search left showing.
+ */
+function Contents(props: {
+  readonly shown: ReadonlySet<string> | null;
+  readonly skipped: ReadonlySet<string>;
+}): ReactElement {
+  const { shown, skipped } = props;
+  const listed = CONTENTS.filter(([id]) => !skipped.has(id) && (shown === null || shown.has(id)));
   return (
     <nav className="help-toc" aria-label="On this page">
       <span className="muted">On this page</span>
       <ul>
-        {CONTENTS.filter(([id]) => shown === null || shown.has(id)).map(([id, title]) => (
+        {listed.map(([id, title]) => (
           <li key={id}>
             <a href={`#${id}`}>{title}</a>
           </li>
@@ -333,55 +351,20 @@ function Contents(props: { readonly shown: ReadonlySet<string> | null }): ReactE
   );
 }
 
-function isFindKey(event: KeyboardEvent): boolean {
-  return (event.metaKey || event.ctrlKey) && !event.altKey && event.key.toLowerCase() === 'f';
-}
-
-/** The search box. Cmd+F or Ctrl+F jumps to it, and Escape clears it. */
-function SearchBox(props: {
-  readonly query: string;
-  readonly onChange: (query: string) => void;
-}): ReactElement {
-  const input = useRef<HTMLInputElement>(null);
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent): void => {
-      if (isFindKey(event)) {
-        event.preventDefault();
-        input.current?.focus();
-        input.current?.select();
-      }
-    };
-    globalThis.addEventListener('keydown', onKey);
-    return (): void => {
-      globalThis.removeEventListener('keydown', onKey);
-    };
-  }, []);
-  return (
-    <div className="help-search" role="search">
-      <input
-        ref={input}
-        type="search"
-        aria-label="Search help"
-        placeholder="Search help: worktree, stop, badge…"
-        value={props.query}
-        onChange={(event) => {
-          props.onChange(event.target.value);
-        }}
-      />
-    </div>
-  );
-}
-
 export function HelpView(): ReactElement {
   const page = useRef<HTMLElement>(null);
+  // The list from the host keeps its identity between renders, so the search reruns only when it changes.
+  const sent = useAgents();
+  const agents = knownAgents(sent);
   const [query, setQuery] = useState('');
   const [shown, setShown] = useState<ReadonlySet<string> | null>(null);
+  const skipped = skippedSections(agents);
   useLayoutEffect(() => {
     if (page.current !== null) {
       const sections = searchHelp(page.current, query);
       setShown(query.trim() === '' ? null : sections);
     }
-  }, [query]);
+  }, [query, sent]);
   return (
     <article ref={page} className="help" aria-labelledby="help-title">
       <header className="view-header">
@@ -390,19 +373,21 @@ export function HelpView(): ReactElement {
         <SearchBox query={query} onChange={setQuery} />
       </header>
       <p className="help-lede">
-        Overlord runs a fleet of coding agents from VS Code. It launches a batch of prompts side by
-        side, each in its own git worktree, and shows every session and subagent you have running,
-        what is in their context, and every knob you can turn.
+        Overlord runs a fleet of coding agents from VS Code. It watches and starts sessions of{' '}
+        {agentNames(agents)}, launches a batch of prompts side by side, each in its own git
+        worktree, and shows every session and subagent you have running, what is in their context,
+        and every knob you can turn.
       </p>
-      <Contents shown={shown} />
+      <Contents shown={shown} skipped={skipped} />
       {shown?.size === 0 ? (
         <p className="empty-line muted" role="status">
           Nothing in help matches &quot;{query.trim()}&quot;.
         </p>
       ) : null}
       <WorkflowSection />
+      <AgentsSection />
       <ScreenSection />
-      <SessionsSection />
+      {skipped.has(CLAUDE_SESSIONS_ID) ? null : <SessionsSection />}
       <Section
         id="help-sidebar"
         title="The sidebar"
@@ -412,9 +397,9 @@ export function HelpView(): ReactElement {
           <SidebarTable key={group.title} group={group} />
         ))}
       </Section>
-      <SessionIcons />
+      <SessionIcons agents={agents} />
       <FleetHelp />
-      <OtherBadges />
+      <OtherBadges agents={agents} />
       <ExtendSection />
     </article>
   );
