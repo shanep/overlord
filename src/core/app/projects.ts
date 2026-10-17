@@ -39,6 +39,8 @@ interface RootCheck {
 export interface ProjectView {
   readonly projects: readonly ProjectSummary[];
   readonly sessionProjects: Readonly<Record<string, SessionProject>>;
+  /** The project of each checked workspace folder that is in one, without repeats. */
+  readonly workspaceProjects: readonly string[];
 }
 
 export interface SessionFolder {
@@ -80,8 +82,8 @@ export class ProjectIndex {
     return root === undefined ? null : resolveProject(this.current, cwd, root);
   }
 
-  /** Projects and each checked session's project, for the fleet. */
-  view(sessions: readonly SessionFolder[]): ProjectView {
+  /** Projects, each checked session's project and the workspace's projects, for the fleet. */
+  view(sessions: readonly SessionFolder[], workspace: readonly string[] = []): ProjectView {
     const sessionProjects: Record<string, SessionProject> = {};
     const roots: string[] = [];
     for (const session of sessions) {
@@ -94,7 +96,22 @@ export class ProjectIndex {
         roots.push(root);
       }
     }
-    return { projects: projectSummaries(this.current, roots), sessionProjects };
+    const workspaceProjects = new Set<string>();
+    for (const folder of workspace) {
+      const projectId = this.resolve(folder)?.projectId ?? null;
+      if (projectId !== null) {
+        workspaceProjects.add(projectId);
+      }
+      const root = this.rootOf(folder);
+      if (root !== undefined && root !== null) {
+        roots.push(root);
+      }
+    }
+    return {
+      projects: projectSummaries(this.current, roots),
+      sessionProjects,
+      workspaceProjects: [...workspaceProjects],
+    };
   }
 
   /** Read projects.json again, which another window may have changed. */

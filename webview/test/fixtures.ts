@@ -141,6 +141,7 @@ export const fleetState: FleetState = {
   places: { s1: 'vscode', s2: 'background' },
   projects: [],
   sessionProjects: {},
+  workspaceProjects: [],
   activeSessionId: null,
   activeVersion: 0,
   rateLimits: { fiveHourPct: 0.64, sevenDayPct: 0.2, resetsAt: NOW + 90 * MINUTE },

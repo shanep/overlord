@@ -79,6 +79,8 @@ export class FakeHost implements HostPort {
   readonly extensionPath: string;
   settings: OverlordSettings;
   workspace: string | null;
+  /** Workspace folders after the first, which is workspace. */
+  moreFolders: readonly string[] = [];
 
   constructor(options: FakeHostOptions) {
     this.storageDir = options.storageDir;
@@ -212,4 +214,9 @@ export class FakeHost implements HostPort {
   };
 
   readonly workspaceFolder = (): string | null => this.workspace;
+
+  readonly workspaceFolders = (): readonly string[] => [
+    ...(this.workspace === null ? [] : [this.workspace]),
+    ...this.moreFolders,
+  ];
 }

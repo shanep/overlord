@@ -157,7 +157,10 @@ async function askAbout(rt: Runtime, target: Placed): Promise<void> {
  */
 export async function checkProjects(rt: Runtime): Promise<void> {
   const { sessions } = fleetFor(rt);
-  await rt.projects.refresh(sessions.map((session) => session.cwd));
+  await rt.projects.refresh([
+    ...sessions.map((session) => session.cwd),
+    ...rt.host.workspaceFolders(),
+  ]);
   for (const session of sessions) {
     const project = session.cwd === '' ? null : rt.projects.resolve(session.cwd);
     if (

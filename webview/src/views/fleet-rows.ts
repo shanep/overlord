@@ -1,5 +1,5 @@
 // Pure logic for the fleet tree: build project, session and subagent rows,
-// sort, filter and flatten them for display.
+// sort and flatten them for display. fleet-filter.ts filters them.
 
 import type { HealthLevel } from '../../../src/shared/health.js';
 import type {
@@ -54,6 +54,8 @@ export interface FleetRow {
   readonly manualProjectId: string | null;
   /** On a project's row, the folder that opens in the window, or null while it has none. */
   readonly projectFolder: string | null;
+  /** On a project's row, true when this window's workspace holds it, so it stays listed with no running sessions. */
+  readonly inWorkspace: boolean;
   /** On a session's row, how worn out it is, or null when it is healthy or finished. */
   readonly health: Exclude<HealthLevel, 'good'> | null;
 }
@@ -122,6 +124,7 @@ function sessionRow(
     needsProject: project?.projectId === null && !project.ignored,
     manualProjectId: null,
     projectFolder: null,
+    inWorkspace: false,
     health: state.health[session.id] ?? null,
   };
 }
@@ -155,6 +158,7 @@ function agentRow(agent: AgentNode, session: FleetRow): FleetRow {
     needsProject: false,
     manualProjectId: null,
     projectFolder: null,
+    inWorkspace: false,
     health: null,
   };
 }
@@ -222,17 +226,23 @@ function mostUrgent(rows: readonly FleetRow[]): SessionState {
 /** What a project's row knows about the project itself. Unassigned has none of it, and no project has a health. */
 function projectFields(
   project: ProjectSummary | null,
-): Pick<FleetRow, 'projectId' | 'manualProjectId' | 'projectFolder' | 'health'> {
+  state: FleetState,
+): Pick<FleetRow, 'projectId' | 'manualProjectId' | 'projectFolder' | 'inWorkspace' | 'health'> {
   return {
     projectId: project?.id ?? null,
     manualProjectId: project?.kind === 'manual' ? project.id : null,
     projectFolder: project?.folder ?? null,
+    inWorkspace: project !== null && state.workspaceProjects.includes(project.id),
     health: null,
   };
 }
 
 /** A project's row: the most urgent state of its sessions and their totals. */
-function projectRow(project: ProjectSummary | null, nodes: readonly FleetNode[]): FleetRow {
+function projectRow(
+  project: ProjectSummary | null,
+  nodes: readonly FleetNode[],
+  state: FleetState,
+): FleetRow {
   const rows = nodes.map((node) => node.row);
   const title = project?.name ?? UNASSIGNED_TITLE;
   const costs = rows.flatMap((row) => (row.costUsd === null ? [] : [row.costUsd]));
@@ -251,7 +261,7 @@ function projectRow(project: ProjectSummary | null, nodes: readonly FleetNode[])
     summary: null,
     model: null,
     effort: null,
-    startedAt: Math.min(...rows.map((row) => row.startedAt)),
+    startedAt: rows.length === 0 ? 0 : Math.min(...rows.map((row) => row.startedAt)),
     endedAt: null,
     currentTool: null,
     toolCalls: total(rows.map((row) => row.toolCalls)),
@@ -261,23 +271,29 @@ function projectRow(project: ProjectSummary | null, nodes: readonly FleetNode[])
     contextFill: null,
     costUsd: costs.length === 0 ? null : total(costs),
     needsProject: rows.some((row) => row.needsProject),
-    ...projectFields(project),
+    ...projectFields(project, state),
   };
 }
 
 /**
  * Sessions under one row per project, Unassigned first and the rest by name.
- * A session whose project is not in the list waits in Unassigned.
+ * A session whose project is not in the list waits in Unassigned. A project
+ * in this window's workspace gets a row even with no sessions.
  */
 function groupByProject(sessions: readonly FleetNode[], state: FleetState): FleetNode[] {
   const byId = new Map(state.projects.map((project) => [project.id, project]));
   const groups = new Map<ProjectSummary | null, FleetNode[]>();
+  for (const project of state.projects) {
+    if (state.workspaceProjects.includes(project.id)) {
+      groups.set(project, []);
+    }
+  }
   for (const node of sessions) {
     const project = byId.get(node.row.projectId ?? '') ?? null;
     groups.set(project, [...(groups.get(project) ?? []), node]);
   }
   return [...groups]
-    .map(([project, children]) => ({ row: projectRow(project, children), children }))
+    .map(([project, children]) => ({ row: projectRow(project, children, state), children }))
     .toSorted(
       (left, right) =>
         Number(left.row.projectId !== null) - Number(right.row.projectId !== null) ||
@@ -294,7 +310,7 @@ export function buildFleetTree(state: FleetState, grouped = false): FleetNode[] 
   return grouped ? groupByProject(sessions, state) : sessions;
 }
 
-function placeLabel(row: FleetRow): string {
+export function placeLabel(row: FleetRow): string {
   return row.place === null ? '' : PLACE_INFO[row.place].label;
 }
 
@@ -364,50 +380,6 @@ export function sortTree(
         );
   };
   return sortLevel(nodes);
-}
-
-export interface FleetFilter {
-  readonly text: string;
-  readonly hideDone: boolean;
-}
-
-/** Case insensitive match on the text a person would type to find a row. A project matches on its name and folder. */
-export function rowMatches(row: FleetRow, needle: string): boolean {
-  if (row.kind === 'project') {
-    return `${row.title} ${row.detail}`.toLowerCase().includes(needle);
-  }
-  const haystack = [
-    row.title,
-    row.detail,
-    row.summary ?? '',
-    row.model ?? '',
-    row.state,
-    SURFACE_LABELS[row.surface],
-    placeLabel(row),
-    row.currentTool ?? '',
-  ]
-    .join(' ')
-    .toLowerCase();
-  return haystack.includes(needle);
-}
-
-/**
- * Keep a node when it matches, with its whole subtree, or when any
- * descendant matches, with just the matching branches. Hide done drops
- * done rows at every level first.
- */
-export function filterTree(nodes: readonly FleetNode[], filter: FleetFilter): FleetNode[] {
-  const needle = filter.text.trim().toLowerCase();
-  const visit = (level: readonly FleetNode[], inherited: boolean): FleetNode[] =>
-    level.flatMap((node) => {
-      if (filter.hideDone && node.row.state === 'done') {
-        return [];
-      }
-      const matched = inherited || rowMatches(node.row, needle);
-      const children = visit(node.children, matched);
-      return matched || children.length > 0 ? [{ row: node.row, children }] : [];
-    });
-  return visit(nodes, needle === '');
 }
 
 interface FlattenContext {

@@ -49,6 +49,7 @@ describe('ProjectIndex', () => {
     expect(index.view([{ id: 's1', cwd: '/repo' }])).toStrictEqual({
       projects: [],
       sessionProjects: {},
+      workspaceProjects: [],
     });
     await index.refresh(['/repo/src', '/notes', '']);
     expect(onChange).toHaveBeenCalledTimes(1);
@@ -67,6 +68,7 @@ describe('ProjectIndex', () => {
         s1: { projectId: 'git:/repo', folder: '/repo', ignored: false },
         s2: { projectId: null, folder: '/notes', ignored: false },
       },
+      workspaceProjects: [],
     });
   });
 
@@ -79,6 +81,14 @@ describe('ProjectIndex', () => {
     expect(index.view([]).projects).toStrictEqual([
       { id: 'git:/repo', name: 'repo', kind: 'git', folder: '/repo' },
     ]);
+  });
+
+  it('names the projects of the workspace folders it has checked, once each', async () => {
+    const { index } = await harness();
+    await index.refresh(['/repo/src', '/repo', '/notes']);
+    const view = index.view([], ['/repo', '/repo/src', '/notes', '/unseen']);
+    expect(view.workspaceProjects).toStrictEqual(['git:/repo']);
+    expect(view.projects.map((project) => project.id)).toStrictEqual(['git:/repo']);
   });
 
   it('reports a repository it could not remember and still tells panels', async () => {

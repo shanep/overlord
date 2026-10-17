@@ -92,6 +92,8 @@ export interface FleetState {
   readonly projects: readonly ProjectSummary[];
   /** Each session's project by session id. Sessions whose folder is still being checked are left out. */
   readonly sessionProjects: Readonly<Record<string, SessionProject>>;
+  /** The projects of this window's workspace folders, which the fleet lists even with no sessions. */
+  readonly workspaceProjects: readonly string[];
   readonly rateLimits: RateLimits;
   /** Spend per hour over the last hour, all sessions. */
   readonly spendPerHourUsd: number;

@@ -131,6 +131,8 @@ export interface HostPort {
     env: Readonly<Record<string, string>>,
   ) => Promise<Record<string, string>>;
   readonly workspaceFolder: () => string | null;
+  /** Every folder in this window's workspace, the first one first. */
+  readonly workspaceFolders: () => readonly string[];
   /** The extension's global storage folder. */
   readonly storageDir: string;
   readonly extensionPath: string;

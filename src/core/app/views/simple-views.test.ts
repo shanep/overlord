@@ -35,7 +35,7 @@ import { buildKnobs, EMPTY_KNOBS, loadKnobs, loadProfiles } from './knobs.js';
 import { loadUsage } from './usage.js';
 
 function noProjects(): ProjectView {
-  return { projects: [], sessionProjects: {} };
+  return { projects: [], sessionProjects: {}, workspaceProjects: [] };
 }
 
 function store(bus: EventBus): OverlordStore {
@@ -74,6 +74,7 @@ describe('fleet view', () => {
       activeSessionId: null,
       activeVersion: 3,
       workspaceFolder: '/repos/app',
+      workspaceFolders: [],
       jobs: [],
       projects: noProjects,
       statuses: {},
@@ -148,6 +149,7 @@ describe('fleet view', () => {
       activeSessionId: 's1',
       activeVersion: 0,
       workspaceFolder: null,
+      workspaceFolders: [],
       jobs: [],
       projects: noProjects,
       statuses: {},
@@ -171,6 +173,7 @@ describe('fleet view', () => {
       'sessionProjects',
       'sessions',
       'spendPerHourUsd',
+      'workspaceProjects',
     ]);
   });
 
@@ -235,6 +238,7 @@ describe('fleet view', () => {
       activeSessionId: null,
       activeVersion: 0,
       workspaceFolder: null,
+      workspaceFolders: [],
       jobs,
       projects: noProjects,
       statuses: {},
@@ -299,6 +303,7 @@ describe('fleet view', () => {
         activeSessionId: null,
         activeVersion: 0,
         workspaceFolder: null,
+        workspaceFolders: [],
         jobs: [],
         projects: noProjects,
         statuses: {},

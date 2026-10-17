@@ -3,20 +3,19 @@ import { describe, expect, it } from 'vitest';
 import type { FleetState } from '../../../src/shared/protocol.js';
 import { agent, fleetState, NOW, projectFleet, session } from '../../test/fixtures.js';
 
+import { filterTree, rowMatches } from './fleet-filter.js';
 import type { FleetNode, FleetRow } from './fleet-rows.js';
 import {
   buildFleetTree,
   collapsedGroupOf,
   DEFAULT_SORT,
   elapsedMs,
-  filterTree,
   flattenTree,
   isSortState,
   nextFleetSort,
   normalizeRatio,
   rowCallsPerMinute,
   projectKey,
-  rowMatches,
   sortTree,
 } from './fleet-rows.js';
 
@@ -109,6 +108,29 @@ describe('buildFleetTree grouped by project', () => {
     ]);
   });
 
+  it('lists a project in the workspace even with no sessions', () => {
+    const state = only({ ...projectFleet, workspaceProjects: ['m2', 'git:/r/web'] });
+    const tree = buildFleetTree(state, true);
+    expect(keys(tree)).toStrictEqual(['p:', 'p:m1', 'p:m2', 'p:git:/r/web']);
+    expect(tree.map((node) => node.row.inWorkspace)).toStrictEqual([false, false, true, true]);
+    expect(tree[2]).toMatchObject({
+      row: { title: 'Empty', detail: '0 sessions', state: 'done', startedAt: 0 },
+      children: [],
+    });
+    expect(keys(buildFleetTree(state))).toStrictEqual(['s:s1', 's:s2', 's:s3']);
+  });
+
+  it('keeps a project in the workspace when hide done hides all its sessions', () => {
+    const state = only({ ...projectFleet, workspaceProjects: ['m1', 'm2'] });
+    const result = filterTree(buildFleetTree(state, true), { text: '', hideDone: true });
+    expect(keys(result)).toStrictEqual(['p:', 'p:m1', 'p:m2', 'p:git:/r/web']);
+    expect(result[1]?.children).toStrictEqual([]);
+    const away = filterTree(buildFleetTree(projectFleet, true), { text: '', hideDone: true });
+    expect(keys(away)).toStrictEqual(['p:', 'p:git:/r/web']);
+    const typed = filterTree(buildFleetTree(state, true), { text: 'web', hideDone: true });
+    expect(keys(typed)).toStrictEqual(['p:git:/r/web']);
+  });
+
   it('puts a session whose project is gone in Unassigned', () => {
     const state = only({
       ...projectFleet,
@@ -181,6 +203,7 @@ describe('buildFleetTree', () => {
       needsProject: false,
       manualProjectId: null,
       projectFolder: null,
+      inWorkspace: false,
       health: null,
     });
     const worn = buildFleetTree({ ...fleetState, health: { s1: 'watch' } });

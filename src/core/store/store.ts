@@ -133,7 +133,13 @@ export class OverlordStore {
     now: number,
   ): Omit<
     FleetState,
-    'places' | 'activeSessionId' | 'activeVersion' | 'projects' | 'sessionProjects' | 'health'
+    | 'places'
+    | 'activeSessionId'
+    | 'activeVersion'
+    | 'projects'
+    | 'sessionProjects'
+    | 'workspaceProjects'
+    | 'health'
   > {
     return {
       sessions: [...this.sessions.values()].toSorted(

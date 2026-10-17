@@ -268,6 +268,8 @@ export function createVscodeHostPort(options: VscodeHostPortOptions): HostPort {
       : { resolveBridgeEnv: options.resolveBridgeEnv }),
     workspaceFolder: (): string | null =>
       vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? null,
+    workspaceFolders: (): readonly string[] =>
+      (vscode.workspace.workspaceFolders ?? []).map((folder) => folder.uri.fsPath),
     storageDir: context.globalStorageUri.fsPath,
     extensionPath: context.extensionUri.fsPath,
     get settings(): OverlordSettings {

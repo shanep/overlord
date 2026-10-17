@@ -224,7 +224,7 @@ export const WORKFLOW: readonly WorkflowStep[] = [
   {
     title: 'Group by project',
     detail:
-      'Sessions sit under a row for their project, with its totals. A git repository is a project on its own, and its worktrees count as the repository. A session in any other folder lands in Unassigned with a No project badge, and the window running it asks once where it belongs: add it to a project, make a new one, or never ask about that folder. Click a project row or press Enter on it to fold it. The sparkle on a project row starts a new session in it. For the plain list, open the View menu above the Fleet and clear Group by project. The same menu has Hide done, which puts a dot on the View button while finished sessions are hidden.',
+      'Sessions sit under a row for their project, with its totals. A git repository is a project on its own, and its worktrees count as the repository. A session in any other folder lands in Unassigned with a No project badge, and the window running it asks once where it belongs: add it to a project, make a new one, or never ask about that folder. A project whose folder is in the workspace of this window stays listed with no running sessions, and Hide done never hides it. Click a project row or press Enter on it to fold it. The sparkle on a project row starts a new session in it. For the plain list, open the View menu above the Fleet and clear Group by project. The same menu has Hide done, which puts a dot on the View button while finished sessions are hidden.',
   },
   {
     title: 'Answer permissions',

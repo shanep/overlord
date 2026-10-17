@@ -147,11 +147,16 @@ export interface FleetInputs {
   readonly activeVersion: number;
   /** This window's workspace folder, whose session is highlighted when no terminal says otherwise. */
   readonly workspaceFolder: string | null;
+  /** Every folder in this window's workspace, whose projects stay listed with no sessions. */
+  readonly workspaceFolders: readonly string[];
   readonly jobs: readonly BackgroundJob[];
   /** Busy, idle or waiting from Claude Code's session registry, by session id. */
   readonly statuses: Readonly<Record<string, RegistryStatus>>;
-  /** The projects, and the project of each session whose folder has been checked. */
-  readonly projects: (sessions: readonly SessionFolder[]) => ProjectView;
+  /** The projects, and the project of each session and workspace folder that has been checked. */
+  readonly projects: (
+    sessions: readonly SessionFolder[],
+    workspace: readonly string[],
+  ) => ProjectView;
 }
 
 function newest(sessions: readonly SessionSummary[]): string | null {
@@ -207,7 +212,7 @@ export function buildFleet(input: FleetInputs): FleetState {
     input.statuses,
     input.pending,
   );
-  const projects = input.projects(sessions);
+  const projects = input.projects(sessions, input.workspaceFolders);
   return {
     sessions,
     agents: base.agents,
@@ -215,6 +220,7 @@ export function buildFleet(input: FleetInputs): FleetState {
     places: input.places,
     projects: projects.projects,
     sessionProjects: projects.sessionProjects,
+    workspaceProjects: projects.workspaceProjects,
     activeSessionId: input.activeSessionId ?? windowSession(sessions, input.workspaceFolder),
     activeVersion: input.activeVersion,
     rateLimits: withPlanLimits(normalizeRateLimits(base.rateLimits), input.plan),
@@ -233,9 +239,10 @@ export function fleetFor(rt: Runtime): FleetState {
     activeSessionId: rt.places.activeSession(),
     activeVersion: rt.places.activeVersion,
     workspaceFolder: rt.host.workspaceFolder(),
+    workspaceFolders: rt.host.workspaceFolders(),
     jobs: rt.jobs.value,
     statuses: rt.places.statuses,
-    projects: (sessions) => rt.projects.view(sessions),
+    projects: (sessions, workspace) => rt.projects.view(sessions, workspace),
   });
 }
 

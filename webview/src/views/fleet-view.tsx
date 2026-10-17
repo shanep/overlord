@@ -17,6 +17,7 @@ import { isBoolean, isString, isStringArray } from '../guards.js';
 import { usePersistentState, usePostAction } from '../vscode-context.js';
 
 import type { ProjectAction, RowEvent } from './fleet-actions.js';
+import { filterTree } from './fleet-filter.js';
 import type { PermissionChoice } from './fleet-header.js';
 import { FleetHeader, PermissionBanner } from './fleet-header.js';
 import { historySamples, useRowHistory } from './fleet-history.js';
@@ -27,7 +28,6 @@ import {
   buildFleetTree,
   collapsedGroupOf,
   DEFAULT_SORT,
-  filterTree,
   flattenTree,
   isSortState,
   nextFleetSort,
