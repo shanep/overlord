@@ -1964,6 +1964,33 @@ details.panel[open] > summary,
   list-style: none;
 }
 
+/* A sortable table framed like a card, so it sits well next to card grids. */
+.table-card {
+  overflow-x: auto;
+  padding: 2px 8px 4px;
+  border: 1px solid var(--ov-border);
+  border-radius: 6px;
+  background: var(--vscode-editorWidget-background, var(--ov-panel));
+}
+
+/* A checkbox drawn as a pill you toggle, for picking several of a few options. */
+.pill-check {
+  gap: 6px;
+  padding: 2px 10px;
+  border: 1px solid var(--ov-border);
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.pill-check input[type='checkbox'] {
+  margin: 0;
+}
+
+.pill-check:has(input:checked) {
+  border-color: var(--ov-focus);
+  background: var(--ov-inactive-selected);
+}
+
 /* ---- Sessions --------------------------------------------------------------- */
 
 .sessions-filter {
@@ -2106,6 +2133,252 @@ details.panel[open] > summary,
 
 .prompt-blocks > details > pre {
   margin: 0 12px 8px;
+}
+
+/* ---- Knobs ---------------------------------------------------------------- */
+
+.knob-filters {
+  margin: 12px 0;
+}
+
+.knob-search {
+  display: flex;
+  flex: 1 1 260px;
+  max-width: 480px;
+}
+
+.knob-search input[type='search'] {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 8px;
+}
+
+.knob-file {
+  min-width: 0;
+  overflow: hidden;
+  padding-left: 16px;
+  font-size: 0.9em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.knob-file .link-button {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.knob-area {
+  margin: 8px 0;
+}
+
+.knob-area .area-heading {
+  font-size: 1em;
+}
+
+.knob-summary {
+  margin: 0;
+}
+
+.knob-list {
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.knob-row {
+  padding: 6px 0;
+  border-top: 1px solid var(--ov-border);
+}
+
+.knob-row-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+}
+
+.knob-row-head .spacer {
+  flex: 1;
+}
+
+.knob-key {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.knob-value {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.knob-value .mono {
+  overflow-wrap: anywhere;
+}
+
+/* Lines the description up under the key, past the twisty and the dot. Two lines until opened. */
+.knob-description {
+  display: -webkit-box;
+  margin: 2px 0 0;
+  padding-left: calc(1.2em + 20px);
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.knob-open .knob-description {
+  display: block;
+}
+
+.knob-detail {
+  margin: 8px 0 4px calc(1.2em + 6px);
+  padding: 8px 10px;
+  border-left: 2px solid var(--ov-focus);
+  border-radius: 0 4px 4px 0;
+  background: var(--ov-hover);
+}
+
+.knob-edit,
+.knob-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.profile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 10px;
+}
+
+fieldset.profile-card {
+  margin: 0;
+}
+
+/* A float pulls the legend inside the card's border, so it reads as the card's title. */
+.profile-card > legend {
+  float: left;
+  width: 100%;
+  margin-bottom: 6px;
+  padding: 0;
+}
+
+.profile-card > .form-grid {
+  clear: both;
+}
+
+.profile-env {
+  align-items: stretch;
+}
+
+/* ---- Config and sync ------------------------------------------------------ */
+
+.config-repo {
+  margin: 8px 0;
+}
+
+.config-repo .stats {
+  gap: 6px 20px;
+  padding-left: 16px;
+}
+
+.config-repo .stats dd {
+  overflow-wrap: anywhere;
+}
+
+.config-path,
+.config-link {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.config-path {
+  font-size: 0.9em;
+}
+
+.config-path .link-button {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.config-link {
+  margin: 0;
+  font-size: 0.85em;
+}
+
+/* ---- Launcher ------------------------------------------------------------- */
+
+.launcher .view-header {
+  align-items: center;
+}
+
+.launch-card {
+  margin: 8px 0 16px;
+  padding: 12px 16px;
+}
+
+.launch-title {
+  margin: 0;
+}
+
+.launch-step {
+  margin: 12px 0 4px;
+  font-size: 0.95em;
+}
+
+.launch-card .field {
+  align-items: stretch;
+}
+
+.launch-card .field > input[type='text'] {
+  width: min(100%, 60ch);
+}
+
+.launch-draft {
+  margin: 4px 0 8px;
+}
+
+.launch-profiles {
+  margin: 4px 0;
+}
+
+.launch-limits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+}
+
+.launch-actions {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--ov-border);
+}
+
+.launch-indent {
+  padding-left: 16px;
+}
+
+.rule-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 4px;
+  padding: 8px 0 4px;
+  border-top: 1px solid var(--ov-border);
 }
 
 /* ---- Connectors ----------------------------------------------------------- */

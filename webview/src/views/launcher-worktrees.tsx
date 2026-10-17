@@ -144,7 +144,7 @@ export function WorktreesTable(props: {
   const overlapping = worktrees.filter((item) => item.overlaps.length > 0).length;
   return (
     <section className="section" aria-labelledby="worktrees-heading">
-      <div className="toolbar">
+      <div className="list-bar">
         <h2 id="worktrees-heading">Worktrees</h2>
         <span className="muted">
           {worktrees.length} open
@@ -156,13 +156,15 @@ export function WorktreesTable(props: {
         a session in it to look around, Land puts its commits on the default branch, and Discard
         throws it away.
       </p>
-      <DataTable
-        caption="Worktrees"
-        columns={COLUMNS}
-        rows={worktrees}
-        rowKey={(item) => item.id}
-        empty="No worktrees. Each new session and run gets its own."
-      />
+      <div className="table-card">
+        <DataTable
+          caption="Worktrees"
+          columns={COLUMNS}
+          rows={worktrees}
+          rowKey={(item) => item.id}
+          empty="No worktrees. Each new session and run gets its own."
+        />
+      </div>
     </section>
   );
 }

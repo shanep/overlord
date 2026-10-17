@@ -11,7 +11,7 @@ import { KnobsView } from './knobs-view.js';
 
 const ALL_AREAS = ['model', 'thinking', 'permissions', 'bash', 'sessions', 'ui', 'other'];
 
-function region(name: string): HTMLElement {
+function region(name: string | RegExp): HTMLElement {
   return screen.getByRole('region', { name });
 }
 
@@ -389,7 +389,7 @@ describe('KnobsView', () => {
     await userEvent.click(screen.getByRole('button', { name: 'zeta' }));
     expect(within(region('zeta')).getByText('1 key')).toBeDefined();
     // Only the row's own description, since an unknown area has no summary line.
-    expect(region('zeta').querySelectorAll('p.muted')).toHaveLength(1);
+    expect(region('zeta').querySelectorAll('p.card-text')).toHaveLength(1);
   });
 
   it('lists the settings files and opens one that exists', async () => {
@@ -401,7 +401,7 @@ describe('KnobsView', () => {
       ],
     };
     const { api } = renderView(<KnobsView state={state} />);
-    const files = within(region('Settings files'));
+    const files = within(region(/^Settings files/u));
     expect(files.getByText('/etc/managed.json (not created yet)')).toBeDefined();
     expect(files.getByRole('alert').textContent).toContain('Bad JSON');
     await userEvent.click(files.getByRole('button', { name: '/Users/dev/.claude/settings.json' }));
@@ -414,11 +414,11 @@ describe('KnobsView', () => {
     const { api } = renderView(<KnobsView state={knobsState} />);
     await userEvent.click(screen.getByRole('button', { name: 'Launch profiles (2)' }));
     expect(screen.getByRole('heading', { name: 'Launch profiles' })).toBeDefined();
-    expect(screen.queryByRole('region', { name: 'Settings files' })).toBeNull();
+    expect(screen.queryByRole('region', { name: /^Settings files/u })).toBeNull();
     await userEvent.click(screen.getByRole('button', { name: 'Feature flags (2)' }));
     expect(screen.getByRole('table', { name: 'Cached feature flags, read only' })).toBeDefined();
     expect(api.saved).toStrictEqual({ 'knobs.tab': 'flags' });
     await userEvent.click(screen.getByRole('button', { name: 'Keys' }));
-    expect(region('Settings files')).toBeDefined();
+    expect(region(/^Settings files/u)).toBeDefined();
   });
 });

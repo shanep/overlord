@@ -62,10 +62,10 @@ describe('ConfigView', () => {
     expect(getByText('Behind').nextElementSibling?.textContent).toBe('1');
     expect(getByText('Changed files').nextElementSibling?.textContent).toBe('3');
     expect(getByText('6 items')).toBeDefined();
-    const skills = getByRole('table', { name: 'Skills' });
+    const skills = getByRole('list', { name: /^Skills \d/u });
     expect(within(skills).getByText('external repo')).toBeDefined();
     expect(within(skills).getByText('links to /Users/dev/repos/edutools/skill')).toBeDefined();
-    expect(within(getByRole('table', { name: 'Agents' })).getByText('none')).toBeDefined();
+    expect(within(getByRole('list', { name: /^Agents \d/u })).getByText('none')).toBeDefined();
     expect(getByText('Badge legend')).toBeDefined();
     expect(getByText('Value lives in the OS keychain. The repo has a placeholder.')).toBeDefined();
     await expectAccessible(container);
@@ -119,13 +119,13 @@ describe('ConfigView', () => {
   it('filters by status, saves it, and shows an empty state', async () => {
     const { getByRole, queryByRole, api } = renderView(<ConfigView state={configState} />);
     await userEvent.selectOptions(getByRole('combobox', { name: 'Status' }), 'secret');
-    expect(getByRole('table', { name: 'MCP servers' })).toBeDefined();
-    expect(queryByRole('table', { name: 'Skills' })).toBeNull();
+    expect(getByRole('list', { name: /^MCP servers \d/u })).toBeDefined();
+    expect(queryByRole('list', { name: /^Skills \d/u })).toBeNull();
     expect(api.saved).toStrictEqual({ 'config.status': 'secret' });
     await userEvent.selectOptions(getByRole('combobox', { name: 'Status' }), 'managed');
     expect(getByRole('status').textContent).toBe('No config items');
     await userEvent.selectOptions(getByRole('combobox', { name: 'Status' }), 'all');
-    expect(getByRole('table', { name: 'Skills' })).toBeDefined();
+    expect(getByRole('list', { name: /^Skills \d/u })).toBeDefined();
   });
 
   it('falls back to all for a value that is not a status', () => {
@@ -139,10 +139,10 @@ describe('ConfigView', () => {
       <ConfigView state={configState} />,
       new FakeApi({ 'config.status': 'built-in' }),
     );
-    expect(saved.getByRole('table', { name: 'Agents' })).toBeDefined();
-    expect(saved.queryByRole('table', { name: 'Skills' })).toBeNull();
+    expect(saved.getByRole('list', { name: /^Agents \d/u })).toBeDefined();
+    expect(saved.queryByRole('list', { name: /^Skills \d/u })).toBeNull();
     saved.unmount();
     const bad = renderView(<ConfigView state={configState} />, new FakeApi({ 'config.status': 9 }));
-    expect(bad.getByRole('table', { name: 'Skills' })).toBeDefined();
+    expect(bad.getByRole('list', { name: /^Skills \d/u })).toBeDefined();
   });
 });

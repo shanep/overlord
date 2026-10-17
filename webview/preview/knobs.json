@@ -1,0 +1,940 @@
+{
+  "catalog": [
+    {
+      "key": "CLAUDE_CODE_ALWAYS_ENABLE_EFFORT",
+      "kind": "env",
+      "area": "thinking",
+      "valueType": "boolean",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Set to 1 to send the effort parameter with every request, even when Claude Code does not recognize the model ID as effort-capable. Use this when routing through an LLM gateway or third-party provider that serves models under custom identifiers. Models that reject the effort parameter at the API, including Claude Opus 4.1, Claude Sonnet 4.5, Claude Haiku 4.5, and earlier models, are still excluded so requests do not fail",
+      "docUrl": "https://code.claude.com/docs/en/env-vars#variables",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING",
+      "kind": "env",
+      "area": "thinking",
+      "valueType": "boolean",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Set to 1 to disable adaptive reasoning on Opus 4.6 and Sonnet 4.6 and fall back to the fixed thinking budget controlled by MAX_THINKING_TOKENS. Has no effect on Fable models, Sonnet 5 and later, Haiku 5.5, or Opus 4.7 and later, which always use adaptive reasoning",
+      "docUrl": "https://code.claude.com/docs/en/env-vars#variables",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "CLAUDE_CODE_DISABLE_ADVISOR_TOOL",
+      "kind": "env",
+      "area": "thinking",
+      "valueType": "boolean",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Set to 1 to disable the advisor tool. The /advisor command becomes unavailable, any configured advisorModel is ignored, and the --advisor flag is accepted but has no effect, so existing scripts that pass it continue to work without errors",
+      "docUrl": "https://code.claude.com/docs/en/env-vars#variables",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "CLAUDE_CODE_DISABLE_THINKING",
+      "kind": "env",
+      "area": "thinking",
+      "valueType": "boolean",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Set to 1 to omit the thinking parameter from API requests entirely. This is a compatibility option for proxies and gateways that reject the parameter. On models that think by default, omitting the parameter means the model may still think. To explicitly disable extended thinking on the Anthropic API, use MAX_THINKING_TOKENS=0 instead. Neither variable turns thinking off on Opus 5.5, Sonnet 5.5, Haiku 5.5, or the Fable models, which can't have thinking turned off. On third-party providers, MAX_THINKING_TOKENS=0 likewise omits the parameter, so the two variables behave the same there",
+      "docUrl": "https://code.claude.com/docs/en/env-vars#variables",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "CLAUDE_CODE_EFFORT_LEVEL",
+      "kind": "env",
+      "area": "thinking",
+      "valueType": "string",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Set the effort level for supported models. Values: low, medium, high, xhigh, max, or auto to use the model default. Available levels depend on the model. Takes precedence over --effort, /effort, and the modelSettings and effortLevel settings. A maxEffortLevel cap still applies. See Adjust effort level",
+      "docUrl": "https://code.claude.com/docs/en/env-vars#variables",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "CLAUDE_EFFORT",
+      "kind": "env",
+      "area": "thinking",
+      "valueType": "string",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Set automatically in Bash tool subprocesses and hook commands to the effort level in effect when the subprocess starts: low, medium, high, xhigh, or max. Matches the effort.level field passed to hooks. Only set when the current model supports the effort parameter",
+      "docUrl": "https://code.claude.com/docs/en/env-vars#variables",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "DISABLE_INTERLEAVED_THINKING",
+      "kind": "env",
+      "area": "thinking",
+      "valueType": "boolean",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Set to 1 to prevent sending the interleaved-thinking beta header. Useful when your LLM gateway or provider does not support interleaved thinking",
+      "docUrl": "https://code.claude.com/docs/en/env-vars#variables",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "MAX_THINKING_TOKENS",
+      "kind": "env",
+      "area": "thinking",
+      "valueType": "number",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Fixed token budget for extended thinking. Claude Code caps it at one token below the request's max output tokens and never below 1,024. See CLAUDE_CODE_MAX_OUTPUT_TOKENS for how that limit is set. When unset and thinking is enabled, models with adaptive reasoning choose their own thinking depth, and other models use the cap. Set to 0 to disable thinking on the Anthropic API, except on Opus 5.5, Sonnet 5.5, Haiku 5.5, and the Fable models, which can't have thinking turned off. On third-party providers, 0 omits the thinking parameter instead. With thinking turned off on the Anthropic API, Claude Code sends effort high instead of a higher level to models it knows don't accept that combination, such as Opus 5. For a positive value, Claude Code ignores the number itself on adaptive reasoning models, except when CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING turns adaptive reasoning off",
+      "docUrl": "https://code.claude.com/docs/en/env-vars#variables",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "--advisor",
+      "kind": "flag",
+      "area": "thinking",
+      "valueType": "string",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Enable the server-side advisor tool for this session with a model alias, fable, opus, or sonnet, or a full model ID. Takes precedence over the advisorModel setting for the session. fable requires Fable access",
+      "docUrl": "https://code.claude.com/docs/en/cli-reference#cli-flags",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "advisorModel",
+      "kind": "setting",
+      "area": "thinking",
+      "valueType": "string",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Pick which model answers when Claude asks the advisor tool",
+      "docUrl": "https://code.claude.com/docs/en/settings-reference#advisormodel",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "alwaysThinkingEnabled",
+      "kind": "setting",
+      "area": "thinking",
+      "valueType": "boolean",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Turn extended thinking off for every session",
+      "docUrl": "https://code.claude.com/docs/en/settings-reference#alwaysthinkingenabled",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "effortLevel",
+      "kind": "setting",
+      "area": "thinking",
+      "valueType": "enum",
+      "defaultValue": null,
+      "allowed": ["low", "medium", "high", "xhigh"],
+      "description": "Set a default effort level for models without a saved level of their own",
+      "docUrl": "https://code.claude.com/docs/en/settings-reference#effortlevel",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "maxEffortLevel",
+      "kind": "setting",
+      "area": "thinking",
+      "valueType": "enum",
+      "defaultValue": null,
+      "allowed": ["low", "medium", "high", "xhigh", "max"],
+      "description": "Cap the effort level for every model or per model, on every provider",
+      "docUrl": "https://code.claude.com/docs/en/settings-reference#maxeffortlevel",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "showThinkingSummaries",
+      "kind": "setting",
+      "area": "thinking",
+      "valueType": "boolean",
+      "defaultValue": "false",
+      "allowed": [],
+      "description": "See summaries of Claude's thinking instead of a collapsed stub",
+      "docUrl": "https://code.claude.com/docs/en/settings-reference#showthinkingsummaries",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "CLAUDE_CODE_AUTO_MODE_SERVER",
+      "kind": "env",
+      "area": "permissions",
+      "valueType": "string",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Controls whether Claude Code asks the server to review auto mode actions. Set to 0 to use Claude Code's own classifier requests instead. On a direct connection to the Anthropic API, requires v2.1.281 or later. The linked section lists which sessions ask the server when the variable is unset, and from which version. Requires Claude Code v2.1.271 or later",
+      "docUrl": "https://code.claude.com/docs/en/env-vars#variables",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "CLAUDE_CODE_DISABLE_DANGEROUS_RM_TIMEOUT",
+      "kind": "env",
+      "area": "permissions",
+      "valueType": "boolean",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Set to 1 to turn off the time limit on critical-path removal prompts. In auto mode Claude Code then sends these removals to the classifier instead, and in bypassPermissions mode the prompt waits for your answer. Set it in the environment that launches Claude Code, since Claude Code ignores a copy delivered through a settings env block. Requires Claude Code v2.1.281 or later",
+      "docUrl": "https://code.claude.com/docs/en/env-vars#variables",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "CLAUDE_CODE_DISABLE_PERMISSION_PROMPT_NOTIFY_HOOKS",
+      "kind": "env",
+      "area": "permissions",
+      "valueType": "boolean",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Set to 1 to stop Claude Code from running your Notification hooks for unanswered permission requests in sessions where Claude Code sends them to the Agent SDK's canUseTool callback, which is how Claude Desktop and the VS Code extension host Claude Code. Has no effect in terminal sessions. Requires Claude Code v2.1.233 or later",
+      "docUrl": "https://code.claude.com/docs/en/env-vars#variables",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "CLAUDE_CODE_ENABLE_AUTO_MODE",
+      "kind": "env",
+      "area": "permissions",
+      "valueType": "boolean",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Accepted for compatibility with older releases and has no effect. Auto mode is available by default on every provider, including Amazon Bedrock, Google Cloud's Agent Platform, Microsoft Foundry, and signed-in Claude apps gateway sessions. In v2.1.158 through v2.1.206, setting this to 1 was required to make auto mode available on those providers",
+      "docUrl": "https://code.claude.com/docs/en/env-vars#variables",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "--allow-dangerously-skip-permissions",
+      "kind": "flag",
+      "area": "permissions",
+      "valueType": "boolean",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Add bypassPermissions to the Shift+Tab mode cycle without starting in it. Lets you begin in a different mode like plan and switch to bypassPermissions later. See permission modes",
+      "docUrl": "https://code.claude.com/docs/en/cli-reference#cli-flags",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "--allowedTools",
+      "kind": "flag",
+      "area": "permissions",
+      "valueType": "string",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Tools that execute without prompting for permission, apart from reads from network paths. See permission rule syntax for pattern matching. To restrict which tools are available, use --tools instead. If you name one of the task-tracking tools here, Claude Code also opts the session in (alias: --allowed-tools)",
+      "docUrl": "https://code.claude.com/docs/en/cli-reference#cli-flags",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "--dangerously-load-development-channels",
+      "kind": "flag",
+      "area": "permissions",
+      "valueType": "string",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Enable channels that are not on the approved allowlist, for local development. Accepts plugin:@ and server: entries. Prompts for confirmation, so it takes effect in interactive sessions. With -p, Claude Code ignores the flag",
+      "docUrl": "https://code.claude.com/docs/en/cli-reference#cli-flags",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "--dangerously-skip-permissions",
+      "kind": "flag",
+      "area": "permissions",
+      "valueType": "boolean",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Skip permission prompts. Equivalent to --permission-mode bypassPermissions. See permission modes for what this does and does not skip. For sessions started with --bg, the mode persists when the supervisor restarts the session",
+      "docUrl": "https://code.claude.com/docs/en/cli-reference#cli-flags",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "--disallowedTools",
+      "kind": "flag",
+      "area": "permissions",
+      "valueType": "string",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Deny rules. A bare tool name removes the matching tools from Claude's context: \"Edit\" removes Edit, \"*\" removes every tool, and \"mcp__*\" removes every MCP tool. A scoped rule such as Bash(rm *) leaves the tool available and denies only calls that match as written. A rule naming EndConversation can't remove it while any other tool remains (alias: --disallowed-tools)",
+      "docUrl": "https://code.claude.com/docs/en/cli-reference#cli-flags",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "--permission-mode",
+      "kind": "flag",
+      "area": "permissions",
+      "valueType": "enum",
+      "defaultValue": null,
+      "allowed": [
+        "default",
+        "acceptEdits",
+        "plan",
+        "auto",
+        "dontAsk",
+        "bypassPermissions",
+        "manual"
+      ],
+      "description": "Begin in a specified permission mode. Accepts default, acceptEdits, plan, auto, dontAsk, bypassPermissions, or manual as an alias for default. The manual alias selects the permission mode the UI labels Manual and requires Claude Code v2.1.200 or later; claude --help lists it in place of default, and both values work. Overrides defaultMode from settings files. Without this flag or --dangerously-skip-permissions, a new session starts in the permission mode described in which permission mode a session starts in, which also covers what a -p run starts in",
+      "docUrl": "https://code.claude.com/docs/en/cli-reference#cli-flags",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "--permission-prompt-tool",
+      "kind": "flag",
+      "area": "permissions",
+      "valueType": "string",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Specify an MCP tool to handle permission prompts in non-interactive mode. Claude Code waits for that tool's MCP server to connect before running the first turn, up to the MCP_TIMEOUT startup timeout, 30 seconds by default. The prompt tool can't approve an MCP tool marked as requiring user interaction: Claude Code converts an allow result for one to a deny. This restriction requires Claude Code v2.1.199 or later",
+      "docUrl": "https://code.claude.com/docs/en/cli-reference#cli-flags",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "--permission-prompts",
+      "kind": "flag",
+      "area": "permissions",
+      "valueType": "string",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Set who answers permission prompts in print mode. With the default host, Claude Code sends them to the Agent SDK host or the --permission-prompt-tool tool. Pass none when nobody can answer, and Claude Code denies them instead. See Turn off permission prompts in unattended runs. Requires Claude Code v2.1.259 or later",
+      "docUrl": "https://code.claude.com/docs/en/cli-reference#cli-flags",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "autoMode",
+      "kind": "setting",
+      "area": "permissions",
+      "valueType": "json",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Add your own allow and deny rules to the auto mode classifier",
+      "docUrl": "https://code.claude.com/docs/en/settings-reference#automode",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "disableAutoMode",
+      "kind": "setting",
+      "area": "permissions",
+      "valueType": "enum",
+      "defaultValue": null,
+      "allowed": ["disable"],
+      "description": "Remove auto mode from the permission mode cycle",
+      "docUrl": "https://code.claude.com/docs/en/settings-reference#disableautomode",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "permissionExplainerEnabled",
+      "kind": "setting",
+      "area": "permissions",
+      "valueType": "boolean",
+      "defaultValue": "true",
+      "allowed": [],
+      "description": "Removed in v2.1.257, together with the Ctrl+E command explanation on shell permission prompts",
+      "docUrl": "https://code.claude.com/docs/en/settings-reference#permissionexplainerenabled",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "permissions",
+      "kind": "setting",
+      "area": "permissions",
+      "valueType": "json",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Set allow, ask, and deny rules and the starting permission mode",
+      "docUrl": "https://code.claude.com/docs/en/settings-reference#permissions",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "permissions.additionalDirectories",
+      "kind": "setting",
+      "area": "permissions",
+      "valueType": "string[]",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Give Claude file access to directories outside the current one",
+      "docUrl": "https://code.claude.com/docs/en/settings-reference#permissions-additionaldirectories",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "permissions.allow",
+      "kind": "setting",
+      "area": "permissions",
+      "valueType": "string[]",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Approve listed tool uses without a prompt",
+      "docUrl": "https://code.claude.com/docs/en/settings-reference#permissions-allow",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "permissions.ask",
+      "kind": "setting",
+      "area": "permissions",
+      "valueType": "string[]",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Always prompt before listed tool uses",
+      "docUrl": "https://code.claude.com/docs/en/settings-reference#permissions-ask",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "permissions.blockReadsOutsideWorkingDirectories",
+      "kind": "setting",
+      "area": "permissions",
+      "valueType": "boolean",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Make the file tools refuse reads outside the working directories in every permission mode",
+      "docUrl": "https://code.claude.com/docs/en/settings-reference#permissions-blockreadsoutsideworkingdirectories",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "permissions.defaultMode",
+      "kind": "setting",
+      "area": "permissions",
+      "valueType": "enum",
+      "defaultValue": null,
+      "allowed": [
+        "default",
+        "acceptEdits",
+        "plan",
+        "auto",
+        "dontAsk",
+        "bypassPermissions",
+        "manual"
+      ],
+      "description": "Set the permission mode new sessions start in",
+      "docUrl": "https://code.claude.com/docs/en/settings-reference#permissions-defaultmode",
+      "appliesAt": "live",
+      "managedOnly": false
+    },
+    {
+      "key": "permissions.deny",
+      "kind": "setting",
+      "area": "permissions",
+      "valueType": "string[]",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Block listed tool uses, including reads of files that hold secrets",
+      "docUrl": "https://code.claude.com/docs/en/settings-reference#permissions-deny",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "permissions.disableBypassPermissionsMode",
+      "kind": "setting",
+      "area": "permissions",
+      "valueType": "enum",
+      "defaultValue": null,
+      "allowed": ["disable"],
+      "description": "Prevent anyone from entering bypassPermissions mode",
+      "docUrl": "https://code.claude.com/docs/en/settings-reference#permissions-disablebypasspermissionsmode",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "skipAutoPermissionPrompt",
+      "kind": "setting",
+      "area": "permissions",
+      "valueType": "boolean",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Skip the one-time notice Claude Code shows when you first enter auto mode yourself rather than through the built-in default",
+      "docUrl": "https://code.claude.com/docs/en/settings-reference#skipautopermissionprompt",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "skipDangerousModePermissionPrompt",
+      "kind": "setting",
+      "area": "permissions",
+      "valueType": "boolean",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Skip the confirmation dialog before bypassPermissions mode",
+      "docUrl": "https://code.claude.com/docs/en/settings-reference#skipdangerousmodepermissionprompt",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "useAutoModeDuringPlan",
+      "kind": "setting",
+      "area": "permissions",
+      "valueType": "boolean",
+      "defaultValue": "true",
+      "allowed": [],
+      "description": "Let the auto mode classifier review shell commands in plan mode; set false to get prompts instead",
+      "docUrl": "https://code.claude.com/docs/en/settings-reference#useautomodeduringplan",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "CLAUDE_CODE_ATTRIBUTION_HEADER",
+      "kind": "env",
+      "area": "git",
+      "valueType": "string",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Set to 0 to omit the attribution block, which carries the client version and a prompt fingerprint, from the start of the system prompt. Caching on a direct connection to the Anthropic API is unaffected either way. In some direct-connection setups, Claude Code keeps the block on auto mode classifier requests even when you set 0. In System prompt attribution block, check which connections and credentials this covers. Before v2.1.181 the block included a per-request token on custom base URLs and Microsoft Foundry connections, so on those versions set it to 0 when your LLM gateway caches on the request body or forwards requests to a third-party provider, or when you connect to Microsoft Foundry directly",
+      "docUrl": "https://code.claude.com/docs/en/env-vars#variables",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "CLAUDE_CODE_PERFORCE_MODE",
+      "kind": "env",
+      "area": "git",
+      "valueType": "boolean",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Set to 1 to enable Perforce-aware write protection. When set, Edit, Write, and NotebookEdit fail with a p4 edit hint if the target file lacks the owner-write bit, which Perforce clears on synced files until p4 edit opens them. This prevents Claude Code from bypassing Perforce change tracking",
+      "docUrl": "https://code.claude.com/docs/en/env-vars#variables",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "--from-pr",
+      "kind": "flag",
+      "area": "git",
+      "valueType": "number",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Open the session picker filtered to sessions linked to a specific pull request. Accepts a PR number, a GitHub or GitHub Enterprise PR URL, a GitLab merge request URL, or a Bitbucket pull request URL. Sessions are linked automatically when Claude creates the pull request",
+      "docUrl": "https://code.claude.com/docs/en/cli-reference#cli-flags",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "attribution",
+      "kind": "setting",
+      "area": "git",
+      "valueType": "json",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Customize the attribution Claude Code adds to commits and pull requests",
+      "docUrl": "https://code.claude.com/docs/en/settings-reference#attribution",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "attribution.commit",
+      "kind": "setting",
+      "area": "git",
+      "valueType": "string",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Change or hide the trailer Claude Code adds to commits",
+      "docUrl": "https://code.claude.com/docs/en/settings-reference#attribution-commit",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "attribution.pr",
+      "kind": "setting",
+      "area": "git",
+      "valueType": "string",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Change or hide the attribution line in pull request descriptions",
+      "docUrl": "https://code.claude.com/docs/en/settings-reference#attribution-pr",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "attribution.sessionUrl",
+      "kind": "setting",
+      "area": "git",
+      "valueType": "boolean",
+      "defaultValue": "true",
+      "allowed": [],
+      "description": "Omit the claude.ai session link from cloud and Remote Control commits",
+      "docUrl": "https://code.claude.com/docs/en/settings-reference#attribution-sessionurl",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "prStatusFooterEnabled",
+      "kind": "setting",
+      "area": "git",
+      "valueType": "boolean",
+      "defaultValue": "true",
+      "allowed": [],
+      "description": "Turn off the prompt footer's PR review status badge and the pull request check behind it",
+      "docUrl": "https://code.claude.com/docs/en/settings-reference#prstatusfooterenabled",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "prUrlTemplate",
+      "kind": "setting",
+      "area": "git",
+      "valueType": "string",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Point PR links at an internal code-review tool instead of github.com",
+      "docUrl": "https://code.claude.com/docs/en/settings-reference#prurltemplate",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "--betas",
+      "kind": "flag",
+      "area": "model",
+      "valueType": "string",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Beta headers to include in API requests (API key users only)",
+      "docUrl": "https://code.claude.com/docs/en/cli-reference#cli-flags",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "--fallback-model",
+      "kind": "flag",
+      "area": "model",
+      "valueType": "string",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Enable automatic fallback to the specified model(s) when the primary model is overloaded or not available, for example a retired model. Accepts a comma-separated list tried in order. See Fallback model chains. To persist a chain across sessions, use the fallbackModel setting, which this flag overrides",
+      "docUrl": "https://code.claude.com/docs/en/cli-reference#cli-flags",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "--model",
+      "kind": "flag",
+      "area": "model",
+      "valueType": "string",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Sets the model for the current session with a model alias such as sonnet, opus, haiku, or fable, or a model's full name. Overrides the model setting and ANTHROPIC_MODEL",
+      "docUrl": "https://code.claude.com/docs/en/cli-reference#cli-flags",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "availableModels",
+      "kind": "setting",
+      "area": "model",
+      "valueType": "string[]",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Restrict which models people can pick",
+      "docUrl": "https://code.claude.com/docs/en/settings-reference#availablemodels",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "enforceAvailableModels",
+      "kind": "setting",
+      "area": "model",
+      "valueType": "boolean",
+      "defaultValue": "false",
+      "allowed": [],
+      "description": "Keep the /model Default choice inside your availableModels allowlist",
+      "docUrl": "https://code.claude.com/docs/en/settings-reference#enforceavailablemodels",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "fallbackModel",
+      "kind": "setting",
+      "area": "model",
+      "valueType": "string[]",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Name backup models for when the primary is overloaded",
+      "docUrl": "https://code.claude.com/docs/en/settings-reference#fallbackmodel",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "fastMode",
+      "kind": "setting",
+      "area": "model",
+      "valueType": "boolean",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Turn fast mode on for sessions where it's available",
+      "docUrl": "https://code.claude.com/docs/en/settings-reference#fastmode",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "fastModePerSessionOptIn",
+      "kind": "setting",
+      "area": "model",
+      "valueType": "boolean",
+      "defaultValue": "false",
+      "allowed": [],
+      "description": "Require people to turn fast mode on each session",
+      "docUrl": "https://code.claude.com/docs/en/settings-reference#fastmodepersessionoptin",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "language",
+      "kind": "setting",
+      "area": "model",
+      "valueType": "string",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Have Claude respond in a language other than English",
+      "docUrl": "https://code.claude.com/docs/en/settings-reference#language",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "model",
+      "kind": "setting",
+      "area": "model",
+      "valueType": "string",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Change the model Claude Code starts with",
+      "docUrl": "https://code.claude.com/docs/en/settings-reference#model",
+      "appliesAt": "live",
+      "managedOnly": false
+    },
+    {
+      "key": "modelOverrides",
+      "kind": "setting",
+      "area": "model",
+      "valueType": "json",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Map model IDs to your provider's IDs, such as Bedrock ARNs",
+      "docUrl": "https://code.claude.com/docs/en/settings-reference#modeloverrides",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "modelPicker",
+      "kind": "setting",
+      "area": "model",
+      "valueType": "json",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Choose which models the /model picker lists, in your own order and with your own labels",
+      "docUrl": "https://code.claude.com/docs/en/settings-reference#modelpicker",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "ANTHROPIC_BETAS",
+      "kind": "env",
+      "area": "model",
+      "valueType": "string[]",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Comma-separated list of additional anthropic-beta header values to include in API requests. Claude Code already sends the beta headers it needs; use this to opt into an Anthropic API beta before Claude Code adds native support. Unlike the --betas flag, which requires API key authentication, this variable works with all auth methods including Claude.ai subscription",
+      "docUrl": "https://code.claude.com/docs/en/env-vars#variables",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "ANTHROPIC_CUSTOM_HEADERS",
+      "kind": "env",
+      "area": "model",
+      "valueType": "string",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Custom headers to add to requests (Name: Value format, newline-separated for multiple headers). If a name or value contains a character an HTTP header can't carry, such as a curly quote or a zero-width space, the request fails with an error that identifies the pair by position. Requires Claude Code v2.1.227 or later. Invalid request header value lists the exact character set and where the check runs. A value that sets a credential, org or tenant, routing, or API-behavior header, such as Authorization or Host, counts as a setting that needs approval when server-managed settings deliver it. From project or local settings, such a value follows the rules for when env values apply",
+      "docUrl": "https://code.claude.com/docs/en/env-vars#variables",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "ANTHROPIC_CUSTOM_MODEL_OPTION",
+      "kind": "env",
+      "area": "model",
+      "valueType": "string",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Model ID to add as a custom entry in the /model picker. Use this to make a non-standard or gateway-specific model selectable without replacing built-in aliases. See Model configuration",
+      "docUrl": "https://code.claude.com/docs/en/env-vars#variables",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "ANTHROPIC_CUSTOM_MODEL_OPTION_DESCRIPTION",
+      "kind": "env",
+      "area": "model",
+      "valueType": "string",
+      "defaultValue": "Custom model (<model-id>)",
+      "allowed": [],
+      "description": "Display description for the custom model entry in the /model picker. Defaults to Custom model () when not set",
+      "docUrl": "https://code.claude.com/docs/en/env-vars#variables",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    }
+  ],
+  "effective": [
+    {
+      "key": "effortLevel",
+      "value": "high",
+      "layer": "project",
+      "chain": [
+        {
+          "layer": "project",
+          "value": "high",
+          "file": "/Users/alex/code/storefront/.claude/settings.json"
+        },
+        {
+          "layer": "user",
+          "value": "medium",
+          "file": "/Users/alex/.claude/settings.json"
+        }
+      ]
+    },
+    {
+      "key": "alwaysThinkingEnabled",
+      "value": true,
+      "layer": "user",
+      "chain": [
+        {
+          "layer": "user",
+          "value": true,
+          "file": "/Users/alex/.claude/settings.json"
+        }
+      ]
+    },
+    {
+      "key": "env.MAX_THINKING_TOKENS",
+      "value": "31999",
+      "layer": "user",
+      "chain": [
+        {
+          "layer": "user",
+          "value": "31999",
+          "file": "/Users/alex/.claude/settings.json"
+        }
+      ]
+    },
+    {
+      "key": "model",
+      "value": "opus",
+      "layer": "user",
+      "chain": [
+        {
+          "layer": "user",
+          "value": "opus",
+          "file": "/Users/alex/.claude/settings.json"
+        }
+      ]
+    },
+    {
+      "key": "disableAutoMode",
+      "value": "disable",
+      "layer": "project-local",
+      "chain": [
+        {
+          "layer": "project-local",
+          "value": "disable",
+          "file": "/Users/alex/code/storefront/.claude/settings.local.json"
+        }
+      ]
+    },
+    {
+      "key": "env.STOREFRONT_STAGING",
+      "value": "1",
+      "layer": "project",
+      "chain": [
+        {
+          "layer": "project",
+          "value": "1",
+          "file": "/Users/alex/code/storefront/.claude/settings.json"
+        }
+      ]
+    }
+  ],
+  "profiles": [
+    {
+      "id": "p-opus",
+      "name": "Opus, high effort",
+      "model": "opus",
+      "effort": "high",
+      "permissionMode": "acceptEdits",
+      "env": {},
+      "extraArgs": ["--effort", "high"]
+    },
+    {
+      "id": "p-sonnet",
+      "name": "Sonnet, quick",
+      "model": "sonnet",
+      "effort": "low",
+      "permissionMode": null,
+      "env": {
+        "MAX_THINKING_TOKENS": "8000"
+      },
+      "extraArgs": []
+    }
+  ],
+  "files": [
+    {
+      "layer": "managed",
+      "file": "/Library/Application Support/ClaudeCode/managed-settings.json",
+      "exists": false,
+      "keys": 0,
+      "error": null
+    },
+    {
+      "layer": "project-local",
+      "file": "/Users/alex/code/storefront/.claude/settings.local.json",
+      "exists": true,
+      "keys": 1,
+      "error": null
+    },
+    {
+      "layer": "project",
+      "file": "/Users/alex/code/storefront/.claude/settings.json",
+      "exists": true,
+      "keys": 3,
+      "error": null
+    },
+    {
+      "layer": "user",
+      "file": "/Users/alex/.claude/settings.json",
+      "exists": true,
+      "keys": 12,
+      "error": null
+    }
+  ],
+  "featureFlags": {
+    "claude_auto_compact": true,
+    "claude_bash_sandbox": false,
+    "claude_max_parallel_tools": 8,
+    "claude_session_memory": {
+      "enabled": true,
+      "maxNotes": 40
+    }
+  }
+}

@@ -20,7 +20,7 @@ function DraftPicker(props: {
     return null;
   }
   return (
-    <div className="toolbar">
+    <div className="launch-draft">
       <label>
         Load draft
         <select
@@ -69,10 +69,10 @@ function ProfilePicker(props: {
     );
   }
   return (
-    <fieldset className="chips" aria-describedby="launch-profiles-hint">
+    <fieldset className="chips launch-profiles" aria-describedby="launch-profiles-hint">
       <legend className="visually-hidden">Profiles</legend>
       {profiles.map((profile) => (
-        <label key={profile.id}>
+        <label key={profile.id} className="pill-check">
           <input
             type="checkbox"
             checked={checked.includes(profile.id)}
@@ -121,10 +121,12 @@ export function LaunchFormView(props: {
     profileNames: selected.map((profile) => profile.name),
   });
   return (
-    <section className="section" aria-labelledby="launch-heading">
-      <h2 id="launch-heading">New run</h2>
+    <section className="card launch-card" aria-labelledby="launch-heading">
+      <h2 id="launch-heading" className="launch-title">
+        New run
+      </h2>
 
-      <h3>1. What should it do?</h3>
+      <h3 className="launch-step">1. What should it do?</h3>
       <DraftPicker
         drafts={drafts}
         onPick={(draft) => {
@@ -147,14 +149,14 @@ export function LaunchFormView(props: {
         A run works on its own until it finishes, so say what done looks like.
       </p>
 
-      <h3>2. Which profiles?</h3>
+      <h3 className="launch-step">2. Which profiles?</h3>
       <p id="launch-profiles-hint" className="hint">
         A profile is a saved model and settings. Each one you tick runs the same prompt, so you can
         compare them side by side. Tick none for 1 run with your usual settings.
       </p>
       <ProfilePicker profiles={profiles} checked={checked} onChange={setChecked} />
 
-      <h3>3. Where?</h3>
+      <h3 className="launch-step">3. Where?</h3>
       <label className="field">
         <span>Folder</span>
         <input
@@ -186,8 +188,8 @@ export function LaunchFormView(props: {
         other&apos;s. When a run finishes, land or discard its copy under Worktrees.
       </p>
 
-      <h3>4. Name and limit (optional)</h3>
-      <div className="toolbar">
+      <h3 className="launch-step">4. Name and limit (optional)</h3>
+      <div className="launch-limits">
         <label>
           Label
           <input
@@ -220,7 +222,16 @@ export function LaunchFormView(props: {
         <span id="launch-budget-hint">A budget stops a run once it has spent that much.</span>
       </p>
 
-      <div className="toolbar">
+      <div className="form-actions launch-actions">
+        <span id="launch-summary" className="muted">
+          {summary}
+        </span>
+        {budget.ok ? null : (
+          <span className="error-text" role="alert">
+            {budget.error}
+          </span>
+        )}
+        <span className="spacer" />
         <button
           type="button"
           className="primary"
@@ -232,14 +243,6 @@ export function LaunchFormView(props: {
         >
           Launch {runCountLabel(specs.length)}
         </button>
-        <span id="launch-summary" className="muted">
-          {summary}
-        </span>
-        {budget.ok ? null : (
-          <span className="error-text" role="alert">
-            {budget.error}
-          </span>
-        )}
       </div>
     </section>
   );

@@ -6,6 +6,8 @@ import type { ReactElement } from 'react';
 
 import type { KnobsState } from '../../../src/shared/protocol.js';
 import { Badge } from '../components/badge.js';
+import type { SegmentedOption } from '../components/card.js';
+import { Segmented } from '../components/card.js';
 import { EmptyState } from '../components/empty-state.js';
 import { formatValue } from '../format.js';
 import { isBoolean, isString, isStringArray } from '../guards.js';
@@ -32,10 +34,9 @@ export function FeatureFlags(props: {
   const entries = Object.entries(props.flags).toSorted((a, b) => a[0].localeCompare(b[0]));
   return (
     <section className="section" aria-labelledby="flags-heading">
-      <div className="toolbar">
-        <h2 id="flags-heading">Feature flags</h2>
-        <Badge label="read only" tone="warning" />
-      </div>
+      <h2 id="flags-heading" className="section-title">
+        Feature flags <Badge label="read only" tone="warning" />
+      </h2>
       <p className="muted">
         Read only. Claude Code rewrites this cache from the server, so edits would not stick.
       </p>
@@ -61,18 +62,6 @@ export function FeatureFlags(props: {
         </table>
       )}
     </section>
-  );
-}
-
-function PressButton(props: {
-  readonly label: string;
-  readonly pressed: boolean;
-  readonly onPress: () => void;
-}): ReactElement {
-  return (
-    <button type="button" className="press" aria-pressed={props.pressed} onClick={props.onPress}>
-      {props.label}
-    </button>
   );
 }
 
@@ -119,30 +108,19 @@ function KeysTab(props: {
   return (
     <div>
       <SettingsFiles files={state.files} />
-      <div className="toolbar">
-        <label>
-          Search
+      <div className="list-bar knob-filters">
+        <label className="knob-search">
+          <span className="visually-hidden">Search</span>
           <input
             type="search"
             value={query}
-            placeholder="key, area or text"
+            placeholder="Search keys, areas or descriptions"
             onChange={(event) => {
               setQuery(event.target.value);
             }}
           />
         </label>
-        <div role="group" aria-label="Kind" className="chips">
-          {KIND_FILTERS.map((item) => (
-            <PressButton
-              key={item.value}
-              label={item.label}
-              pressed={kind === item.value}
-              onPress={() => {
-                setKind(item.value);
-              }}
-            />
-          ))}
-        </div>
+        <Segmented label="Kind" options={KIND_FILTERS} value={kind} onChange={setKind} />
         <label>
           <input
             type="checkbox"
@@ -186,31 +164,21 @@ export function KnobsView(props: { readonly state: KnobsState }): ReactElement {
   const [tab, setTab] = usePersistentState<KnobsTab>('knobs.tab', 'keys', isKnobsTab);
   const entries = knobEntries(state.catalog, state.effective, state.profiles);
   const setCount = entries.filter((entry) => isSet(entry)).length;
-  const tabs: readonly { readonly id: KnobsTab; readonly label: string }[] = [
-    { id: 'keys', label: 'Keys' },
-    { id: 'profiles', label: `Launch profiles (${String(state.profiles.length)})` },
-    { id: 'flags', label: `Feature flags (${String(Object.keys(state.featureFlags).length)})` },
+  const tabs: readonly SegmentedOption<KnobsTab>[] = [
+    { value: 'keys', label: 'Keys' },
+    { value: 'profiles', label: `Launch profiles (${String(state.profiles.length)})` },
+    { value: 'flags', label: `Feature flags (${String(Object.keys(state.featureFlags).length)})` },
   ];
   return (
-    <div>
-      <div className="view-header">
+    <div className="knobs">
+      <header className="view-header">
         <h1>Knobs</h1>
         <span className="muted">
           {state.catalog.length} keys, {setCount} set
         </span>
-      </div>
-      <div role="group" aria-label="Knobs sections" className="chips">
-        {tabs.map((item) => (
-          <PressButton
-            key={item.id}
-            label={item.label}
-            pressed={tab === item.id}
-            onPress={() => {
-              setTab(item.id);
-            }}
-          />
-        ))}
-      </div>
+        <span className="spacer" />
+        <Segmented label="Knobs sections" options={tabs} value={tab} onChange={setTab} />
+      </header>
       {tab === 'keys' ? <KeysTab state={state} entries={entries} /> : null}
       {tab === 'profiles' ? <ProfilesEditor profiles={state.profiles} /> : null}
       {tab === 'flags' ? <FeatureFlags flags={state.featureFlags} /> : null}

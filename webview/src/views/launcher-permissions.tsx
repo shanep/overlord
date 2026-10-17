@@ -4,6 +4,7 @@ import type { ReactElement } from 'react';
 
 import type { PermissionRequest } from '../../../src/shared/model.js';
 import { useNow } from '../clock.js';
+import { Card, CardGrid, StatusDot } from '../components/card.js';
 import { JsonView } from '../components/json-view.js';
 import { formatAgo } from '../format.js';
 import { usePostAction } from '../vscode-context.js';
@@ -19,7 +20,9 @@ export function PermissionInbox(props: {
   const now = useNow();
   return (
     <section className="section" aria-labelledby="inbox-heading">
-      <h2 id="inbox-heading">Permission inbox ({props.requests.length})</h2>
+      <h2 id="inbox-heading" className="section-title">
+        Permission inbox <span className="count">{String(props.requests.length)}</span>
+      </h2>
       {props.requests.length === 0 ? (
         <p className="muted">No pending requests.</p>
       ) : (
@@ -28,28 +31,21 @@ export function PermissionInbox(props: {
           the same thing does not ask again.
         </p>
       )}
-      <ul className="feed">
+      <CardGrid label="Pending permission requests" wide>
         {props.requests.map((request) => (
-          <li key={request.id}>
-            <div className="toolbar">
-              <code>{request.toolName}</code>
-              <span className="muted">session {request.sessionId}</span>
+          <Card key={request.id} tone="warning">
+            <div className="card-head">
+              <StatusDot tone="warning" />
+              <code className="card-title">{request.toolName}</code>
               <span className="muted">{formatAgo(request.requestedAt, now)}</span>
+            </div>
+            <div className="card-sub launch-indent">session {request.sessionId}</div>
+            <details className="launch-indent">
+              <summary>Input</summary>
+              <JsonView value={request.input} />
+            </details>
+            <div className="card-foot">
               <span className="spacer" />
-              <button
-                type="button"
-                className="primary"
-                aria-label={`Allow ${request.toolName} for ${request.sessionId}`}
-                onClick={() => {
-                  post({
-                    type: 'resolvePermission',
-                    requestId: request.id,
-                    decision: { behavior: 'allow', ruleId: null },
-                  });
-                }}
-              >
-                Allow
-              </button>
               <button
                 type="button"
                 title={alwaysAllowScope(request.toolName)}
@@ -73,14 +69,24 @@ export function PermissionInbox(props: {
               >
                 Deny
               </button>
+              <button
+                type="button"
+                className="primary"
+                aria-label={`Allow ${request.toolName} for ${request.sessionId}`}
+                onClick={() => {
+                  post({
+                    type: 'resolvePermission',
+                    requestId: request.id,
+                    decision: { behavior: 'allow', ruleId: null },
+                  });
+                }}
+              >
+                Allow
+              </button>
             </div>
-            <details>
-              <summary>Input</summary>
-              <JsonView value={request.input} />
-            </details>
-          </li>
+          </Card>
         ))}
-      </ul>
+      </CardGrid>
     </section>
   );
 }

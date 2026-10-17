@@ -53,7 +53,7 @@ function RuleForm(): ReactElement {
   const [behavior, setBehavior] = useState<AutoApproveRule['behavior']>('allow');
   const [description, setDescription] = useState('');
   return (
-    <div className="toolbar">
+    <div className="rule-form">
       <label>
         Tool
         <input
@@ -133,31 +133,33 @@ export function RulesEditor(props: { readonly rules: readonly AutoApproveRule[] 
         Rules answer permission requests for you, so runs do not stop to ask. Deny rules always win.
         Every auto-approval is logged.
       </p>
-      <table className="grid">
-        <caption className="visually-hidden">Auto-approve rules</caption>
-        <thead>
-          <tr>
-            <th scope="col">On</th>
-            <th scope="col">Action</th>
-            <th scope="col">Tool</th>
-            <th scope="col">Pattern</th>
-            <th scope="col">Note</th>
-            <th scope="col">Remove</th>
-          </tr>
-        </thead>
-        <tbody>
-          {props.rules.length === 0 ? (
+      <div className="table-card">
+        <table className="grid">
+          <caption className="visually-hidden">Auto-approve rules</caption>
+          <thead>
             <tr>
-              <td colSpan={6} className="muted">
-                No rules. Nothing is approved without asking.
-              </td>
+              <th scope="col">On</th>
+              <th scope="col">Action</th>
+              <th scope="col">Tool</th>
+              <th scope="col">Pattern</th>
+              <th scope="col">Note</th>
+              <th scope="col">Remove</th>
             </tr>
-          ) : (
-            props.rules.map((rule) => <RuleRow key={rule.id} rule={rule} />)
-          )}
-        </tbody>
-      </table>
-      <RuleForm />
+          </thead>
+          <tbody>
+            {props.rules.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="muted">
+                  No rules. Nothing is approved without asking.
+                </td>
+              </tr>
+            ) : (
+              props.rules.map((rule) => <RuleRow key={rule.id} rule={rule} />)
+            )}
+          </tbody>
+        </table>
+        <RuleForm />
+      </div>
     </section>
   );
 }

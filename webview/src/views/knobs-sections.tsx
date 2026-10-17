@@ -11,7 +11,9 @@ import type {
   SettingsFileSummary,
 } from '../../../src/shared/model.js';
 import { Badge } from '../components/badge.js';
+import { Card, CardGrid, StatusDot } from '../components/card.js';
 import { plural } from '../format.js';
+import type { Tone } from '../labels.js';
 import { usePostAction } from '../vscode-context.js';
 
 import { KnobRow } from './knobs-editor.js';
@@ -19,58 +21,58 @@ import { unlistedDefinition } from './knobs-match.js';
 import type { AreaGroup, EditableLayer } from './knobs-values.js';
 import { EDITABLE_LAYERS, isEditableLayer } from './knobs-values.js';
 
+function fileTone(file: SettingsFileSummary): Tone {
+  if (file.error !== null) {
+    return 'critical';
+  }
+  return file.exists ? 'good' : 'neutral';
+}
+
 export function SettingsFiles(props: {
   readonly files: readonly SettingsFileSummary[];
 }): ReactElement {
   const post = usePostAction();
   return (
     <section className="section" aria-labelledby="files-heading">
-      <h2 id="files-heading">Settings files</h2>
+      <h2 id="files-heading" className="section-title">
+        Settings files <span className="count">{String(props.files.length)}</span>
+      </h2>
       <p className="muted">
         Highest precedence first. Saving a key below writes the layer you pick and keeps the old
         file as .bak.
       </p>
-      <table className="grid">
-        <caption className="visually-hidden">Settings files Claude Code reads</caption>
-        <thead>
-          <tr>
-            <th scope="col">Layer</th>
-            <th scope="col">File</th>
-            <th scope="col" className="num">
-              Keys
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {props.files.map((file) => (
-            <tr key={file.layer}>
-              <td>{file.layer}</td>
-              <td className="wrap">
-                {file.exists ? (
-                  <button
-                    type="button"
-                    className="link-button"
-                    onClick={() => {
-                      post({ type: 'openFile', path: file.file });
-                    }}
-                  >
-                    {file.file}
-                  </button>
-                ) : (
-                  <span className="muted">{file.file} (not created yet)</span>
-                )}
-                {file.error === null ? null : (
-                  <span className="error-text" role="alert">
-                    {' '}
-                    {file.error}
-                  </span>
-                )}
-              </td>
-              <td className="num">{file.keys}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <CardGrid label="Settings files Claude Code reads">
+        {props.files.map((file) => (
+          <Card key={file.layer}>
+            <div className="card-head">
+              <StatusDot tone={fileTone(file)} />
+              <span className="card-title">{file.layer}</span>
+              <span className="chip">{plural(file.keys, 'key')}</span>
+            </div>
+            <div className="knob-file">
+              {file.exists ? (
+                <button
+                  type="button"
+                  className="link-button"
+                  title={file.file}
+                  onClick={() => {
+                    post({ type: 'openFile', path: file.file });
+                  }}
+                >
+                  {file.file}
+                </button>
+              ) : (
+                <span className="muted">{file.file} (not created yet)</span>
+              )}
+            </div>
+            {file.error === null ? null : (
+              <p className="error-text" role="alert">
+                {file.error}
+              </p>
+            )}
+          </Card>
+        ))}
+      </CardGrid>
     </section>
   );
 }
@@ -90,8 +92,8 @@ export function AreaSection(props: {
   const { group, open, rows } = props;
   const id = `area-${group.area}`;
   return (
-    <section className="section" aria-labelledby={id}>
-      <div className="toolbar">
+    <section className="card knob-area" aria-labelledby={id}>
+      <div className="card-head">
         <h2 id={id} className="area-heading">
           <button
             type="button"
@@ -105,14 +107,14 @@ export function AreaSection(props: {
             {group.title}
           </button>
         </h2>
-        <span className="muted">{plural(group.entries.length, 'key')}</span>
+        <span className="chip">{plural(group.entries.length, 'key')}</span>
         {group.setCount === 0 ? null : (
           <Badge label={`${String(group.setCount)} set`} tone="info" />
         )}
       </div>
-      {group.summary === '' ? null : <p className="muted">{group.summary}</p>}
+      {group.summary === '' ? null : <p className="card-text knob-summary">{group.summary}</p>}
       {open ? (
-        <ul className="feed">
+        <ul className="knob-list">
           {group.entries.map((entry) => (
             <KnobRow
               key={`${entry.definition.kind}:${entry.definition.key}`}
@@ -140,7 +142,7 @@ function AddEnvVariable(): ReactElement {
   const trimmed = name.trim();
   const valid = ENV_NAME.test(trimmed);
   return (
-    <div className="toolbar">
+    <div className="knob-add">
       <label>
         Name
         <input
@@ -207,18 +209,20 @@ export function UnlistedSection(props: {
 }): ReactElement {
   const { values, rows } = props;
   return (
-    <section className="section" aria-labelledby="unlisted-heading">
-      <div className="toolbar">
-        <h2 id="unlisted-heading">Not in the docs</h2>
-        <span className="muted">{plural(values.length, 'key')}</span>
+    <section className="card knob-area" aria-labelledby="unlisted-heading">
+      <div className="card-head">
+        <h2 id="unlisted-heading" className="area-heading">
+          Not in the docs
+        </h2>
+        <span className="chip">{plural(values.length, 'key')}</span>
       </div>
-      <p className="muted">
+      <p className="card-text knob-summary">
         Keys your settings set that the docs catalog does not list, such as your own env vars. Add
         one here and every session gets it.
       </p>
       <AddEnvVariable />
       {values.length === 0 ? null : (
-        <ul className="feed">
+        <ul className="knob-list">
           {values.map((value) => (
             <KnobRow
               key={value.key}

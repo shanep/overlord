@@ -7,6 +7,7 @@ import { useState } from 'react';
 
 import type { EffectiveValue, KnobDefinition, LaunchProfile } from '../../../src/shared/model.js';
 import { Badge } from '../components/badge.js';
+import { StatusDot } from '../components/card.js';
 import { formatValue } from '../format.js';
 import { usePostAction } from '../vscode-context.js';
 
@@ -67,7 +68,7 @@ function KnobEditor(props: {
     return <p className="muted">Read only. Only managed policy can set this key.</p>;
   }
   return (
-    <div className="toolbar">
+    <div className="knob-edit">
       <label>
         Layer
         <select
@@ -237,9 +238,10 @@ export function KnobRow(props: {
   readonly onToggle: (key: string) => void;
 }): ReactElement {
   const { definition, effective, expanded, onToggle } = props;
+  const set = effective !== undefined || props.inProfiles.length > 0;
   return (
-    <li className="section">
-      <div className="toolbar">
+    <li className={expanded ? 'knob-row knob-open' : 'knob-row'}>
+      <div className="knob-row-head">
         <button
           type="button"
           className="twisty"
@@ -251,16 +253,20 @@ export function KnobRow(props: {
         >
           {expanded ? '▾' : '▸'}
         </button>
-        <code>{definition.key}</code>
+        <StatusDot tone={set ? 'info' : 'neutral'} />
+        <code className="knob-key">{definition.key}</code>
         <Badge label={definition.kind} />
-        <RowValue definition={definition} effective={effective} inProfiles={props.inProfiles} />
-        <Badge label={`applies ${APPLIES_LABELS[definition.appliesAt]}`} />
         {definition.managedOnly ? <Badge label="managed only" tone="warning" /> : null}
         {isRetired(definition) ? <Badge label="removed" tone="warning" /> : null}
+        <span className="spacer" />
+        <span className="knob-value">
+          <RowValue definition={definition} effective={effective} inProfiles={props.inProfiles} />
+        </span>
+        <span className="chip">{`applies ${APPLIES_LABELS[definition.appliesAt]}`}</span>
       </div>
-      <p className="muted">{definition.description}</p>
+      <p className="card-text knob-description">{definition.description}</p>
       {expanded ? (
-        <div>
+        <div className="knob-detail">
           <DocumentationButton definition={definition} />
           {definition.kind === 'flag' ? (
             <FlagEditor definition={definition} profiles={props.profiles} />

@@ -1,0 +1,231 @@
+{
+  "runs": [
+    {
+      "id": "r1",
+      "batchId": "b1",
+      "spec": {
+        "prompt": "Add tests for the cart totals",
+        "cwd": "/Users/alex/code/storefront",
+        "profileId": "p-opus",
+        "worktree": true,
+        "maxBudgetUsd": 5,
+        "label": "Add tests for the cart totals"
+      },
+      "sessionId": "sess-r1",
+      "state": "running",
+      "costUsd": 0.84,
+      "turns": 12,
+      "durationMs": 360000,
+      "result": null,
+      "worktreePath": "/Users/alex/.overlord/worktrees/storefront-a1b2"
+    },
+    {
+      "id": "r2",
+      "batchId": "b1",
+      "spec": {
+        "prompt": "Add tests for the cart totals",
+        "cwd": "/Users/alex/code/storefront",
+        "profileId": "p-sonnet",
+        "worktree": true,
+        "maxBudgetUsd": 5,
+        "label": "Add tests for the cart totals"
+      },
+      "sessionId": "sess-r2",
+      "state": "done",
+      "costUsd": 0.21,
+      "turns": 9,
+      "durationMs": 240000,
+      "result": "Added 14 tests for cart totals. npm test passes.",
+      "worktreePath": "/Users/alex/.overlord/worktrees/storefront-c3d4"
+    },
+    {
+      "id": "r3",
+      "batchId": "b1",
+      "spec": {
+        "prompt": "Fix the coupon rounding",
+        "cwd": "/Users/alex/code/storefront",
+        "profileId": null,
+        "worktree": true,
+        "maxBudgetUsd": 5,
+        "label": "Fix the coupon rounding"
+      },
+      "sessionId": "sess-r3",
+      "state": "failed",
+      "costUsd": 1.92,
+      "turns": 31,
+      "durationMs": 1080000,
+      "result": "Stopped: spent the 5 dollar budget before the tests passed.",
+      "worktreePath": "/Users/alex/.overlord/worktrees/storefront-e5f6"
+    },
+    {
+      "id": "r4",
+      "batchId": "b1",
+      "spec": {
+        "prompt": "Update the README install steps",
+        "cwd": "/Users/alex/code/storefront",
+        "profileId": "p-sonnet",
+        "worktree": true,
+        "maxBudgetUsd": 5,
+        "label": "Update the README install steps"
+      },
+      "sessionId": null,
+      "state": "queued",
+      "costUsd": 0,
+      "turns": 0,
+      "durationMs": 0,
+      "result": null,
+      "worktreePath": null
+    }
+  ],
+  "profiles": [
+    {
+      "id": "p-opus",
+      "name": "Opus, high effort",
+      "model": "opus",
+      "effort": "high",
+      "permissionMode": "acceptEdits",
+      "env": {},
+      "extraArgs": []
+    },
+    {
+      "id": "p-sonnet",
+      "name": "Sonnet, quick",
+      "model": "sonnet",
+      "effort": "low",
+      "permissionMode": null,
+      "env": {},
+      "extraArgs": []
+    }
+  ],
+  "drafts": [
+    {
+      "id": "d1",
+      "label": "Weekly dependency bump",
+      "prompt": "Update the dependencies and run the tests."
+    }
+  ],
+  "pendingPermissions": [
+    {
+      "id": "q1",
+      "sessionId": "sess-r1",
+      "agentId": "sess-r1",
+      "toolName": "Bash",
+      "input": {
+        "command": "npm install --save-dev vitest@3",
+        "description": "Install vitest"
+      },
+      "requestedAt": 1792208264951,
+      "source": "hook"
+    }
+  ],
+  "rules": [
+    {
+      "id": "rule-1",
+      "enabled": true,
+      "behavior": "allow",
+      "tool": "Bash",
+      "pattern": "npm test*",
+      "description": "Tests are always fine"
+    },
+    {
+      "id": "rule-2",
+      "enabled": true,
+      "behavior": "deny",
+      "tool": "Bash",
+      "pattern": "git push*",
+      "description": "Runs never push"
+    },
+    {
+      "id": "rule-3",
+      "enabled": false,
+      "behavior": "allow",
+      "tool": "mcp__github__*",
+      "pattern": null,
+      "description": ""
+    }
+  ],
+  "maxConcurrency": 3,
+  "worktrees": [
+    {
+      "id": "a1b2",
+      "kind": "run",
+      "label": "Add tests for the cart totals",
+      "repoRoot": "/Users/alex/code/storefront",
+      "path": "/Users/alex/.overlord/worktrees/storefront-a1b2",
+      "branch": "overlord/a1b2",
+      "target": "main",
+      "slot": 2,
+      "createdAt": 1792204709951,
+      "state": "active",
+      "ahead": 2,
+      "dirty": 1,
+      "files": ["src/cart.ts"],
+      "upstreamFiles": [],
+      "overlaps": []
+    },
+    {
+      "id": "c3d4",
+      "kind": "run",
+      "label": "Add tests for the cart totals (Sonnet)",
+      "repoRoot": "/Users/alex/code/storefront",
+      "path": "/Users/alex/.overlord/worktrees/storefront-c3d4",
+      "branch": "overlord/c3d4",
+      "target": "main",
+      "slot": 4,
+      "createdAt": 1792204709951,
+      "state": "unlanded",
+      "ahead": 3,
+      "dirty": 0,
+      "files": ["src/cart.ts"],
+      "upstreamFiles": [],
+      "overlaps": [
+        {
+          "id": "e5f6",
+          "label": "Fix the coupon rounding",
+          "files": ["src/cart.ts"]
+        }
+      ]
+    },
+    {
+      "id": "e5f6",
+      "kind": "run",
+      "label": "Fix the coupon rounding",
+      "repoRoot": "/Users/alex/code/storefront",
+      "path": "/Users/alex/.overlord/worktrees/storefront-e5f6",
+      "branch": "overlord/e5f6",
+      "target": "main",
+      "slot": 6,
+      "createdAt": 1792204709951,
+      "state": "dirty",
+      "ahead": 0,
+      "dirty": 2,
+      "files": ["src/cart.ts", "src/cart.test.ts"],
+      "upstreamFiles": ["src/coupons.ts"],
+      "overlaps": [
+        {
+          "id": "c3d4",
+          "label": "Fix the coupon rounding",
+          "files": ["src/cart.ts"]
+        }
+      ]
+    },
+    {
+      "id": "g7h8",
+      "kind": "run",
+      "label": "Rename the checkout steps",
+      "repoRoot": "/Users/alex/code/storefront",
+      "path": "/Users/alex/.overlord/worktrees/storefront-g7h8",
+      "branch": "overlord/g7h8",
+      "target": "main",
+      "slot": 8,
+      "createdAt": 1792204709951,
+      "state": "landed",
+      "ahead": 0,
+      "dirty": 0,
+      "files": ["src/cart.ts"],
+      "upstreamFiles": [],
+      "overlaps": []
+    }
+  ],
+  "defaultFolder": "/Users/alex/code/storefront"
+}

@@ -79,37 +79,39 @@ function ProfileForm(props: {
   const [draft, setDraft] = useState<ProfileDraft>(() => toDraft(profile));
   const title = profile.name === '' ? 'New profile' : profile.name;
   return (
-    <fieldset className="section">
-      <legend>{title}</legend>
-      {TEXT_FIELDS.map(({ field, label }) => (
-        <label key={field} className="field">
-          <span>{label}</span>
-          <input
-            type="text"
-            value={draft[field]}
+    <fieldset className="card profile-card">
+      <legend className="card-title">{title}</legend>
+      <div className="form-grid">
+        {TEXT_FIELDS.map(({ field, label }) => (
+          <label key={field} className="field">
+            <span>{label}</span>
+            <input
+              type="text"
+              value={draft[field]}
+              onChange={(event) => {
+                setDraft({ ...draft, [field]: event.target.value });
+              }}
+            />
+          </label>
+        ))}
+        <label className="field">
+          <span>Permission mode</span>
+          <select
+            value={draft.mode}
             onChange={(event) => {
-              setDraft({ ...draft, [field]: event.target.value });
+              setDraft({ ...draft, mode: event.target.value });
             }}
-          />
+          >
+            <option value="">none</option>
+            {PERMISSION_MODES.map((mode) => (
+              <option key={mode} value={mode}>
+                {mode}
+              </option>
+            ))}
+          </select>
         </label>
-      ))}
-      <label className="field">
-        <span>Permission mode</span>
-        <select
-          value={draft.mode}
-          onChange={(event) => {
-            setDraft({ ...draft, mode: event.target.value });
-          }}
-        >
-          <option value="">none</option>
-          {PERMISSION_MODES.map((mode) => (
-            <option key={mode} value={mode}>
-              {mode}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="field">
+      </div>
+      <label className="field profile-env">
         <span>Env vars, one KEY=VALUE per line</span>
         <textarea
           value={draft.env}
@@ -118,27 +120,30 @@ function ProfileForm(props: {
           }}
         />
       </label>
-      <button
-        type="button"
-        className="primary"
-        disabled={draft.name.trim() === ''}
-        onClick={() => {
-          post({ type: 'saveProfile', profile: fromDraft(profile.id, draft) });
-        }}
-      >
-        Save profile
-      </button>{' '}
-      {props.saved ? (
+      <div className="form-actions">
+        {props.saved ? (
+          <button
+            type="button"
+            className="danger"
+            onClick={() => {
+              post({ type: 'deleteProfile', profileId: profile.id });
+            }}
+          >
+            Delete profile
+          </button>
+        ) : null}
+        <span className="spacer" />
         <button
           type="button"
-          className="danger"
+          className="primary"
+          disabled={draft.name.trim() === ''}
           onClick={() => {
-            post({ type: 'deleteProfile', profileId: profile.id });
+            post({ type: 'saveProfile', profile: fromDraft(profile.id, draft) });
           }}
         >
-          Delete profile
+          Save profile
         </button>
-      ) : null}
+      </div>
     </fieldset>
   );
 }
@@ -151,8 +156,9 @@ export function ProfilesEditor(props: {
   const pending = added.filter((profile) => !known.has(profile.id));
   return (
     <section className="section" aria-labelledby="profiles-heading">
-      <div className="toolbar">
+      <div className="list-bar">
         <h2 id="profiles-heading">Launch profiles</h2>
+        <span className="spacer" />
         <button
           type="button"
           onClick={() => {
@@ -165,9 +171,15 @@ export function ProfilesEditor(props: {
       {props.profiles.length + pending.length === 0 ? (
         <p className="muted">No profiles yet.</p>
       ) : null}
-      {[...props.profiles, ...pending].map((profile) => (
-        <ProfileForm key={profile.id} profile={profile} saved={known.has(profile.id)} />
-      ))}
+      <p className="muted">
+        A profile is a model, effort, permission mode, env vars and extra args the Launcher can
+        start a run with.
+      </p>
+      <div className="profile-grid">
+        {[...props.profiles, ...pending].map((profile) => (
+          <ProfileForm key={profile.id} profile={profile} saved={known.has(profile.id)} />
+        ))}
+      </div>
     </section>
   );
 }

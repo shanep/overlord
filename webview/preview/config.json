@@ -1,0 +1,205 @@
+{
+  "items": [
+    {
+      "id": "claude-md:user:CLAUDE.md",
+      "kind": "claude-md",
+      "name": "CLAUDE.md",
+      "scope": "user",
+      "path": "/Users/alex/.claude/CLAUDE.md",
+      "realPath": "/Users/alex/overlord-config/CLAUDE.md",
+      "status": "versioned",
+      "repo": {
+        "root": "/Users/alex/overlord-config",
+        "remote": "git@github.com:alex/overlord-config.git",
+        "dirty": false
+      }
+    },
+    {
+      "id": "claude-md:project:CLAUDE.md",
+      "kind": "claude-md",
+      "name": "CLAUDE.md",
+      "scope": "project",
+      "path": "/Users/alex/code/storefront/CLAUDE.md",
+      "realPath": null,
+      "status": "external-repo",
+      "repo": null
+    },
+    {
+      "id": "settings:user:settings.json",
+      "kind": "settings",
+      "name": "settings.json",
+      "scope": "user",
+      "path": "/Users/alex/.claude/settings.json",
+      "realPath": "/Users/alex/overlord-config/settings.json",
+      "status": "modified",
+      "repo": {
+        "root": "/Users/alex/overlord-config",
+        "remote": "git@github.com:alex/overlord-config.git",
+        "dirty": true
+      }
+    },
+    {
+      "id": "settings:local:settings.local.json",
+      "kind": "settings",
+      "name": "settings.local.json",
+      "scope": "local",
+      "path": "/Users/alex/code/storefront/.claude/settings.local.json",
+      "realPath": null,
+      "status": "local-only",
+      "repo": null
+    },
+    {
+      "id": "skill:user:release-notes",
+      "kind": "skill",
+      "name": "release-notes",
+      "scope": "user",
+      "path": "/Users/alex/.claude/skills/release-notes/SKILL.md",
+      "realPath": "/Users/alex/overlord-config/skills/release-notes/SKILL.md",
+      "status": "versioned",
+      "repo": {
+        "root": "/Users/alex/overlord-config",
+        "remote": "git@github.com:alex/overlord-config.git",
+        "dirty": false
+      }
+    },
+    {
+      "id": "skill:user:grade-submissions",
+      "kind": "skill",
+      "name": "grade-submissions",
+      "scope": "user",
+      "path": "/Users/alex/.claude/skills/grade-submissions/SKILL.md",
+      "realPath": null,
+      "status": "local-only",
+      "repo": null
+    },
+    {
+      "id": "skill:plugin:pdf",
+      "kind": "skill",
+      "name": "pdf",
+      "scope": "plugin",
+      "path": null,
+      "realPath": null,
+      "status": "plugin",
+      "repo": null
+    },
+    {
+      "id": "agent:user:code-reviewer",
+      "kind": "agent",
+      "name": "code-reviewer",
+      "scope": "user",
+      "path": "/Users/alex/.claude/agents/code-reviewer.md",
+      "realPath": "/Users/alex/overlord-config/agents/code-reviewer.md",
+      "status": "versioned",
+      "repo": {
+        "root": "/Users/alex/overlord-config",
+        "remote": "git@github.com:alex/overlord-config.git",
+        "dirty": false
+      }
+    },
+    {
+      "id": "agent:project:scout",
+      "kind": "agent",
+      "name": "scout",
+      "scope": "project",
+      "path": "/Users/alex/code/storefront/.claude/agents/scout.md",
+      "realPath": null,
+      "status": "external-repo",
+      "repo": null
+    },
+    {
+      "id": "command:user:ship",
+      "kind": "command",
+      "name": "ship",
+      "scope": "user",
+      "path": "/Users/alex/.claude/commands/ship.md",
+      "realPath": "/Users/alex/overlord-config/commands/ship.md",
+      "status": "versioned",
+      "repo": {
+        "root": "/Users/alex/overlord-config",
+        "remote": "git@github.com:alex/overlord-config.git",
+        "dirty": false
+      }
+    },
+    {
+      "id": "hook:user:PreToolUse: Bash",
+      "kind": "hook",
+      "name": "PreToolUse: Bash",
+      "scope": "user",
+      "path": "/Users/alex/.claude/settings.json",
+      "realPath": "/Users/alex/overlord-config/settings.json",
+      "status": "versioned",
+      "repo": {
+        "root": "/Users/alex/overlord-config",
+        "remote": "git@github.com:alex/overlord-config.git",
+        "dirty": false
+      }
+    },
+    {
+      "id": "mcp-server:user:github",
+      "kind": "mcp-server",
+      "name": "github",
+      "scope": "user",
+      "path": "/Users/alex/.claude.json",
+      "realPath": null,
+      "status": "secret",
+      "repo": null
+    },
+    {
+      "id": "mcp-server:cloud:Google Drive",
+      "kind": "mcp-server",
+      "name": "Google Drive",
+      "scope": "cloud",
+      "path": null,
+      "realPath": null,
+      "status": "cloud-synced",
+      "repo": null
+    },
+    {
+      "id": "plugin:user:document-skills",
+      "kind": "plugin",
+      "name": "document-skills",
+      "scope": "user",
+      "path": null,
+      "realPath": null,
+      "status": "plugin",
+      "repo": null
+    },
+    {
+      "id": "memory:user:MEMORY.md",
+      "kind": "memory",
+      "name": "MEMORY.md",
+      "scope": "user",
+      "path": "/Users/alex/.claude/projects/storefront/memory/MEMORY.md",
+      "realPath": null,
+      "status": "local-only",
+      "repo": null
+    },
+    {
+      "id": "keybindings:user:keybindings.json",
+      "kind": "keybindings",
+      "name": "keybindings.json",
+      "scope": "user",
+      "path": "/Users/alex/.claude/keybindings.json",
+      "realPath": "/Users/alex/overlord-config/keybindings.json",
+      "status": "versioned",
+      "repo": {
+        "root": "/Users/alex/overlord-config",
+        "remote": "git@github.com:alex/overlord-config.git",
+        "dirty": false
+      }
+    }
+  ],
+  "repo": {
+    "connected": true,
+    "remote": "git@github.com:alex/overlord-config.git",
+    "path": "/Users/alex/overlord-config",
+    "ahead": 1,
+    "behind": 0,
+    "dirty": 2
+  },
+  "sync": {
+    "state": "idle",
+    "lastSyncAt": 1792208069951,
+    "message": null
+  }
+}

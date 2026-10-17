@@ -31,7 +31,7 @@ describe('LauncherView', () => {
     // A waiting request goes above the runs it holds up.
     expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toStrictEqual([
       'New run',
-      'Permission inbox (1)',
+      'Permission inbox 1',
       'Runs',
       'Worktrees',
       'Auto-approve rules',
@@ -53,7 +53,7 @@ describe('LauncherView', () => {
       'New run',
       'Runs',
       'Worktrees',
-      'Permission inbox (0)',
+      'Permission inbox 0',
       'Auto-approve rules',
     ]);
     expect(screen.getByText(/No profiles yet/u)).toBeDefined();
@@ -293,7 +293,7 @@ describe('runs', () => {
 describe('permission inbox', () => {
   it('allows and denies pending requests', async () => {
     const { api } = renderView(<LauncherView state={launcherState} />);
-    const inbox = within(region('Permission inbox (1)'));
+    const inbox = within(region('Permission inbox 1'));
     expect(inbox.getByText('Bash')).toBeDefined();
     expect(inbox.getByText('session s1')).toBeDefined();
     expect(inbox.getByText('just now')).toBeDefined();

@@ -94,6 +94,7 @@ function runColumns(profiles: readonly LaunchProfile[]): Column<LaunchRun>[] {
     {
       id: 'result',
       header: 'Result',
+      wrap: true,
       cell: (run) =>
         run.result === null ? (
           <span className="muted">n/a</span>
@@ -127,7 +128,7 @@ export function RunsTable(props: {
   const active = runs.filter((run) => isActiveRun(run)).length;
   return (
     <section className="section" aria-labelledby="runs-heading">
-      <div className="toolbar">
+      <div className="list-bar">
         <h2 id="runs-heading">Runs</h2>
         <span className="muted">
           {active} active, max {maxConcurrency} at once
@@ -160,13 +161,15 @@ export function RunsTable(props: {
           }}
         />
       ) : null}
-      <DataTable
-        caption="Runs"
-        columns={runColumns(profiles)}
-        rows={runs}
-        rowKey={(run) => run.id}
-        empty="No runs yet. Launch one above and it shows up here."
-      />
+      <div className="table-card">
+        <DataTable
+          caption="Runs"
+          columns={runColumns(profiles)}
+          rows={runs}
+          rowKey={(run) => run.id}
+          empty="No runs yet. Launch one above and it shows up here."
+        />
+      </div>
     </section>
   );
 }

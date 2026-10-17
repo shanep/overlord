@@ -7,8 +7,10 @@ import type { ConfigItem, ConfigKind, ConfigStatus } from '../../../src/shared/m
 import type { ConfigState, ConfigSyncStatus } from '../../../src/shared/protocol.js';
 import { useNow } from '../clock.js';
 import { Badge } from '../components/badge.js';
+import { Card, CardGroup, StatusDot } from '../components/card.js';
 import { EmptyState } from '../components/empty-state.js';
 import { formatAgo } from '../format.js';
+import type { Tone } from '../labels.js';
 import { usePersistentState, usePostAction } from '../vscode-context.js';
 
 import {
@@ -100,48 +102,67 @@ function RepoStats(props: { readonly state: ConfigState }): ReactElement {
   );
 }
 
-function RepoHeader(props: { readonly state: ConfigState }): ReactElement {
-  const post = usePostAction();
-  const { repo, sync } = props.state;
+function repoTone(state: ConfigState): Tone {
+  if (!state.repo.connected || state.sync.state === 'off') {
+    return 'neutral';
+  }
+  if (state.sync.state === 'error') {
+    return 'critical';
+  }
+  return state.repo.dirty > 0 || state.repo.ahead > 0 || state.repo.behind > 0 ? 'warning' : 'good';
+}
+
+function RepoCard(props: { readonly state: ConfigState }): ReactElement {
+  const { repo } = props.state;
+  const tone = repoTone(props.state);
   return (
-    <div className="section">
+    <div className={`card card-edge card-${tone} config-repo`}>
+      <div className="card-head">
+        <StatusDot tone={tone} />
+        <span className="card-title">Config repo</span>
+      </div>
       {repo.connected ? (
         <RepoStats state={props.state} />
       ) : (
-        <p className="muted">
+        <p className="card-text">
           Config sync is off. Turning it on signs in to GitHub, finds your private overlord-config
           repo or creates one, and from then on keeps it in step with ~/.claude on every machine.
         </p>
       )}
-      <div className="toolbar">
-        {repo.connected ? (
-          <button
-            type="button"
-            disabled={sync.state === 'syncing'}
-            onClick={() => {
-              post({ type: 'syncNow' });
-            }}
-          >
-            Sync now
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={() => {
-              post({ type: 'turnOnSync' });
-            }}
-          >
-            Turn on sync
-          </button>
-        )}
-      </div>
     </div>
+  );
+}
+
+function SyncButtons(props: { readonly state: ConfigState }): ReactElement {
+  const post = usePostAction();
+  const { repo, sync } = props.state;
+  return repo.connected ? (
+    <button
+      type="button"
+      className="primary"
+      disabled={sync.state === 'syncing'}
+      onClick={() => {
+        post({ type: 'syncNow' });
+      }}
+    >
+      Sync now
+    </button>
+  ) : (
+    <button
+      type="button"
+      className="primary"
+      onClick={() => {
+        post({ type: 'turnOnSync' });
+      }}
+    >
+      Turn on sync
+    </button>
   );
 }
 
 function StatusLegend(): ReactElement {
   return (
-    <details className="section">
+    <details className="about">
       <summary>Badge legend</summary>
       <ul className="legend">
         {STATUS_ORDER.map((status) => (
@@ -155,25 +176,28 @@ function StatusLegend(): ReactElement {
   );
 }
 
-function ItemRow(props: { readonly item: ConfigItem }): ReactElement {
+function ItemCard(props: { readonly item: ConfigItem }): ReactElement {
   const post = usePostAction();
   const { item } = props;
   const info = STATUS_INFO[item.status];
   const path = item.path;
+  const attention = info.tone === 'warning' || info.tone === 'critical';
   return (
-    <tr>
-      <td>{item.name}</td>
-      <td>{item.scope}</td>
-      <td>
+    <Card {...(attention ? { tone: info.tone } : {})} action={canAdopt(item)}>
+      <div className="card-head">
+        <span className="card-title" title={item.name}>
+          {item.name}
+        </span>
         <Badge label={info.label} tone={info.tone} title={info.meaning} />
-      </td>
-      <td className="wrap">
+      </div>
+      <div className="config-path">
         {path === null ? (
           <span className="muted">none</span>
         ) : (
           <button
             type="button"
             className="link-button mono"
+            title={path}
             onClick={() => {
               post({ type: 'openFile', path });
             }}
@@ -181,9 +205,15 @@ function ItemRow(props: { readonly item: ConfigItem }): ReactElement {
             {path}
           </button>
         )}
-        {item.realPath === null ? null : <span className="muted"> links to {item.realPath}</span>}
-      </td>
-      <td>
+      </div>
+      {item.realPath === null ? null : (
+        <p className="card-text config-link" title={item.realPath}>
+          links to {item.realPath}
+        </p>
+      )}
+      <div className="card-foot">
+        <span className="chip">{item.scope}</span>
+        <span className="spacer" />
         {canAdopt(item) ? (
           <button
             type="button"
@@ -195,39 +225,23 @@ function ItemRow(props: { readonly item: ConfigItem }): ReactElement {
             Adopt
           </button>
         ) : null}
-      </td>
-    </tr>
+      </div>
+    </Card>
   );
 }
 
-function GroupTable(props: { readonly group: ConfigGroup }): ReactElement {
+function Group(props: { readonly group: ConfigGroup }): ReactElement | null {
   const { group } = props;
-  const title = KIND_LABELS[group.kind];
   return (
-    <details open className="section">
-      <summary>
-        {title} ({group.items.length.toString()})
-      </summary>
-      <table className="grid">
-        <caption className="visually-hidden">{title}</caption>
-        <thead>
-          <tr>
-            <th scope="col">Name</th>
-            <th scope="col">Scope</th>
-            <th scope="col">Status</th>
-            <th scope="col">Path</th>
-            <th scope="col">
-              <span className="visually-hidden">Actions</span>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {group.items.map((item) => (
-            <ItemRow key={item.id} item={item} />
-          ))}
-        </tbody>
-      </table>
-    </details>
+    <CardGroup
+      id={`config-${group.kind}`}
+      title={KIND_LABELS[group.kind]}
+      count={group.items.length}
+    >
+      {group.items.map((item) => (
+        <ItemCard key={item.id} item={item} />
+      ))}
+    </CardGroup>
   );
 }
 
@@ -236,14 +250,16 @@ export function ConfigView(props: { readonly state: ConfigState }): ReactElement
   const [status, setStatus] = usePersistentState('config.status', 'all', isStatusFilter);
   const groups = groupItems(state.items, status);
   return (
-    <section aria-labelledby="config-title">
+    <section className="config" aria-labelledby="config-title">
       <header className="view-header">
         <h1 id="config-title">Config and sync</h1>
         <span className="muted">{state.items.length.toString()} items</span>
+        <span className="spacer" />
+        <SyncButtons state={state} />
       </header>
-      <RepoHeader state={state} />
+      <RepoCard state={state} />
       <StatusLegend />
-      <div className="toolbar">
+      <div className="list-bar">
         <label>
           Status
           <select
@@ -265,7 +281,7 @@ export function ConfigView(props: { readonly state: ConfigState }): ReactElement
       {groups.length === 0 ? (
         <EmptyState title="No config items" />
       ) : (
-        groups.map((group) => <GroupTable key={group.kind} group={group} />)
+        groups.map((group) => <Group key={group.kind} group={group} />)
       )}
     </section>
   );
