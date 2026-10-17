@@ -204,6 +204,13 @@ export function createVscodeHostPort(options: VscodeHostPortOptions): HostPort {
       if (request.sessionId !== null) {
         options.onSessionTerminal(terminal, request.sessionId);
       }
+      // An agent that picks its own session id is tied to the tab once that session shows up.
+      void (async (): Promise<void> => {
+        const later = (await request.sessionLater) ?? null;
+        if (later !== null && terminal.exitStatus === undefined) {
+          options.onSessionTerminal(terminal, later);
+        }
+      })();
     },
     showTerminal: async (target: TerminalTarget): Promise<boolean> => {
       if (options.showSessionTerminal(target.sessionId)) {

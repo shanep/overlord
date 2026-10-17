@@ -1,6 +1,6 @@
 // Codex CLI as an agent adapter. Overlord reads its rollout files for the
-// Fleet. Starting, driving and hooking Codex come in later milestones of
-// META-HARNESS.md.
+// Fleet and starts or resumes sessions in terminal tabs. Driving and hooking
+// Codex come in later milestones of META-HARNESS.md.
 
 import { CODEX } from '../../../shared/agents.js';
 import { executableFor } from '../../app/claude-bin.js';
@@ -15,13 +15,15 @@ import {
 } from './capabilities.js';
 import { codexModels } from './models.js';
 import { codexObserverFacet } from './observer.js';
-
-const COMMAND = 'codex';
+import { codexTerminal } from './terminal.js';
 
 /** Finds the binary on the login shell's PATH without running it, so the version stays unknown. */
 async function detect(input: DetectInput): Promise<Detected> {
   await Promise.resolve();
-  return { bin: executableFor(input.path, input.env, input.platform, COMMAND), version: null };
+  return {
+    bin: executableFor(input.path, input.env, input.platform, codexTerminal.command),
+    version: null,
+  };
 }
 
 export const codex: AgentAdapter = {
@@ -33,5 +35,6 @@ export const codex: AgentAdapter = {
   capabilities: CODEX_CAPABILITIES,
   modes: { permission: CODEX_PERMISSION_MODES, effort: CODEX_EFFORT_LEVELS },
   models: codexModels,
+  terminal: codexTerminal,
   observer: codexObserverFacet,
 };

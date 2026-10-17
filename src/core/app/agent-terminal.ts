@@ -69,3 +69,46 @@ export async function findLive(rt: Runtime, sessionId: string): Promise<LiveProc
   const at = sessionTerminal(rt, sessionId);
   return at?.terminal.findLive({ ...liveSources(rt), bin: terminalCommand(rt, at) }, sessionId);
 }
+
+/** How long a tab waits for the session its agent starts to show up. */
+export const LINK_TIMEOUT_MS = 10 * 60 * 1000;
+/** Clocks and timestamps can disagree a little about when a session started. */
+const LINK_SLACK_MS = 5000;
+
+/** Sessions already tied to a tab, so two tabs opened in one folder do not take the same one. */
+const linked = new Set<string>();
+
+/**
+ * The id of the next new session of an agent in cwd, for a tab whose agent
+ * picks the id itself. Null when none shows up in time.
+ */
+export async function newSessionIn(
+  rt: Runtime,
+  agent: AgentId,
+  cwd: string,
+  timeoutMs = LINK_TIMEOUT_MS,
+): Promise<string | null> {
+  const since = rt.clock() - LINK_SLACK_MS;
+  const before = new Set(rt.store.fleetState(rt.clock()).sessions.map((session) => session.id));
+  return new Promise((resolve) => {
+    const waiting: { off?: () => void; timer?: NodeJS.Timeout } = {};
+    const finish = (sessionId: string | null): void => {
+      waiting.off?.();
+      clearTimeout(waiting.timer);
+      if (sessionId !== null) {
+        linked.add(sessionId);
+      }
+      resolve(sessionId);
+    };
+    waiting.off = rt.bus.on('session.upserted', (session) => {
+      const fresh = !before.has(session.id) && !linked.has(session.id);
+      if (fresh && session.agent === agent && session.cwd === cwd && session.startedAt >= since) {
+        finish(session.id);
+      }
+    });
+    waiting.timer = setTimeout(() => {
+      finish(null);
+    }, timeoutMs);
+    waiting.timer.unref();
+  });
+}

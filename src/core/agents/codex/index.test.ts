@@ -33,10 +33,16 @@ describe('codex', () => {
   it('claims only what the rollout files give it', () => {
     expect(codex.capabilities).toMatchObject({
       launch: false,
+      terminal: true,
+      resume: true,
+      fork: true,
+      background: false,
+      interrupt: false,
       approvals: false,
       hooks: false,
       cacheReads: true,
       costUsd: false,
+      handoffs: ['resume-local'],
     });
   });
 

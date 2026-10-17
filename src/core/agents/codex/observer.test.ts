@@ -100,7 +100,9 @@ describe('codex observer', () => {
       peek: async (session, read) => read(session),
       report: vi.fn(),
     });
-    expect(rows).toMatchObject([{ id: EDIT, agent: 'codex', cwd: '/work/repo', handoffs: [] }]);
+    expect(rows).toMatchObject([
+      { id: EDIT, agent: 'codex', cwd: '/work/repo', handoffs: ['resume-local'] },
+    ]);
   });
 
   it('tails a rollout from a temp CODEX_HOME into the bus, each call once', async () => {

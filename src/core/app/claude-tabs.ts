@@ -14,7 +14,7 @@ import type { AgentTerminal } from '../agents/terminals.js';
 import { terminalOf } from '../agents/terminals.js';
 import type { BackgroundFacet } from '../agents/types.js';
 
-import { agentCli, terminalCommand } from './agent-terminal.js';
+import { agentCli, newSessionIn, terminalCommand } from './agent-terminal.js';
 import type { Runtime } from './runtime.js';
 
 /**
@@ -141,6 +141,7 @@ function openPlain(rt: Runtime, at: AgentTerminal, tab: ClaudeTab): string | nul
     args: plainArgs(at, tab, sessionId),
     cwd: tab.cwd,
     sessionId: known ? sessionId : null,
+    ...(known ? {} : { sessionLater: newSessionIn(rt, at.adapter.id, tab.cwd) }),
     ...(tab.env === undefined ? {} : { env: tab.env }),
   });
   return known ? sessionId : null;

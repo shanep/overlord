@@ -7,13 +7,14 @@ import type { AgentCapabilities, ModeOption } from '../../../shared/agents.js';
 export const CODEX_NAME = 'Codex CLI';
 export const CODEX_SHORT = 'Codex';
 
-/** Milestone 1 of META-HARNESS.md: Overlord reads Codex sessions but cannot start them yet. */
+/** Milestones 1 and 2 of META-HARNESS.md: Overlord reads Codex sessions and starts them in tabs. */
 export const CODEX_CAPABILITIES: AgentCapabilities = {
   launch: false,
-  terminal: false,
+  terminal: true,
   background: false,
-  resume: false,
-  fork: false,
+  resume: true,
+  // codex fork <id> continues a copy of a session under a new id.
+  fork: true,
   interrupt: false,
   liveModelChange: false,
   livePermissionMode: false,
@@ -27,7 +28,7 @@ export const CODEX_CAPABILITIES: AgentCapabilities = {
   contextInspector: false,
   hooks: false,
   messaging: false,
-  handoffs: [],
+  handoffs: ['resume-local'],
 };
 
 const APPROVALS: readonly { readonly id: string; readonly label: string }[] = [
