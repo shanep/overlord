@@ -71,6 +71,10 @@ describe('splitConfigArgs', () => {
 });
 
 describe('codexLaunchOverrides', () => {
+  it('refuses a short flag instead of dropping it', () => {
+    expect(() => codexLaunchOverrides(profile(['-m', 'o3']))).toThrow('Extra argument "-m"');
+  });
+
   it('keeps every config pair, so two -c flags both reach the launch', () => {
     const overrides = codexLaunchOverrides(
       profile(['-c', 'web_search="live"', '-c', 'model_verbosity="low"', '--strict-config']),

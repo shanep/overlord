@@ -5,7 +5,7 @@
 
 import type { LaunchProfile } from '../../../shared/model.js';
 import type { ConfigOverride, LaunchOverrides } from '../../knobs/facet.js';
-import { toLaunchOptions } from '../../knobs/launch.js';
+import { parseExtraArgs, toLaunchOptions } from '../../knobs/launch.js';
 import { parseTomlKey } from '../../knobs/toml-edit.js';
 
 const CONFIG_FLAGS: ReadonlySet<string> = new Set(['-c', '--config']);
@@ -51,8 +51,12 @@ export function splitConfigArgs(args: readonly string[]): {
   return { config, rest };
 }
 
-/** The profile's model, effort, mode and env as they are, its -c pairs as config overrides. */
+/**
+ * The profile's model, effort, mode and env as they are, its -c pairs as
+ * config overrides, and its other flags read strictly, so a short flag or a
+ * stray word is refused instead of dropped.
+ */
 export function codexLaunchOverrides(profile: LaunchProfile): LaunchOverrides {
   const { config, rest } = splitConfigArgs(profile.extraArgs);
-  return { ...toLaunchOptions({ ...profile, extraArgs: rest }), config };
+  return { ...toLaunchOptions(profile), extraArgs: parseExtraArgs(rest), config };
 }

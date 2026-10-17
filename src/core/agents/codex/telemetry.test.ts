@@ -137,6 +137,8 @@ describe('codexTelemetry settings', () => {
     expect(await codexTelemetry.disable(dirs)).toStrictEqual({ ok: true });
     expect(await readFile(file(), 'utf8')).toBe(own);
     expect(await codexTelemetry.launchConfig?.(dirs, 4318)).toStrictEqual([]);
+    await writeFile(file(), `${userConfig}[otel]\nlog_user_prompt = true\n`);
+    expect(await codexTelemetry.launchConfig?.(dirs, 4318)).toStrictEqual([]);
   });
 
   it('points one launch at the receiver with -c overrides and no file', async () => {

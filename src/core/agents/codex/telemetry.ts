@@ -148,12 +148,12 @@ async function disable(dirs: AgentDirs): Promise<SettingsWriteResult> {
 }
 
 /**
- * The export for one launch. Left out when the user's config.toml sends
- * telemetry somewhere of its own, so a launch never takes that over.
+ * The export for one launch. Left out when the user's config.toml has [otel]
+ * settings of its own, so a launch never overrides them.
  */
 async function launchConfig(dirs: AgentDirs, port: number): Promise<readonly ConfigOverride[]> {
   const config = await readConfig(dirs);
-  if (config === null || (at(config, ['otel', 'exporter']) !== undefined && !isOurs(config))) {
+  if (config === null || (at(config, ['otel']) !== undefined && !isOurs(config))) {
     return [];
   }
   const exporter = `{otlp-http={endpoint=${formatTomlValue(logsEndpoint(port))},protocol="json"}}`;

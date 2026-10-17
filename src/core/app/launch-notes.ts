@@ -15,9 +15,14 @@ import type { ConfigOverride } from '../knobs/facet.js';
 import { configArgs } from '../knobs/launch.js';
 
 /** How long a launch waits for a launch check that is still running. */
-export const LAUNCH_CHECK_WAIT_MS = 5000;
+const LAUNCH_CHECK_WAIT_MS = 5000;
 
-/** A session given its notes at launch has this long to send its SessionStart hook. */
+/**
+ * A session given its notes at launch has this long to send its SessionStart
+ * hook. Until then, another session of the same agent that starts in the same
+ * folder in that time is taken for it and gets no notes from its hook. Tabs
+ * give no session id up front, so the folder is all there is to go on.
+ */
 export const COVER_MS = 2 * 60_000;
 
 export interface LaunchNoteSources {

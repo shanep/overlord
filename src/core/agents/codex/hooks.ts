@@ -251,7 +251,7 @@ export function answerCodexHook(event: NormalizedHookEvent, answer: HookAnswer):
 }
 
 /** The relay command with this agent's flag, so the hook server reads the payload as Codex's. */
-export function codexHookCommand(command: string): string {
+function codexHookCommand(command: string): string {
   return `${command} --agent ${CODEX}`;
 }
 

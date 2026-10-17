@@ -27,7 +27,7 @@ function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
  * trusted. Codex writes `[projects."<path>"] trust_level = "trusted"` when
  * the user trusts a project, and skips the project's .codex folder until then.
  */
-export function isTrusted(userConfig: string, folder: string): boolean {
+function isTrusted(userConfig: string, folder: string): boolean {
   let projects: unknown;
   try {
     const parsed: unknown = parse(readFileSync(userConfig, 'utf8'));
