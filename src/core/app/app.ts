@@ -31,7 +31,7 @@ import type { CacheRuntime } from './caches.js';
 import { createCaches } from './caches.js';
 import { CatalogBrowser } from './catalog-browser.js';
 import { ChangeHub } from './changes.js';
-import { cliLoader, executableFor } from './claude-bin.js';
+import { agentPath, cliLoader, executableFor } from './claude-bin.js';
 import { ConfigSync } from './config-sync.js';
 import { createCoordinator } from './coordination.js';
 import type { AppError } from './errors.js';
@@ -133,9 +133,10 @@ export class OverlordApp {
       clock,
       pid: deps.pid ?? process.pid,
     });
+    const runners = launcherAgents(deps.queryFunction);
     const launcher = new Launcher(
       {
-        agents: launcherAgents(deps.queryFunction),
+        agents: runners,
         bus,
         broker: permissions.inbox,
         // The caches exist by the time a run reaches for a worktree.
@@ -143,8 +144,16 @@ export class OverlordApp {
           void this.rt.caches.worktrees.refresh();
         }),
         baseEnv: launchEnv,
+        // Other agents take their overlord.agents path, or their command on PATH.
         executablePath: (agent, runEnv): string | null =>
-          agent === CLAUDE_CODE ? executableFor(host.settings.claudePath, runEnv, platform) : null,
+          agent === CLAUDE_CODE
+            ? executableFor(host.settings.claudePath, runEnv, platform)
+            : executableFor(
+                agentPath(host.settings, agent),
+                runEnv,
+                platform,
+                runners.get(agent)?.terminal?.command ?? agent,
+              ),
         ...(host.backendEndpoint === undefined ? {} : { backendEndpoint: host.backendEndpoint }),
         now: clock,
         // The runtime exists by the time a queued run asks.

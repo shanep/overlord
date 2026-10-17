@@ -1,10 +1,11 @@
 // Codex CLI as an agent adapter. Overlord reads its rollout files for the
-// Fleet and starts or resumes sessions in terminal tabs. Driving and hooking
-// Codex come in later milestones of META-HARNESS.md.
+// Fleet, starts or resumes sessions in terminal tabs, and drives Launcher
+// runs over `codex app-server`. Hooking Codex comes in a later milestone of
+// META-HARNESS.md.
 
 import { CODEX } from '../../../shared/agents.js';
 import { executableFor } from '../../app/claude-bin.js';
-import type { AgentAdapter, DetectInput, Detected } from '../types.js';
+import type { AgentAdapter, AgentWords, DetectInput, Detected } from '../types.js';
 
 import {
   CODEX_CAPABILITIES,
@@ -17,6 +18,7 @@ import { codexInstructions } from './instructions.js';
 import { codexMcp } from './mcp.js';
 import { codexModels } from './models.js';
 import { codexObserverFacet } from './observer.js';
+import { codexRuntime } from './runtime.js';
 import { codexTerminal } from './terminal.js';
 
 /** Finds the binary on the login shell's PATH without running it, so the version stays unknown. */
@@ -28,6 +30,18 @@ async function detect(input: DetectInput): Promise<Detected> {
   };
 }
 
+/**
+ * What Codex 0.163.0 calls things: AGENTS.md, /compact, and /new to start
+ * over (its /clear clears the terminal too). It has no rewind command, only
+ * Esc twice to edit an earlier prompt, which advice cannot run as a command.
+ */
+const WORDS: AgentWords = {
+  instructionsFile: 'AGENTS.md',
+  compactCommand: '/compact',
+  clearCommand: '/new',
+  rewind: null,
+};
+
 export const codex: AgentAdapter = {
   id: CODEX,
   name: CODEX_NAME,
@@ -37,6 +51,8 @@ export const codex: AgentAdapter = {
   capabilities: CODEX_CAPABILITIES,
   modes: { permission: CODEX_PERMISSION_MODES, effort: CODEX_EFFORT_LEVELS },
   models: codexModels,
+  words: WORDS,
+  runtime: codexRuntime(),
   terminal: codexTerminal,
   observer: codexObserverFacet,
   instructions: codexInstructions,

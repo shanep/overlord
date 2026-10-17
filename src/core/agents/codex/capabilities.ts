@@ -7,18 +7,24 @@ import type { AgentCapabilities, ModeOption } from '../../../shared/agents.js';
 export const CODEX_NAME = 'Codex CLI';
 export const CODEX_SHORT = 'Codex';
 
-/** Milestones 1 and 2 of META-HARNESS.md: Overlord reads Codex sessions and starts them in tabs. */
+/**
+ * Milestones 1 to 3 of META-HARNESS.md: Overlord reads Codex sessions,
+ * starts them in tabs and drives them from the Launcher over app-server.
+ */
 export const CODEX_CAPABILITIES: AgentCapabilities = {
-  launch: false,
+  launch: true,
   terminal: true,
   background: false,
   resume: true,
   // codex fork <id> continues a copy of a session under a new id.
   fork: true,
-  interrupt: false,
-  liveModelChange: false,
+  // turn/interrupt stops a Launcher run's turn. A tab still needs Esc.
+  interrupt: true,
+  // turn/start takes a model for the turn and the ones after it.
+  liveModelChange: true,
+  // turn/start takes a policy too, but the set mode action only reads Claude's mode ids so far.
   livePermissionMode: false,
-  approvals: false,
+  approvals: true,
   subagents: false,
   // Rollouts report cached input, and cache writes too, though a ChatGPT plan reports 0.
   cacheReads: true,

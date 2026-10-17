@@ -60,15 +60,18 @@ describe('codex', () => {
     expect(agents.get('codex')).toBe(codex);
   });
 
-  it('claims only what the rollout files give it', () => {
+  it('claims what the rollout files and app-server give it', () => {
+    expect(codex.runtime?.permissionSource).toBe('runtime');
     expect(codex.capabilities).toMatchObject({
-      launch: false,
+      launch: true,
       terminal: true,
       resume: true,
       fork: true,
       background: false,
-      interrupt: false,
-      approvals: false,
+      interrupt: true,
+      approvals: true,
+      liveModelChange: true,
+      livePermissionMode: false,
       hooks: false,
       cacheReads: true,
       costUsd: false,
