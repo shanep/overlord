@@ -96,8 +96,8 @@ export class PanelManager implements vscode.Disposable {
     );
     // A tab draws its icon as an image, so currentColor would be black on a dark tab.
     panel.iconPath = {
-      light: vscode.Uri.joinPath(this.extensionUri, 'media', 'overlord-light.svg'),
-      dark: vscode.Uri.joinPath(this.extensionUri, 'media', 'overlord-dark.svg'),
+      light: vscode.Uri.joinPath(this.extensionUri, 'media', 'overlord-eye-light.svg'),
+      dark: vscode.Uri.joinPath(this.extensionUri, 'media', 'overlord-eye-dark.svg'),
     };
     const entry: OpenPanel = { panel, params, ready: false };
     this.panels.set(key, entry);
