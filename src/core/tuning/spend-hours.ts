@@ -27,7 +27,7 @@ export const HOUR_MS = 60 * 60_000;
 /** Context past this many tokens is the part that clearing between tasks would drop. */
 export const CONTEXT_BUDGET = 100_000;
 /** The model premium work is priced against, to say what moving it would save. */
-export const ROUTINE_MODEL = 'claude-sonnet-5-5';
+const ROUTINE_MODEL = 'claude-sonnet-5-5';
 
 const PREMIUM = /claude-(?:opus|fable|mythos)/u;
 
@@ -36,7 +36,7 @@ export function isPremium(model: string): boolean {
 }
 
 /** Token counts, or dollars split the same way. */
-export interface Split {
+interface Split {
   readonly input: number;
   readonly output: number;
   readonly cacheRead: number;

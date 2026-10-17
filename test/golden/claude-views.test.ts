@@ -15,6 +15,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { PanelParams } from '../../src/core/app/host-port.js';
 import { makeApp, makeEnv, settle } from '../../src/core/app/test-helpers/fixtures.js';
+import { isArray } from '../../src/core/sync/json.js';
 import {
   assistant,
   jsonl,
@@ -155,8 +156,8 @@ async function writeRunningSession(claudeDir: string): Promise<void> {
 
 /** Keys in code unit order at every level, with any pid hidden, so the JSON is stable. */
 function stable(value: unknown): unknown {
-  if (Array.isArray(value)) {
-    return value.map((item: unknown) => stable(item));
+  if (isArray(value)) {
+    return value.map((item) => stable(item));
   }
   if (value === null || typeof value !== 'object') {
     return value;

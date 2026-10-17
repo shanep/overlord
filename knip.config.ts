@@ -16,6 +16,8 @@ const config: KnipConfig = {
   // @vscode/test-electron is loaded by @vscode/test-cli at runtime, not imported.
   // type-coverage runs through scripts/slot.mjs, where knip cannot see the binary.
   ignoreDependencies: ['@vscode/test-electron', 'type-coverage'],
+  // no-real-api.test.ts names these agent CLIs to check that tests never start them.
+  ignoreBinaries: ['agy', 'codex', 'gemini.cmd'],
   project: ['src/**/*.ts', 'webview/**/*.{ts,tsx}', 'scripts/**/*.mjs', 'test/**/*.{ts,mjs}'],
 };
 

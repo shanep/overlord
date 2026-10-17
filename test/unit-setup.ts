@@ -258,10 +258,13 @@ function textOf(value: unknown): string | null {
   return value instanceof URL ? value.pathname : null;
 }
 
+/** Array.isArray narrows unknown to any[], so this keeps the elements unknown. */
+function isList(value: unknown): value is readonly unknown[] {
+  return Array.isArray(value);
+}
+
 function stringArgs(value: unknown): string[] {
-  return Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === 'string')
-    : [];
+  return isList(value) ? value.filter((item): item is string => typeof item === 'string') : [];
 }
 
 /** spawn, spawnSync, execFile and execFileSync: a program and an optional argument list. */
