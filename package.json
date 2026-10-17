@@ -1,7 +1,7 @@
 {
   "name": "overlord",
   "displayName": "Overlord",
-  "description": "Run a fleet of coding agents from VS Code: launch, watch and tune many agents at once, each in its own worktree.",
+  "description": "Run a fleet of coding agents from VS Code: launch, watch and tune Claude Code, Codex and Copilot CLI sessions at once, each in its own worktree.",
   "version": "0.1.0",
   "publisher": "shanep",
   "license": "MIT",
@@ -27,7 +27,10 @@
   "keywords": [
     "claude",
     "claude code",
+    "codex",
+    "copilot",
     "agents",
+    "coding agents",
     "monitor"
   ],
   "main": "./dist/extension.cjs",
