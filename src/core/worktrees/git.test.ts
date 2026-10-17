@@ -11,6 +11,7 @@ import {
   LandConflictError,
   NotARepoError,
   repoFolder,
+  worktreeFolder,
   WorktreeGit,
   type WorktreeInfo,
 } from './git.js';
@@ -61,6 +62,13 @@ function landing(pushes: readonly string[], calls: string[][]): WorktreeGit {
     '/wt',
   );
 }
+
+describe('worktreeFolder', () => {
+  it('names the folder after the repo plus the start of the id', () => {
+    expect(worktreeFolder('/a/app', '9ddebe83-afe6-47df-9ebb-00702feb383e')).toBe('app-9ddebe83');
+    expect(worktreeFolder('/a/app', 'w1')).toBe('app-w1');
+  });
+});
 
 describe('repoFolder', () => {
   it('names the folder after the repo plus a stable hash of its path', () => {
@@ -140,7 +148,7 @@ describe('WorktreeGit', { timeout: 30_000 }, () => {
       expect(info).toStrictEqual({
         id: 'w1',
         repoRoot: world.repo,
-        path: path.join(world.root, repoFolder(world.repo), 'w1'),
+        path: path.join(world.root, repoFolder(world.repo), worktreeFolder(world.repo, 'w1')),
         branch: `${BRANCH_PREFIX}w1`,
         baseCommit: landed,
         target: 'main',

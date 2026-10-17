@@ -1,5 +1,5 @@
 // Git operations on Overlord's worktrees. Each one lives outside the
-// repository, under <root>/<repo>-<hash>/<id>, on a branch overlord/<id>
+// repository, under <root>/<repo>-<hash>/<repo>-<short id>, on a branch overlord/<id>
 // started from a freshly fetched default branch. Keeping them out of the repo
 // means linters, test runners and file watchers in the main checkout never
 // see them. Every git call goes through an injected Exec so tests can fake it.
@@ -79,6 +79,18 @@ export function repoFolder(repoRoot: string): string {
   return `${path.basename(repoRoot)}-${hash}`;
 }
 
+/** Characters of the id a worktree's folder keeps, like the short ids Claude Code shows. */
+const SHORT_ID_CHARS = 8;
+
+/**
+ * The worktree's own folder: the repo name plus the start of its id, such as
+ * "overlord-9ddebe83". VS Code shows this folder beside a terminal tab's
+ * title, where a bare uuid says nothing.
+ */
+export function worktreeFolder(repoRoot: string, id: string): string {
+  return `${path.basename(repoRoot)}-${id.slice(0, SHORT_ID_CHARS)}`;
+}
+
 export class WorktreeGit {
   private readonly exec: Exec;
 
@@ -148,7 +160,7 @@ export class WorktreeGit {
       await this.exec('git', ['fetch', '--quiet', 'origin', target], { cwd: repoRoot });
     }
     const baseCommit = await this.baseCommit(repoRoot, target);
-    const worktreePath = path.join(this.root, repoFolder(repoRoot), id);
+    const worktreePath = path.join(this.root, repoFolder(repoRoot), worktreeFolder(repoRoot, id));
     const branch = `${BRANCH_PREFIX}${id}`;
     await this.git(repoRoot, ['worktree', 'add', '-b', branch, worktreePath, baseCommit]);
     return { id, repoRoot, path: worktreePath, branch, baseCommit, target };

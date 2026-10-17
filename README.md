@@ -109,8 +109,9 @@ typical workflow.
 
 Every Claude session Overlord starts, from **New Claude Code Session** or the launcher, gets its
 own git worktree, so many sessions can work in one repo without stepping on each other. Worktrees
-live in `~/.overlord/worktrees`, outside the repo, on a branch `overlord/<id>` cut from a fresh
-fetch of the default branch.
+live in `~/.overlord/worktrees`, outside the repo, in a folder named after the repo and the start
+of the session id (such as `overlord-9ddebe83`), on a branch `overlord/<id>` cut from a fresh fetch
+of the default branch.
 
 When a session ends, Overlord removes its worktree if everything in it landed. Anything left over
 (uncommitted edits, or commits the default branch does not have) stays in the **Worktrees** table
