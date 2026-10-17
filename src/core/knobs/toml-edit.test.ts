@@ -547,6 +547,9 @@ describe('keys and values', () => {
     expect(
       [Number.NaN, Infinity, -Infinity, 1.5].map((value) => formatTomlValue(value)),
     ).toStrictEqual(['nan', 'inf', '-inf', '1.5']);
+    expect(formatTomlValue(-(2 ** 53))).toBe('-9007199254740992.0');
+    expect(formatTomlValue(1e21)).toBe('1e+21');
+    expect(formatTomlValue(42)).toBe('42');
   });
 });
 

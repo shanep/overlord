@@ -105,10 +105,12 @@ function formatNumber(value: number): string {
   if (Number.isNaN(value)) {
     return 'nan';
   }
-  if (Number.isFinite(value)) {
-    return String(value);
+  if (!Number.isFinite(value)) {
+    return value > 0 ? 'inf' : '-inf';
   }
-  return value > 0 ? 'inf' : '-inf';
+  const text = String(value);
+  // A whole number past 2^53 is not a safe TOML integer, so write it as a float.
+  return Number.isSafeInteger(value) || !/^-?\d+$/u.test(text) ? text : `${text}.0`;
 }
 
 function formatScalar(value: TomlScalar): string {
