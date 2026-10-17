@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { chmod, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
-import { beforeEach, describe, expect, it, onTestFinished } from 'vitest';
+import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 
 import { fakeQueries, resultMessage } from '../../../test/fake-claude/fake-query.js';
 import type { Exec } from '../sync/exec.js';
@@ -418,12 +418,24 @@ describe('worktrees in the app', { timeout: 30_000 }, () => {
 
     it('runs on start and on a timer', async () => {
       const test = await setup();
+      // A tidy ends with this refresh. Waiting for it keeps the tidy from
+      // writing into the storage folder after the test removes it.
+      const { worktrees } = test.app.runtime.caches;
+      const refresh = worktrees.refresh.bind(worktrees);
+      const tidies: Promise<void>[] = [];
+      vi.spyOn(worktrees, 'refresh').mockImplementation(async () => {
+        const done = refresh();
+        tidies.push(done);
+        return done;
+      });
       await test.app.start();
-      await waitFor(() => !test.app.runtime.caches.worktrees.loading);
+      await waitFor(() => tidies.length === 1);
+      await Promise.all(tidies);
       const timer = test.intervals.find((entry) => entry.ms === 60_000);
       expect(timer).toBeDefined();
       timer?.callback();
-      await waitFor(() => !test.app.runtime.caches.worktrees.loading);
+      await waitFor(() => tidies.length === 2);
+      await Promise.all(tidies);
     });
   });
 
