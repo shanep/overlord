@@ -23,14 +23,14 @@ describe('backgroundJobs', () => {
     expect(
       backgroundJobs([
         entry('late', { startedAt: 30 }),
-        entry('asking', { state: 'blocked', startedAt: 25 }),
+        entry('asking', { state: 'blocked', startedAt: 25, cwd: '/asking' }),
         entry('stopped', { state: 'stopped', startedAt: 20 }),
         entry('broke', { state: 'failed', startedAt: null, cwd: null, name: null }),
       ]),
     ).toStrictEqual([
       { sessionId: 'broke', name: null, cwd: null, startedAt: null, state: 'failed' },
       { sessionId: 'stopped', name: 'job stopped', cwd: '/work', startedAt: 20, state: 'done' },
-      { sessionId: 'asking', name: 'job asking', cwd: '/work', startedAt: 25, state: 'waiting' },
+      { sessionId: 'asking', name: 'job asking', cwd: '/asking', startedAt: 25, state: 'waiting' },
       { sessionId: 'late', name: 'job late', cwd: '/work', startedAt: 30, state: 'done' },
     ]);
   });
@@ -46,6 +46,27 @@ describe('backgroundJobs', () => {
       ['between-turns', 'idle'],
       ['asking', 'waiting'],
       ['broke', 'failed'],
+    ]);
+  });
+
+  it('calls a blocked job done once a newer job picks it up in its folder', () => {
+    expect(
+      backgroundJobs([
+        entry('old', { state: 'blocked', startedAt: 10, cwd: '/wt/a' }),
+        entry('new', { pid: 50, state: 'working', startedAt: 20, cwd: '/wt/a' }),
+        entry('alive', { pid: 51, state: 'blocked', startedAt: 10, cwd: '/wt/b' }),
+        entry('later', { pid: 52, state: 'working', startedAt: 20, cwd: '/wt/b' }),
+        entry('alone', { state: 'blocked', startedAt: 10, cwd: '/wt/c' }),
+        entry('older', { state: 'done', startedAt: 5, cwd: '/wt/c' }),
+        entry('no-folder', { state: 'blocked', startedAt: 10, cwd: null }),
+        entry('other-kind', { kind: 'interactive', state: 'working', startedAt: 20, cwd: null }),
+      ]).map((job) => [job.sessionId, job.state]),
+    ).toStrictEqual([
+      ['older', 'done'],
+      ['old', 'done'],
+      ['alive', 'waiting'],
+      ['alone', 'waiting'],
+      ['no-folder', 'waiting'],
     ]);
   });
 
