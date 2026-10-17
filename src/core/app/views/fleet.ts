@@ -11,6 +11,7 @@ import { sessionName, ZERO_USAGE } from '../../../shared/model.js';
 import type { FleetState, PlanLimits, RateLimits } from '../../../shared/protocol.js';
 import { agents } from '../../agents/index.js';
 import { assessHealth, healthAgent } from '../../health/health.js';
+import { fleetProgress } from '../../progress/fleet-progress.js';
 import type { OverlordStore } from '../../store/store.js';
 import type { BackgroundJob } from '../../surfaces/jobs.js';
 import type { RegistryStatus } from '../places.js';
@@ -164,6 +165,8 @@ export interface FleetInputs {
   readonly statuses: Readonly<Record<string, RegistryStatus>>;
   /** The sessions the Launcher started. */
   readonly launched: readonly string[];
+  /** Token budgets set on sessions, by session id. */
+  readonly budgets: Readonly<Record<string, number>>;
   /** The projects, and the project of each session and workspace folder that has been checked. */
   readonly projects: (
     sessions: readonly SessionFolder[],
@@ -246,6 +249,14 @@ export function buildFleet(input: FleetInputs): FleetState {
     spendPerHourUsd: base.spendPerHourUsd,
     health: fleetHealth(input.store, sessions),
     launched: input.launched,
+    progress: fleetProgress({
+      sessions,
+      agents: base.agents,
+      activity: input.store.progressActivity(),
+      budgets: input.budgets,
+      window: input.plan?.limits.find((limit) => limit.kind === 'session') ?? null,
+      now: input.now,
+    }),
   };
 }
 
@@ -263,6 +274,7 @@ export function fleetFor(rt: Runtime): FleetState {
     jobs: rt.jobs.value,
     statuses: rt.places.statuses,
     launched: rt.launched.list(),
+    budgets: rt.budgets.tokens(),
     projects: (sessions, workspace) => rt.projects.view(sessions, workspace),
   });
 }

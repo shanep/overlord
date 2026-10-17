@@ -17,6 +17,8 @@ export function Meter(props: {
   readonly ratio: number | null;
   /** Overrides the fill tone, for values graded elsewhere. */
   readonly tone?: Tone;
+  /** Overrides the percent shown beside the bar, such as 3/8. */
+  readonly text?: string;
 }): ReactElement {
   const { label, ratio } = props;
   if (ratio === null) {
@@ -39,7 +41,7 @@ export function Meter(props: {
           style={{ width: `${percent.toString()}%` }}
         />
       </span>
-      <span className="meter-text">{formatPercent(clamped)}</span>
+      <span className="meter-text">{props.text ?? formatPercent(clamped)}</span>
     </span>
   );
 }

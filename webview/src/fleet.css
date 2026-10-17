@@ -398,13 +398,13 @@
 
 /* Columns go least useful first, so the title keeps room for its text. */
 @container fleet (width < 1400px) {
-  .tree-table :is(.col-trend, .col-calls) {
+  .tree-table :is(.col-trend, .col-calls, .col-surface, .col-effort) {
     display: none;
   }
 }
 
 @container fleet (width < 1150px) {
-  .tree-table :is(.col-cache, .col-effort, .col-surface) {
+  .tree-table :is(.col-cache, .col-left) {
     display: none;
   }
 }

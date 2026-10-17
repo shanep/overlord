@@ -387,7 +387,7 @@
         "overlord.connectors.briefSessions": {
           "type": "boolean",
           "default": true,
-          "description": "Tell each new Claude Code session which connectors (MCP servers, claude.ai connectors, Claude in Chrome, headless Chrome) are ready, and ask it to check the ones its task needs before it starts."
+          "description": "Tell each new Claude Code session which connectors (MCP servers, claude.ai connectors, Claude in Chrome, headless Chrome) are ready, and ask it to check the ones its task needs before it starts. The same note asks it to put every step in its task list, which the Fleet reads for progress and estimates."
         },
         "overlord.coordination.enabled": {
           "type": "boolean",

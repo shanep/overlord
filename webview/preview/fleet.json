@@ -439,7 +439,11 @@
   },
   "spendPerHourUsd": 14.6,
   "health": {
-    "s1": { "level": "good", "score": 0.86, "signals": [] },
+    "s1": {
+      "level": "good",
+      "score": 0.86,
+      "signals": []
+    },
     "s2": {
       "level": "watch",
       "score": 0.42,
@@ -468,5 +472,97 @@
       ]
     }
   },
-  "launched": ["s6"]
+  "launched": ["s6"],
+  "progress": {
+    "s1": {
+      "tasks": {
+        "done": 5,
+        "inProgress": 2,
+        "total": 9,
+        "current": "Write sample state for the fleet preview",
+        "startedAt": 1792205464715,
+        "tokensSpent": 7400000,
+        "estimate": {
+          "tokensLeft": 4100000,
+          "costLeftUsd": 3.2,
+          "msLeft": 1320000,
+          "finishAt": 1792209184715,
+          "basis": 5,
+          "limitRunsOutAt": null
+        }
+      },
+      "subagents": {
+        "running": 2,
+        "finished": 1,
+        "tokens": 970900,
+        "top": [
+          {
+            "agentId": "a2",
+            "description": "Write sample state for the fleet preview",
+            "tokens": 522000,
+            "running": true
+          },
+          {
+            "agentId": "a1",
+            "description": "Find every fleet CSS rule the restyle touches",
+            "tokens": 374000,
+            "running": false
+          },
+          {
+            "agentId": "a3",
+            "description": "Check the FleetState type for new fields",
+            "tokens": 74900,
+            "running": true
+          }
+        ],
+        "costs": {
+          "a1": 0.62,
+          "a2": 0.88,
+          "a3": 0.12
+        }
+      },
+      "budget": null
+    },
+    "s2": {
+      "tasks": {
+        "done": 1,
+        "inProgress": 1,
+        "total": 6,
+        "current": "Rank sessions by weekly score",
+        "startedAt": 1792202464715,
+        "tokensSpent": 5800000,
+        "estimate": {
+          "tokensLeft": 23000000,
+          "costLeftUsd": 14.5,
+          "msLeft": 11400000,
+          "finishAt": 1792219264715,
+          "basis": 1,
+          "limitRunsOutAt": 1792212364715
+        }
+      },
+      "subagents": null,
+      "budget": null
+    },
+    "s3": {
+      "tasks": {
+        "done": 7,
+        "inProgress": 0,
+        "total": 7,
+        "current": null,
+        "startedAt": 1792192264715,
+        "tokensSpent": 3100000,
+        "estimate": null
+      },
+      "subagents": null,
+      "budget": null
+    },
+    "s4": {
+      "tasks": null,
+      "subagents": null,
+      "budget": {
+        "tokens": 50000000,
+        "used": 46000000
+      }
+    }
+  }
 }

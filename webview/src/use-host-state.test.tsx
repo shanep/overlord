@@ -53,7 +53,7 @@ describe('useHostState', () => {
     send({ type: 'state', view: 'fleet', state: fleetState, agents: [] }, 'https://evil.example');
     expect(getByRole('status').textContent).toBe('none');
     send({ type: 'state', view: 'fleet', state: fleetState, agents: [] });
-    expect(getByRole('status').textContent).toBe('fleet:13');
+    expect(getByRole('status').textContent).toBe('fleet:14');
   });
 
   it('stops listening on unmount', () => {

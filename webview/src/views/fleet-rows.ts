@@ -1,5 +1,6 @@
-// Pure logic for the fleet tree: build project, session and subagent rows,
-// sort and flatten them for display. fleet-filter.ts filters them.
+// Pure logic for the fleet tree: build project, session and subagent rows
+// and flatten them for display. fleet-sort.ts sorts them and fleet-filter.ts
+// filters them.
 
 import type { AgentId } from '../../../src/shared/agents.js';
 import type { FleetHealth } from '../../../src/shared/health.js';
@@ -11,11 +12,12 @@ import type {
   Surface,
 } from '../../../src/shared/model.js';
 import { sessionName } from '../../../src/shared/model.js';
+import type { FleetProgress } from '../../../src/shared/progress.js';
 import type { FleetState, ProjectSummary } from '../../../src/shared/protocol.js';
 import type { SortState } from '../components/data-table.js';
 import { plural } from '../format.js';
 import { isBoolean, isRecord, isString } from '../guards.js';
-import { PLACE_INFO, STATE_RANK, SURFACE_LABELS } from '../labels.js';
+import { PLACE_INFO, STATE_RANK } from '../labels.js';
 import { cacheHitRatio, callsPerMinute, promptTokens } from '../metrics.js';
 
 import { workingOn } from './working-on.js';
@@ -65,6 +67,8 @@ export interface FleetRow {
   readonly health: FleetHealth | null;
   /** On a session's row, true when the Launcher started it, so it stays until removed by hand. */
   readonly launched: boolean;
+  /** On a session's row, its task list, subagent spend and budget, or null when it has none. */
+  readonly progress: FleetProgress | null;
 }
 
 export interface FleetNode {
@@ -93,15 +97,20 @@ function isActive(state: SessionState): boolean {
 /** What a session's node looks up by its id. */
 type SessionLookups = Pick<
   FleetState,
-  'agents' | 'places' | 'sessionProjects' | 'health' | 'launched'
+  'agents' | 'places' | 'sessionProjects' | 'health' | 'launched' | 'progress'
 >;
+
+/** A session's entry in one of the fleet's by-id records, or null when it has none. */
+function entryFor<T>(record: Readonly<Record<string, T>>, sessionId: string): T | null {
+  return record[sessionId] ?? null;
+}
 
 function sessionRow(
   session: SessionSummary,
   agents: readonly AgentNode[],
   state: SessionLookups,
 ): FleetRow {
-  const place = state.places[session.id] ?? null;
+  const place = entryFor(state.places, session.id);
   const project = state.sessionProjects[session.id];
   const main = agents.find((agent) => agent.id === session.id);
   const busy = agents.find((agent) => agent.state === 'running' && agent.currentTool !== null);
@@ -137,8 +146,9 @@ function sessionRow(
     manualProjectId: null,
     projectFolder: null,
     inWorkspace: false,
-    health: state.health[session.id] ?? null,
+    health: entryFor(state.health, session.id),
     launched: state.launched.includes(session.id),
+    progress: entryFor(state.progress, session.id),
   };
 }
 
@@ -168,7 +178,7 @@ function agentRow(agent: AgentNode, session: FleetRow): FleetRow {
     tokensOut: agent.usage.output,
     cacheHit: cacheHitRatio(agent.usage),
     contextFill: null,
-    costUsd: null,
+    costUsd: session.progress?.subagents?.costs[agent.id] ?? null,
     projectId: session.projectId,
     needsProject: false,
     manualProjectId: null,
@@ -176,6 +186,7 @@ function agentRow(agent: AgentNode, session: FleetRow): FleetRow {
     inWorkspace: false,
     health: null,
     launched: false,
+    progress: null,
   };
 }
 
@@ -254,13 +265,17 @@ function mostUrgent(rows: readonly FleetRow[]): SessionState {
 function projectFields(
   project: ProjectSummary | null,
   state: FleetState,
-): Pick<FleetRow, 'projectId' | 'manualProjectId' | 'projectFolder' | 'inWorkspace' | 'health'> {
+): Pick<
+  FleetRow,
+  'projectId' | 'manualProjectId' | 'projectFolder' | 'inWorkspace' | 'health' | 'progress'
+> {
   return {
     projectId: project?.id ?? null,
     manualProjectId: project?.kind === 'manual' ? project.id : null,
     projectFolder: project?.folder ?? null,
     inWorkspace: project !== null && state.workspaceProjects.includes(project.id),
     health: null,
+    progress: null,
   };
 }
 
@@ -354,67 +369,6 @@ export function elapsedMs(row: FleetRow, now: number): number {
 
 export function rowCallsPerMinute(row: FleetRow, now: number): number {
   return callsPerMinute(row.toolCalls, row.startedAt, row.endedAt ?? now);
-}
-
-type Sorter = (row: FleetRow, now: number) => number | string;
-
-const SORTERS: Readonly<Record<string, Sorter>> = {
-  started: (row) => row.startedAt,
-  state: (row) => STATE_RANK[row.state],
-  surface: (row) => `${SURFACE_LABELS[row.surface]} ${placeLabel(row)}`,
-  title: (row) => row.title.toLowerCase(),
-  health: (row) => row.health?.score ?? -1,
-  model: (row) => row.model ?? '',
-  effort: (row) => row.effort ?? '',
-  elapsed: elapsedMs,
-  tool: (row) => row.currentTool ?? '',
-  calls: rowCallsPerMinute,
-  tokens: (row) => row.tokensIn + row.tokensOut,
-  cache: (row) => row.cacheHit ?? -1,
-  context: (row) => row.contextFill ?? -1,
-  cost: (row) => row.costUsd ?? -1,
-};
-
-function compareValues(a: number | string, b: number | string): number {
-  if (typeof a === 'number' && typeof b === 'number') {
-    return a - b;
-  }
-  return String(a).localeCompare(String(b));
-}
-
-/** Rows that tie keep start order, so a tie never reshuffles between updates. */
-function compareRows(a: FleetRow, b: FleetRow): number {
-  return a.startedAt - b.startedAt || a.key.localeCompare(b.key);
-}
-
-/**
- * Sort siblings at every level. Project rows keep their order, so Unassigned
- * stays on top. An unknown column leaves the order alone.
- */
-export function sortTree(
-  nodes: readonly FleetNode[],
-  sort: SortState,
-  now: number,
-): readonly FleetNode[] {
-  const sorter = SORTERS[sort.column];
-  if (sorter === undefined) {
-    return nodes;
-  }
-  const direction = sort.descending ? -1 : 1;
-  const sortLevel = (level: readonly FleetNode[]): FleetNode[] => {
-    const sortedChildren = level.map((node) => ({
-      row: node.row,
-      children: sortLevel(node.children),
-    }));
-    return sortedChildren.every((node) => node.row.kind === 'project')
-      ? sortedChildren
-      : sortedChildren.toSorted(
-          (a, b) =>
-            direction * compareValues(sorter(a.row, now), sorter(b.row, now)) ||
-            compareRows(a.row, b.row),
-        );
-  };
-  return sortLevel(nodes);
 }
 
 interface FlattenContext {

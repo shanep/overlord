@@ -41,6 +41,7 @@ describe('storagePath', () => {
       dryRun: 'dry-run.txt',
       projects: 'projects.json',
       launched: 'launched.json',
+      budgets: 'budgets.json',
     });
   });
 });

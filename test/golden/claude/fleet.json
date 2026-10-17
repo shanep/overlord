@@ -178,6 +178,28 @@
     "launched": [],
     "pendingPermissions": [],
     "places": {},
+    "progress": {
+      "sess-0001": {
+        "budget": null,
+        "subagents": {
+          "costs": {
+            "explore1": 0.0047
+          },
+          "finished": 1,
+          "running": 0,
+          "tokens": 955,
+          "top": [
+            {
+              "agentId": "explore1",
+              "description": "Scan the imports",
+              "running": false,
+              "tokens": 955
+            }
+          ]
+        },
+        "tasks": null
+      }
+    },
     "projects": [],
     "rateLimits": {
       "fiveHourPct": null,

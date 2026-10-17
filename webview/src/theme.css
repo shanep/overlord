@@ -819,6 +819,25 @@ fieldset.chips {
   outline-offset: 1px;
 }
 
+/* A session's task progress in the Fleet, a bar like health's that sets its budget. */
+.col-progress,
+.col-left {
+  white-space: nowrap;
+}
+
+/* With no task list or budget the button only shows on the row in hand. */
+.progress-empty {
+  color: var(--ov-muted);
+  font-size: 0.9em;
+  visibility: hidden;
+}
+
+.tree-table tr:hover .progress-empty,
+.tree-table tr[aria-selected='true'] .progress-empty,
+.progress-bar:focus-visible .progress-empty {
+  visibility: visible;
+}
+
 /* One line under a session's title on what it is working on. */
 .row-summary {
   display: block;

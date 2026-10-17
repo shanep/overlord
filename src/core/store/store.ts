@@ -19,13 +19,15 @@ import type {
   RateLimits,
 } from '../../shared/protocol.js';
 import type { EventBus } from '../bus.js';
+import type { ProgressActivity } from '../progress/fleet-progress.js';
+import { TASK_TOOLS } from '../progress/tasks.js';
 
 import { isTelemetry, mergeAgent, mergeCall, mergeRateLimits, requestKey } from './merge.js';
 import type { CallRecord } from './merge.js';
 import { BoundedMap, RingBuffer } from './ring.js';
 import { SessionScoped } from './scoped.js';
-import { SparklineTracker } from './sparkline.js';
-import type { SessionSparkline } from './sparkline.js';
+import { type SessionSparkline, SparklineTracker } from './sparkline.js';
+import { byStart, descendants } from './tree.js';
 
 /** Runs a callback after a delay and returns a function that cancels it. */
 export type Scheduler = (callback: () => void, delayMs: number) => () => void;
@@ -73,27 +75,6 @@ function toolKey(call: Pick<ToolCall, 'sessionId' | 'id'>): string {
   return JSON.stringify([call.sessionId, call.id]);
 }
 
-function byStart(left: AgentNode, right: AgentNode): number {
-  return left.startedAt - right.startedAt;
-}
-
-/** Every agent below one agent in its session, at any depth. */
-function descendants(inSession: readonly AgentNode[], agentId: string): AgentNode[] {
-  const found: AgentNode[] = [];
-  const seen = new Set([agentId]);
-  const queue = [agentId];
-  for (let parent = queue.shift(); parent !== undefined; parent = queue.shift()) {
-    for (const node of inSession) {
-      if (node.parentAgentId === parent && !seen.has(node.id)) {
-        seen.add(node.id);
-        found.push(node);
-        queue.push(node.id);
-      }
-    }
-  }
-  return found;
-}
-
 interface ThreadActivity {
   readonly toolCalls: ToolCall[];
   readonly requests: ApiRequest[];
@@ -104,6 +85,8 @@ export class OverlordStore {
   private readonly sessions = new Map<string, SessionSummary>();
   private readonly agents = new SessionScoped<AgentNode>();
   private readonly toolCalls: BoundedMap<string, ToolCall>;
+  /** Each main thread's task tool calls, kept apart so a long session never loses its task list. */
+  private readonly taskCalls = new SessionScoped<ToolCall>();
   private readonly requests: BoundedMap<string, CallRecord>;
   /** Every message id and request id seen, to the key of the call it names. */
   private readonly requestAliases: BoundedMap<string, string>;
@@ -163,6 +146,7 @@ export class OverlordStore {
     | 'workspaceProjects'
     | 'health'
     | 'launched'
+    | 'progress'
   > {
     return {
       sessions: [...this.sessions.values()].toSorted(
@@ -248,6 +232,18 @@ export class OverlordStore {
       if (request.agentId === request.sessionId) {
         entry(request.sessionId).requests.push(request);
       }
+    }
+    return out;
+  }
+
+  /** Each known session's task tool calls and its requests from all threads, gathered in one pass. */
+  progressActivity(): ReadonlyMap<string, ProgressActivity> {
+    const out = new Map<string, { taskCalls: ToolCall[]; requests: ApiRequest[] }>();
+    for (const id of this.sessions.keys()) {
+      out.set(id, { taskCalls: this.taskCalls.inSession(id), requests: [] });
+    }
+    for (const { merged: request } of this.requests.values()) {
+      out.get(request.sessionId)?.requests.push(request);
     }
     return out;
   }
@@ -398,6 +394,9 @@ export class OverlordStore {
       this.sparklines.recordToolCall(call);
     }
     this.toolCalls.set(key, call);
+    if (call.agentId === call.sessionId && TASK_TOOLS.has(call.name)) {
+      this.taskCalls.set(call.sessionId, call.id, call);
+    }
   }
 
   /**
@@ -455,6 +454,7 @@ export class OverlordStore {
   private removeSession(sessionId: string): void {
     this.sessions.delete(sessionId);
     this.agents.deleteSession(sessionId);
+    this.taskCalls.deleteSession(sessionId);
     this.feeds.deleteSession(sessionId);
     this.compactions.deleteSession(sessionId);
     this.snapshots.deleteSession(sessionId);

@@ -4,6 +4,7 @@
 import { JOBS_REFRESH_MS } from './jobs.js';
 import { PLACES_REFRESH_MS } from './places.js';
 import type { IntervalFunction } from './process.js';
+import { checkProgress, PROGRESS_CHECK_MS, ProgressWatch } from './progress-alerts.js';
 import type { Runtime } from './runtime.js';
 import { CONNECTORS_REFRESH_MS } from './views/connectors.js';
 import { tidyWorktrees, WORKTREE_REFRESH_MS } from './worktrees.js';
@@ -17,6 +18,7 @@ export function startTimers(rt: Runtime, interval: IntervalFunction): (() => voi
     interval(() => {
       void work();
     }, ms);
+  const watch = new ProgressWatch();
   return [
     every(SESSIONS_REFRESH_MS, async () => rt.caches.sessions.refresh()),
     every(PLACES_REFRESH_MS, async () => rt.places.refresh()),
@@ -30,5 +32,6 @@ export function startTimers(rt: Runtime, interval: IntervalFunction): (() => voi
         rt.notify();
       }
     }),
+    every(PROGRESS_CHECK_MS, async () => checkProgress(rt, watch)),
   ];
 }

@@ -25,6 +25,7 @@ import { ACTION_LABELS, actionTip } from './fleet-actions.js';
 import { HealthBar } from './fleet-health.js';
 import { deltas } from './fleet-history.js';
 import type { RowHistory } from './fleet-history.js';
+import { LeftCell, ProgressCell } from './fleet-progress.js';
 import type { FleetRow, VisibleRow } from './fleet-rows.js';
 import { elapsedMs, rowCallsPerMinute } from './fleet-rows.js';
 import { TitleCell } from './fleet-title-cell.js';
@@ -35,6 +36,8 @@ const COLUMNS: readonly { readonly id: string; readonly label: string }[] = [
   { id: 'surface', label: 'Surface' },
   { id: 'title', label: 'Title' },
   { id: 'health', label: 'Health' },
+  { id: 'progress', label: 'Progress' },
+  { id: 'left', label: 'Left' },
   { id: 'model', label: 'Model' },
   { id: 'effort', label: 'Effort' },
   { id: 'elapsed', label: 'Elapsed' },
@@ -171,6 +174,8 @@ function ProjectCells(props: FleetTableRowProps): ReactElement {
         onAction={props.onAction}
       />
       <td role="gridcell" className="col-health" />
+      <td role="gridcell" className="col-progress" />
+      <td role="gridcell" className="col-left num" />
       <td role="gridcell" className="col-model" />
       <td role="gridcell" className="col-effort" />
       <td role="gridcell" className="col-elapsed num" />
@@ -253,6 +258,12 @@ function SessionCells(props: FleetTableRowProps): ReactElement {
       <td role="gridcell" className="col-health">
         <HealthBar row={row} tabIndex={tabIndex} onAction={props.onAction} />
       </td>
+      <td role="gridcell" className="col-progress">
+        <ProgressCell row={row} tabIndex={tabIndex} onAction={props.onAction} />
+      </td>
+      <td role="gridcell" className="col-left num">
+        <LeftCell row={row} />
+      </td>
       <td role="gridcell" className="col-model">
         {row.model ?? ''}
       </td>
@@ -286,7 +297,7 @@ function SessionCells(props: FleetTableRowProps): ReactElement {
         reported={!session || costUsd}
         why={`${agent.short} does not report cost`}
       >
-        {session ? formatCost(row.costUsd) : ''}
+        {session || row.costUsd !== null ? formatCost(row.costUsd) : ''}
       </ReportedCell>
       <td role="gridcell" className="col-trend">
         <FleetSparkline history={history} theme={theme} label={`Token trend for ${row.title}`} />

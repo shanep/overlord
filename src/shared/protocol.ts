@@ -28,6 +28,7 @@ import type {
   SettingsFileSummary,
   ToolCall,
 } from './model.js';
+import type { FleetProgress } from './progress.js';
 import type { ReputationState } from './reputation.js';
 import type { TuningState } from './tuning.js';
 import type { WorktreeSummary } from './worktrees.js';
@@ -110,6 +111,8 @@ export interface FleetState {
   readonly health: Readonly<Record<string, FleetHealth>>;
   /** The sessions the Launcher started, which stay in the fleet until removed by hand. */
   readonly launched: readonly string[];
+  /** Task list progress, subagent spend and token budget of each session that has any, by session id. */
+  readonly progress: Readonly<Record<string, FleetProgress>>;
 }
 
 export interface AgentDetailState {
@@ -490,6 +493,8 @@ export type WebviewAction =
   | { readonly type: 'setProjectFolder'; readonly projectId: string }
   | { readonly type: 'combineSessions'; readonly sessionId: string }
   | { readonly type: 'renameSession'; readonly sessionId: string }
+  /** Set or clear a session's token budget. */
+  | { readonly type: 'setBudget'; readonly sessionId: string }
   | { readonly type: 'openProject' }
   | { readonly type: 'newProjectSession'; readonly projectId: string };
 

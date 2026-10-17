@@ -26,6 +26,7 @@ import { dispatch } from './actions.js';
 import { agentCli } from './agent-terminal.js';
 import type { AppDeps } from './app-deps.js';
 import { coreDeps, launcherAgents, machineDeps } from './app-deps.js';
+import { TokenBudgets } from './budgets.js';
 import type { CacheRuntime } from './caches.js';
 import { createCaches } from './caches.js';
 import { CatalogBrowser } from './catalog-browser.js';
@@ -184,6 +185,7 @@ export class OverlordApp {
       // Sources is built below, and this only runs after construction.
       keep: async (ids): Promise<void> => this.sources.keepLaunched(ids),
     });
+    const budgets = new TokenBudgets({ ...events, file: storagePath(host.storageDir, 'budgets') });
     const base: CacheRuntime = {
       paths: this.paths,
       host,
@@ -208,6 +210,7 @@ export class OverlordApp {
       jobs,
       projects,
       launched,
+      budgets,
       report,
       planUsage: async (): Promise<unknown> => {
         const usageEnv = await launchEnv();
@@ -297,6 +300,7 @@ export class OverlordApp {
     await this.rt.permissions.load();
     await this.rt.worktrees.load();
     await this.rt.launched.load();
+    await this.rt.budgets.load();
     await this.sources.startWatcher();
     await this.sources.sync();
     this.cleanups.push(...startTimers(this.rt, this.interval));
@@ -450,6 +454,7 @@ export class OverlordApp {
     this.rt.store.dispose();
     this.changes.clear();
     await this.rt.launched.idle();
+    await this.rt.budgets.idle();
     await this.sources.stop();
   }
 }

@@ -6,6 +6,7 @@ import type { WebviewAction } from '../../shared/protocol.js';
 
 import type { ActionContext, ActionHandlers, ActionMap, ActionType } from './action-types.js';
 import { authoringActions } from './actions-authoring.js';
+import { budgetActions } from './actions-budget.js';
 import { catalogActions } from './actions-catalog.js';
 import { configActions } from './actions-config.js';
 import { connectorActions } from './actions-connectors.js';
@@ -39,6 +40,7 @@ const HANDLERS: ActionHandlers<ActionType> = {
   ...projectActions,
   ...combineActions,
   ...renameActions,
+  ...budgetActions,
   ...openProjectActions,
 };
 

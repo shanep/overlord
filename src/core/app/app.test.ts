@@ -141,7 +141,7 @@ describe('OverlordApp', () => {
     await app.start();
     await app.start();
     expect(intervals.map((entry) => entry.ms)).toStrictEqual([
-      30_000, 1000, 10_000, 60_000, 600_000, 60_000, 5000, 60_000,
+      30_000, 1000, 10_000, 60_000, 600_000, 60_000, 30_000, 5000, 60_000,
     ]);
     const workspace = env.host.workspace ?? '';
     expect(watches.map((entry) => entry.file)).toStrictEqual([
@@ -168,8 +168,11 @@ describe('OverlordApp', () => {
     const connectorsRefresh = vi.spyOn(app.runtime.caches.connectors, 'refresh');
     intervals[4]?.callback();
     expect(connectorsRefresh).toHaveBeenCalledTimes(1);
-    const projectsRefresh = vi.spyOn(app.runtime.projects, 'refresh');
+    const budgetsWarned = vi.spyOn(app.runtime.budgets, 'warned');
     intervals[6]?.callback();
+    expect(budgetsWarned).not.toHaveBeenCalled();
+    const projectsRefresh = vi.spyOn(app.runtime.projects, 'refresh');
+    intervals[7]?.callback();
     expect(projectsRefresh).toHaveBeenCalledTimes(1);
     const projectsLoad = vi.spyOn(app.runtime.projects, 'load');
     watches[3]?.onChange();

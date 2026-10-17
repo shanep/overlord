@@ -189,6 +189,7 @@ describe('sessionBriefing', () => {
     const text = sessionBriefing(rt);
     expect(text).toContain('- sentry: needs sign in.');
     expect(text).toContain('- claude.ai Gmail: ready');
+    expect(text).toMatch(/\n\nOverlord progress\. For any task with more than a few steps/u);
   });
 });
 

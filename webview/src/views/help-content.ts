@@ -164,6 +164,16 @@ export const FLEET_COLUMNS: readonly Column[] = [
     meaning:
       'How much health a session has left. The bar drains as it wears out: green while healthy, yellow at Watch and red at Degraded. Hover it to see why, or click it for its Session Properties.',
   },
+  {
+    name: 'Progress',
+    meaning:
+      "How far along the session's own task list is, such as 3/8. With no task list it shows the token budget, if you set one. Hover it for the current task, its subagents' tokens and the budget, or click it to set a token budget.",
+  },
+  {
+    name: 'Left',
+    meaning:
+      'Time and tokens left, projected from the share of the task list done so far. A ~ means only one or two tasks are done, so it is rough. Limit means the 5 hour limit runs out first, and Over budget means the work left goes past the budget.',
+  },
   { name: 'Model', meaning: 'The model it is using.' },
   { name: 'Effort', meaning: 'The reasoning effort, when the session set one.' },
   { name: 'Elapsed', meaning: 'Time since it started.' },

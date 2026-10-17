@@ -10,8 +10,8 @@ export type RowAction =
   | 'move'
   | 'relocate'
   | 'combine';
-/** A row button, or the health bar, which opens Session Properties. */
-export type RowEvent = RowAction | 'properties';
+/** A row button, the health bar, which opens Session Properties, or the progress bar, which sets a budget. */
+export type RowEvent = RowAction | 'properties' | 'budget';
 export type ProjectAction = 'newSession' | 'openFolder' | 'setFolder' | 'rename' | 'delete';
 
 export const ACTION_LABELS: Readonly<Record<RowAction | ProjectAction, string>> = {

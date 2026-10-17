@@ -8,6 +8,7 @@ import { CLAUDE_CODE } from '../../../shared/agents.js';
 import type { ConnectorsState } from '../../../shared/connectors.js';
 import { connectorsFor } from '../../../shared/connectors.js';
 import { connectorBriefing } from '../../connectors/briefing.js';
+import { PROGRESS_RULE } from '../../progress/briefing.js';
 import type { Runtime } from '../runtime.js';
 
 export const CONNECTORS_REFRESH_MS = 10 * 60 * 1000;
@@ -24,15 +25,17 @@ export function clockTime(at: number): string {
 }
 
 /**
- * The SessionStart note for a session of the agent, from the last check, with
- * only the rows that agent can reach. Reading it starts the first check.
+ * The SessionStart note for a session of the agent: the connectors from the
+ * last check, with only the rows that agent can reach, then the ask to keep
+ * its task list whole. Reading it starts the first check.
  */
 export function sessionBriefing(rt: Runtime, agent: AgentId = CLAUDE_CODE): string {
   const { value } = rt.caches.connectors;
-  return connectorBriefing(
+  const connectors = connectorBriefing(
     { checkedAt: value.checkedAt, connectors: connectorsFor(agent, value.connectors) },
     clockTime,
   );
+  return `${connectors}\n\n${PROGRESS_RULE}`;
 }
 
 /** Checks again now, showing the view as checking while it runs. */

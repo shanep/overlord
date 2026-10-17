@@ -16,8 +16,8 @@ import {
   normalizeRatio,
   rowCallsPerMinute,
   projectKey,
-  sortTree,
 } from './fleet-rows.js';
+import { sortTree } from './fleet-sort.js';
 
 function keys(nodes: readonly FleetNode[]): string[] {
   return nodes.map((node) => node.row.key);
@@ -208,6 +208,7 @@ describe('buildFleetTree', () => {
       inWorkspace: false,
       health: null,
       launched: false,
+      progress: fleetState.progress['s1'],
     });
     const health = { level: 'watch', score: 0.4, signals: [] } as const;
     const worn = buildFleetTree({ ...fleetState, health: { s1: health } });
@@ -230,7 +231,7 @@ describe('buildFleetTree', () => {
       toolCalls: 12,
       effort: null,
       contextFill: null,
-      costUsd: null,
+      costUsd: 0.3,
     });
   });
 

@@ -6,7 +6,7 @@ import type { KeyboardEvent, ReactElement } from 'react';
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
 
 import { choiceDecision, type PermissionRequest } from '../../../src/shared/model.js';
-import type { FleetState } from '../../../src/shared/protocol.js';
+import type { FleetState, WebviewAction } from '../../../src/shared/protocol.js';
 import { useChartTheme } from '../charts/chart-theme.js';
 import { useNow } from '../clock.js';
 import { ConfirmBar } from '../components/confirm-bar.js';
@@ -24,7 +24,8 @@ import { keyCommand } from './fleet-keys.js';
 import { NewSessionMenu } from './fleet-new-session.js';
 import { useFleetPreferences } from './fleet-preferences.js';
 import type { FleetRow, VisibleRow } from './fleet-rows.js';
-import { collapsedGroupOf, flattenTree, nextFleetSort, sortTree } from './fleet-rows.js';
+import { collapsedGroupOf, flattenTree, nextFleetSort } from './fleet-rows.js';
+import { sortTree } from './fleet-sort.js';
 import { FleetTable } from './fleet-table.js';
 import { FleetViewMenu } from './fleet-view-menu.js';
 
@@ -94,6 +95,20 @@ function FleetEmpty(props: {
       </button>
     </div>
   );
+}
+
+/** The row events that send one action about the row's session, and the action each sends. */
+const SESSION_ACTIONS = {
+  renameSession: 'renameSession',
+  move: 'moveSession',
+  relocate: 'continueInFolder',
+  combine: 'combineSessions',
+  properties: 'openProperties',
+  budget: 'setBudget',
+} as const satisfies Partial<Record<RowEvent, WebviewAction['type']>>;
+
+function isSessionAction(action: RowEvent): action is keyof typeof SESSION_ACTIONS {
+  return Object.hasOwn(SESSION_ACTIONS, action);
 }
 
 export function FleetView(props: { readonly state: FleetState }): ReactElement {
@@ -172,6 +187,10 @@ export function FleetView(props: { readonly state: FleetState }): ReactElement {
 
   const onAction = (row: FleetRow, action: RowEvent): void => {
     setSelected(row.key);
+    if (isSessionAction(action)) {
+      post({ type: SESSION_ACTIONS[action], sessionId: row.sessionId });
+      return;
+    }
     switch (action) {
       case 'open': {
         post({ type: 'openAgent', sessionId: row.sessionId, agentId: row.agentId });
@@ -180,26 +199,6 @@ export function FleetView(props: { readonly state: FleetState }): ReactElement {
       case 'context': {
         const agentId = row.kind === 'session' ? null : row.agentId;
         post({ type: 'openContext', sessionId: row.sessionId, agentId });
-        break;
-      }
-      case 'renameSession': {
-        post({ type: 'renameSession', sessionId: row.sessionId });
-        break;
-      }
-      case 'move': {
-        post({ type: 'moveSession', sessionId: row.sessionId });
-        break;
-      }
-      case 'relocate': {
-        post({ type: 'continueInFolder', sessionId: row.sessionId });
-        break;
-      }
-      case 'combine': {
-        post({ type: 'combineSessions', sessionId: row.sessionId });
-        break;
-      }
-      case 'properties': {
-        post({ type: 'openProperties', sessionId: row.sessionId });
         break;
       }
       case 'interrupt':

@@ -596,6 +596,20 @@ describe('OverlordStore agentDetailState', () => {
     expect(detail.requests.map((item) => item.messageId)).toStrictEqual(['r2', 'r3']);
   });
 
+  it('keeps a main thread task list when its tool calls fall out of the bound', () => {
+    const { bus, store } = setup({ limits: { toolCalls: 1, requests: 1 } });
+    bus.emit('session.upserted', session('s1'));
+    bus.emit('tool.upserted', tool('plan', { name: 'TaskCreate', startedAt: 1 }));
+    bus.emit('tool.upserted', tool('sub', { name: 'TaskCreate', agentId: 'a1', startedAt: 2 }));
+    bus.emit('tool.upserted', tool('t3', { startedAt: 3 }));
+    bus.emit('request.recorded', request('r1', { timestamp: 1 }));
+    const activity = store.progressActivity().get('s1');
+    expect(activity?.taskCalls.map((item) => item.id)).toStrictEqual(['plan']);
+    expect(activity?.requests.map((item) => item.messageId)).toStrictEqual(['r1']);
+    bus.emit('session.removed', { sessionId: 's1' });
+    expect(store.progressActivity().get('s1')).toBeUndefined();
+  });
+
   it('uses generous default limits', () => {
     expect(DEFAULT_LIMITS).toStrictEqual({
       toolCalls: 10_000,

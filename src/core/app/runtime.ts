@@ -25,6 +25,7 @@ import type { FetchFunction } from '../sync/github.js';
 import type { WorktreeRegistry } from '../worktrees/registry.js';
 
 import type { AsyncValue } from './async-value.js';
+import type { TokenBudgets } from './budgets.js';
 import type { CatalogBrowser } from './catalog-browser.js';
 import type { HostPort } from './host-port.js';
 import type { BackgroundJobs } from './jobs.js';
@@ -94,6 +95,8 @@ export interface Runtime {
   readonly browsedFolders: { readonly folder: string; readonly at: number }[];
   /** The sessions the Launcher started, held in the fleet until removed by hand. */
   readonly launched: LaunchedSessions;
+  /** Token budgets set on sessions from the Fleet. */
+  readonly budgets: TokenBudgets;
   readonly caches: Caches;
   readonly context: ContextViews;
   /** The MCP registry search in the Connectors view. */

@@ -1,7 +1,7 @@
 // The small JSON files Overlord keeps in the extension's storage folder:
-// auto-approve rules, prompt drafts, projects, launched sessions and the
-// claude.ai import. Every file is checked with zod on read, so a hand edit
-// gone wrong is an error, not a crash.
+// auto-approve rules, prompt drafts, projects, launched sessions, token
+// budgets and the claude.ai import. Every file is checked with zod on read,
+// so a hand edit gone wrong is an error, not a crash.
 
 import path from 'node:path';
 
@@ -28,7 +28,8 @@ export type StorageName =
   | 'memoryState'
   | 'dryRun'
   | 'projects'
-  | 'launched';
+  | 'launched'
+  | 'budgets';
 
 export const STORAGE_FILES: Readonly<Record<StorageName, string>> = {
   rules: 'rules.json',
@@ -40,6 +41,7 @@ export const STORAGE_FILES: Readonly<Record<StorageName, string>> = {
   dryRun: 'dry-run.txt',
   projects: 'projects.json',
   launched: 'launched.json',
+  budgets: 'budgets.json',
 };
 
 export function storagePath(storageDir: string, name: StorageName): string {
@@ -91,6 +93,19 @@ const launchedFileSchema = z.object({
   version: z.literal(1),
   sessions: z.array(z.string().min(1)),
 });
+
+const budgetSchema = z.object({
+  tokens: z.number().positive(),
+  warned: z.boolean(),
+});
+
+const budgetsFileSchema = z.object({
+  version: z.literal(1),
+  budgets: z.record(z.string().min(1), budgetSchema),
+});
+
+/** A token budget set on a session, and whether its warning has been shown. */
+export type StoredBudget = z.infer<typeof budgetSchema>;
 
 /** Parsed file contents, or `fallback` when the file does not exist. */
 async function readChecked<T>(file: string, schema: z.ZodType<T>, fallback: T): Promise<T> {
@@ -191,4 +206,17 @@ export async function readLaunched(file: string): Promise<readonly string[]> {
 
 export async function writeLaunched(file: string, sessions: readonly string[]): Promise<void> {
   await writeJson(file, { version: 1, sessions });
+}
+
+/** The token budgets set on sessions, by session id. */
+export async function readBudgets(file: string): Promise<Readonly<Record<string, StoredBudget>>> {
+  const data = await readChecked(file, budgetsFileSchema, { version: 1, budgets: {} });
+  return data.budgets;
+}
+
+export async function writeBudgets(
+  file: string,
+  budgets: Readonly<Record<string, StoredBudget>>,
+): Promise<void> {
+  await writeJson(file, { version: 1, budgets });
 }

@@ -127,6 +127,11 @@ skipped with a warning.
 - **Session health**: Session Properties flags a session that is wearing out (a large context,
   compactions, a run of failed tool calls, cache misses, hours of activity) and says what to do
   about each one.
+- **Progress and estimates**: the Fleet reads each session's own task list (TaskCreate,
+  TodoWrite or Codex's update_plan) and shows how many tasks are done, the time and tokens left,
+  and whether the 5 hour limit runs out first. Click the bar to set a token budget. Overlord
+  warns once when a session uses up its budget, or runs past 1.5 times what its task list
+  looked set to need, and offers to stop it.
 - **Context inspector**: for Claude Code sessions, the system prompt, every memory file that loaded (and why), and every
   file that did not load (and why not).
 - **Knobs**: 700+ Claude Code settings, env vars and CLI flags pulled from its docs, grouped into areas

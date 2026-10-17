@@ -27,6 +27,7 @@
     .col-tokens,
     .col-cache,
     .col-context,
+    .col-left,
     .col-trend
   ) {
   display: none;

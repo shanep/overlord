@@ -150,6 +150,38 @@ export const fleetState: FleetState = {
   rateLimits: { fiveHourPct: 0.64, sevenDayPct: 0.2, resetsAt: NOW + 90 * MINUTE },
   spendPerHourUsd: 3.5,
   health: {},
+  progress: {
+    s1: {
+      tasks: {
+        done: 3,
+        inProgress: 1,
+        total: 8,
+        current: 'Wire the parser into the CLI',
+        startedAt: NOW - 50 * MINUTE,
+        tokensSpent: 1_200_000,
+        estimate: {
+          tokensLeft: 1_500_000,
+          costLeftUsd: 1.6,
+          msLeft: 62 * MINUTE,
+          finishAt: NOW + 62 * MINUTE,
+          basis: 3,
+          limitRunsOutAt: null,
+        },
+      },
+      subagents: {
+        running: 1,
+        finished: 1,
+        tokens: 300_000,
+        top: [
+          { agentId: 'a1', description: 'Find parser tests', tokens: 200_000, running: true },
+          { agentId: 'a2', description: 'Read fixtures', tokens: 100_000, running: false },
+        ],
+        costs: { a1: 0.3, a2: 0.1 },
+      },
+      budget: null,
+    },
+    s2: { tasks: null, subagents: null, budget: { tokens: 2_000_000, used: 1_900_000 } },
+  },
 };
 
 const mainAgent = fleetState.agents[0];
