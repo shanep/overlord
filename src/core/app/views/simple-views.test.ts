@@ -132,8 +132,12 @@ describe('fleet view', () => {
       resetsAt: 9,
     });
     const window = { agent: 'codex', id: 'primary', label: '5 hour', usedPct: 30, resetsAt: 9 };
-    const limits = { fiveHourPct: null, sevenDayPct: null, resetsAt: null, windows: [window] };
-    expect(normalizeRateLimits(limits).windows).toStrictEqual([{ ...window, usedPct: 0.3 }]);
+    const low = { ...window, id: 'secondary', usedPct: 1 };
+    const limits = { fiveHourPct: null, sevenDayPct: null, resetsAt: null, windows: [window, low] };
+    expect(normalizeRateLimits(limits).windows).toStrictEqual([
+      { ...window, usedPct: 0.3 },
+      { ...low, usedPct: 0.01 },
+    ]);
   });
 
   it('uses the given pending list and the store for the rest', () => {

@@ -71,7 +71,7 @@ export interface RateLimitWindow {
   readonly id: string;
   /** "5 hour", "7 day", "30 day". */
   readonly label: string;
-  /** Percent on the bus, a fraction once the Fleet view reads it. */
+  /** Percent on the bus, 0 to 1 in view state. */
   readonly usedPct: number | null;
   readonly resetsAt: number | null;
 }

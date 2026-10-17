@@ -321,7 +321,7 @@ export interface PlanLimits {
 export interface UsageState extends UsageStats {
   /** Null when plan limits do not apply (API key, Bedrock, Vertex) or could not be read. */
   readonly plan: PlanLimits | null;
-  /** Usage limit windows the agents' sessions reported, in percent. Left out before the first one. */
+  /** Usage limit windows the agents' sessions reported. Left out before the first one. */
   readonly windows?: readonly RateLimitWindow[];
 }
 

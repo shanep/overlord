@@ -17,7 +17,7 @@ import type { RegistryStatus } from '../places.js';
 import type { ProjectView, SessionFolder } from '../projects.js';
 import type { Runtime } from '../runtime.js';
 
-import { currentPlan } from './usage.js';
+import { currentPlan, windowFractions } from './usage.js';
 
 /** The harness reports fractions; anything over 1 is a percentage and gets scaled down. */
 export function toFraction(value: number | null): number | null {
@@ -37,10 +37,7 @@ export function normalizeRateLimits(limits: RateLimits): RateLimits {
     ? normalized
     : {
         ...normalized,
-        windows: limits.windows.map((window) => ({
-          ...window,
-          usedPct: toFraction(window.usedPct),
-        })),
+        windows: windowFractions(limits.windows),
       };
 }
 

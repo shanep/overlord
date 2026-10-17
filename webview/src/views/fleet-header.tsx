@@ -83,7 +83,7 @@ export function FleetHeader(props: {
         )}
         {otherWindows(state.rateLimits.windows, agents).map(({ key, label, window }) => (
           <Stat key={key} label={label}>
-            <Meter label={`${label} used`} ratio={normalizeRatio(window.usedPct)} />
+            <Meter label={`${label} used`} ratio={window.usedPct} />
           </Stat>
         ))}
       </dl>

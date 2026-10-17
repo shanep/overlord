@@ -4,6 +4,7 @@
 
 import { readFile } from 'node:fs/promises';
 
+import type { RateLimitWindow } from '../../../shared/agents.js';
 import type { BridgeUsage } from '../../../shared/bridge-usage.js';
 import type { PlanLimits, UsageState, UsageStats } from '../../../shared/protocol.js';
 import { bridgeUsageFile, summarizeUsage } from '../../bridge/usage-log.js';
@@ -54,8 +55,19 @@ export function currentPlan(rt: Runtime): PlanLimits | null {
   return limits;
 }
 
+/**
+ * Windows come in as percent, 0 to 100, and the views take 0 to 1. Dividing
+ * always, rather than guessing from the size, keeps 1% from showing as 100%.
+ */
+export function windowFractions(windows: readonly RateLimitWindow[]): RateLimitWindow[] {
+  return windows.map((window) => ({
+    ...window,
+    usedPct: window.usedPct === null ? null : window.usedPct / 100,
+  }));
+}
+
 export function buildUsage(rt: Runtime): UsageState {
   const { windows } = rt.store.rateLimitsState();
   const usage: UsageState = { ...rt.caches.usage.value, plan: currentPlan(rt) };
-  return windows === undefined ? usage : { ...usage, windows };
+  return windows === undefined ? usage : { ...usage, windows: windowFractions(windows) };
 }

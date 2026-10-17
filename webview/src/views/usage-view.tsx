@@ -35,7 +35,6 @@ import {
 } from '../format.js';
 import type { Tone } from '../labels.js';
 
-import { normalizeRatio } from './fleet-rows.js';
 import type { NamedWindow } from './limit-windows.js';
 import { otherWindows } from './limit-windows.js';
 
@@ -147,7 +146,7 @@ function AgentLimitsSection(props: {
       </div>
       <CardGrid labelledBy="agent-limits-title">
         {props.windows.map(({ key, label, window }) => {
-          const ratio = normalizeRatio(window.usedPct);
+          const ratio = window.usedPct;
           const tone: Tone = ratio === null ? 'neutral' : meterTone(ratio);
           return (
             <Card key={key} tone={tone}>

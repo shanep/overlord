@@ -109,6 +109,7 @@ export interface RateLimitWindowReport {
    * "seven_day" also fill the Fleet's plan limits.
    */
   readonly id: string;
+  /** Percent used, 0 to 100. */
   readonly usedPct: number | null;
   /** Epoch milliseconds. */
   readonly resetsAt: number | null;

@@ -27,7 +27,7 @@ const CODEX_WINDOW: RateLimitWindow = {
   resetsAt: NOW + 2 * 60 * 60_000,
 };
 
-const MONTH: RateLimitWindow = { ...CODEX_WINDOW, id: 'monthly', label: '30 day', usedPct: 92 };
+const MONTH: RateLimitWindow = { ...CODEX_WINDOW, id: 'monthly', label: '30 day', usedPct: 0.92 };
 
 describe('otherWindows', () => {
   it('leaves Claude Code out and names the rest by agent', () => {
