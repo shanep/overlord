@@ -10,7 +10,8 @@ import type { Exec, ExecOptions } from '../../sync/exec.js';
 import { createNodeExec } from '../../sync/exec.js';
 import type { McpPlace } from '../types.js';
 
-import { addArgs, copilotHome, copilotMcp } from './mcp.js';
+import { addArgs, copilotMcp } from './mcp.js';
+import { copilotHome } from './observer.js';
 
 const FAKE_COPILOT = fileURLToPath(
   new URL('../../../../test/fake-agents/copilot/fake-copilot-mcp.mjs', import.meta.url),
@@ -48,8 +49,8 @@ describe('the Copilot MCP store', () => {
   }
 
   it('finds COPILOT_HOME, or ~/.copilot without it', () => {
-    expect(copilotHome('/h', { COPILOT_HOME: '/c' })).toBe('/c');
-    expect(copilotHome('/h', {})).toBe(path.join('/h', '.copilot'));
+    expect(copilotHome({ home: '/h', env: { COPILOT_HOME: '/c' } })).toBe('/c');
+    expect(copilotHome({ home: '/h', env: {} })).toBe(path.join('/h', '.copilot'));
   });
 
   it('reads the workspace files before the user file, with what settings turn off', async () => {

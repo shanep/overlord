@@ -12,11 +12,12 @@ import path from 'node:path';
 import { CODEX } from '../../../shared/agents.js';
 import { plainText } from '../../../shared/plain-text.js';
 import type { SurfaceSession } from '../../../shared/protocol.js';
+import { agentHome } from '../../context/policy.js';
 import type { SessionPeek } from '../../transcripts/peek.js';
 import { listObserved } from '../shared/session-list.js';
 import type {
   ObservedSession,
-  ObserverContext,
+  AgentPlace,
   ObserverFacet,
   ObserverListInput,
   SessionObserver,
@@ -38,9 +39,8 @@ const ROLLOUT =
   /^rollout-.+-(?<id>[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12})\.jsonl$/u;
 
 /** Where Codex keeps its files: CODEX_HOME, or ~/.codex. */
-export function codexHome(context: Pick<ObserverContext, 'home' | 'env'>): string {
-  const set = context.env['CODEX_HOME']?.trim() ?? '';
-  return set === '' ? path.join(context.home, '.codex') : set;
+export function codexHome(context: Pick<AgentPlace, 'home' | 'env'>): string {
+  return agentHome(context, 'CODEX_HOME', '.codex');
 }
 
 /** The thread id in a rollout file name, or null when the name is not a rollout. */
@@ -117,7 +117,7 @@ export async function peekRollout(session: ObservedSession): Promise<SessionPeek
 }
 
 export function codexObserver(
-  context: Pick<ObserverContext, 'home' | 'env'>,
+  context: Pick<AgentPlace, 'home' | 'env'>,
 ): SessionObserver<CodexRecords> {
   const sessionsDir = path.join(codexHome(context), 'sessions');
   return {

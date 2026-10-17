@@ -22,16 +22,11 @@ import type {
   McpServerConfig,
   McpStore,
   SettingsWriteResult,
-  ShellEnv,
 } from '../types.js';
 
-const SHORT = 'Codex';
+import { codexHome } from './observer.js';
 
-/** $CODEX_HOME, or ~/.codex. */
-export function codexHome(home: string, env: ShellEnv): string {
-  const set = env['CODEX_HOME'];
-  return set === undefined || set === '' ? path.join(home, '.codex') : set;
-}
+const SHORT = 'Codex';
 
 function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -85,7 +80,7 @@ async function read(place: McpPlace): Promise<McpRead> {
     ...(place.cwd === null
       ? []
       : [{ file: path.join(place.cwd, '.codex', 'config.toml'), scope: 'project' as const }]),
-    { file: path.join(codexHome(place.home, place.env), 'config.toml'), scope: 'user' as const },
+    { file: path.join(codexHome(place), 'config.toml'), scope: 'user' as const },
   ];
   const reads = await Promise.all(files.map(async (entry) => readToml(entry.file, entry.scope)));
   return {

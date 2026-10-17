@@ -15,7 +15,7 @@ import copilotCatalog from '../../knobs/catalogs/copilot.json';
 import type { KnobsFacet, LaunchOverrides, LayerSource, SettingsPlace } from '../../knobs/facet.js';
 import { toExtraArgs } from '../../knobs/launch.js';
 
-import { copilotHome } from './mcp.js';
+import { copilotHome } from './observer.js';
 
 function repoFile(name: string): (place: SettingsPlace) => string | null {
   return ({ projectDir }) =>
@@ -43,7 +43,7 @@ const LAYERS: readonly LayerSource[] = [
     kind: 'file',
     layer: 'user',
     format: 'jsonc',
-    file: ({ paths, env }) => path.join(copilotHome(paths.home, env), 'settings.json'),
+    file: ({ paths, env }) => path.join(copilotHome({ home: paths.home, env }), 'settings.json'),
     writable: true,
   },
 ];

@@ -196,12 +196,17 @@ export interface TerminalFacet {
   handoff?: (kind: HandoffKind, session: SurfaceSession, bin: string) => HandoffCommand | null;
 }
 
-/** Where an agent's observer looks for files. */
-export interface ObserverContext {
+/**
+ * Where an agent keeps its files, as the observer, the instruction policy,
+ * the MCP list and the library look for them. Each agent finds its own
+ * folder from these: Claude Code from claude, Codex and Copilot from a
+ * variable in env or a folder under home.
+ */
+export interface AgentPlace {
   readonly home: string;
-  /** Variables that move an agent's folders, like CLAUDE_CONFIG_DIR or CODEX_HOME. */
+  /** Variables that move an agent's folders, like CLAUDE_CONFIG_DIR, CODEX_HOME or COPILOT_HOME. */
   readonly env: ShellEnv;
-  /** Claude Code's folders as the app resolved them. Only the Claude observer reads these. */
+  /** Claude Code's folders as the app resolved them. Only Claude Code's facets read these. */
   readonly claude: ClaudePaths;
 }
 
@@ -319,9 +324,9 @@ export interface UserPrompts {
  * @public
  */
 export interface ObserverFacet {
-  create: (context: ObserverContext) => SessionObserver;
+  create: (context: AgentPlace) => SessionObserver;
   /** The prompts the user typed, for Reputation. Left out when the agent's files do not keep them. */
-  userPrompts?: (context: ObserverContext) => UserPrompts;
+  userPrompts?: (context: AgentPlace) => UserPrompts;
 }
 
 /** One session's files as the Tuning scan sees them. */
@@ -340,7 +345,7 @@ export interface TuningSession {
  */
 export interface TuningFacet {
   /** Every session on disk, from file metadata alone. */
-  sessions: (context: ObserverContext) => Promise<readonly TuningSession[]>;
+  sessions: (context: AgentPlace) => Promise<readonly TuningSession[]>;
   /** Reads one session's files and measures them. */
   measure: (session: TuningSession) => Promise<SessionMeasure>;
   /** The knobs a tip's advice sets, by tip id, for an agent whose knobs differ from Claude Code's. */
@@ -367,15 +372,6 @@ export interface HooksFacet extends HookDialect {
    * path, tried in order. The coordinator watches these for edits.
    */
   readonly editTools: EditTools;
-}
-
-/** Where an agent keeps its own files, for its instruction policy. */
-export interface InstructionWhere {
-  readonly home: string;
-  /** The session's environment, for variables like CODEX_HOME or COPILOT_HOME. */
-  readonly env: ShellEnv;
-  /** Claude Code's folders as the app resolved them. Only the Claude policy reads these. */
-  readonly claude: ClaudePaths;
 }
 
 /** One file an agent looks for in a folder. */
@@ -444,7 +440,7 @@ export interface InstructionBudget {
 
 /** Files an administrator puts in place, which no setting turns off. */
 interface ManagedInstructions {
-  readonly dir: (where: InstructionWhere) => string;
+  readonly dir: (where: AgentPlace) => string;
   readonly entries: readonly InstructionFile[];
 }
 
@@ -456,7 +452,7 @@ interface ManagedInstructions {
 export interface InstructionPolicy {
   readonly names: InstructionNames;
   /** The agent's own folder, which holds its user files: ~/.claude, ~/.codex or ~/.copilot. */
-  readonly configDir: (where: InstructionWhere) => string;
+  readonly configDir: (where: AgentPlace) => string;
   /** The agent's folder in a repository, like .claude, which the launch check leaves out of its ignored files. */
   readonly projectDir: string;
   /** Files in the agent's own folder, read in every project. */
@@ -524,7 +520,7 @@ export interface McpRead {
 }
 
 /** Where to look for an agent's MCP files. */
-export interface McpPlace extends ObserverContext {
+export interface McpPlace extends AgentPlace {
   /** The folder whose project servers count, or null for user servers alone. */
   readonly cwd: string | null;
 }
@@ -577,7 +573,7 @@ export interface LibraryFolder {
 }
 
 /** Where to look for an agent's skill and agent folders. */
-export interface LibraryPlace extends ObserverContext {
+export interface LibraryPlace extends AgentPlace {
   /** The project folder, or null for the user folders alone. */
   readonly cwd: string | null;
   /** The git root above cwd, or null outside git. */

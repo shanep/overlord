@@ -4,7 +4,7 @@
 // sessions.
 
 import { claudeTuningSessions, measureClaudeSession } from '../agents/claude/tuning.js';
-import type { ObserverContext, TuningFacet, TuningSession } from '../agents/types.js';
+import type { AgentPlace, TuningFacet, TuningSession } from '../agents/types.js';
 
 import type { FileStamp, TuningIndex } from './store.js';
 
@@ -77,7 +77,7 @@ async function scanFound(
 export async function scanAgents(
   index: TuningIndex,
   facets: readonly TuningFacet[],
-  context: ObserverContext,
+  context: AgentPlace,
   now: number,
 ): Promise<ScanResult> {
   const found: Found[] = [];

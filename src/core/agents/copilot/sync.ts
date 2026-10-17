@@ -8,7 +8,7 @@ import path from 'node:path';
 import { isRecord, readJsonFile } from '../../connectors/mcp-files.js';
 import type { SyncedMcpServer, SyncFacet } from '../sync-types.js';
 
-import { copilotHome } from './mcp.js';
+import { copilotHome } from './observer.js';
 
 // Settings that name this machine's folders or the accounts signed in here.
 const LOCAL_KEYS: ReadonlySet<string> = new Set([
@@ -36,7 +36,7 @@ async function readServers(dir: string): Promise<readonly SyncedMcpServer[] | nu
 }
 
 export const copilotSync: SyncFacet = {
-  dir: copilotHome,
+  dir: (home, env) => copilotHome({ home, env }),
   files: [{ kind: 'claude-md', file: 'copilot-instructions.md' }],
   folders: [
     { kind: 'skill', dir: 'skills', entries: 'dirs' },

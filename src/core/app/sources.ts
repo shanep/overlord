@@ -7,7 +7,7 @@ import { agents } from '../agents/index.js';
 import type { AgentRegistry } from '../agents/registry.js';
 import type { WatchFactory } from '../agents/shared/tailing-watcher.js';
 import { TailingWatcher } from '../agents/shared/tailing-watcher.js';
-import type { ObserverContext, ShellEnv } from '../agents/types.js';
+import type { AgentPlace, ShellEnv } from '../agents/types.js';
 import type { EventBus } from '../bus.js';
 import { isInstalled } from '../hooks/install.js';
 import type { HookEventOf } from '../hooks/normalized.js';
@@ -86,7 +86,7 @@ export class Sources {
   async startWatcher(): Promise<void> {
     return this.enqueue(async () => {
       const { deps } = this;
-      const context: ObserverContext = { home: deps.paths.home, env: deps.env, claude: deps.paths };
+      const context: AgentPlace = { home: deps.paths.home, env: deps.env, claude: deps.paths };
       for (const adapter of (deps.agents ?? agents).list()) {
         if (adapter.observer === undefined) {
           continue;

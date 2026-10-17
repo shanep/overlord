@@ -10,7 +10,8 @@ import type { Exec } from '../../sync/exec.js';
 import { createNodeExec } from '../../sync/exec.js';
 import type { McpPlace } from '../types.js';
 
-import { addArgs, codexHome, codexMcp } from './mcp.js';
+import { addArgs, codexMcp } from './mcp.js';
+import { codexHome } from './observer.js';
 
 const FAKE_CODEX = fileURLToPath(
   new URL('../../../../test/fake-agents/codex/fake-codex-mcp.mjs', import.meta.url),
@@ -63,9 +64,9 @@ describe('the Codex MCP store', () => {
   }
 
   it('finds CODEX_HOME, or ~/.codex without it', () => {
-    expect(codexHome('/h', { CODEX_HOME: '/c' })).toBe('/c');
-    expect(codexHome('/h', { CODEX_HOME: '' })).toBe(path.join('/h', '.codex'));
-    expect(codexHome('/h', {})).toBe(path.join('/h', '.codex'));
+    expect(codexHome({ home: '/h', env: { CODEX_HOME: '/c' } })).toBe('/c');
+    expect(codexHome({ home: '/h', env: { CODEX_HOME: '' } })).toBe(path.join('/h', '.codex'));
+    expect(codexHome({ home: '/h', env: {} })).toBe(path.join('/h', '.codex'));
   });
 
   it('reads [mcp_servers] from the user and project config.toml', async () => {

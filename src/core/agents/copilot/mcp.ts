@@ -27,16 +27,11 @@ import type {
   McpServerConfig,
   McpStore,
   SettingsWriteResult,
-  ShellEnv,
 } from '../types.js';
 
-const SHORT = 'Copilot';
+import { copilotHome } from './observer.js';
 
-/** $COPILOT_HOME, or ~/.copilot. */
-export function copilotHome(home: string, env: ShellEnv): string {
-  const set = env['COPILOT_HOME'];
-  return set === undefined || set === '' ? path.join(home, '.copilot') : set;
-}
+const SHORT = 'Copilot';
 
 /** Names turned off in Copilot's settings. Its own files start with line comments. */
 async function disabledNames(dir: string): Promise<ReadonlySet<string>> {
@@ -51,7 +46,7 @@ async function disabledNames(dir: string): Promise<ReadonlySet<string>> {
 }
 
 async function read(place: McpPlace): Promise<McpRead> {
-  const dir = copilotHome(place.home, place.env);
+  const dir = copilotHome(place);
   const disabled = await disabledNames(dir);
   const state = (name: string): McpServer['state'] => (disabled.has(name) ? 'off' : 'on');
   const files = [

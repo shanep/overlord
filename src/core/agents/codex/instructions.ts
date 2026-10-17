@@ -7,8 +7,9 @@
 // and later ones are left out.
 
 import { checkMissing, checkPrecedence } from '../../context/gates.js';
-import { agentHome } from '../../context/policy.js';
 import type { InstructionFile, InstructionPolicy } from '../types.js';
+
+import { codexHome } from './observer.js';
 
 /** Codex's default project_doc_max_bytes. */
 const CODEX_PROJECT_DOC_MAX_BYTES = 32 * 1024;
@@ -26,7 +27,7 @@ export function codexInstructionPolicy(settings: CodexProjectFiles = {}): Instru
   const fallbacks = settings.fallbackFilenames ?? [];
   return {
     names: { agent: 'Codex', globKey: 'paths' },
-    configDir: (where) => agentHome(where, 'CODEX_HOME', '.codex'),
+    configDir: codexHome,
     projectDir: '.codex',
     user: [
       { file: 'AGENTS.override.md', tier: 'User', kind: 'agents-md' },

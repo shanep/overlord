@@ -8,8 +8,9 @@
 
 import { parseFrontmatter, readStringList } from '../../context/frontmatter.js';
 import { checkMissing, checkPrecedence, type Check } from '../../context/gates.js';
-import { agentHome } from '../../context/policy.js';
 import type { InstructionFile, InstructionPolicy } from '../types.js';
+
+import { copilotHome } from './observer.js';
 
 /** Copilot reads globs from applyTo, and from paths in Claude's rule files. */
 const GLOBS = ['applyTo', 'paths'];
@@ -47,7 +48,7 @@ const checkExcludeAgent: Check = (candidate) => {
 
 export const copilotInstructions: InstructionPolicy = {
   names: { agent: 'Copilot', globKey: 'applyTo' },
-  configDir: (where) => agentHome(where, 'COPILOT_HOME', '.copilot'),
+  configDir: copilotHome,
   projectDir: '.github',
   user: [
     { file: 'copilot-instructions.md', tier: 'User', kind: 'instructions', reported: true },

@@ -11,11 +11,12 @@ import path from 'node:path';
 
 import { COPILOT } from '../../../shared/agents.js';
 import type { SurfaceSession } from '../../../shared/protocol.js';
+import { agentHome } from '../../context/policy.js';
 import type { SessionPeek } from '../../transcripts/peek.js';
 import { listObserved } from '../shared/session-list.js';
 import type {
   ObservedSession,
-  ObserverContext,
+  AgentPlace,
   ObserverFacet,
   ObserverListInput,
   SessionObserver,
@@ -31,9 +32,8 @@ const SOURCE = 'copilot';
 const EVENTS_FILE = 'events.jsonl';
 
 /** Copilot's home: COPILOT_HOME when set, else ~/.copilot. */
-export function copilotHome(context: Pick<ObserverContext, 'home' | 'env'>): string {
-  const set = context.env['COPILOT_HOME']?.trim() ?? '';
-  return set === '' ? path.join(context.home, '.copilot') : set;
+export function copilotHome(context: Pick<AgentPlace, 'home' | 'env'>): string {
+  return agentHome(context, 'COPILOT_HOME', '.copilot');
 }
 
 function workspaceOf(session: ObservedSession): string {

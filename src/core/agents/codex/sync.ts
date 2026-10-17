@@ -12,7 +12,7 @@ import { parse } from 'smol-toml';
 import { isRecord, stringList } from '../../connectors/mcp-files.js';
 import type { SyncedMcpServer, SyncFacet } from '../sync-types.js';
 
-import { codexHome } from './mcp.js';
+import { codexHome } from './observer.js';
 
 // MCP servers go through `codex mcp add` instead. Trusted projects are paths
 // on this machine, and Overlord writes [otel] for its own port on each one.
@@ -75,7 +75,7 @@ async function readServers(dir: string): Promise<readonly SyncedMcpServer[] | nu
 }
 
 export const codexSync: SyncFacet = {
-  dir: codexHome,
+  dir: (home, env) => codexHome({ home, env }),
   files: [{ kind: 'claude-md', file: 'AGENTS.md' }],
   folders: [{ kind: 'skill', dir: 'skills', entries: 'dirs' }],
   settings: {

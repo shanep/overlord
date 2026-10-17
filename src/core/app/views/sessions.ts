@@ -9,7 +9,7 @@ import { claudeObserverFacet, peekTranscript } from '../../agents/claude/observe
 import { observedRow } from '../../agents/shared/session-list.js';
 import type {
   ObservedSession,
-  ObserverContext,
+  AgentPlace,
   ObserverFacet,
   PeekReader,
   ShellEnv,
@@ -80,7 +80,7 @@ export function transcriptRow(
 
 /** One list per agent whose observer can list its sessions. */
 function observedSources(deps: SessionsLoadDeps): ExtraSource[] {
-  const context: ObserverContext = {
+  const context: AgentPlace = {
     home: deps.paths.home,
     env: deps.env ?? {},
     claude: deps.paths,

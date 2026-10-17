@@ -4,7 +4,7 @@
 
 import path from 'node:path';
 
-import type { InstructionBudget, InstructionPolicy, InstructionWhere } from '../agents/types.js';
+import type { InstructionBudget, InstructionPolicy, AgentPlace } from '../agents/types.js';
 
 import type { Verdict } from './gates.js';
 import { ancestorsRootFirst, isInside, relativePosix } from './path-tools.js';
@@ -58,10 +58,18 @@ export function walkFolders(
   };
 }
 
-/** The agent's own folder: the variable when it is set, else the folder under home. */
-export function agentHome(where: InstructionWhere, variable: string, folder: string): string {
-  const value = where.env[variable];
-  return value === undefined || value === '' ? path.join(where.home, folder) : path.resolve(value);
+/**
+ * The agent's own folder: the variable when it is set, else the folder under
+ * home. Every facet of an agent finds the folder through this, so the
+ * observer, hooks, MCP list and instruction policy never disagree.
+ */
+export function agentHome(
+  where: Pick<AgentPlace, 'home' | 'env'>,
+  variable: string,
+  folder: string,
+): string {
+  const value = where.env[variable]?.trim() ?? '';
+  return value === '' ? path.join(where.home, folder) : path.resolve(value);
 }
 
 function inFolderGroup(candidate: Candidate): string | null {

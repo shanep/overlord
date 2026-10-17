@@ -6,8 +6,9 @@ import type { ConfigOverride } from '../knobs/facet.js';
 import type { TelemetryDecode } from '../otel/decode.js';
 
 /**
- * Where the app found an agent's files, so a facet can be pointed at a temp
- * folder in tests.
+ * An agent's folder once the app resolved it from an AgentPlace through the
+ * agent's own lookup (agentHome for Codex and Copilot), for the hooks and
+ * telemetry facets, which write there. Tests point it at a temp folder.
  */
 export interface AgentDirs {
   readonly home: string;

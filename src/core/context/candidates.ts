@@ -10,7 +10,7 @@ import type {
   InstructionEntry,
   InstructionFile,
   InstructionPolicy,
-  InstructionWhere,
+  AgentPlace,
 } from '../agents/types.js';
 import type { ClaudePaths } from '../paths.js';
 
@@ -138,7 +138,7 @@ async function treeSpecs(
   return out;
 }
 
-function whereOf(input: CandidateInput): InstructionWhere {
+function whereOf(input: CandidateInput): AgentPlace {
   return { home: input.paths.home, env: input.env, claude: input.paths };
 }
 
