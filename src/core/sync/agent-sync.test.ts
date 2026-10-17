@@ -458,6 +458,7 @@ describe('Copilot', () => {
   it('adopts an MCP server with its secret moved to the keychain', async () => {
     const home = await scratchDir();
     const repo = await scratchDir();
+    // secretlint-disable-next-line -- a made-up token for the scrubber tests
     const token = 'ghp_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
     await writeTree(home, {
       '.copilot/mcp-config.json': JSON.stringify({

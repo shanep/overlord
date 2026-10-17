@@ -18,6 +18,7 @@ import {
 
 const exec: Exec = isolatedExec();
 
+// secretlint-disable-next-line -- a made-up token for the scrubber tests
 const token = 'ghp_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 const hooks = {
   hooks: {

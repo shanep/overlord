@@ -17,6 +17,7 @@ import { git, isolatedExec, repoWith, scratchDir, writeTree } from './test-helpe
 const exec: Exec = isolatedExec();
 
 const slug = 'github.com/me/proj';
+// secretlint-disable-next-line -- a made-up token for the scrubber tests
 const token = 'ghp_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 
 describe('decideFile', () => {

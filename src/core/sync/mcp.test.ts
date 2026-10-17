@@ -13,6 +13,7 @@ import {
 } from './mcp.js';
 import { fakePaths, scratchDir, writeTree } from './test-helpers/fixtures.js';
 
+// secretlint-disable-next-line -- a made-up token for the scrubber tests
 const token = 'ghp_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 
 describe('reading servers', () => {

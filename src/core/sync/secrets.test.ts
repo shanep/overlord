@@ -140,6 +140,7 @@ describe('scanForSecrets', () => {
   });
 
   it('reports position, line and a short preview, in order', () => {
+    // secretlint-disable-next-line -- a made-up token for the scrubber tests
     const text = 'a\nb ghp_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nAKIAABCDEFGHIJKLMNOP';
     expect(scanForSecrets(text)).toStrictEqual([
       { rule: 'github-token', index: 4, line: 2, preview: 'ghp_aa...' },
@@ -165,6 +166,7 @@ describe('scanForSecrets', () => {
 
 describe('looksLikeSecret', () => {
   it('flags token shapes and literals under sensitive names', () => {
+    // secretlint-disable-next-line -- a made-up token for the scrubber tests
     expect(looksLikeSecret('X', 'ghp_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')).toBe(true);
     expect(looksLikeSecret('API_KEY', 'abcdefgh')).toBe(true);
     expect(looksLikeSecret('Authorization', 'Basic abcdefgh')).toBe(true);

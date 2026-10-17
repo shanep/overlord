@@ -24,8 +24,10 @@ minutes and CI runs it on every push anyway.
   start it again. Run these through npm scripts, not `npx`, so they wait
   their turn.
 
-- `git commit` runs typecheck, lint, format and the related tests on the
-  staged files. If it passes, the commit is checked.
+- `git commit` runs typecheck, lint, format, a secret scan and the related
+  tests on the staged files. If it passes, the commit is checked. When the
+  secret scan stops a commit, take the key out. A made-up key in a test gets
+  `// secretlint-disable-next-line` on the line above it.
 - `git push` runs `npm run check:fast`, which lints and tests what changed
   since `origin/master` and runs the spell check, markdown lint, knip,
   dependency-cruiser and type coverage over the whole repo (about 25 seconds).
