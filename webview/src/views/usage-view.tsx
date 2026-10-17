@@ -1,9 +1,10 @@
-// Usage: plan limits, history totals, daily tokens by model, activity by hour,
-// and a rough climate estimate.
+// Usage: plan limits, Boise State calls through the bridge, history totals,
+// daily tokens by model, activity by hour, and a rough climate estimate.
 
 import type { ReactElement } from 'react';
 import { useMemo } from 'react';
 
+import type { BridgeUsage, BridgeUsageTotals } from '../../../src/shared/bridge-usage.js';
 import type {
   ClimateEstimate,
   PlanLimit,
@@ -127,6 +128,128 @@ function PlanSection(props: { readonly plan: PlanLimits | null }): ReactElement 
   );
 }
 
+/** Days the bridge table lists, newest first. */
+const BRIDGE_DAYS = 14;
+const WEEK_MS = 7 * 24 * 60 * 60_000;
+
+/** The local calendar day of an epoch ms, as YYYY-MM-DD like the bridge log's days. */
+export function localDate(at: number): string {
+  const date = new Date(at);
+  const pad = (value: number): string => String(value).padStart(2, '0');
+  return `${String(date.getFullYear())}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+/** The calls, input and output tokens of the bridge days on or after from. */
+export function bridgeTotals(bridge: BridgeUsage, from = ''): BridgeUsageTotals {
+  let calls = 0;
+  let inputTokens = 0;
+  let outputTokens = 0;
+  for (const day of bridge.days) {
+    if (day.date >= from) {
+      calls += day.calls;
+      inputTokens += day.inputTokens;
+      outputTokens += day.outputTokens;
+    }
+  }
+  return { calls, inputTokens, outputTokens };
+}
+
+const tokens = (totals: BridgeUsageTotals): string =>
+  formatCompact(totals.inputTokens + totals.outputTokens);
+
+function BridgeRows(props: {
+  readonly caption: string;
+  readonly first: string;
+  readonly rows: readonly (BridgeUsageTotals & { readonly key: string })[];
+}): ReactElement {
+  return (
+    <table className="grid">
+      <caption className="visually-hidden">{props.caption}</caption>
+      <thead>
+        <tr>
+          <th scope="col">{props.first}</th>
+          <th scope="col" className="num">
+            Calls
+          </th>
+          <th scope="col" className="num">
+            Input tokens
+          </th>
+          <th scope="col" className="num">
+            Output tokens
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {props.rows.map((row) => (
+          <tr key={row.key}>
+            <td>{row.key}</td>
+            <td className="num">{formatInteger(row.calls)}</td>
+            <td className="num">{formatCompact(row.inputTokens)}</td>
+            <td className="num">{formatCompact(row.outputTokens)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+/** Calls through the boisestate.ai bridge, which no Anthropic plan or price covers. */
+function BridgeSection(props: { readonly bridge: BridgeUsage | undefined }): ReactElement | null {
+  const { bridge } = props;
+  const now = useNow();
+  if (bridge === undefined) {
+    return null;
+  }
+  const today = bridgeTotals(bridge, localDate(now));
+  const week = bridgeTotals(bridge, localDate(now - WEEK_MS + 24 * 60 * 60_000));
+  const all = bridgeTotals(bridge);
+  const days = bridge.days
+    .toReversed()
+    .slice(0, BRIDGE_DAYS)
+    .map((day) => ({ ...day, key: day.date }));
+  return (
+    <section className="section bridge-usage" aria-labelledby="bridge-title">
+      <h2 id="bridge-title" className="section-title">
+        Boise State (boisestate.ai)
+      </h2>
+      <StatTiles label="Boise State usage">
+        <StatTile
+          label="Today"
+          value={tokens(today)}
+          detail={`${formatInteger(today.calls)} calls`}
+        />
+        <StatTile
+          label="Last 7 days"
+          value={tokens(week)}
+          detail={`${formatInteger(week.calls)} calls`}
+        />
+        <StatTile
+          label="All time"
+          value={tokens(all)}
+          detail={`${formatInteger(all.calls)} calls`}
+        />
+      </StatTiles>
+      <details className="about">
+        <summary>How this is counted</summary>
+        <p>
+          boisestate.ai has no usage page, so the bridge logs every call it makes with the token
+          counts the backend reports, from Claude Code sessions, the Launcher and anything else that
+          uses it. Calls from before the log started, or made without the bridge, are not counted.
+          None of it counts against a Claude plan.
+        </p>
+      </details>
+      <BridgeRows caption="Boise State usage by day" first="Date" rows={days} />
+      {bridge.models.length > 1 ? (
+        <BridgeRows
+          caption="Boise State usage by model"
+          first="Model"
+          rows={bridge.models.map((model) => ({ ...model, key: model.model }))}
+        />
+      ) : null}
+    </section>
+  );
+}
+
 /** 0.04, 0.42, 9.8, 232, 1,480: more decimals for small amounts, none past 10. */
 export function formatAmount(value: number): string {
   if (!Number.isFinite(value)) {
@@ -227,6 +350,7 @@ export function UsageView(props: { readonly state: UsageState }): ReactElement {
         </dl>
       </header>
       <PlanSection plan={claude ? state.plan : null} />
+      <BridgeSection bridge={state.bridge} />
       <div className="charts chart-card">
         <ChartFigure
           title="Daily tokens by model"

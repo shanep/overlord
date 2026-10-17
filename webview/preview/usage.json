@@ -435,5 +435,59 @@
         "severity": "critical"
       }
     ]
+  },
+  "bridge": {
+    "days": [
+      {
+        "date": "2026-10-10",
+        "calls": 12,
+        "inputTokens": 310000,
+        "outputTokens": 18000
+      },
+      {
+        "date": "2026-10-12",
+        "calls": 41,
+        "inputTokens": 1120000,
+        "outputTokens": 64000
+      },
+      {
+        "date": "2026-10-13",
+        "calls": 8,
+        "inputTokens": 190000,
+        "outputTokens": 9000
+      },
+      {
+        "date": "2026-10-14",
+        "calls": 65,
+        "inputTokens": 1840000,
+        "outputTokens": 121000
+      },
+      {
+        "date": "2026-10-15",
+        "calls": 23,
+        "inputTokens": 640000,
+        "outputTokens": 30500
+      },
+      {
+        "date": "2026-10-16",
+        "calls": 3,
+        "inputTokens": 52000,
+        "outputTokens": 2100
+      }
+    ],
+    "models": [
+      {
+        "model": "global.anthropic.claude-opus-5-5",
+        "calls": 143,
+        "inputTokens": 4062000,
+        "outputTokens": 239600
+      },
+      {
+        "model": "global.anthropic.claude-sonnet-5",
+        "calls": 9,
+        "inputTokens": 90000,
+        "outputTokens": 5000
+      }
+    ]
   }
 }

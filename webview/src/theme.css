@@ -412,8 +412,13 @@ kbd {
   padding-left: 16px;
 }
 
-.usage .climate {
+.usage .climate,
+.usage .bridge-usage {
   margin-top: 16px;
+}
+
+.usage .bridge-usage .grid + .grid {
+  margin-top: 12px;
 }
 
 /* ---- Header stats and banners ----------------------------------------- */

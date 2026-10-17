@@ -1,15 +1,18 @@
 import { within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import type { BridgeUsageDay } from '../../../src/shared/bridge-usage.js';
 import type { PlanLimits } from '../../../src/shared/protocol.js';
 import { usageState } from '../../test/fixtures-tools.js';
 import { NOW } from '../../test/fixtures.js';
 import { expectAccessible, renderView } from '../../test/render.js';
 
 import {
+  bridgeTotals,
   dailyTable,
   formatAmount,
   hourTable,
+  localDate,
   severityTone,
   totalTokensAll,
   UsageView,
@@ -78,6 +81,51 @@ describe('UsageView', () => {
     const hours = getByRole('table', { name: 'Activity by hour of day' });
     expect(within(hours).getAllByRole('row')).toHaveLength(4);
     await expectAccessible(container);
+  });
+
+  it('shows Boise State usage by day and by model, only when the bridge logged calls', async () => {
+    const day = 24 * 60 * 60_000;
+    const row = (at: number, calls: number): BridgeUsageDay => ({
+      date: localDate(at),
+      calls,
+      inputTokens: calls * 1000,
+      outputTokens: calls * 100,
+    });
+    const bridge = {
+      days: [row(NOW - 20 * day, 5), row(NOW - 3 * day, 2), row(NOW, 1)],
+      models: [
+        {
+          model: 'global.anthropic.claude-opus-5-5',
+          calls: 7,
+          inputTokens: 7000,
+          outputTokens: 700,
+        },
+        {
+          model: 'global.anthropic.claude-sonnet-5',
+          calls: 1,
+          inputTokens: 1000,
+          outputTokens: 100,
+        },
+      ],
+    };
+    expect(bridgeTotals(bridge, localDate(NOW - 6 * day))).toStrictEqual({
+      calls: 3,
+      inputTokens: 3000,
+      outputTokens: 300,
+    });
+    const { getByRole, container } = renderView(<UsageView state={{ ...usageState, bridge }} />);
+    const tiles = container.querySelector('[aria-label="Boise State usage"]');
+    expect(tiles?.textContent).toContain('Today1.1K1 calls');
+    expect(tiles?.textContent).toContain('Last 7 days3.3K3 calls');
+    expect(tiles?.textContent).toContain('All time8.8K8 calls');
+    const byDay = getByRole('table', { name: 'Boise State usage by day' });
+    expect(within(byDay).getAllByRole('row')).toHaveLength(4);
+    expect(within(byDay).getAllByRole('row')[1]?.textContent).toContain(localDate(NOW));
+    expect(getByRole('table', { name: 'Boise State usage by model' })).toBeDefined();
+    await expectAccessible(container);
+
+    const plain = renderView(<UsageView state={usageState} />);
+    expect(within(plain.container).queryByRole('heading', { name: /Boise State/ })).toBeNull();
   });
 
   it('says there is no data for an empty history and leaves the climate section out', () => {
