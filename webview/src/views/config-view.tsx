@@ -134,23 +134,6 @@ function RepoHeader(props: { readonly state: ConfigState }): ReactElement {
             Turn on sync
           </button>
         )}
-        <span className="spacer" />
-        <button
-          type="button"
-          onClick={() => {
-            post({ type: 'openView', view: 'skills' });
-          }}
-        >
-          Skills
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            post({ type: 'openView', view: 'agents' });
-          }}
-        >
-          Agents
-        </button>
       </div>
     </div>
   );
