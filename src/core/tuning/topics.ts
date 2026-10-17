@@ -191,7 +191,7 @@ export const TOPICS: readonly Topic[] = [
 /** A topic has to show up in this many sessions to count, so one odd session does not. */
 export const MIN_SESSIONS = 3;
 /** And this many uses in all. */
-export const MIN_USES = 20;
+const MIN_USES = 20;
 export const MAX_TOPICS = 4;
 
 /** A topic that stands out in the sessions, with the counts behind it. */

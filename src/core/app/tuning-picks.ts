@@ -9,7 +9,7 @@ import { findPicks, installKey } from '../catalog/picks.js';
 
 import { messageOf } from './errors.js';
 
-export const PICKS_STALE_MS = 24 * 60 * 60_000;
+const PICKS_STALE_MS = 24 * 60 * 60_000;
 
 export interface TuningPicksDeps extends PicksDeps {
   readonly notify: () => void;

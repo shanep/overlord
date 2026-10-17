@@ -80,9 +80,14 @@ function isCount(value: unknown): value is number {
   return typeof value === 'number' && Number.isInteger(value) && value >= 0;
 }
 
+/** Array.isArray narrows unknown to any[], so this keeps the elements unknown. */
+function isList(value: unknown): value is readonly unknown[] {
+  return Array.isArray(value);
+}
+
 function isIdList(value: unknown, max: number): value is readonly string[] {
   return (
-    Array.isArray(value) &&
+    isList(value) &&
     value.length <= max &&
     value.every((id) => typeof id === 'string' && id.length <= MAX_NAME_LENGTH)
   );

@@ -13,7 +13,7 @@ import type { RepoSource } from './sources.js';
 import { entryGroup, repoSources } from './sources.js';
 
 /** Skills and agents shown per kind of work, each. */
-export const PER_TOPIC = 2;
+const PER_TOPIC = 2;
 
 export interface PicksDeps {
   readonly reader: GitHubReader;
