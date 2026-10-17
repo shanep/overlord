@@ -71,7 +71,7 @@ export async function findLive(rt: Runtime, sessionId: string): Promise<LiveProc
 }
 
 /** How long a tab waits for the session its agent starts to show up. */
-export const LINK_TIMEOUT_MS = 10 * 60 * 1000;
+const LINK_TIMEOUT_MS = 10 * 60 * 1000;
 /** Clocks and timestamps can disagree a little about when a session started. */
 const LINK_SLACK_MS = 5000;
 
