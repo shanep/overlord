@@ -37,6 +37,12 @@ minutes and CI runs it on every push anyway.
 Run a command once and read its log. Do not rerun a passing check to confirm
 it, and do not rerun the whole suite to see one failing test.
 
+When a test fails in code you did not touch, run `npm run flakes`. Every
+vitest run on this machine is logged, and it lists tests that failed and
+passed on the same code, with the last error. A test on that list is flaky:
+fix the flake (usually a race or a shared temp folder) instead of rerunning
+until it passes.
+
 ## Landing
 
 Land finished work with `npm run land` instead of rebasing and pushing by

@@ -110,7 +110,9 @@ export interface EnvOptions {
 export async function makeEnv(options: EnvOptions = {}): Promise<TestEnv> {
   const root = await realpath(await mkdtemp(path.join(os.tmpdir(), 'overlord-app-')));
   onTestFinished(async () => {
-    await rm(root, { recursive: true, force: true });
+    // A background scan can still be writing into storage when the test ends,
+    // which made rm fail with ENOTEMPTY now and then. Retrying lets it finish.
+    await rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
   });
   const home = path.join(root, 'home');
   const storageDir = path.join(root, 'storage');

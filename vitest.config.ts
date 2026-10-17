@@ -5,6 +5,9 @@ export default defineConfig({
   // Worktrees share one node_modules, so Vite's cache lives in each checkout instead.
   cacheDir: '.cache/vite',
   test: {
+    // The flake reporter logs each run so npm run flakes can list tests that
+    // failed and passed on the same code.
+    reporters: ['default', './scripts/flake-reporter.mjs'],
     projects: [
       {
         test: {
