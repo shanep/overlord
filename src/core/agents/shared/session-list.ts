@@ -2,7 +2,7 @@
 // gives its scan and a cheap peek at each file, and the fleet fills in what it
 // already knows about the live ones.
 
-import type { AgentId } from '../../../shared/agents.js';
+import type { AgentCapabilities, AgentId } from '../../../shared/agents.js';
 import type { SessionSummary } from '../../../shared/model.js';
 import type { SurfaceSession } from '../../../shared/protocol.js';
 import { handoffsFor } from '../../surfaces/handoff.js';
@@ -15,9 +15,19 @@ function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-/** A session on disk as a row, with what the store knows about it when it is live. */
+/** The agent whose sessions a list holds, and what it lets the UI offer for them. */
+export interface ListedAgent {
+  readonly id: AgentId;
+  readonly capabilities: Pick<AgentCapabilities, 'handoffs'>;
+}
+
+/**
+ * A session on disk as a row, with what the store knows about it when it is
+ * live. It offers only the handoffs the agent has, since the surface's list
+ * is Claude Code's.
+ */
 export function observedRow(
-  agent: AgentId,
+  agent: ListedAgent,
   info: ObservedSession,
   peek: SessionPeek,
   known?: SessionSummary,
@@ -25,13 +35,13 @@ export function observedRow(
   const surface = known?.surface ?? 'cli';
   return {
     id: info.sessionId,
-    agent: known?.agent ?? agent,
+    agent: known?.agent ?? agent.id,
     surface,
     title: known?.title ?? peek.title ?? `Session ${info.sessionId.slice(0, 8)}`,
     cwd: known?.cwd ?? peek.cwd,
     updatedAt: info.mtimeMs,
     archived: false,
-    handoffs: handoffsFor({ surface }),
+    handoffs: handoffsFor({ surface }).filter((kind) => agent.capabilities.handoffs.includes(kind)),
   };
 }
 
@@ -50,7 +60,7 @@ async function peekOrNothing(
 
 /** Every scanned session as a row. A file that cannot be peeked still gets one. */
 export async function listObserved(
-  agent: AgentId,
+  agent: ListedAgent,
   sessions: readonly ObservedSession[],
   read: PeekReader,
   input: ObserverListInput,

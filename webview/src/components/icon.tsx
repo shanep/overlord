@@ -72,6 +72,14 @@ const SHAPES = {
       <circle cx="8" cy="6.5" r="1" />
     </>
   ),
+  /** A head in flying goggles: Copilot CLI, standing in for VS Code's copilot codicon. */
+  copilot: (
+    <>
+      <path d="M2.5 8.5a5.5 5.5 0 0 1 11 0M2.5 9.5v1c0 1.7 2.5 3 5.5 3s5.5-1.3 5.5-3v-1" />
+      <rect x="3" y="6" width="4.25" height="3" rx="1.5" />
+      <rect x="8.75" y="6" width="4.25" height="3" rx="1.5" />
+    </>
+  ),
   /** An hourglass: quiet with no window, so it leaves the fleet in time. */
   hourglass: (
     <path d="M4 2.5h8M4 13.5h8M5 2.5c0 3.5 6 3 6 5.5s-6 2-6 5.5M11 2.5c0 3.5-6 3-6 5.5s6 2 6 5.5" />
@@ -84,6 +92,7 @@ export type IconName = keyof typeof SHAPES;
 const AGENT_ICONS: Readonly<Record<string, IconName>> = {
   sparkle: 'newSession',
   terminal: 'window',
+  copilot: 'copilot',
 };
 
 export function agentIcon(codicon: string): IconName {

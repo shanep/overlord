@@ -1,39 +1,21 @@
-// GitHub Copilot CLI as an agent adapter. Milestone 1 of META-HARNESS.md:
-// Overlord finds the binary and watches the sessions Copilot writes to disk.
-// Launching, terminal tabs, approvals and hooks come in later milestones, so
-// those capabilities stay off until they work.
+// GitHub Copilot CLI as an agent adapter. Milestones 1 and 2 of
+// META-HARNESS.md: Overlord finds the binary, watches the sessions Copilot
+// writes to disk, and starts and resumes them in terminal tabs. Launching,
+// approvals and hooks come in later milestones, so those capabilities stay
+// off until they work.
 // cspell:words xhigh
 
-import type { AgentCapabilities, ModeOption } from '../../../shared/agents.js';
+import type { ModeOption } from '../../../shared/agents.js';
 import { COPILOT } from '../../../shared/agents.js';
 import { findOnPath } from '../../find-on-path.js';
-import type { AgentAdapter, DetectInput, Detected } from '../types.js';
+import type { AgentAdapter, AgentWords, DetectInput, Detected } from '../types.js';
 
+import { COPILOT_CAPABILITIES, COPILOT_SHORT } from './capabilities.js';
 import { copilotInstructions } from './instructions.js';
+import { copilotMcp } from './mcp.js';
 import { COPILOT_DEFAULT_MODEL, copilotContextWindow } from './models.js';
 import { copilotObserverFacet } from './observer.js';
-
-const CAPABILITIES: AgentCapabilities = {
-  launch: false,
-  terminal: false,
-  background: false,
-  resume: false,
-  fork: false,
-  interrupt: false,
-  liveModelChange: false,
-  livePermissionMode: false,
-  approvals: false,
-  subagents: true,
-  // session.shutdown reports cache reads and writes per model.
-  cacheReads: true,
-  cacheWrites: true,
-  // Copilot reports what it charged in nano AI units, which convert to dollars.
-  costUsd: true,
-  contextInspector: false,
-  hooks: false,
-  messaging: false,
-  handoffs: [],
-};
+import { COPILOT_BINARY, copilotTerminal } from './terminal.js';
 
 /** The agent modes from --mode, plus --allow-all, which turns every permission prompt off. */
 const PERMISSION_MODES: readonly ModeOption[] = [
@@ -54,12 +36,18 @@ const EFFORT_LEVELS: readonly ModeOption[] = [
   { id: 'max', label: 'Max' },
 ];
 
-const BINARY = 'copilot';
+/** From `copilot help commands` in 1.0.89. /rewind also reverts the turn's file changes. */
+const WORDS: AgentWords = {
+  instructionsFile: '.github/copilot-instructions.md',
+  compactCommand: '/compact',
+  clearCommand: '/clear',
+  rewind: '/rewind',
+};
 
 /** Finds the binary on the login shell's PATH without running it, so the version stays unknown. */
 async function detect(input: DetectInput): Promise<Detected> {
   await Promise.resolve();
-  const name = input.path.trim() === '' ? BINARY : input.path.trim();
+  const name = input.path.trim() === '' ? COPILOT_BINARY : input.path.trim();
   return {
     bin: findOnPath({ name, pathValue: input.env['PATH'], platform: input.platform }),
     version: null,
@@ -69,10 +57,10 @@ async function detect(input: DetectInput): Promise<Detected> {
 export const copilot: AgentAdapter = {
   id: COPILOT,
   name: 'Copilot CLI',
-  short: 'Copilot',
+  short: COPILOT_SHORT,
   icon: 'copilot',
   detect,
-  capabilities: CAPABILITIES,
+  capabilities: COPILOT_CAPABILITIES,
   modes: { permission: PERMISSION_MODES, effort: EFFORT_LEVELS },
   models: {
     contextWindow: copilotContextWindow,
@@ -80,6 +68,9 @@ export const copilot: AgentAdapter = {
     price: () => null,
     defaultModel: COPILOT_DEFAULT_MODEL,
   },
+  words: WORDS,
+  terminal: copilotTerminal,
   observer: copilotObserverFacet,
   instructions: copilotInstructions,
+  config: { settingsFormat: 'json', mcp: copilotMcp },
 };

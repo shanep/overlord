@@ -2,15 +2,15 @@
 // sits today. The facets past models and terminal come in Phase 1 of
 // META-HARNESS.md.
 
-import type { AgentCapabilities, ModeOption } from '../../../shared/agents.js';
+import type { ModeOption } from '../../../shared/agents.js';
 import { CLAUDE_CODE } from '../../../shared/agents.js';
 import { claudeContextWindow } from '../../../shared/model.js';
-import type { HandoffKind } from '../../../shared/protocol.js';
 import { executableFor } from '../../app/claude-bin.js';
 import { DEFAULT_MODEL } from '../../app/prices.js';
 import { DEFAULT_PRICES, findPrice } from '../../transcripts/pricing.js';
 import type { AgentAdapter, AgentWords, DetectInput, Detected } from '../types.js';
 
+import { CLAUDE_CAPABILITIES } from './capabilities.js';
 import { claudeConfig } from './config.js';
 import { claudeHooks } from './hooks.js';
 import { claudeInject } from './inject.js';
@@ -20,33 +20,6 @@ import { claudeRuntime } from './runtime.js';
 import { claudeTelemetry } from './telemetry.js';
 import { CLAUDE_SHORT, claudeTerminal } from './terminal.js';
 import { claudeTuning } from './tuning.js';
-
-const HANDOFFS: readonly HandoffKind[] = [
-  'resume-local',
-  'open-desktop',
-  'teleport-local',
-  'remote-control',
-];
-
-const CAPABILITIES: AgentCapabilities = {
-  launch: true,
-  terminal: true,
-  background: true,
-  resume: true,
-  fork: true,
-  interrupt: true,
-  liveModelChange: true,
-  livePermissionMode: true,
-  approvals: true,
-  subagents: true,
-  cacheReads: true,
-  cacheWrites: true,
-  costUsd: true,
-  contextInspector: true,
-  hooks: true,
-  messaging: true,
-  handoffs: HANDOFFS,
-};
 
 /** The same modes, in the same order, as PermissionMode in shared/model.ts. */
 const PERMISSION_MODES: readonly ModeOption[] = [
@@ -86,7 +59,7 @@ export const claudeCode: AgentAdapter = {
   short: CLAUDE_SHORT,
   icon: 'sparkle',
   detect,
-  capabilities: CAPABILITIES,
+  capabilities: CLAUDE_CAPABILITIES,
   modes: { permission: PERMISSION_MODES, effort: EFFORT_LEVELS },
   models: {
     contextWindow: claudeContextWindow,

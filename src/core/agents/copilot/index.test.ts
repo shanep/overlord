@@ -10,7 +10,9 @@ import { makeTemporaryDirectory, removeDir } from '../../transcripts/test-helper
 import { agents } from '../index.js';
 
 import { copilotInstructions } from './instructions.js';
+import { copilotMcp } from './mcp.js';
 import { formatVerified, nanoAiuToUsd } from './models.js';
+import { copilotTerminal } from './terminal.js';
 
 import { copilot } from './index.js';
 
@@ -38,12 +40,12 @@ describe('copilot', () => {
     expect(agents.get('copilot')).toBe(copilot);
   });
 
-  it('only claims what milestone 1 can show', () => {
+  it('only claims what milestones 1 and 2 can show', () => {
     expect(copilot.capabilities).toStrictEqual({
       launch: false,
-      terminal: false,
+      terminal: true,
       background: false,
-      resume: false,
+      resume: true,
       fork: false,
       interrupt: false,
       liveModelChange: false,
@@ -56,9 +58,10 @@ describe('copilot', () => {
       contextInspector: false,
       hooks: false,
       messaging: false,
-      handoffs: [],
+      handoffs: ['resume-local'],
     });
-    expect(copilot.terminal).toBeUndefined();
+    expect(copilot.terminal).toBe(copilotTerminal);
+    expect(copilot.config).toStrictEqual({ settingsFormat: 'json', mcp: copilotMcp });
     expect(copilot.runtime).toBeUndefined();
     expect(copilot.hooks).toBeUndefined();
   });
@@ -91,6 +94,12 @@ describe('copilot', () => {
     expect(models.contextWindow('claude-sonnet-4.5')).toBeNull();
     expect(models.contextWindow(null)).toBeNull();
     expect(models.price('gpt-5-mini')).toBeNull();
+    expect(copilot.words).toStrictEqual({
+      instructionsFile: '.github/copilot-instructions.md',
+      compactCommand: '/compact',
+      clearCommand: '/clear',
+      rewind: '/rewind',
+    });
     expect(nanoAiuToUsd(1e9)).toBeCloseTo(0.01, 12);
   });
 

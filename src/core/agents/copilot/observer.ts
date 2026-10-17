@@ -23,6 +23,7 @@ import type {
 } from '../types.js';
 
 import { CopilotRecords } from './accumulator.js';
+import { COPILOT_CAPABILITIES } from './capabilities.js';
 import { readWorkspace, WORKSPACE_FILE } from './workspace.js';
 
 /** What errors from the Copilot watcher and list are filed under. */
@@ -92,16 +93,13 @@ export function copilotObserver(home: string): SessionObserver<CopilotRecords> {
         transcriptPath: session.transcriptPath,
         workspacePath: workspaceOf(session),
       }),
-    list: async (input: ObserverListInput): Promise<readonly SurfaceSession[]> => {
-      const rows = await listObserved(
-        COPILOT,
+    list: async (input: ObserverListInput): Promise<readonly SurfaceSession[]> =>
+      listObserved(
+        { id: COPILOT, capabilities: COPILOT_CAPABILITIES },
         await scanCopilotSessions(stateDir),
         peekWorkspace,
         input,
-      );
-      // Resume, desktop and teleport are Claude's. Copilot gets its own in milestone 2.
-      return rows.map((row) => ({ ...row, handoffs: [] }));
-    },
+      ),
   };
 }
 

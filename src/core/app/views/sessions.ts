@@ -4,6 +4,7 @@
 import { CLAUDE_CODE } from '../../../shared/agents.js';
 import type { SessionSummary } from '../../../shared/model.js';
 import type { SessionsState, SurfaceSession } from '../../../shared/protocol.js';
+import { CLAUDE_CAPABILITIES } from '../../agents/claude/capabilities.js';
 import { claudeObserverFacet, peekTranscript } from '../../agents/claude/observer.js';
 import { observedRow } from '../../agents/shared/session-list.js';
 import type {
@@ -74,7 +75,7 @@ export function transcriptRow(
   peek: SessionPeek,
   known?: SessionSummary,
 ): SurfaceSession {
-  return observedRow(CLAUDE_CODE, info, peek, known);
+  return observedRow({ id: CLAUDE_CODE, capabilities: CLAUDE_CAPABILITIES }, info, peek, known);
 }
 
 /** One list per agent whose observer can list its sessions. */

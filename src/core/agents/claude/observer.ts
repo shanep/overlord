@@ -25,6 +25,7 @@ import type {
   TailedFile,
 } from '../types.js';
 
+import { CLAUDE_CAPABILITIES } from './capabilities.js';
 import { claudeUserPrompts } from './prompts.js';
 
 /** What errors from the Claude watcher and list are filed under. */
@@ -109,7 +110,12 @@ export function claudeObserver(options: ClaudeObserverOptions): SessionObserver<
         }),
       ),
     list: async (input: ObserverListInput): Promise<readonly SurfaceSession[]> =>
-      listObserved(CLAUDE_CODE, await scanSessions(projectsDir), peekTranscript, input),
+      listObserved(
+        { id: CLAUDE_CODE, capabilities: CLAUDE_CAPABILITIES },
+        await scanSessions(projectsDir),
+        peekTranscript,
+        input,
+      ),
   };
 }
 

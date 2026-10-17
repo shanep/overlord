@@ -78,7 +78,7 @@ describe('copilotObserver', () => {
     ).toStrictEqual([[], []]);
   });
 
-  it('lists sessions from workspace.yaml without Claude handoffs', async () => {
+  it('lists sessions from workspace.yaml with only the handoffs Copilot has', async () => {
     await copySession(EDIT);
     const observer = copilotObserver(home);
     const reports: string[] = [];
@@ -96,7 +96,7 @@ describe('copilotObserver', () => {
       agent: COPILOT,
       surface: 'cli',
       cwd: '/work/repo',
-      handoffs: [],
+      handoffs: ['resume-local'],
     });
     expect(rows?.[0]?.title).toContain('In calc.py add the one-line docstring');
   });

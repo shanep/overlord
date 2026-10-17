@@ -8,6 +8,7 @@
 import path from 'node:path';
 
 import type { SurfaceSession } from '../../shared/protocol.js';
+import { agents } from '../agents/index.js';
 import { BOISESTATE } from '../bridge/boisestate.js';
 
 import { openClaudeTab } from './claude-tabs.js';
@@ -190,7 +191,10 @@ export async function continueHere(rt: Runtime, at: Continuing): Promise<void> {
   if (entry !== null && !restored) {
     await holdWorktree(rt, session.id, entry.id);
   }
-  const gaps = await findGaps(rt, cwd, restored);
+  // Moving out of a shared checkout continues a copy, which an agent without fork cannot make.
+  const movable = agents.get(session.agent)?.capabilities.fork === true;
+  const found = await findGaps(rt, cwd, restored);
+  const gaps = found.filter((gap) => movable || gap.kind !== 'shared');
   const plan: Plan = gaps.length === 0 ? { kind: 'resume' } : await settleGaps(rt, at, gaps, ran);
   if (plan.kind === 'stop') {
     return;

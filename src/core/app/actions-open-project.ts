@@ -10,6 +10,7 @@ import path from 'node:path';
 import { CLAUDE_CODE, type AgentId } from '../../shared/agents.js';
 import type { ProjectSummary } from '../../shared/protocol.js';
 import type { AgentTerminal } from '../agents/terminals.js';
+import { terminalOf } from '../agents/terminals.js';
 import { backendIdOf, backendsFor } from '../bridge/backends.js';
 import { BOISESTATE } from '../bridge/boisestate.js';
 import { addProject, assignFolder, resolveProject, setProjectFolder } from '../projects/book.js';
@@ -17,6 +18,7 @@ import { addProject, assignFolder, resolveProject, setProjectFolder } from '../p
 import type { ActionHandlers } from './action-types.js';
 import { askName, BROWSE_LABEL, chooseFolder, folderOf } from './actions-projects.js';
 import { agentToStart } from './agent-terminal.js';
+import { agentEnabled } from './claude-bin.js';
 import type { PickItem } from './host-port.js';
 import type { Runtime } from './runtime.js';
 import { fleetFor } from './views/fleet.js';
@@ -29,6 +31,7 @@ export const PICK_TITLE = 'Open a project';
 export const NO_FOLDER = 'no folder yet';
 export const SESSION_TITLE = 'Start a Claude Code session in';
 export const HERE_ID = 'here';
+export const AGENT_TITLE = 'Start a session with';
 export const BACKEND_TITLE = 'Run the session on';
 export const CLAUDE_ID = 'claude';
 export const BRIDGE_ID = BOISESTATE.id;
@@ -207,6 +210,25 @@ async function askAndStart(
   }
 }
 
+/**
+ * The agent a New Session with none named starts: Claude Code, or the one
+ * picked once another installed agent can open in a tab too. Null when the
+ * pick is cancelled.
+ */
+async function pickAgent(rt: Runtime): Promise<AgentId | null> {
+  const offered = rt.caches.agents.value.filter(
+    (info) =>
+      (info.installed || info.id === CLAUDE_CODE) &&
+      terminalOf(info.id) !== null &&
+      agentEnabled(rt.host.settings, info.id),
+  );
+  if (offered.length < 2) {
+    return CLAUDE_CODE;
+  }
+  const items = offered.map((info) => ({ id: info.id, label: info.name, description: '' }));
+  return rt.host.quickPick(items, AGENT_TITLE);
+}
+
 const OPENERS: Readonly<Record<Way, (rt: Runtime, folder: string) => Promise<void>>> = {
   session: askAndStart,
   window: async (rt, folder) => rt.host.openWindow(folder),
@@ -228,9 +250,10 @@ export const openProjectActions: ActionHandlers<OpenActions> = {
       await OPENERS[way](rt, target.folder);
     }
   },
-  // An agent id routes the start to that agent's terminal facet.
+  // An agent id routes the start to that agent's terminal facet. The sparkle names none, so it asks.
   newSession: async ({ rt }, action) => {
-    const agent = agentToStart(rt, action.agent);
+    const id = action.agent ?? (await pickAgent(rt));
+    const agent = id === null ? null : agentToStart(rt, id);
     if (agent === null) {
       return;
     }

@@ -116,14 +116,6 @@ export async function peekRollout(session: ObservedSession): Promise<SessionPeek
   return { cwd, gitBranch, title: null };
 }
 
-/** Only the handoffs Codex supports, since the shared row offers Claude's for a CLI session. */
-function codexRow(row: SurfaceSession): SurfaceSession {
-  return {
-    ...row,
-    handoffs: row.handoffs.filter((kind) => CODEX_CAPABILITIES.handoffs.includes(kind)),
-  };
-}
-
 export function codexObserver(
   context: Pick<ObserverContext, 'home' | 'env'>,
 ): SessionObserver<CodexRecords> {
@@ -140,10 +132,13 @@ export function codexObserver(
     },
     makeAccumulator: (session) =>
       new CodexRecords({ sessionId: session.sessionId, transcriptPath: session.transcriptPath }),
-    list: async (input: ObserverListInput): Promise<readonly SurfaceSession[]> => {
-      const rows = await listObserved(CODEX, await scanRollouts(sessionsDir), peekRollout, input);
-      return rows.map((row) => codexRow(row));
-    },
+    list: async (input: ObserverListInput): Promise<readonly SurfaceSession[]> =>
+      listObserved(
+        { id: CODEX, capabilities: CODEX_CAPABILITIES },
+        await scanRollouts(sessionsDir),
+        peekRollout,
+        input,
+      ),
   };
 }
 
