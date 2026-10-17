@@ -101,14 +101,17 @@ describe('a Codex tab', () => {
     const env = await makeEnv();
     const { app } = makeApp(env, { responders: [(): ExecResult => ok('')] });
     const rt = app.runtime;
+    const tied: string[] = [];
     const opened = await openClaudeTab(rt, {
       agent: 'codex',
       name: 'Codex new',
       cwd: '/work/repo',
       resume: null,
       prompt: 'Hello',
+      tied: (id) => tied.push(id),
     });
     expect(opened).toBeNull();
+    expect(tied).toStrictEqual([]);
     const request = env.host.terminals.at(-1);
     expect(request).toMatchObject({ command: 'codex', sessionId: null });
     // Codex hears Overlord's notes at launch, here the connector briefing, then gets its prompt.
@@ -126,13 +129,23 @@ describe('a Codex tab', () => {
       session(ID, { agent: 'codex', cwd: '/work/repo', startedAt: now }),
     );
     expect(await request?.sessionLater).toBe(ID);
+    // The worktree the tab runs in is tied to the session once its id is known.
+    expect(tied).toStrictEqual([ID]);
   });
 
   it('ties a resumed tab at once and gives up on a session that never shows', async () => {
     const env = await makeEnv();
     const { app } = makeApp(env);
-    await openClaudeTab(app.runtime, { agent: 'codex', name: 'Codex', cwd: '/w', resume: ID });
+    const tied: string[] = [];
+    await openClaudeTab(app.runtime, {
+      agent: 'codex',
+      name: 'Codex',
+      cwd: '/w',
+      resume: ID,
+      tied: (id) => tied.push(id),
+    });
     expect(env.host.terminals.at(-1)).toMatchObject({ args: ['resume', ID], sessionId: ID });
+    expect(tied).toStrictEqual([ID]);
     expect(env.host.terminals.at(-1)?.sessionLater).toBeUndefined();
     expect(await newSessionIn(app.runtime, 'codex', '/w', 1)).toBeNull();
   });

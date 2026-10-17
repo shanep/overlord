@@ -195,16 +195,17 @@ async function openSession(
   if (start.prompt !== undefined) {
     await setup;
   }
-  const sessionId = await openClaudeTab(rt, {
+  // A Codex tab learns its session id only once the rollout shows up, so the worktree is tied then.
+  await openClaudeTab(rt, {
     ...tabStart(start),
     ...backend,
     cwd: lease.entry.path,
     env: { ...lease.env, ...backend.env },
     newId,
+    tied: (sessionId) => {
+      rt.sessionWorktrees.set(sessionId, lease.entry.id);
+    },
   });
-  if (sessionId !== null) {
-    rt.sessionWorktrees.set(sessionId, lease.entry.id);
-  }
   void rt.caches.worktrees.refresh();
 }
 

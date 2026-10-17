@@ -45,6 +45,11 @@ export interface ClaudeTab {
   readonly args?: readonly string[];
   /** Runs the agent in the tab itself, for a session that cannot outlive the window. */
   readonly foreground?: boolean;
+  /**
+   * Called with the tab's session id once it is known: at once for most
+   * agents, and once the session shows up for one that picks its own id, like Codex.
+   */
+  readonly tied?: (sessionId: string) => void;
 }
 
 /**
@@ -114,6 +119,7 @@ async function openAttached(
     cwd: tab.cwd,
     sessionId,
   });
+  tab.tied?.(sessionId);
   void rt.places.refresh();
   void rt.jobs.refresh();
   return sessionId;
@@ -129,21 +135,35 @@ function plainArgs(at: AgentTerminal, tab: ClaudeTab, sessionId: string): readon
   return [...before, ...at.terminal.resumeArgs(tab.resume, tab.fork === true, start)];
 }
 
+/** Tells the tab its session id once the agent names it. */
+async function tieLater(later: Promise<string | null>, tab: ClaudeTab): Promise<void> {
+  const sessionId = await later;
+  if (sessionId !== null) {
+    tab.tied?.(sessionId);
+  }
+}
+
 /** A tab that runs the agent itself. Resolves to the session id it runs, when known. */
 function openPlain(rt: Runtime, at: AgentTerminal, tab: ClaudeTab): string | null {
   const continued = tab.fork === true ? null : tab.resume;
   const sessionId = continued ?? tab.newId ?? randomUUID();
   // An agent that picks a new session's id itself leaves the tab untied until it says.
   const known = continued !== null || at.terminal.presetId;
+  const later = known ? null : newSessionIn(rt, at.adapter.id, tab.cwd);
   rt.host.runInTerminal({
     name: tab.name,
     command: terminalCommand(rt, at),
     args: plainArgs(at, tab, sessionId),
     cwd: tab.cwd,
     sessionId: known ? sessionId : null,
-    ...(known ? {} : { sessionLater: newSessionIn(rt, at.adapter.id, tab.cwd) }),
+    ...(later === null ? {} : { sessionLater: later }),
     ...(tab.env === undefined ? {} : { env: tab.env }),
   });
+  if (later === null) {
+    tab.tied?.(sessionId);
+  } else {
+    void tieLater(later, tab);
+  }
   return known ? sessionId : null;
 }
 
