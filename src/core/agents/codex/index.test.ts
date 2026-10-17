@@ -1,13 +1,16 @@
-import { chmod, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { CLAUDE_CODE, CODEX } from '../../../shared/agents.js';
+import { loadConnectors } from '../../app/views/connectors-data.js';
 import { resolveContext } from '../../context/resolve.js';
 import { CWD, resolveInput } from '../../context/test-helpers/fixtures.js';
+import { resolveClaudePaths } from '../../paths.js';
 import { agents } from '../index.js';
+import { AgentRegistry } from '../registry.js';
 
 import { codexInstructions } from './instructions.js';
 
@@ -107,5 +110,64 @@ describe('codex', () => {
       path: '',
     });
     expect(missing).toStrictEqual({ bin: null, version: null });
+  });
+});
+
+describe('the Connectors data with Codex installed', () => {
+  let dir: string;
+
+  beforeEach(async () => {
+    dir = await mkdtemp(path.join(os.tmpdir(), 'overlord-codex-connectors-'));
+  });
+
+  afterEach(async () => {
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it('lists the servers in $CODEX_HOME/config.toml as Codex rows', async () => {
+    const bin = path.join(dir, 'bin');
+    const codexHome = path.join(dir, 'codex-home');
+    const home = path.join(dir, 'home');
+    await Promise.all([mkdir(bin), mkdir(codexHome), mkdir(home)]);
+    await writeFile(path.join(bin, 'codex'), '#!/bin/sh\nexit 1\n');
+    await chmod(path.join(bin, 'codex'), 0o755);
+    await writeFile(
+      path.join(codexHome, 'config.toml'),
+      '# kept by hand\n[mcp_servers.docs]\ncommand = "docs-mcp"\nargs = ["--stdio"]\n',
+    );
+    const data = await loadConnectors({
+      claudeCli: async () => {
+        await Promise.resolve();
+        return { bin: 'claude', env: {} };
+      },
+      loginEnv: async () => {
+        await Promise.resolve();
+        return { PATH: bin, CODEX_HOME: codexHome };
+      },
+      registry: new AgentRegistry([codex]),
+      agentPath: () => '',
+      agentEnabled: () => true,
+      workspace: null,
+      paths: resolveClaudePaths({ home, platform: 'linux', env: {} }),
+      platform: 'linux',
+      exec: async () => {
+        await Promise.resolve();
+        return { code: 1, stdout: '', stderr: 'no claude here' };
+      },
+      callTool: async () => {
+        await Promise.resolve();
+        return '[]';
+      },
+      clock: () => 1,
+    });
+    expect(data.mcpAgents).toStrictEqual([CLAUDE_CODE, CODEX]);
+    const codexRow = data.connectors.find((row) => row.agent === CODEX);
+    expect(codexRow).toMatchObject({
+      id: 'codex/mcp:docs',
+      name: 'docs',
+      status: 'unchecked',
+      target: 'docs-mcp --stdio',
+    });
+    expect(codexRow?.detail).toContain(path.join(codexHome, 'config.toml'));
   });
 });

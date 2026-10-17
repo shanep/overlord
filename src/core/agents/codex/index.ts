@@ -14,6 +14,7 @@ import {
   CODEX_SHORT,
 } from './capabilities.js';
 import { codexInstructions } from './instructions.js';
+import { codexMcp } from './mcp.js';
 import { codexModels } from './models.js';
 import { codexObserverFacet } from './observer.js';
 import { codexTerminal } from './terminal.js';
@@ -39,4 +40,5 @@ export const codex: AgentAdapter = {
   terminal: codexTerminal,
   observer: codexObserverFacet,
   instructions: codexInstructions,
+  config: { settingsFormat: 'toml', mcp: codexMcp },
 };
