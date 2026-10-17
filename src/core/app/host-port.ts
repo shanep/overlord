@@ -1,6 +1,7 @@
 // What the app needs from the editor. The vscode layer implements this, and
 // tests pass a fake, so nothing under core/ ever imports vscode.
 
+import type { AgentId } from '../../shared/agents.js';
 import type { ViewId } from '../../shared/protocol.js';
 import type { SecretStore } from '../sync/secrets.js';
 
@@ -42,6 +43,14 @@ export interface PickItem {
   readonly description: string;
 }
 
+/** One agent's entry in overlord.agents. */
+export interface AgentSetting {
+  /** The binary to run, or "" for the agent's default name. */
+  readonly path: string;
+  /** False keeps Overlord from starting sessions of this agent. */
+  readonly enabled: boolean;
+}
+
 /** The overlord.* settings. The host should read them fresh on every access. */
 export interface OverlordSettings {
   readonly activeWindowMinutes: number;
@@ -52,7 +61,13 @@ export interface OverlordSettings {
   /** Tell sessions in one repository about each other and pause clashing edits. */
   readonly coordinateSessions: boolean;
   readonly telemetryPort: number;
+  /**
+   * The Claude binary: overlord.claudePath when set, else the path under
+   * overlord.agents for claude-code, else claude.
+   */
   readonly claudePath: string;
+  /** What overlord.agents sets for each agent, by agent id. */
+  readonly agents: Readonly<Record<AgentId, AgentSetting>>;
   readonly configRepoUrl: string;
   readonly configRepoPath: string;
   /** Commit, pull and push the config repo in the background once it is connected. */

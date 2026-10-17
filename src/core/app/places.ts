@@ -3,19 +3,16 @@
 // registry is cheap to read, so it is polled every second, which is what
 // makes a row's state icon follow the session closely. `ps` runs only when the
 // interactive processes or the terminals change, and panels hear about it
-// only when a place, a pid or a status changes.
+// only when a place, a pid or a status changes. Every agent that keeps a
+// registry of its running sessions is read, through its terminal facet.
 
 import type { SessionPlace } from '../../shared/model.js';
+import { terminalAgents } from '../agents/terminals.js';
 import type { ClaudePaths } from '../paths.js';
+import type { Collected } from '../surfaces/common.js';
 import type { RegistryEntry } from '../surfaces/live.js';
-import { readSessionRegistry } from '../surfaces/live.js';
 import type { AttachClient, Placement } from '../surfaces/places.js';
-import {
-  liveEntries,
-  parseAttachClients,
-  parseProcessTable,
-  placeSessions,
-} from '../surfaces/places.js';
+import { liveEntries, parseProcessTable, placeSessions } from '../surfaces/places.js';
 import type { ExecFunction, IsAlive } from '../surfaces/process.js';
 
 import { messageOf } from './errors.js';
@@ -64,6 +61,25 @@ function statusesOf(live: readonly RegistryEntry[]): Record<string, RegistryStat
     }
   }
   return out;
+}
+
+/** What every agent's registry lists, in agent order. */
+async function readRegistries(deps: PlacesDeps): Promise<Collected<RegistryEntry>> {
+  const sources = { paths: deps.paths, exec: deps.exec, isAlive: deps.isAlive };
+  const lists = await Promise.all(
+    terminalAgents().map(async ({ terminal }): Promise<Collected<RegistryEntry>> =>
+      terminal.registry === undefined ? { items: [], errors: [] } : terminal.registry(sources),
+    ),
+  );
+  return {
+    items: lists.flatMap((list) => list.items),
+    errors: lists.flatMap((list) => list.errors),
+  };
+}
+
+/** The clients showing a background session, as each agent with background runs finds them. */
+function attachClients(ps: string): readonly AttachClient[] {
+  return terminalAgents().flatMap(({ terminal }) => terminal.background?.attachClients(ps) ?? []);
 }
 
 function byNumber(left: number, right: number): number {
@@ -171,7 +187,7 @@ export class SessionPlaces {
   private async load(): Promise<void> {
     try {
       const [registry, terminals] = await Promise.all([
-        readSessionRegistry(this.deps.paths),
+        readRegistries(this.deps),
         this.deps.terminalPids(),
       ]);
       const live = liveEntries(registry.items, this.deps.isAlive);
@@ -206,7 +222,7 @@ export class SessionPlaces {
   /**
    * The process tree only matters while a terminal is open: it ties an
    * interactive session to its terminal, and a background session to the tab
-   * running `claude attach` for it.
+   * attached to it, such as `claude attach`.
    */
   private async readTree(
     live: readonly RegistryEntry[],
@@ -233,7 +249,7 @@ export class SessionPlaces {
         timeoutMs: PS_TIMEOUT_MS,
       });
       this.parents = parseProcessTable(ps.stdout);
-      this.attaches = parseAttachClients(ps.stdout);
+      this.attaches = attachClients(ps.stdout);
     }
     this.treeKey = key;
   }

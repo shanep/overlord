@@ -7,12 +7,15 @@
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 
+import { CLAUDE_CODE } from '../../shared/agents.js';
 import type { ProjectSummary } from '../../shared/protocol.js';
+import type { AgentTerminal } from '../agents/terminals.js';
 import { needsBridge } from '../bridge/boisestate.js';
 import { addProject, assignFolder, resolveProject, setProjectFolder } from '../projects/book.js';
 
 import type { ActionHandlers } from './action-types.js';
 import { askName, BROWSE_LABEL, chooseFolder, folderOf } from './actions-projects.js';
+import { agentToStart } from './agent-terminal.js';
 import type { PickItem } from './host-port.js';
 import type { Runtime } from './runtime.js';
 import { fleetFor } from './views/fleet.js';
@@ -172,15 +175,26 @@ async function pickBridge(rt: Runtime): Promise<boolean | null> {
   return picked === null ? null : picked === BRIDGE_ID;
 }
 
-async function startIn(rt: Runtime, folder: string | null, bridge = false): Promise<void> {
-  await rt.host.withProgress(STARTING, async () => newSession(rt, folder, bridge));
+async function startIn(
+  rt: Runtime,
+  folder: string | null,
+  bridge = false,
+  agent?: AgentTerminal,
+): Promise<void> {
+  const title = bridge || agent === undefined ? STARTING : `Starting ${agent.adapter.name}`;
+  await rt.host.withProgress(title, async () => newSession(rt, folder, bridge, agent));
 }
 
-/** Starts a session in a folder, after asking where it runs. */
-async function askAndStart(rt: Runtime, folder: string | null): Promise<void> {
-  const bridge = await pickBridge(rt);
+/** Starts a session in a folder, after asking where it runs. The bridge only serves Claude Code. */
+async function askAndStart(
+  rt: Runtime,
+  folder: string | null,
+  agent?: AgentTerminal,
+): Promise<void> {
+  const claude = agent === undefined || agent.adapter.id === CLAUDE_CODE;
+  const bridge = claude ? await pickBridge(rt) : false;
   if (bridge !== null) {
-    await startIn(rt, folder, bridge);
+    await startIn(rt, folder, bridge, agent);
   }
 }
 
@@ -205,10 +219,15 @@ export const openProjectActions: ActionHandlers<OpenActions> = {
       await OPENERS[way](rt, target.folder);
     }
   },
-  newSession: async ({ rt }) => {
+  // An agent id routes the start to that agent's terminal facet.
+  newSession: async ({ rt }, action) => {
+    const agent = agentToStart(rt, action.agent);
+    if (agent === null) {
+      return;
+    }
     const folder = await pickSessionFolder(rt);
     if (folder !== undefined) {
-      await askAndStart(rt, folder);
+      await askAndStart(rt, folder, agent);
     }
   },
   newProjectSession: async ({ rt }, action) => {

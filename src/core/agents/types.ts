@@ -12,8 +12,14 @@ import type {
   SessionSummary,
   ToolCall,
 } from '../../shared/model.js';
-import type { SurfaceSession } from '../../shared/protocol.js';
+import type { HandoffKind, SurfaceSession } from '../../shared/protocol.js';
 import type { ClaudePaths } from '../paths.js';
+import type { Collected } from '../surfaces/common.js';
+import type { HandoffCommand } from '../surfaces/handoff.js';
+import type { AgentEntry, LiveProcess, RegistryEntry } from '../surfaces/live.js';
+import type { AttachClient } from '../surfaces/places.js';
+import type { ExecFunction, IsAlive } from '../surfaces/process.js';
+import type { Exec } from '../sync/exec.js';
 import type { SessionPeek } from '../transcripts/peek.js';
 import type { ModelPrice } from '../transcripts/pricing.js';
 
@@ -55,14 +61,97 @@ export interface RuntimeFacet {
   start: (options: unknown) => AsyncIterable<unknown>;
 }
 
+/** The binary to run outside a terminal tab, and the login shell's environment for it. */
+export interface AgentCli {
+  readonly bin: string;
+  readonly env: Readonly<Record<string, string>>;
+}
+
+/** What the agent's records of its running sessions are read with. */
+export interface LiveSources {
+  readonly paths: ClaudePaths;
+  /** Throws when the command fails. */
+  readonly exec: ExecFunction;
+  readonly isAlive: IsAlive;
+}
+
+/** A tab that starts a session or continues one. */
+export interface TerminalStart {
+  /** The id a new session or a fork takes, when the agent lets Overlord pick it. */
+  readonly sessionId: string;
+  /** The first message, which the session starts working on at once. */
+  readonly prompt: string | null;
+}
+
+interface BackgroundStart {
+  readonly run: Exec;
+  readonly cli: AgentCli;
+  readonly cwd: string;
+  /** The session to continue, or null for a new one. */
+  readonly resume: string | null;
+  /** Continue a copy of the resumed session under a new id. */
+  readonly fork: boolean;
+  /** Variables the session needs, such as its worktree's port slot. */
+  readonly env: Readonly<Record<string, string>>;
+  readonly prompt: string | null;
+}
+
+/** The job id a background start printed, or why it did not start. */
+export type BackgroundStarted = { readonly jobId: string } | { readonly error: string };
+
 /**
- * Terminal tabs, background runs and stop. Workstream B owns it.
+ * Detached sessions that outlive their tab, like `claude --bg`. The list uses
+ * Claude Code's words for kind (background, interactive), state (working,
+ * blocked, done, stopped, failed) and status (busy, idle), so another agent
+ * maps its own onto them.
+ */
+export interface BackgroundFacet {
+  start: (input: BackgroundStart) => Promise<BackgroundStarted>;
+  /** Args for a tab that shows a running job. */
+  attachArgs: (jobId: string) => readonly string[];
+  /** The agent's jobs. With all, finished ones too. Never throws. */
+  list: (input: {
+    readonly exec: ExecFunction;
+    readonly bin: string;
+    readonly all: boolean;
+  }) => Promise<Collected<AgentEntry>>;
+  /** Stops a job and keeps its conversation. Resolves to null, or why it did not stop. */
+  stop: (input: {
+    readonly run: Exec;
+    readonly cli: AgentCli;
+    readonly jobId: string;
+  }) => Promise<string | null>;
+  /** The clients showing a job, from `ps -A -o pid=,ppid=,args=`. */
+  attachClients: (ps: string) => readonly AttachClient[];
+}
+
+/**
+ * Terminal tabs, background runs, the agent's own list of running sessions,
+ * and the handoffs to its other apps. Workstream B owns it.
  * @public
  */
 export interface TerminalFacet {
-  newArgs: () => readonly string[];
-  resumeArgs: (sessionId: string, fork: boolean) => readonly string[];
-  tabName: (title: string) => string;
+  /** The binary's name when the user has not set a path. */
+  readonly command: string;
+  /** True when a new session takes the id newArgs passes, so a tab is tied to it at once. */
+  readonly presetId: boolean;
+  newArgs: (start: TerminalStart) => readonly string[];
+  /** Args to continue sessionId, or with fork a copy of it under start.sessionId. */
+  resumeArgs: (sessionId: string, fork: boolean, start: TerminalStart) => readonly string[];
+  readonly background?: BackgroundFacet;
+  /** What interrupts a turn of a session in a plain terminal, or null when only its tab can. */
+  readonly interruptSignal: NodeJS.Signals | null;
+  /** A tab title for something the agent runs, such as "Claude 8c3efb13". */
+  tabName: (label: string) => string;
+  /** The live sessions the agent records on this machine, for where each one runs. */
+  registry?: (sources: LiveSources) => Promise<Collected<RegistryEntry>>;
+  /** The live process holding a session, from every record the agent keeps. */
+  findLive: (
+    sources: LiveSources & { readonly bin: string },
+    sessionId: string,
+  ) => Promise<LiveProcess | undefined>;
+  /** The command for a handoff to another of the agent's apps, or null when it does not apply. */
+  handoff?: (kind: HandoffKind, session: SurfaceSession, bin: string) => HandoffCommand | null;
 }
 
 /** Where an agent's observer looks for files. */

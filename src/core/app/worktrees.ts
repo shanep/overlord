@@ -7,6 +7,8 @@
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 
+import type { AgentId } from '../../shared/agents.js';
+import type { AgentTerminal } from '../agents/terminals.js';
 import { bearerEnv, BRIDGE_ARGS, BRIDGE_BASE_URL } from '../bridge/boisestate.js';
 import type { WorktreeLease, WorktreeProvider } from '../harness/launcher.js';
 import type { ClaudePaths } from '../paths.js';
@@ -124,6 +126,8 @@ export interface SessionStart {
   readonly forkOf?: string;
   /** Runs on Boise State's Opus 5.5 through this window's bridge sidecar. */
   readonly bridge?: boolean;
+  /** The agent whose terminal facet opens the tab. Claude Code when left out. */
+  readonly agent?: AgentId;
 }
 
 const PLAIN_START: SessionStart = { name: 'Claude Code' };
@@ -158,7 +162,9 @@ async function bridgeBackend(rt: Runtime): Promise<Backend | null> {
 }
 
 /** The tab fields for a start: a new session, or a fork of forkOf. */
-function tabStart(start: SessionStart): Pick<ClaudeTab, 'name' | 'prompt' | 'resume' | 'fork'> {
+function tabStart(
+  start: SessionStart,
+): Pick<ClaudeTab, 'agent' | 'name' | 'prompt' | 'resume' | 'fork'> {
   const { forkOf, ...rest } = start;
   return forkOf === undefined ? { ...rest, resume: null } : { ...rest, resume: forkOf, fork: true };
 }
@@ -236,14 +242,19 @@ export async function startSession(
 
 /**
  * Starts a session in a new worktree of the folder's repository, or in home
- * with no folder, on Claude Code's usual account or on the bridge.
+ * with no folder, on Claude Code's usual account or on the bridge. An agent
+ * other than Claude Code opens through its own terminal facet.
  */
 export async function newSession(
   rt: Runtime,
   folder: string | null,
   bridge = false,
+  agent?: AgentTerminal,
 ): Promise<void> {
-  await startSession(rt, folder, bridge ? BRIDGE_START : PLAIN_START);
+  const base = bridge ? BRIDGE_START : PLAIN_START;
+  const start =
+    agent === undefined || bridge ? base : { name: agent.adapter.name, agent: agent.adapter.id };
+  await startSession(rt, folder, start);
 }
 
 /** Opens a new session in a worktree that is still around, to finish its work. */

@@ -1,5 +1,6 @@
 // Claude Code as an agent adapter. It points at the Claude code where it
-// sits today. The facets past models come in Phase 1 of META-HARNESS.md.
+// sits today. The facets past models and terminal come in Phase 1 of
+// META-HARNESS.md.
 
 import type { AgentCapabilities, ModeOption } from '../../../shared/agents.js';
 import { CLAUDE_CODE } from '../../../shared/agents.js';
@@ -11,6 +12,7 @@ import { DEFAULT_PRICES, findPrice } from '../../transcripts/pricing.js';
 import type { AgentAdapter, DetectInput, Detected } from '../types.js';
 
 import { claudeObserverFacet } from './observer.js';
+import { CLAUDE_SHORT, claudeTerminal } from './terminal.js';
 
 const HANDOFFS: readonly HandoffKind[] = [
   'resume-local',
@@ -67,7 +69,7 @@ async function detect(input: DetectInput): Promise<Detected> {
 export const claudeCode: AgentAdapter = {
   id: CLAUDE_CODE,
   name: 'Claude Code',
-  short: 'Claude',
+  short: CLAUDE_SHORT,
   icon: 'sparkle',
   detect,
   capabilities: CAPABILITIES,
@@ -77,5 +79,6 @@ export const claudeCode: AgentAdapter = {
     price: (model) => findPrice(model, DEFAULT_PRICES),
     defaultModel: DEFAULT_MODEL,
   },
+  terminal: claudeTerminal,
   observer: claudeObserverFacet,
 };

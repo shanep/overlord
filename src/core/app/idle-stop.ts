@@ -2,21 +2,22 @@
 // nothing left to do, so idle sessions do not pile up in the background and
 // their worktrees can go. A session mid turn, or waiting on a permission
 // prompt, keeps running. `claude stop` keeps the conversation, so Continue in
-// All Sessions picks it back up later.
+// All Sessions picks it back up later. Each step goes through the session's
+// agent's background facet, and an agent without one never stops this way.
 
+import type { AgentCli, BackgroundFacet } from '../agents/types.js';
 import type { AgentEntry } from '../surfaces/live.js';
-import { readClaudeAgents } from '../surfaces/live.js';
-import { attachesTo, parseAttachClients } from '../surfaces/places.js';
+import { attachesTo } from '../surfaces/places.js';
 
+import { agentCli, sessionTerminal } from './agent-terminal.js';
 import { messageOf } from './errors.js';
-import type { ClaudeCli, Runtime } from './runtime.js';
+import type { Runtime } from './runtime.js';
 
 /** The closed tab's own `claude attach` can take a moment to exit. */
 export const DETACH_TRIES = 10;
 /** `claude stop` returns before the process is gone, and the worktree check needs it gone. */
 export const EXIT_TRIES = 25;
 export const POLL_DELAY_MS = 200;
-const STOP_TIMEOUT_MS = 15_000;
 const PS_TIMEOUT_MS = 5000;
 const SOURCE = 'idle stop';
 
@@ -37,13 +38,17 @@ export function nothingLeft(job: AgentEntry, busy: boolean): boolean {
 }
 
 /** True when some `claude attach` still shows the session, in VS Code or any other terminal. */
-async function stillAttached(rt: Runtime, sessionId: string): Promise<boolean> {
+async function stillAttached(
+  rt: Runtime,
+  background: BackgroundFacet,
+  sessionId: string,
+): Promise<boolean> {
   for (let attempt = 0; attempt < DETACH_TRIES; attempt += 1) {
     if (attempt > 0) {
       await rt.delay(POLL_DELAY_MS);
     }
     const ps = await rt.exec('ps', ['-A', '-o', 'pid=,ppid=,args='], { timeoutMs: PS_TIMEOUT_MS });
-    const clients = parseAttachClients(ps.stdout);
+    const clients = background.attachClients(ps.stdout);
     if (!clients.some((client) => attachesTo(client, sessionId))) {
       return false;
     }
@@ -63,14 +68,17 @@ export interface RunningJob {
   readonly pid: number;
 }
 
+/** The agent's background runs, the CLI that drives them, and the job to stop. */
+interface JobControl {
+  readonly background: BackgroundFacet;
+  readonly cli: AgentCli;
+}
+
 /** Stops a background job, keeping its conversation, and waits for its process to go. True when it stopped. */
-export async function stopJob(rt: Runtime, cli: ClaudeCli, job: RunningJob): Promise<boolean> {
-  const result = await rt.exec(cli.bin, ['stop', job.id], {
-    timeoutMs: STOP_TIMEOUT_MS,
-    env: cli.env,
-  });
-  if (result.code !== 0) {
-    rt.report(SOURCE, `claude stop ${job.id} failed: ${result.stderr.trim()}`);
+export async function stopJob(rt: Runtime, control: JobControl, job: RunningJob): Promise<boolean> {
+  const failed = await control.background.stop({ run: rt.exec, cli: control.cli, jobId: job.id });
+  if (failed !== null) {
+    rt.report(SOURCE, failed);
     return false;
   }
   await waitForExit(rt, job.pid);
@@ -86,8 +94,13 @@ export async function stopJob(rt: Runtime, cli: ClaudeCli, job: RunningJob): Pro
  */
 export async function stopIfIdle(rt: Runtime, sessionId: string): Promise<boolean> {
   try {
-    const cli = await rt.claudeCli();
-    const agents = await readClaudeAgents(rt.surfacesExec, { claudeBin: cli.bin });
+    const at = sessionTerminal(rt, sessionId);
+    const background = at?.terminal.background;
+    if (at === null || background === undefined) {
+      return false;
+    }
+    const cli = await agentCli(rt, at);
+    const agents = await background.list({ exec: rt.surfacesExec, bin: cli.bin, all: false });
     const job = agents.items.find((entry) => entry.sessionId === sessionId);
     if (
       job === undefined ||
@@ -97,10 +110,10 @@ export async function stopIfIdle(rt: Runtime, sessionId: string): Promise<boolea
     ) {
       return false;
     }
-    if (await stillAttached(rt, sessionId)) {
+    if (await stillAttached(rt, background, sessionId)) {
       return false;
     }
-    return await stopJob(rt, cli, { id: job.id, pid: job.pid });
+    return await stopJob(rt, { background, cli }, { id: job.id, pid: job.pid });
   } catch (error: unknown) {
     rt.report(SOURCE, messageOf(error));
     return false;

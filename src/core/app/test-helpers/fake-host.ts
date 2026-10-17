@@ -24,6 +24,7 @@ const DEFAULT_SETTINGS: OverlordSettings = {
   launchCheck: false,
   telemetryPort: 0,
   claudePath: 'claude',
+  agents: {},
   configRepoUrl: '',
   configRepoPath: '~/.overlord-config',
   configSyncAuto: true,

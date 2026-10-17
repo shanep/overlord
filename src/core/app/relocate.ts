@@ -3,10 +3,12 @@
 // it in the new folder. Claude Code finds a session by id from any folder, and
 // the fork records the new one, so the original stays behind as it was.
 
+import type { AgentId } from '../../shared/agents.js';
 import { sessionName } from '../../shared/model.js';
-import { readClaudeAgents } from '../surfaces/live.js';
+import { terminalOf } from '../agents/terminals.js';
 
 import { IN_LAUNCHER, liveProcess, sdkTarget } from './actions-session.js';
+import { agentCli, sessionTerminal } from './agent-terminal.js';
 import { stopJob } from './idle-stop.js';
 import type { Runtime } from './runtime.js';
 import { shortId } from './text.js';
@@ -27,8 +29,13 @@ async function stopOriginal(
   title: string,
   folder: string,
 ): Promise<boolean> {
-  const cli = await rt.claudeCli();
-  const agents = await readClaudeAgents(rt.surfacesExec, { claudeBin: cli.bin });
+  const at = sessionTerminal(rt, sessionId);
+  const background = at?.terminal.background;
+  if (at === null || background === undefined) {
+    return clearOtherCopy(rt, await liveProcess(rt, sessionId), title);
+  }
+  const cli = await agentCli(rt, at);
+  const agents = await background.list({ exec: rt.surfacesExec, bin: cli.bin, all: false });
   const job = agents.items.find(
     (entry) => entry.sessionId === sessionId && entry.kind === 'background',
   );
@@ -39,10 +46,22 @@ async function stopOriginal(
   if (!(await rt.host.confirm(question, STOP_LABEL))) {
     return false;
   }
-  if (await stopJob(rt, cli, { id: job.id, pid: job.pid })) {
+  if (await stopJob(rt, { background, cli }, { id: job.id, pid: job.pid })) {
     return true;
   }
-  rt.host.showWarning(`Claude Code did not stop "${title}", so Overlord did not continue it.`);
+  rt.host.showWarning(
+    `${at.adapter.name} did not stop "${title}", so Overlord did not continue it.`,
+  );
+  return false;
+}
+
+/** False, after saying so, when the session's agent cannot fork a session into a new tab. */
+function canFork(rt: Runtime, agent: AgentId): boolean {
+  const adapter = terminalOf(agent)?.adapter;
+  if (adapter?.capabilities.fork === true) {
+    return true;
+  }
+  rt.host.showInfo(`${adapter?.name ?? agent} cannot continue a session in another folder.`);
   return false;
 }
 
@@ -55,6 +74,9 @@ export async function continueInFolder(rt: Runtime, sessionId: string): Promise<
   }
   if (sdkTarget(rt, sessionId) !== null) {
     rt.host.showInfo(IN_LAUNCHER);
+    return;
+  }
+  if (!canFork(rt, session.agent)) {
     return;
   }
   const title = session.title === '' ? shortId(sessionId) : session.title;
@@ -70,7 +92,7 @@ export async function continueInFolder(rt: Runtime, sessionId: string): Promise<
     return;
   }
   const name = sessionName({ title: session.title, cwd: folder });
-  await startSession(rt, folder, { name, forkOf: sessionId });
+  await startSession(rt, folder, { name, forkOf: sessionId, agent: session.agent });
   const left = session.cwd === '' ? '' : ` The original stays in ${session.cwd}.`;
   rt.host.showInfo(`Continuing "${title}" in ${folder}.${left}`);
 }

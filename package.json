@@ -417,6 +417,26 @@
           "default": 5,
           "minimum": 1,
           "description": "How often the background config sync checks the remote for changes from other machines. Local changes are pushed within a minute."
+        },
+        "overlord.agents": {
+          "type": "object",
+          "default": {},
+          "markdownDescription": "Settings for each coding agent, keyed by agent id (`claude-code`, `copilot`, `codex`). `path` is the binary to run, and `enabled: false` keeps Overlord from starting sessions of that agent. `#overlord.claudePath#` wins over the `claude-code` path when it is set.",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "description": "The agent's binary. Leave it out to use the agent's own name on PATH."
+              },
+              "enabled": {
+                "type": "boolean",
+                "default": true,
+                "description": "Whether Overlord starts sessions of this agent."
+              }
+            },
+            "additionalProperties": false
+          }
         }
       }
     }

@@ -467,11 +467,8 @@ describe('OverlordApp', () => {
     const env = await makeEnv();
     const bin = await writeText(path.join(env.root, 'claude'), '#!/bin/sh\n');
     await chmod(bin, 0o755);
-    const claudeCli = async (): Promise<{ bin: string; env: Record<string, string> }> => {
-      await Promise.resolve();
-      return { bin, env: { PATH: env.root } };
-    };
-    const { app } = makeApp(env, { deps: { claudeCli } });
+    // Detection looks on the login shell's PATH, which starts from the app's environment.
+    const { app } = makeApp(env, { deps: { env: { PATH: env.root } } });
     const before = app.stateFor('fleet', {}).agents;
     expect(before.map((agent) => [agent.id, agent.installed])).toStrictEqual([
       ['claude-code', false],

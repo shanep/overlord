@@ -116,6 +116,8 @@ export interface Runtime {
   readonly sessionBusy: (sessionId: string) => boolean;
   /** The claude binary and the login shell's environment, for running the CLI outside a terminal. */
   readonly claudeCli: () => Promise<ClaudeCli>;
+  /** The login shell's environment, read once, for running any agent's CLI outside a terminal. */
+  readonly loginEnv: () => Promise<Readonly<Record<string, string | undefined>>>;
   /** Calls one tool on a stdio MCP server, for the Claude in Chrome check. */
   readonly callTool: StdioToolCaller;
 }

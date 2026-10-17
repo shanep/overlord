@@ -152,7 +152,13 @@ async function settleGaps(rt: Runtime, at: Continuing, gaps: readonly Gap[]): Pr
   }
   if (gaps.some((gap) => gap.kind === 'shared')) {
     const moved = `Moved this session into its own worktree, from the latest default branch. The original stays in ${cwd}, with any edits it left there.`;
-    await startSession(rt, cwd, { name, forkOf: session.id, prompt: refreshPrompt([moved]) });
+    const start = {
+      name,
+      forkOf: session.id,
+      prompt: refreshPrompt([moved]),
+      agent: session.agent,
+    };
+    await startSession(rt, cwd, start);
     return { kind: 'stop' };
   }
   const done: string[] = [];
@@ -176,6 +182,7 @@ export async function continueHere(rt: Runtime, at: Continuing): Promise<void> {
   }
   const env = await heldWorktreeEnv(rt, session.id);
   await openClaudeTab(rt, {
+    agent: session.agent,
     name,
     cwd,
     resume: session.id,

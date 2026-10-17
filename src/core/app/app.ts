@@ -5,6 +5,7 @@
 import path from 'node:path';
 
 import type { FleetState, HostToWebview, ViewId, WebviewAction } from '../../shared/protocol.js';
+import type { AgentCli } from '../agents/types.js';
 import type { EventBus } from '../bus.js';
 import { GitHubReader } from '../catalog/github.js';
 import { callStdioTool } from '../connectors/stdio-mcp.js';
@@ -20,6 +21,7 @@ import { OverlordStore } from '../store/store.js';
 
 import { watchProjects } from './actions-projects.js';
 import { dispatch } from './actions.js';
+import { agentCli } from './agent-terminal.js';
 import type { AppDeps } from './app-deps.js';
 import { coreDeps, machineDeps } from './app-deps.js';
 import type { CacheRuntime } from './caches.js';
@@ -157,9 +159,8 @@ export class OverlordApp {
     });
     const jobs = new BackgroundJobs({
       exec: surfacesExec,
-      // Null means a bare claude the login shell cannot find either, so leave it to PATH.
-      claudeBin: async (): Promise<string> =>
-        executableFor(host.settings.claudePath, await launchEnv(), platform) ?? 'claude',
+      // The runtime is built below, and this only runs after start.
+      cliFor: async (at): Promise<AgentCli> => agentCli(this.rt, at),
       keep: async (ids, finished): Promise<void> => this.sources.keepTranscripts(ids, finished),
       ...events,
     });
@@ -209,6 +210,7 @@ export class OverlordApp {
       dismissTranscript: async (id: string): Promise<void> => this.sources.dismissTranscript(id),
       sessionBusy: (id: string): boolean => this.sources.sessionBusy(id),
       claudeCli: deps.claudeCli ?? cliLoader(host.settings, launchEnv, platform),
+      loginEnv: launchEnv,
       // The config sync is built below, once the runtime it needs exists.
       configSync: {
         status: () => this.configSync.status(),

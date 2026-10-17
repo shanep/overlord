@@ -267,4 +267,23 @@ describe('newSession', () => {
     });
     expect(test.env.host.terminals.at(-1)).toMatchObject({ cwd: test.env.home });
   });
+
+  it('starts the agent named, and says why when it cannot open in a tab or is turned off', async () => {
+    const { test, notes } = await world();
+    test.env.host.workspace = notes;
+    test.env.host.pickAnswers.push(HERE_ID);
+    await test.app.dispatch({ type: 'newSession', agent: 'claude-code' }, {});
+    expect(test.env.host.terminals.at(-1)).toMatchObject({ cwd: notes, name: 'Claude Code' });
+    await test.app.dispatch({ type: 'newSession', agent: 'nope' }, {});
+    test.env.host.settings = {
+      ...test.env.host.settings,
+      agents: { 'claude-code': { path: '', enabled: false } },
+    };
+    await test.app.dispatch({ type: 'newSession' }, {});
+    expect(test.env.host.infos).toStrictEqual([
+      'Overlord cannot start nope sessions in a terminal.',
+      'Claude Code is turned off in the overlord.agents setting.',
+    ]);
+    expect(test.env.host.terminals).toHaveLength(1);
+  });
 });

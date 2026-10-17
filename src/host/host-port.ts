@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import * as vscode from 'vscode';
 
+import { claudePathSetting, parseAgentSettings } from '../core/app/claude-bin.js';
 import type {
   FilePickRequest,
   GitHubSession,
@@ -50,8 +51,20 @@ function leaderboardUrl(value: string): string {
   return value.trim() === '' ? LEADERBOARD_URL : value.trim();
 }
 
+/** overlord.claudePath when the user set it at any level, in the order VS Code applies them. */
+function explicitClaudePath(config: vscode.WorkspaceConfiguration): string | undefined {
+  const set = config.inspect<string>('claudePath');
+  return set?.workspaceFolderValue ?? set?.workspaceValue ?? set?.globalValue;
+}
+
 function readSettings(): OverlordSettings {
   const config = vscode.workspace.getConfiguration('overlord');
+  const agents = parseAgentSettings(config.get<unknown>('agents', {}));
+  const claudePath = claudePathSetting(
+    explicitClaudePath(config),
+    agents,
+    config.get<string>('claudePath', 'claude'),
+  );
   return {
     activeWindowMinutes: config.get<number>('activeWindowMinutes', 30),
     idleMinutes: config.get<number>('idleMinutes', 10),
@@ -60,7 +73,8 @@ function readSettings(): OverlordSettings {
     holdTimeoutSeconds: config.get<number>('permissions.holdTimeoutSeconds', 600),
     coordinateSessions: config.get<boolean>('coordination.enabled', true),
     telemetryPort: config.get<number>('telemetry.port', 47_318),
-    claudePath: resolveClaude(config.get<string>('claudePath', 'claude')),
+    claudePath: resolveClaude(claudePath),
+    agents,
     configRepoUrl: config.get<string>('configRepo.url', ''),
     configRepoPath: expandHome(config.get<string>('configRepo.path', '~/.overlord-config')),
     configSyncAuto: config.get<boolean>('configSync.auto', true),

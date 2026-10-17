@@ -1,16 +1,21 @@
 // Keeps the background jobs waiting on the user or finished current for the
 // fleet. Each read runs `claude agents --json --all`, which takes a fraction
 // of a second, so it is polled a little less often than the session registry.
+// Every agent with background runs is asked, through its terminal facet.
 
+import type { AgentTerminal } from '../agents/terminals.js';
+import { terminalAgents } from '../agents/terminals.js';
+import type { AgentCli } from '../agents/types.js';
+import type { Collected } from '../surfaces/common.js';
 import type { BackgroundJob } from '../surfaces/jobs.js';
 import { backgroundJobs } from '../surfaces/jobs.js';
-import { readClaudeAgents } from '../surfaces/live.js';
+import type { AgentEntry } from '../surfaces/live.js';
 import type { ExecFunction } from '../surfaces/process.js';
 
 export interface JobsDeps {
   readonly exec: ExecFunction;
-  /** The claude binary, looked up on each read so a settings change takes effect. */
-  readonly claudeBin: () => Promise<string>;
+  /** The agent's binary, looked up on each read so a settings change takes effect. */
+  readonly cliFor: (agent: AgentTerminal) => Promise<AgentCli>;
   /**
    * Holds the first sessions' transcripts in the fleet past the idle and
    * active windows, and the finished ones past the idle window only.
@@ -43,11 +48,25 @@ export class BackgroundJobs {
     return this.running;
   }
 
+  private async list(): Promise<Collected<AgentEntry>> {
+    const lists = await Promise.all(
+      terminalAgents().map(async (at): Promise<Collected<AgentEntry>> => {
+        const { background } = at.terminal;
+        if (background === undefined) {
+          return { items: [], errors: [] };
+        }
+        const { bin } = await this.deps.cliFor(at);
+        return background.list({ exec: this.deps.exec, bin, all: true });
+      }),
+    );
+    return {
+      items: lists.flatMap((list) => list.items),
+      errors: lists.flatMap((list) => list.errors),
+    };
+  }
+
   private async load(): Promise<void> {
-    const result = await readClaudeAgents(this.deps.exec, {
-      claudeBin: await this.deps.claudeBin(),
-      includeCompleted: true,
-    });
+    const result = await this.list();
     // Say so once per distinct problem rather than on every poll.
     const error = result.errors.map((item) => item.message).join('; ');
     if (error !== '' && error !== this.lastError) {

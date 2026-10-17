@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import type { AgentCli } from '../agents/types.js';
 import type { ExecFunction } from '../surfaces/process.js';
 
 import { BackgroundJobs } from './jobs.js';
@@ -29,9 +30,9 @@ function setup(): State & { readonly jobs: BackgroundJobs } {
   };
   const jobs = new BackgroundJobs({
     exec,
-    claudeBin: async (): Promise<string> => {
+    cliFor: async (): Promise<AgentCli> => {
       await Promise.resolve();
-      return '/bin/claude';
+      return { bin: '/bin/claude', env: {} };
     },
     keep: async (held, finished): Promise<void> => {
       await Promise.resolve();

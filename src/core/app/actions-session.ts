@@ -1,20 +1,33 @@
 // Actions on one session: open it where it runs or in its panels, interrupt
 // or stop it, change model or mode, and hand it off to another surface.
 // Sessions Overlord launched are driven through the SDK. Any other local
-// session can only be signalled, and only after the user agrees.
+// session can only be signalled, and only after the user agrees. What a
+// session's agent can do comes from its adapter's capabilities and terminal
+// facet.
 
+import { CLAUDE_CODE } from '../../shared/agents.js';
 import type { SessionSummary } from '../../shared/model.js';
 import { sessionName } from '../../shared/model.js';
 import type { HandoffKind, LaunchRun, SurfaceSession } from '../../shared/protocol.js';
 import { isViewId } from '../../shared/protocol.js';
+import { agents } from '../agents/index.js';
+import type { AgentTerminal } from '../agents/terminals.js';
+import { terminalOf } from '../agents/terminals.js';
+import type { AgentAdapter, TerminalFacet } from '../agents/types.js';
 import { parsePermissionMode } from '../harness/events.js';
 import { isTerminal } from '../harness/launcher.js';
 import type { SdkSession } from '../harness/session.js';
-import { buildHandoff } from '../surfaces/handoff.js';
+import type { HandoffCommand } from '../surfaces/handoff.js';
 import type { LiveProcess } from '../surfaces/live.js';
-import { buildLiveProcessTable } from '../surfaces/live.js';
 
 import type { ActionHandlers } from './action-types.js';
+import {
+  agentCli,
+  findLive,
+  sessionAgent,
+  sessionTerminal,
+  terminalCommand,
+} from './agent-terminal.js';
 import { stopJob } from './idle-stop.js';
 import { continueHere } from './resume.js';
 import type { Runtime } from './runtime.js';
@@ -54,27 +67,31 @@ export function sdkTarget(rt: Runtime, sessionId: string): SdkTarget | null {
   return run === undefined || session === null ? null : { run, session };
 }
 
-/** The live claude process holding a session on this machine, if any. */
+/** The live process holding a session on this machine, if any, as its agent records it. */
 export async function liveProcess(
   rt: Runtime,
   sessionId: string,
 ): Promise<LiveProcess | undefined> {
-  const table = await buildLiveProcessTable({
-    paths: rt.paths,
-    exec: rt.surfacesExec,
-    isAlive: rt.isAlive,
-    options: { claudeBin: rt.host.settings.claudePath },
-  });
-  return table.processes.get(sessionId);
+  return findLive(rt, sessionId);
 }
 
 const TAB_TITLE_CHARS = 40;
 
 /** Tab title for a handoff terminal that runs something else, for example "Claude teleport-local: Cloud fix". */
-export function terminalName(kind: HandoffKind, title: string): string {
+export function terminalName(
+  kind: HandoffKind,
+  title: string,
+  terminal: TerminalFacet | undefined = terminalOf(CLAUDE_CODE)?.terminal,
+): string {
   const short =
     title.length > TAB_TITLE_CHARS ? `${title.slice(0, TAB_TITLE_CHARS - 3)}...` : title;
-  return `Claude ${kind}: ${short}`;
+  const label = `${kind}: ${short}`;
+  return terminal?.tabName(label) ?? label;
+}
+
+/** The adapter of the session's agent, or null when no adapter has it. */
+function sessionAdapter(rt: Runtime, sessionId: string): AgentAdapter | null {
+  return agents.get(sessionAgent(rt, sessionId));
 }
 
 function fleetSession(rt: Runtime, sessionId: string): SessionSummary | undefined {
@@ -93,21 +110,35 @@ function tabName(rt: Runtime, session: SurfaceSession, cwd: string): string {
 
 type Running = LiveProcess & { readonly pid: number };
 
+/** A live process and the terminal facet of the agent that runs it. */
+interface LiveTarget {
+  readonly at: AgentTerminal;
+  readonly live: Running;
+}
+
 function running(live: LiveProcess | undefined): Running | null {
   return live === undefined || live.pid === null || !live.alive ? null : { ...live, pid: live.pid };
 }
 
-/** The live process behind a session, or null after saying it is not on this machine. */
-async function reachable(rt: Runtime, sessionId: string): Promise<Running | null> {
-  const live = running(await liveProcess(rt, sessionId));
-  if (live === null) {
-    rt.host.showInfo(NOT_LOCAL);
-  }
-  return live;
+/** The live process behind a session and its agent's terminal facet, or null when it is not on this machine. */
+async function liveTarget(rt: Runtime, sessionId: string): Promise<LiveTarget | null> {
+  const at = sessionTerminal(rt, sessionId);
+  const live = at === null ? null : running(await liveProcess(rt, sessionId));
+  return at === null || live === null ? null : { at, live };
 }
 
-async function agreed(rt: Runtime, live: Running, verb: string): Promise<boolean> {
-  const question = `${verb} Claude session ${shortId(live.sessionId)} (pid ${String(live.pid)})?`;
+/** The live process behind a session, or null after saying it is not on this machine. */
+async function reachable(rt: Runtime, sessionId: string): Promise<LiveTarget | null> {
+  const target = await liveTarget(rt, sessionId);
+  if (target === null) {
+    rt.host.showInfo(NOT_LOCAL);
+  }
+  return target;
+}
+
+async function agreed(rt: Runtime, target: LiveTarget, verb: string): Promise<boolean> {
+  const { at, live } = target;
+  const question = `${verb} ${at.adapter.short} session ${shortId(live.sessionId)} (pid ${String(live.pid)})?`;
   return rt.host.confirm(question, verb);
 }
 
@@ -115,15 +146,18 @@ export const INTERRUPT_IN_TAB = "Press Esc in the session's tab to interrupt it.
 
 /**
  * Claude Code takes SIGTERM to a background job's process for a crash and
- * respawns it, so a background job stops through `claude stop`. Any other
- * claude gets SIGTERM. True when it stopped.
+ * respawns it, so a background job stops through its agent, here `claude
+ * stop`. Any other process gets SIGTERM. True when it stopped.
  */
-async function terminate(rt: Runtime, live: Running): Promise<boolean> {
-  if (live.kind !== 'background' || live.agentId === null) {
+async function terminate(rt: Runtime, target: LiveTarget): Promise<boolean> {
+  const { at, live } = target;
+  const { background } = at.terminal;
+  if (live.kind !== 'background' || live.agentId === null || background === undefined) {
     rt.kill(live.pid, 'SIGTERM');
     return true;
   }
-  return stopJob(rt, await rt.claudeCli(), { id: live.agentId, pid: live.pid });
+  const control = { background, cli: await agentCli(rt, at) };
+  return stopJob(rt, control, { id: live.agentId, pid: live.pid });
 }
 
 /**
@@ -136,7 +170,7 @@ export async function stopNow(rt: Runtime, sessionId: string): Promise<boolean> 
     rt.launcher.stopRun(target.run.id);
     return true;
   }
-  const live = running(await liveProcess(rt, sessionId));
+  const live = await liveTarget(rt, sessionId);
   return live !== null && (await terminate(rt, live));
 }
 
@@ -190,6 +224,20 @@ export async function canHandOff(
   return readyToResume(rt, session);
 }
 
+/** The command for a handoff the session's agent offers, with that agent's terminal facet, or null. */
+function planHandoff(
+  rt: Runtime,
+  kind: HandoffKind,
+  session: SurfaceSession,
+): { readonly at: AgentTerminal; readonly command: HandoffCommand } | null {
+  const at = terminalOf(session.agent);
+  if (at?.adapter.capabilities.handoffs.includes(kind) !== true) {
+    return null;
+  }
+  const command = at.terminal.handoff?.(kind, session, terminalCommand(rt, at)) ?? null;
+  return command === null ? null : { at, command };
+}
+
 async function openAgentPanel(rt: Runtime, sessionId: string, agentId: string): Promise<void> {
   // Old sessions are not tailed, so load the transcript before the panel asks for it.
   const known = rt.store
@@ -202,20 +250,29 @@ async function openAgentPanel(rt: Runtime, sessionId: string, agentId: string): 
   rt.host.openPanel('agent', { sessionId, agentId });
 }
 
-/** A tab running `claude attach` for a background session, tracked so a later open focuses it. */
-async function attachBackground(rt: Runtime, sessionId: string): Promise<void> {
+/**
+ * A tab running `claude attach` for a background session, tracked so a later
+ * open focuses it. False when the session's agent has no background runs.
+ */
+async function attachBackground(rt: Runtime, sessionId: string): Promise<boolean> {
+  const at = sessionTerminal(rt, sessionId);
+  const background = at?.terminal.background;
+  if (at === null || background === undefined) {
+    return false;
+  }
   const live = await liveProcess(rt, sessionId);
   const cwd = cwdFor(rt, sessionId, live?.cwd ?? null);
   rt.host.runInTerminal({
-    name: `Claude ${shortId(sessionId)}`,
-    command: rt.host.settings.claudePath,
-    args: ['attach', live?.agentId ?? sessionId],
+    name: at.terminal.tabName(shortId(sessionId)),
+    command: terminalCommand(rt, at),
+    args: background.attachArgs(live?.agentId ?? sessionId),
     // Attach reaches the session over a socket, so when its folder is gone
     // any folder will do, and VS Code will not start a tab in a missing one.
     cwd:
       (await rt.fs.kind(cwd)) === 'directory' ? cwd : (rt.host.workspaceFolder() ?? rt.paths.home),
     sessionId,
   });
+  return true;
 }
 
 /**
@@ -229,8 +286,7 @@ async function showSession(rt: Runtime, sessionId: string): Promise<void> {
   if (await rt.host.showTerminal({ sessionId, processId })) {
     return;
   }
-  if (rt.places.value[sessionId] === 'background') {
-    await attachBackground(rt, sessionId);
+  if (rt.places.value[sessionId] === 'background' && (await attachBackground(rt, sessionId))) {
     return;
   }
   await openAgentPanel(rt, sessionId, sessionId);
@@ -273,19 +329,20 @@ export const sessionActions: ActionHandlers<SessionActions> = {
       await target.session.interrupt();
       return;
     }
-    const live = await reachable(rt, action.sessionId);
-    if (live === null) {
+    const found = await reachable(rt, action.sessionId);
+    if (found === null) {
       return;
     }
     // SIGINT ends a background job rather than its turn, and leaves the
     // turn's tools running, so Esc in its tab is the only clean interrupt.
-    if (live.kind === 'background') {
+    const signal = found.at.terminal.interruptSignal;
+    if (found.live.kind === 'background' || signal === null) {
       await showSession(rt, action.sessionId);
       rt.host.showInfo(INTERRUPT_IN_TAB);
       return;
     }
-    if (await agreed(rt, live, 'Interrupt')) {
-      rt.kill(live.pid, 'SIGINT');
+    if (await agreed(rt, found, 'Interrupt')) {
+      rt.kill(found.live.pid, signal);
     }
   },
   stop: async ({ rt }, action) => {
@@ -294,9 +351,11 @@ export const sessionActions: ActionHandlers<SessionActions> = {
       rt.launcher.stopRun(target.run.id);
       return;
     }
-    const live = await reachable(rt, action.sessionId);
-    if (live !== null && (await agreed(rt, live, 'Stop')) && !(await terminate(rt, live))) {
-      rt.host.showWarning(`Claude Code did not stop session ${shortId(action.sessionId)}.`);
+    const found = await reachable(rt, action.sessionId);
+    if (found !== null && (await agreed(rt, found, 'Stop')) && !(await terminate(rt, found))) {
+      rt.host.showWarning(
+        `${found.at.adapter.name} did not stop session ${shortId(action.sessionId)}.`,
+      );
     }
   },
   // Launched sessions stay in the fleet until this. One still running stops
@@ -313,6 +372,11 @@ export const sessionActions: ActionHandlers<SessionActions> = {
   },
   setModel: async ({ rt }, action) => {
     const target = sdkTarget(rt, action.sessionId);
+    const adapter = sessionAdapter(rt, action.sessionId);
+    if (target === null && adapter?.capabilities.liveModelChange === false) {
+      rt.host.showInfo(`${adapter.name} cannot change model while a session runs.`);
+      return;
+    }
     if (target === null) {
       rt.host.showInfo(SDK_ONLY);
       return;
@@ -323,8 +387,11 @@ export const sessionActions: ActionHandlers<SessionActions> = {
   setPermissionMode: async ({ rt }, action) => {
     const mode = parsePermissionMode(action.mode);
     const target = sdkTarget(rt, action.sessionId);
+    const adapter = sessionAdapter(rt, action.sessionId);
     if (mode === null) {
       rt.host.showInfo(`Unknown permission mode "${action.mode}".`);
+    } else if (target === null && adapter?.capabilities.livePermissionMode === false) {
+      rt.host.showInfo(`${adapter.name} cannot change permission mode while a session runs.`);
     } else if (target === null) {
       rt.host.showInfo(SDK_ONLY);
     } else {
@@ -339,14 +406,12 @@ export const sessionActions: ActionHandlers<SessionActions> = {
       await rt.caches.sessions.refresh();
     }
     const session = find();
-    const command =
-      session === undefined
-        ? null
-        : buildHandoff(action.kind, session, { claudeBin: rt.host.settings.claudePath });
-    if (session === undefined || command === null) {
+    const planned = session === undefined ? null : planHandoff(rt, action.kind, session);
+    if (session === undefined || planned === null) {
       rt.host.showInfo('That handoff is not available for this session.');
       return;
     }
+    const { at, command } = planned;
     const cwd = cwdFor(rt, session.id, session.cwd);
     const missing = (await rt.fs.kind(cwd)) !== 'directory';
     if (!(await canHandOff(rt, action.kind, session, cwd))) {
@@ -358,7 +423,9 @@ export const sessionActions: ActionHandlers<SessionActions> = {
     }
     const tracked = TRACKED_HANDOFFS.has(action.kind);
     rt.host.runInTerminal({
-      name: tracked ? tabName(rt, session, cwd) : terminalName(action.kind, session.title),
+      name: tracked
+        ? tabName(rt, session, cwd)
+        : terminalName(action.kind, session.title, at.terminal),
       command: command.command,
       args: command.args,
       cwd,
