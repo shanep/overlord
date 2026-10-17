@@ -1,7 +1,8 @@
 // A small loopback HTTP server for the bridge, modeled on the OTLP receiver.
 // It reads and parses the JSON body, checks the optional shared token, and
 // dispatches to a route handler that either answers with JSON once or switches
-// the response to a Server-Sent Events stream.
+// the response to a Server-Sent Events stream. Every error it answers with,
+// whole or mid-stream, also goes to onError, so the extension can log it.
 
 import { timingSafeEqual } from 'node:crypto';
 import http from 'node:http';
@@ -9,6 +10,7 @@ import http from 'node:http';
 import { z } from 'zod';
 
 const addressSchema = z.object({ port: z.number() });
+const errorBodySchema = z.object({ error: z.object({ message: z.string() }) });
 
 // Prompts can be very large (the backend accepts 220k+ tokens), so allow room.
 const DEFAULT_MAX_BODY_BYTES = 32 * 1024 * 1024;
@@ -72,6 +74,12 @@ async function readBody(request: http.IncomingMessage, max: number): Promise<Bod
   });
 }
 
+/** The message in an `{ error: { message } }` body, or null for anything else. */
+function errorMessageOf(value: unknown): string | null {
+  const parsed = errorBodySchema.safeParse(value);
+  return parsed.success ? parsed.data.error.message : null;
+}
+
 function parseJson(
   text: string,
 ): { readonly ok: true; readonly value: unknown } | { readonly ok: false } {
@@ -85,9 +93,16 @@ function parseJson(
 class HttpResponder implements Responder {
   private sent = false;
 
-  constructor(private readonly response: http.ServerResponse) {}
+  constructor(
+    private readonly response: http.ServerResponse,
+    private readonly report: (message: string) => void,
+  ) {}
 
   json(status: number, body: Readonly<Record<string, unknown>>): void {
+    // Reported before the sent check, so a throw after a stream began still shows up.
+    if (status >= 400) {
+      this.report(`${String(status)} ${errorMessageOf(body) ?? 'error'}`);
+    }
     if (this.sent) {
       return;
     }
@@ -96,12 +111,19 @@ class HttpResponder implements Responder {
     this.response.end(JSON.stringify(body));
   }
 
+  /** End the response if a handler left it open, such as a stream it threw out of. */
+  close(): void {
+    if (!this.response.writableEnded) {
+      this.response.end();
+    }
+  }
+
   beginSse(): SseWriter {
     if (this.sent) {
       throw new Error('The response has already been sent.');
     }
     this.sent = true;
-    const response = this.response;
+    const { response, report } = this;
     response.writeHead(200, {
       'content-type': 'text/event-stream',
       'cache-control': 'no-cache',
@@ -116,6 +138,15 @@ class HttpResponder implements Responder {
         return closed;
       },
       send(name: string | null, data: string): void {
+        // Both routes send a stream error as `{ error: { message } }`. The cheap
+        // check lets ordinary text deltas skip the parse.
+        if (data.includes('"error"')) {
+          const parsed = parseJson(data);
+          const message = parsed.ok ? errorMessageOf(parsed.value) : null;
+          if (message !== null) {
+            report(`stream error: ${message}`);
+          }
+        }
         if (closed || response.writableEnded) {
           return;
         }
@@ -207,21 +238,21 @@ export class BridgeServer {
   private async runHandler(
     handler: RouteHandler,
     body: unknown,
-    responder: Responder,
+    responder: HttpResponder,
   ): Promise<void> {
     try {
       await handler(body, responder);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      this.onError(message);
       responder.json(500, { error: { message: `Bridge error: ${message}` } });
+      responder.close();
     }
   }
 
   private respondNoRoute(
     pathname: string,
     otherMethod: ReadonlyMap<string, RouteHandler>,
-    responder: Responder,
+    responder: HttpResponder,
   ): void {
     const wrongMethod = otherMethod.has(pathname);
     responder.json(wrongMethod ? 405 : 404, {
@@ -232,7 +263,7 @@ export class BridgeServer {
   private async handleGet(
     request: http.IncomingMessage,
     pathname: string,
-    responder: Responder,
+    responder: HttpResponder,
   ): Promise<void> {
     const handler = this.getRoutes.get(pathname);
     request.resume();
@@ -250,7 +281,7 @@ export class BridgeServer {
   private async handlePost(
     request: http.IncomingMessage,
     pathname: string,
-    responder: Responder,
+    responder: HttpResponder,
   ): Promise<void> {
     const handler = this.routes.get(pathname);
     if (handler === undefined) {
@@ -287,9 +318,12 @@ export class BridgeServer {
     request: http.IncomingMessage,
     response: http.ServerResponse,
   ): Promise<void> {
-    const responder = new HttpResponder(response);
     const pathname = new URL(String(request.url), 'http://localhost').pathname;
-    if (pathname === '/health') {
+    const responder = new HttpResponder(response, (message) => {
+      this.onError(`${pathname}: ${message}`);
+    });
+    // Claude Code checks /api/hello when a session starts, so it gets the health answer too.
+    if (pathname === '/health' || pathname === '/api/hello') {
       request.resume();
       responder.json(request.method === 'GET' ? 200 : 405, { status: 'ok' });
       return;

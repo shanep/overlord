@@ -112,7 +112,11 @@ export class BoisestateBridge {
       const endpoint: BridgeEndpoint = { baseUrl: `http://127.0.0.1:${String(port)}`, token };
       this.child = child;
       this.endpoint = endpoint;
-      child.once('exit', () => {
+      child.once('exit', (code: number | null) => {
+        // dispose() lets go of the child before it kills it, so only a crash gets here.
+        if (this.child === child) {
+          this.onError(`The bridge exited (code ${String(code)}). The next run starts a new one.`);
+        }
         this.clear(child);
       });
       return endpoint;

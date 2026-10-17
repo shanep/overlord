@@ -75,11 +75,15 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const panelHolder: { current: PanelManager | null } = { current: null };
   const propertiesHolder: { current: SidebarView | null } = { current: null };
   const tabsHolder: { current: CliTabs | null } = { current: null };
+  const bridgeLog = vscode.window.createOutputChannel('Overlord Bridge', { log: true });
   const bridge = new BoisestateBridge({
     proxyPath: path.join(context.extensionUri.fsPath, 'dist', 'overlord-proxy.cjs'),
     getKey: async (): Promise<string | undefined> => {
       const key = await context.secrets.get(BOISESTATE_KEY_SECRET);
       return key;
+    },
+    onError: (message: string): void => {
+      bridgeLog.error(message);
     },
   });
   const host = createVscodeHostPort({
@@ -167,6 +171,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     tabs,
     status,
     bridge,
+    bridgeLog,
     reloadOnUpdate(context, overlord.paths),
     keepAwake(),
     fleetSidebar,

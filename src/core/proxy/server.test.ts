@@ -55,6 +55,26 @@ const sseHandler: RouteHandler = (_body, responder) => {
   sse.send(null, 'after-end');
 };
 
+const reject: RouteHandler = (_body, responder) => {
+  responder.json(401, { error: { message: 'Invalid API key' } });
+};
+const bare: RouteHandler = (_body, responder) => {
+  responder.json(502, { detail: 'no error field' });
+};
+const late: RouteHandler = (_body, responder) => {
+  responder.beginSse().send('ping', '{}');
+  throw new Error('late');
+};
+const failing: RouteHandler = (_body, responder) => {
+  const sse = responder.beginSse();
+  sse.send('content_block_delta', JSON.stringify({ text: 'say "error" twice' }));
+  sse.send('delta', '{"error": not json');
+  sse.send('delta', JSON.stringify({ error: 'a bare string' }));
+  sse.send('error', JSON.stringify({ type: 'error', error: { message: 'timed out' } }));
+  sse.end();
+  sse.send(null, JSON.stringify({ error: { message: 'after end' } }));
+};
+
 describe('BridgeServer', () => {
   afterEach(async () => {
     for (const server of started.splice(0)) {
@@ -69,6 +89,15 @@ describe('BridgeServer', () => {
       expect(ok.status).toBe(200);
       expect(await getJson(ok)).toStrictEqual({ status: 'ok' });
       expect(await statusOf(`${url}/health`, { method: 'POST' })).toBe(405);
+    });
+
+    it("answers Claude Code's /api/hello check without logging an error", async () => {
+      const onError = vi.fn();
+      const { url } = await startServer({ routes: new Map(), onError });
+      const hello = await fetch(`${url}/api/hello`);
+      expect(hello.status).toBe(200);
+      expect(await getJson(hello)).toStrictEqual({ status: 'ok' });
+      expect(onError).not.toHaveBeenCalled();
     });
 
     it('dispatches a POST route with the parsed body', async () => {
@@ -154,7 +183,37 @@ describe('BridgeServer', () => {
       const response = await fetch(`${url}/x`, { method: 'POST', body: '{}' });
       expect(response.status).toBe(500);
       expect(await getJson(response)).toStrictEqual({ error: { message: 'Bridge error: boom' } });
-      expect(onError).toHaveBeenCalledWith('boom');
+      expect(onError).toHaveBeenCalledExactlyOnceWith('/x: 500 Bridge error: boom');
+    });
+
+    it('reports every error response with its path, status and message', async () => {
+      const onError = vi.fn();
+      const { url } = await startServer({
+        routes: new Map([
+          ['/echo', echo],
+          ['/reject', reject],
+          ['/bare', bare],
+        ]),
+        onError,
+      });
+      await fetch(`${url}/echo`, { method: 'POST', body: '{}' });
+      expect(onError).not.toHaveBeenCalled();
+      await fetch(`${url}/reject`, { method: 'POST', body: '{}' });
+      await fetch(`${url}/bare`, { method: 'POST', body: '{}' });
+      await fetch(`${url}/missing`, { method: 'POST', body: '{}' });
+      expect(onError.mock.calls).toStrictEqual([
+        ['/reject: 401 Invalid API key'],
+        ['/bare: 502 error'],
+        ['/missing: 404 No route for /missing.'],
+      ]);
+    });
+
+    it('reports a handler throw after the stream began', async () => {
+      const onError = vi.fn();
+      const { url } = await startServer({ routes: new Map([['/late', late]]), onError });
+      const response = await fetch(`${url}/late`, { method: 'POST', body: '{}' });
+      await response.text();
+      expect(onError).toHaveBeenCalledWith('/late: 500 Bridge error: late');
     });
 
     it('still answers 500 when no error sink is configured', async () => {
@@ -178,6 +237,19 @@ describe('BridgeServer', () => {
       expect(text).toContain('event: message\ndata: hello\n\n');
       expect(text).toContain('data: raw\n\n');
       expect(text).not.toContain('after-end');
+    });
+
+    it('reports stream error events and nothing else', async () => {
+      const onError = vi.fn();
+      const { url } = await startServer({ routes: new Map([['/s', failing]]), onError });
+      const response = await fetch(`${url}/s`, { method: 'POST', body: '{}' });
+      const text = await response.text();
+      expect(text).toContain('event: error\n');
+      expect(text).not.toContain('after end');
+      expect(onError.mock.calls).toStrictEqual([
+        ['/s: stream error: timed out'],
+        ['/s: stream error: after end'],
+      ]);
     });
   });
 
