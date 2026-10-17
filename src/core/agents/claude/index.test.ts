@@ -26,7 +26,9 @@ describe('claudeCode', () => {
       'Claude Code',
       'Claude',
     ]);
-    expect(Object.values(claudeCode.capabilities).every((value) => value !== false)).toBe(true);
+    expect(Object.values(claudeCode.capabilities).every((value: unknown) => value !== false)).toBe(
+      true,
+    );
     expect(claudeCode.capabilities.handoffs).toStrictEqual([
       'resume-local',
       'open-desktop',

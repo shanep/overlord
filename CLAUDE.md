@@ -27,10 +27,12 @@ minutes and CI runs it on every push anyway.
 - `git commit` runs typecheck, lint, format and the related tests on the
   staged files. If it passes, the commit is checked.
 - `git push` runs `npm run check:fast`, which lints and tests what changed
-  since `origin/master`. After a rebase, the push reruns it, so there is
-  nothing to run by hand first.
-- Leave mutation testing, coverage, knip, cspell and the rest of the full
-  gate to CI unless you are fixing one of them.
+  since `origin/master` and runs the spell check, knip and type coverage over
+  the whole repo (about 20 seconds). Those three broke master most often when
+  only CI ran them. After a rebase, the push reruns it, so there is nothing to
+  run by hand first.
+- Leave mutation testing, coverage and the rest of the full gate to CI unless
+  you are fixing one of them.
 
 Run a command once and read its log. Do not rerun a passing check to confirm
 it, and do not rerun the whole suite to see one failing test.
