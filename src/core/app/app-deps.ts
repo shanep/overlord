@@ -3,10 +3,17 @@
 
 import os from 'node:os';
 
+import { CLAUDE_CODE } from '../../shared/agents.js';
+import {
+  claudeRuntime,
+  type PlanUsageFunction,
+  type QueryFunction,
+} from '../agents/claude/runtime.js';
+import { agents } from '../agents/index.js';
+import { AgentRegistry } from '../agents/registry.js';
 import { EventBus } from '../bus.js';
 import type { StdioToolCaller } from '../connectors/stdio-mcp.js';
 import { createNodeFileSystem, type FileSystem } from '../context/fs.js';
-import type { PlanUsageFunction, QueryFunction } from '../harness/sdk-types.js';
 import { defaultClaudePaths, type ClaudePaths } from '../paths.js';
 import type { Scheduler } from '../store/store.js';
 import { makeIsAlive, type IsAlive } from '../surfaces/process.js';
@@ -91,6 +98,19 @@ export async function defaultDelay(ms: number): Promise<void> {
   await new Promise<void>((resolve) => {
     setTimeout(resolve, ms);
   });
+}
+
+/** The agents the Launcher runs. A test's fake query takes the place of Claude's SDK. */
+export function launcherAgents(queryFunction: QueryFunction | undefined): AgentRegistry {
+  if (queryFunction === undefined) {
+    return agents;
+  }
+  const runtime = claudeRuntime(queryFunction);
+  return new AgentRegistry(
+    agents
+      .list()
+      .map((adapter) => (adapter.id === CLAUDE_CODE ? { ...adapter, runtime } : adapter)),
+  );
 }
 
 export function machineDeps(deps: AppDeps): MachineDeps {

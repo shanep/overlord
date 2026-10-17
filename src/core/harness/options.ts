@@ -1,49 +1,37 @@
-// Turns a launch profile and spec into the settings one SDK session needs.
+// Turns a launch profile and spec into the settings one agent session needs.
 
-import { z } from 'zod';
-
-import type { LaunchProfile, LaunchSpec, PermissionMode } from '../../shared/model.js';
-
-import { parsePermissionMode } from './events.js';
-import type { EffortLevel, SdkPermissionMode } from './sdk-types.js';
-
-const effortSchema = z.enum(['low', 'medium', 'high', 'xhigh', 'max']);
+import type { ModeOption } from '../../shared/agents.js';
+import type { LaunchProfile, LaunchSpec } from '../../shared/model.js';
 
 export interface SessionSettings {
   readonly model: string | null;
-  readonly effort: EffortLevel | null;
-  readonly permissionMode: PermissionMode | null;
+  readonly effort: string | null;
+  readonly permissionMode: string | null;
   readonly env: Readonly<Record<string, string>>;
   readonly extraArgs: Readonly<Record<string, string | null>>;
   readonly maxBudgetUsd: number | null;
 }
 
-export function toEffortLevel(value: string | null): EffortLevel | null {
-  if (value === null) {
-    return null;
-  }
-  const parsed = effortSchema.safeParse(value);
-  if (!parsed.success) {
-    throw new Error(`Unknown effort level "${value}"`);
-  }
-  return parsed.data;
+/** The modes an agent takes, as its adapter lists them. */
+interface AgentModes {
+  readonly permission: readonly ModeOption[];
+  readonly effort: readonly ModeOption[];
 }
 
-/** Profiles hold any agent's mode id, so a Claude run checks it is one of Claude's. */
-export function toPermissionMode(value: string | null): PermissionMode | null {
-  if (value === null) {
-    return null;
+/**
+ * Profiles hold any agent's ids, so a run checks the id is one its agent
+ * lists. An empty list means the agent only says at run time, so its
+ * runtime checks instead.
+ */
+function checkMode(
+  value: string | null,
+  options: readonly ModeOption[],
+  what: string,
+): string | null {
+  if (value === null || options.length === 0 || options.some((option) => option.id === value)) {
+    return value;
   }
-  const mode = parsePermissionMode(value);
-  if (mode === null) {
-    throw new Error(`Unknown permission mode "${value}"`);
-  }
-  return mode;
-}
-
-/** Overlord's `manual` mode is what the SDK calls `default`: every tool asks. */
-export function toSdkPermissionMode(mode: PermissionMode): SdkPermissionMode {
-  return mode === 'manual' ? 'default' : mode;
+  throw new Error(`Unknown ${what} "${value}"`);
 }
 
 /** The SDK replaces the child environment with `env`, so start from the base environment. */
@@ -106,11 +94,12 @@ export function sessionSettings(
   spec: LaunchSpec,
   profile: LaunchProfile | null,
   baseEnv: Readonly<Record<string, string | undefined>>,
+  modes: AgentModes,
 ): SessionSettings {
   return {
     model: profile?.model ?? null,
-    effort: toEffortLevel(profile?.effort ?? null),
-    permissionMode: toPermissionMode(profile?.permissionMode ?? null),
+    effort: checkMode(profile?.effort ?? null, modes.effort, 'effort level'),
+    permissionMode: checkMode(profile?.permissionMode ?? null, modes.permission, 'permission mode'),
     env: mergeEnv(baseEnv, profile?.env ?? {}),
     extraArgs: parseExtraArgs(profile?.extraArgs ?? []),
     maxBudgetUsd: spec.maxBudgetUsd,

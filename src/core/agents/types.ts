@@ -25,6 +25,8 @@ import type { Exec } from '../sync/exec.js';
 import type { SessionPeek } from '../transcripts/peek.js';
 import type { ModelPrice } from '../transcripts/pricing.js';
 
+import type { RuntimeFacet } from './shared/runtime.js';
+
 /** The environment to look for binaries in, usually the login shell's. */
 export type ShellEnv = Readonly<Record<string, string | undefined>>;
 
@@ -52,15 +54,6 @@ export interface ModelFacet {
   price: (model: string) => ModelPrice | null;
   /** What the agent runs when neither a profile nor its settings pick a model. */
   readonly defaultModel: string;
-}
-
-/**
- * Runs the agent from code for the Launcher. Workstream A replaces the
- * options and the run with neutral StartOptions, AgentRun and AgentEvent.
- * @public
- */
-export interface RuntimeFacet {
-  start: (options: unknown) => AsyncIterable<unknown>;
 }
 
 /** The binary to run outside a terminal tab, and the login shell's environment for it. */

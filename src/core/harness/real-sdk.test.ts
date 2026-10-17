@@ -12,15 +12,17 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
 import { flush, resolved } from '../../../test/fake-claude/fake-query.js';
+import { CLAUDE_CODE } from '../../shared/agents.js';
 import type { PermissionRequest, ToolCall } from '../../shared/model.js';
+import { claudeRuntime, sdkPlanUsage } from '../agents/claude/runtime.js';
+import { agents } from '../agents/index.js';
 import { EventBus } from '../bus.js';
 
 import type { SessionEvent, TurnResult } from './events.js';
 import { PermissionInbox } from './inbox.js';
 import { Launcher } from './launcher.js';
 import { mergeEnv } from './options.js';
-import { sdkPlanUsage, sdkQuery } from './sdk-types.js';
-import { SdkSession, type SessionConfig } from './session.js';
+import { AgentSession, type SessionConfig } from './session.js';
 
 const FAKE_DIR = fileURLToPath(new URL('../../../test/fake-claude/', import.meta.url));
 const FAKE_CLAUDE = path.join(FAKE_DIR, 'fake-claude.mjs');
@@ -36,7 +38,7 @@ function scenario(name: string): string {
   return path.join(FAKE_DIR, `${name}.json`);
 }
 
-async function nextResult(session: SdkSession): Promise<TurnResult> {
+async function nextResult(session: AgentSession): Promise<TurnResult> {
   return new Promise((resolve) => {
     const off = session.onEvent((event) => {
       if (event.name === 'turn.result') {
@@ -66,7 +68,7 @@ function flagValue(argv: readonly string[], flag: string): string | undefined {
 }
 
 interface Run {
-  readonly session: SdkSession;
+  readonly session: AgentSession;
   readonly bus: EventBus;
   readonly inbox: PermissionInbox;
   readonly events: SessionEvent[];
@@ -90,6 +92,7 @@ describe('real SDK against the fake Claude binary', () => {
     const tools: ToolCall[] = [];
     bus.on('tool.upserted', (call) => tools.push(call));
     const config: SessionConfig = {
+      agent: CLAUDE_CODE,
       cwd: dir,
       title: name,
       model: 'claude-fake-1',
@@ -105,7 +108,7 @@ describe('real SDK against the fake Claude binary', () => {
       executablePath: FAKE_CLAUDE,
       ...overrides,
     };
-    const session = SdkSession.start({ queryFunction: sdkQuery, bus, broker: inbox }, config);
+    const session = AgentSession.start({ runtime: claudeRuntime(), bus, broker: inbox }, config);
     const events: SessionEvent[] = [];
     session.onEvent((event) => events.push(event));
     return { session, bus, inbox, events, tools };
@@ -207,7 +210,7 @@ describe('real SDK against the fake Claude binary', () => {
 
       session.close();
       expect(await session.finished).toStrictEqual({ reason: 'completed', error: null });
-      expect(session.summary().state).toBe('done');
+      expect(session.summary()?.state).toBe('done');
     },
     TIMEOUT,
   );
@@ -228,7 +231,7 @@ describe('real SDK against the fake Claude binary', () => {
         source: 'sdk',
       });
       expect(inbox.list()).toStrictEqual([request]);
-      expect(session.summary().state).toBe('waiting');
+      expect(session.summary()?.state).toBe('waiting');
       inbox.resolve(request.id, { behavior: 'allow', ruleId: null });
       while (tools.at(-1)?.ok !== true) {
         await flush();
@@ -238,7 +241,7 @@ describe('real SDK against the fake Claude binary', () => {
         ok: true,
         resultPreview: 'removed',
       });
-      expect(session.summary().state).toBe('running');
+      expect(session.summary()?.state).toBe('running');
 
       await session.interrupt();
       expect(await result).toMatchObject({
@@ -248,7 +251,7 @@ describe('real SDK against the fake Claude binary', () => {
       });
       session.close();
       expect(await session.finished).toStrictEqual({ reason: 'completed', error: null });
-      expect(session.summary().state).toBe('failed');
+      expect(session.summary()?.state).toBe('failed');
     },
     TIMEOUT,
   );
@@ -267,7 +270,7 @@ describe('real SDK against the fake Claude binary', () => {
       expect(tools.at(-1)).toMatchObject({ ok: false, resultPreview: 'not on my watch' });
       session.stop();
       expect(await session.finished).toStrictEqual({ reason: 'stopped', error: null });
-      expect(session.summary().state).toBe('done');
+      expect(session.summary()?.state).toBe('done');
     },
     TIMEOUT,
   );
@@ -286,7 +289,7 @@ describe('real SDK against the fake Claude binary', () => {
       });
       session.close();
       await session.finished;
-      expect(session.summary().state).toBe('failed');
+      expect(session.summary()?.state).toBe('failed');
     },
     TIMEOUT,
   );
@@ -296,7 +299,7 @@ describe('real SDK against the fake Claude binary', () => {
     async () => {
       const launcher = new Launcher(
         {
-          queryFunction: sdkQuery,
+          agents,
           bus: new EventBus(),
           broker: new PermissionInbox(),
           baseEnv: async (): Promise<Readonly<Record<string, string | undefined>>> =>

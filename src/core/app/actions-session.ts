@@ -16,7 +16,7 @@ import { terminalOf } from '../agents/terminals.js';
 import type { AgentAdapter, TerminalFacet } from '../agents/types.js';
 import { parsePermissionMode } from '../harness/events.js';
 import { isTerminal } from '../harness/launcher.js';
-import type { SdkSession } from '../harness/session.js';
+import type { AgentSession } from '../harness/session.js';
 import type { HandoffCommand } from '../surfaces/handoff.js';
 import type { LiveProcess } from '../surfaces/live.js';
 
@@ -51,7 +51,7 @@ type SessionActions =
 
 interface SdkTarget {
   readonly run: LaunchRun;
-  readonly session: SdkSession;
+  readonly session: AgentSession;
 }
 
 export const NOT_LOCAL = 'That session is not running on this machine.';

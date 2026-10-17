@@ -4,14 +4,15 @@
 
 import path from 'node:path';
 
+import { CLAUDE_CODE } from '../../shared/agents.js';
 import type { FleetState, HostToWebview, ViewId, WebviewAction } from '../../shared/protocol.js';
+import { sdkPlanUsage } from '../agents/claude/runtime.js';
 import type { AgentCli } from '../agents/types.js';
 import type { EventBus } from '../bus.js';
 import { GitHubReader } from '../catalog/github.js';
 import { callStdioTool } from '../connectors/stdio-mcp.js';
 import { Launcher } from '../harness/launcher.js';
 import { mergeEnv } from '../harness/options.js';
-import { sdkPlanUsage, sdkQuery } from '../harness/sdk-types.js';
 import type { HookAnswer } from '../hooks/normalized.js';
 import { withContextNote, withNotice } from '../hooks/normalized.js';
 import { socketPath } from '../hooks/socket-path.js';
@@ -23,7 +24,7 @@ import { watchProjects } from './actions-projects.js';
 import { dispatch } from './actions.js';
 import { agentCli } from './agent-terminal.js';
 import type { AppDeps } from './app-deps.js';
-import { coreDeps, machineDeps } from './app-deps.js';
+import { coreDeps, launcherAgents, machineDeps } from './app-deps.js';
 import type { CacheRuntime } from './caches.js';
 import { createCaches } from './caches.js';
 import { CatalogBrowser } from './catalog-browser.js';
@@ -127,7 +128,7 @@ export class OverlordApp {
     });
     const launcher = new Launcher(
       {
-        queryFunction: deps.queryFunction ?? sdkQuery,
+        agents: launcherAgents(deps.queryFunction),
         bus,
         broker: permissions.inbox,
         // The caches exist by the time a run reaches for a worktree.
@@ -135,8 +136,8 @@ export class OverlordApp {
           void this.rt.caches.worktrees.refresh();
         }),
         baseEnv: launchEnv,
-        executablePath: (runEnv): string | null =>
-          executableFor(host.settings.claudePath, runEnv, platform),
+        executablePath: (agent, runEnv): string | null =>
+          agent === CLAUDE_CODE ? executableFor(host.settings.claudePath, runEnv, platform) : null,
         ...(host.resolveBridgeEnv === undefined ? {} : { resolveBridgeEnv: host.resolveBridgeEnv }),
         now: clock,
       },

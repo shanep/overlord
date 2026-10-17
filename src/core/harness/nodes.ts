@@ -1,25 +1,34 @@
-// Builders for the summary, agent and rate limit records the mapper keeps.
+// Builders for the summary, agent and rate limit records the reducer keeps.
 
-import { CLAUDE_CODE } from '../../shared/agents.js';
+import type { AgentId } from '../../shared/agents.js';
 import {
   ZERO_USAGE,
   type AgentNode,
-  type PermissionMode,
+  type SessionState,
   type SessionSummary,
 } from '../../shared/model.js';
 import type { RateLimits } from '../../shared/protocol.js';
+import type { RateLimitEvent, SubagentStartedEvent } from '../agents/shared/events.js';
 
-import { toEpochMs } from './events.js';
-import type { RateLimitMessage, TaskStartedMessage } from './messages.js';
+import type { EndReason } from './events.js';
 
 export interface MapperConfig {
+  readonly agent: AgentId;
   readonly sessionId: string;
   readonly cwd: string;
   readonly title: string;
   readonly model: string | null;
   readonly effort: string | null;
-  readonly permissionMode: PermissionMode | null;
+  readonly permissionMode: string | null;
   readonly now: () => number;
+}
+
+/** How the session ends. A completed run that already failed a turn stays failed. */
+export function endState(reason: EndReason, state: SessionState): SessionState {
+  if (reason === 'failed' || (reason === 'completed' && state === 'failed')) {
+    return 'failed';
+  }
+  return 'done';
 }
 
 export const NO_RATE_LIMITS: RateLimits = { fiveHourPct: null, sevenDayPct: null, resetsAt: null };
@@ -27,7 +36,7 @@ export const NO_RATE_LIMITS: RateLimits = { fiveHourPct: null, sevenDayPct: null
 export function initialSummary(config: MapperConfig, at: number): SessionSummary {
   return {
     id: config.sessionId,
-    agent: CLAUDE_CODE,
+    agent: config.agent,
     surface: 'overlord',
     title: config.title,
     cwd: config.cwd,
@@ -72,16 +81,16 @@ export function mainAgent(config: MapperConfig, at: number): AgentNode {
   };
 }
 
-export function subagent(sessionId: string, message: TaskStartedMessage, at: number): AgentNode {
+export function subagent(sessionId: string, event: SubagentStartedEvent, at: number): AgentNode {
   return {
-    id: message.task_id,
+    id: event.agentId,
     sessionId,
-    parentAgentId: message.parent_task_id ?? sessionId,
-    parentToolUseId: message.tool_use_id ?? null,
-    agentType: message.subagent_type ?? message.task_type ?? 'task',
-    description: message.description,
-    spawnDepth: message.spawn_depth ?? 1,
-    background: message.is_backgrounded ?? false,
+    parentAgentId: event.parentAgentId ?? sessionId,
+    parentToolUseId: event.parentToolUseId,
+    agentType: event.agentType,
+    description: event.description,
+    spawnDepth: event.spawnDepth,
+    background: event.background,
     state: 'running',
     startedAt: at,
     endedAt: null,
@@ -89,27 +98,27 @@ export function subagent(sessionId: string, message: TaskStartedMessage, at: num
     usage: ZERO_USAGE,
     toolCallCount: 0,
     currentTool: null,
-    model: null,
+    model: event.model,
   };
 }
 
 /**
- * Folds one rate limit event into the known limits. Returns null for windows
- * the bus has no slot for (per-model and overage limits).
+ * Folds one rate limit report into the known limits. Returns null when no
+ * window has a slot on the bus (per-model, overage and other agents' windows).
  */
-export function applyRateLimit(limits: RateLimits, message: RateLimitMessage): RateLimits | null {
-  const info = message.rate_limit_info;
-  // utilization is a fraction of the window; the bus carries percent.
-  const pct = info.utilization === undefined ? null : info.utilization * 100;
-  if (info.rateLimitType === 'five_hour') {
-    return {
-      ...limits,
-      fiveHourPct: pct ?? limits.fiveHourPct,
-      resetsAt: toEpochMs(info.resetsAt) ?? limits.resetsAt,
-    };
+export function applyRateLimit(limits: RateLimits, event: RateLimitEvent): RateLimits | null {
+  let next: RateLimits | null = null;
+  for (const window of event.windows) {
+    const current: RateLimits = next ?? limits;
+    if (window.id === 'five_hour') {
+      next = {
+        ...current,
+        fiveHourPct: window.usedPct ?? current.fiveHourPct,
+        resetsAt: window.resetsAt ?? current.resetsAt,
+      };
+    } else if (window.id === 'seven_day') {
+      next = { ...current, sevenDayPct: window.usedPct ?? current.sevenDayPct };
+    }
   }
-  if (info.rateLimitType === 'seven_day') {
-    return { ...limits, sevenDayPct: pct ?? limits.sevenDayPct };
-  }
-  return null;
+  return next;
 }

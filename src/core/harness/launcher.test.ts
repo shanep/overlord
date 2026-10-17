@@ -2,7 +2,7 @@ import * as fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 
 import {
-  fakeQueries,
+  fakeRuntime,
   flush,
   resultMessage,
   rejected,
@@ -12,10 +12,16 @@ import {
 } from '../../../test/fake-claude/fake-query.js';
 import type { LaunchProfile, LaunchSpec } from '../../shared/model.js';
 import type { LaunchRun } from '../../shared/protocol.js';
+import { claudeCode } from '../agents/claude/index.js';
+import { AgentRegistry } from '../agents/registry.js';
+import type { AgentEvent } from '../agents/shared/events.js';
+import type { AgentRun, RuntimeFacet } from '../agents/shared/runtime.js';
+import type { AgentAdapter } from '../agents/types.js';
 import { BOISESTATE_PROFILE } from '../bridge/boisestate.js';
 import { EventBus } from '../bus.js';
 
 import { PermissionInbox } from './inbox.js';
+import { AsyncQueue } from './input-queue.js';
 import { Launcher, isTerminal, type LauncherDeps, type WorktreeProvider } from './launcher.js';
 
 function spec(prompt: string, overrides: Partial<LaunchSpec> = {}): LaunchSpec {
@@ -101,17 +107,18 @@ interface Setup {
 }
 
 function setup(maxConcurrency = 2, extra: Partial<LauncherDeps> = {}): Setup {
-  const fakes = fakeQueries(scripted);
+  const fakes = fakeRuntime(scripted);
   let clock = 1000;
   let ids = 0;
   const launcher = new Launcher(
     {
-      queryFunction: fakes.queryFunction,
+      agents: fakes.agents,
       bus: new EventBus(),
       broker: new PermissionInbox(),
       baseEnv: async (): Promise<Readonly<Record<string, string | undefined>>> =>
         resolved({ PATH: '/bin', FROM_BASE: 'yes', UNSET: undefined }),
-      executablePath: (env): string | null => (env['FROM_BASE'] === 'yes' ? '/fake.mjs' : null),
+      executablePath: (_agent, env): string | null =>
+        env['FROM_BASE'] === 'yes' ? '/fake.mjs' : null,
       now: (): number => {
         clock += 10;
         return clock;
@@ -218,9 +225,9 @@ describe('Launcher basics', () => {
   });
 
   it('works with default clock, ids and environment', async () => {
-    const fakes = fakeQueries(scripted);
+    const fakes = fakeRuntime(scripted);
     const launcher = new Launcher(
-      { queryFunction: fakes.queryFunction, bus: new EventBus(), broker: new PermissionInbox() },
+      { agents: fakes.agents, bus: new EventBus(), broker: new PermissionInbox() },
       1,
     );
     await launcher.idle();
@@ -454,5 +461,89 @@ describe('Launcher bridge env', () => {
     await launcher.idle();
     expect(queries[0]?.options.noMcp).toBe(true);
     expect(queries[0]?.options.env['ANTHROPIC_BASE_URL']).toBe('http://127.0.0.1:1');
+  });
+});
+
+/** An agent whose runtime mints its id on the first event and gives no dollars. */
+function lateAgent(): AgentAdapter {
+  const runtime: RuntimeFacet = {
+    permissionSource: 'runtime',
+    start: (): AgentRun => {
+      const events = new AsyncQueue<AgentEvent>();
+      let sessionId: string | null = null;
+      return {
+        get sessionId(): string | null {
+          return sessionId;
+        },
+        send: (): void => {
+          sessionId = 'thread-1';
+          events.push({
+            type: 'turn_result',
+            ok: true,
+            subtype: 'completed',
+            text: 'late',
+            costUsd: null,
+            turns: null,
+            durationMs: null,
+            usage: null,
+          });
+        },
+        endInput: (): void => {
+          events.end();
+        },
+        interrupt: async (): Promise<void> => {
+          await resolved(null);
+        },
+        stop: (): void => {
+          events.end();
+        },
+        [Symbol.asyncIterator]: (): AsyncIterator<AgentEvent, undefined, undefined> =>
+          events[Symbol.asyncIterator](),
+      };
+    },
+  };
+  return { ...claudeCode, id: 'late', name: 'Late CLI', runtime };
+}
+
+function profileFor(agent: string): LaunchProfile {
+  return { ...PROFILE, id: agent, agent };
+}
+
+/** Claude's adapter with every facet past models left out. */
+function bareAgent(): AgentAdapter {
+  const { short, icon, detect, capabilities, modes, models } = claudeCode;
+  return { id: 'bare', name: 'Bare CLI', short, icon, detect, capabilities, modes, models };
+}
+
+describe('Launcher agents', () => {
+  const profile = profileFor;
+
+  it('fails runs whose agent is unknown or has no runtime', async () => {
+    const agents = new AgentRegistry([bareAgent()]);
+    const { launcher, queries } = setup(2, { agents });
+    launcher.launch(
+      [spec('ok:0', { profileId: 'gone' }), spec('ok:0', { profileId: 'bare' })],
+      [profile('gone'), profile('bare')],
+    );
+    await launcher.idle();
+    expect(queries).toHaveLength(0);
+    expect(launcher.runs().map((run) => run.result)).toStrictEqual([
+      'Unknown agent "gone"',
+      'Bare CLI cannot run from the Launcher yet',
+    ]);
+  });
+
+  it('records an id the agent reports late and keeps cost at zero without dollars', async () => {
+    const agents = new AgentRegistry([lateAgent()]);
+    const { launcher } = setup(1, { agents });
+    launcher.launch([spec('go', { profileId: 'late' })], [{ ...profile('late'), effort: null }]);
+    await launcher.idle();
+    expect(launcher.runs()[0]).toMatchObject({
+      sessionId: 'thread-1',
+      state: 'done',
+      costUsd: 0,
+      turns: 1,
+      result: 'late',
+    });
   });
 });

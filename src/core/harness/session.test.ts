@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  fakeQueries,
+  fakeRuntime,
   flush,
   payloads,
   rejected,
@@ -9,14 +9,19 @@ import {
   resultMessage,
   type FakeQuery,
 } from '../../../test/fake-claude/fake-query.js';
+import { CLAUDE_CODE } from '../../shared/agents.js';
 import type { PermissionDecision, PermissionRequest } from '../../shared/model.js';
+import type { AgentEvent } from '../agents/shared/events.js';
+import type { AgentRun, RuntimeFacet, StartOptions } from '../agents/shared/runtime.js';
 import { EventBus } from '../bus.js';
 
 import type { SessionEvent } from './events.js';
 import { PermissionInbox, type PermissionBroker } from './inbox.js';
-import { SdkSession, toPermissionResult, type SessionConfig } from './session.js';
+import { AsyncQueue } from './input-queue.js';
+import { AgentSession, toPermissionResult, type SessionConfig } from './session.js';
 
 const CONFIG: SessionConfig = {
+  agent: CLAUDE_CODE,
   cwd: '/repo',
   title: 'Task',
   model: 'opus',
@@ -30,7 +35,7 @@ const CONFIG: SessionConfig = {
 };
 
 interface Setup {
-  readonly session: SdkSession;
+  readonly session: AgentSession;
   readonly query: FakeQuery;
   readonly bus: EventBus;
   readonly busEvents: SessionEvent[];
@@ -49,11 +54,11 @@ function setup(
   bus.on('permission.requested', (payload) =>
     busEvents.push({ name: 'permission.requested', payload }),
   );
-  const fakes = fakeQueries();
+  const fakes = fakeRuntime();
   let ids = 0;
-  const session = SdkSession.start(
+  const session = AgentSession.start(
     {
-      queryFunction: fakes.queryFunction,
+      runtime: fakes.runtime,
       bus,
       broker,
       now: () => 500,
@@ -73,7 +78,7 @@ function setup(
   return { session, query, bus, busEvents, localEvents };
 }
 
-describe('SdkSession start', () => {
+describe('AgentSession start', () => {
   it('passes the config to the query and publishes the start', () => {
     const { session, query, busEvents } = setup();
     expect(session.id).toBe(CONFIG.sessionId);
@@ -110,13 +115,13 @@ describe('SdkSession start', () => {
   });
 
   it('defaults the clock and ids', async () => {
-    const fakes = fakeQueries();
+    const fakes = fakeRuntime();
     const inbox = new PermissionInbox();
-    const session = SdkSession.start(
-      { queryFunction: fakes.queryFunction, bus: new EventBus(), broker: inbox },
+    const session = AgentSession.start(
+      { runtime: fakes.runtime, bus: new EventBus(), broker: inbox },
       CONFIG,
     );
-    expect(session.summary().startedAt).toBeGreaterThan(1_600_000_000_000);
+    expect(session.summary()?.startedAt).toBeGreaterThan(1_600_000_000_000);
     const query = fakes.queries[0];
     const decision = query?.options.canUseTool(
       'Bash',
@@ -135,13 +140,13 @@ describe('SdkSession start', () => {
   });
 });
 
-describe('SdkSession messages', () => {
+describe('AgentSession messages', () => {
   it('sends prompts and maps SDK messages onto the bus', async () => {
     const { session, query, busEvents, localEvents } = setup();
     session.send('hello');
     await flush();
     expect(query.prompts).toStrictEqual(['hello']);
-    expect(session.summary().state).toBe('running');
+    expect(session.summary()?.state).toBe('running');
     query.emit({
       type: 'system',
       subtype: 'init',
@@ -156,7 +161,7 @@ describe('SdkSession messages', () => {
     query.emit(resultMessage());
     await flush();
     expect(session.info()?.model).toBe('claude-fake');
-    expect(session.summary().state).toBe('done');
+    expect(session.summary()?.state).toBe('done');
     expect(payloads(localEvents, 'turn.result')).toHaveLength(1);
     expect(payloads(busEvents, 'feed.appended').map((feed) => feed.items[0]?.kind)).toStrictEqual([
       'user',
@@ -184,11 +189,11 @@ describe('SdkSession messages', () => {
     expect(query.interrupts).toBe(1);
     expect(query.models).toStrictEqual(['sonnet']);
     expect(query.modes).toStrictEqual(['default', 'plan']);
-    expect(session.summary().model).toBe('sonnet');
-    expect(session.summary().permissionMode).toBe('plan');
+    expect(session.summary()?.model).toBe('sonnet');
+    expect(session.summary()?.permissionMode).toBe('plan');
     const usage = await session.contextUsage();
     expect(usage.fill).toBe(0.5);
-    expect(session.summary().contextFill).toBe(0.5);
+    expect(session.summary()?.contextFill).toBe(0.5);
     expect(payloads(localEvents, 'session.upserted').at(-1)?.contextFill).toBe(0.5);
   });
 
@@ -203,14 +208,14 @@ describe('SdkSession messages', () => {
     expect(query.inputEnded).toBe(true);
     query.end();
     expect(await session.finished).toStrictEqual({ reason: 'completed', error: null });
-    expect(session.summary().state).toBe('done');
+    expect(session.summary()?.state).toBe('done');
   });
 
   it('fails when the stream throws', async () => {
     const { session, query } = setup();
     query.fail(new Error('exit code 1'));
     expect(await session.finished).toStrictEqual({ reason: 'failed', error: 'exit code 1' });
-    expect(session.summary().state).toBe('failed');
+    expect(session.summary()?.state).toBe('failed');
     expect(session.isOpen).toBe(false);
   });
 
@@ -219,11 +224,11 @@ describe('SdkSession messages', () => {
     session.stop();
     expect(query.options.abortController.signal.aborted).toBe(true);
     expect(await session.finished).toStrictEqual({ reason: 'stopped', error: null });
-    expect(session.summary().state).toBe('done');
+    expect(session.summary()?.state).toBe('done');
   });
 });
 
-describe('SdkSession permissions', () => {
+describe('AgentSession permissions', () => {
   it('asks the broker and maps an allow', async () => {
     const inbox = new PermissionInbox();
     const { session, query, busEvents } = setup(inbox);
@@ -249,10 +254,10 @@ describe('SdkSession permissions', () => {
     };
     expect(inbox.list()).toStrictEqual([expected]);
     expect(payloads(busEvents, 'permission.requested')).toStrictEqual([expected]);
-    expect(session.summary().state).toBe('waiting');
+    expect(session.summary()?.state).toBe('waiting');
     inbox.resolve('req-1', { behavior: 'allow', ruleId: null });
     expect(await decision).toStrictEqual({ behavior: 'allow', updatedInput: { command: 'ls' } });
-    expect(session.summary().state).toBe('running');
+    expect(session.summary()?.state).toBe('running');
   });
 
   it('maps a deny and a broker failure, and keeps the subagent id', async () => {
@@ -331,5 +336,110 @@ describe('toPermissionResult', () => {
       behavior: 'deny',
       message: 'm',
     });
+  });
+});
+
+/** A bare runtime whose agent mints its own id after the start, like Codex. */
+class LateRun implements AgentRun {
+  sessionId: string | null = null;
+  readonly prompts: string[] = [];
+  readonly events = new AsyncQueue<AgentEvent>();
+  options: StartOptions | null = null;
+  readonly send = (text: string): void => {
+    this.prompts.push(text);
+  };
+  readonly endInput = (): void => undefined;
+  readonly interrupt = async (): Promise<void> => {
+    await resolved(null);
+  };
+  readonly stop = (): void => {
+    this.events.end();
+  };
+  [Symbol.asyncIterator](): AsyncIterator<AgentEvent, undefined, undefined> {
+    return this.events[Symbol.asyncIterator]();
+  }
+}
+
+function lateSetup(broker: PermissionBroker = new PermissionInbox()): {
+  readonly session: AgentSession;
+  readonly run: LateRun;
+} {
+  const run = new LateRun();
+  const runtime: RuntimeFacet = {
+    start: (options) => {
+      run.options = options;
+      return run;
+    },
+    permissionSource: 'runtime',
+  };
+  const session = AgentSession.start(
+    { runtime, bus: new EventBus(), broker, now: () => 7 },
+    { ...CONFIG, agent: 'codex' },
+  );
+  return { session, run };
+}
+
+describe('AgentSession with a late id', () => {
+  it('holds events until the agent names the session, then replays them', async () => {
+    const { session, run } = lateSetup();
+    const seen: SessionEvent[] = [];
+    session.onEvent((event) => seen.push(event));
+    session.send('hi');
+    expect(run.prompts).toStrictEqual(['hi']);
+    expect(session.id).toBeNull();
+    expect(session.summary()).toBeNull();
+    expect(session.agents()).toStrictEqual([]);
+    expect(session.info()).toBeNull();
+    expect(seen).toStrictEqual([]);
+    const denied = await run.options?.canUseTool(
+      'Bash',
+      {},
+      {
+        signal: new AbortController().signal,
+        toolUseId: 't',
+        agentId: null,
+      },
+    );
+    expect(denied).toMatchObject({ behavior: 'deny' });
+    run.sessionId = 'thread-1';
+    run.events.push({ type: 'notice', text: 'ready' });
+    await flush();
+    expect(session.id).toBe('thread-1');
+    expect(session.summary()).toMatchObject({ id: 'thread-1', agent: 'codex', state: 'running' });
+    expect(payloads(seen, 'feed.appended').flatMap((feed) => feed.items)).toMatchObject([
+      { kind: 'user', text: 'hi' },
+      { kind: 'system', text: 'ready' },
+    ]);
+    session.stop();
+    expect(await session.finished).toStrictEqual({ reason: 'stopped', error: null });
+  });
+
+  it('asks the inbox as a runtime once the id is known', async () => {
+    const asked: PermissionRequest[] = [];
+    const broker: PermissionBroker = {
+      request: async (request) => {
+        asked.push(request);
+        return resolved({ behavior: 'allow', ruleId: null });
+      },
+    };
+    const { run } = lateSetup(broker);
+    run.sessionId = 'thread-2';
+    await run.options?.canUseTool(
+      'Bash',
+      {},
+      {
+        signal: new AbortController().signal,
+        toolUseId: 't',
+        agentId: null,
+      },
+    );
+    expect(asked).toMatchObject([{ sessionId: 'thread-2', agent: 'codex', source: 'runtime' }]);
+  });
+
+  it('refuses live changes the runtime does not offer', async () => {
+    const { session } = lateSetup();
+    await expect(session.setModel('x')).rejects.toThrow('cannot change model');
+    await expect(session.setPermissionMode('x')).rejects.toThrow('cannot change permission mode');
+    await expect(session.contextUsage()).rejects.toThrow('does not report');
   });
 });

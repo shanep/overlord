@@ -13,27 +13,28 @@ type BusEvent = {
   readonly [K in EventName]: { readonly name: K; readonly payload: OverlordEvents[K] };
 }[EventName];
 
-/** The end of one turn, from the SDK result message. */
+/** The end of one turn, as the agent reported it. */
 export interface TurnResult {
   readonly ok: boolean;
   readonly subtype: string;
   readonly text: string | null;
-  /** Running total for the whole session so far, as the SDK reports it. */
-  readonly costUsd: number;
+  /** Running total for the whole session so far, or null when the agent gives no dollars. */
+  readonly costUsd: number | null;
   readonly turns: number;
-  readonly durationMs: number;
+  /** Null when the agent does not time its turns. */
+  readonly durationMs: number | null;
   readonly usage: TokenUsage;
 }
 
 export type SessionEvent =
   BusEvent | { readonly name: 'turn.result'; readonly payload: TurnResult };
 
-/** What the CLI reported in its init message. SessionSummary has no slot for tools or MCP. */
+/** What the agent reported when it started. SessionSummary has no slot for tools or MCP. */
 export interface SessionInfo {
   readonly model: string;
   readonly cwd: string;
   readonly tools: readonly string[];
-  readonly permissionMode: string;
+  readonly permissionMode: string | null;
   readonly mcpServers: readonly { readonly name: string; readonly status: string }[];
   readonly version: string | null;
 }

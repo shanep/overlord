@@ -1,20 +1,22 @@
-// Runs batches of launch specs as SDK sessions, at most maxConcurrency at a
+// Runs batches of launch specs as agent sessions, at most maxConcurrency at a
 // time. Each run sends one prompt, records the first result (cost, turns,
 // duration, text) and then closes its session. Budgets are off unless a spec
 // sets maxBudgetUsd, because the user chose no caps by default.
 
 import { randomUUID } from 'node:crypto';
 
+import { CLAUDE_CODE, type AgentId } from '../../shared/agents.js';
 import type { LaunchProfile, LaunchSpec } from '../../shared/model.js';
 import type { LaunchRun, LauncherState } from '../../shared/protocol.js';
+import type { AgentRegistry } from '../agents/registry.js';
+import type { AgentAdapter } from '../agents/types.js';
 import { needsBridge } from '../bridge/boisestate.js';
 import type { EventBus } from '../bus.js';
 
 import { errorMessage, type TurnResult } from './events.js';
 import type { PermissionBroker } from './inbox.js';
 import { findProfile, sessionSettings } from './options.js';
-import type { QueryFunction } from './sdk-types.js';
-import { SdkSession, type SessionEnd } from './session.js';
+import { AgentSession, type SessionEnd } from './session.js';
 /** A worktree a run holds while it works. */
 export interface WorktreeLease {
   readonly path: string;
@@ -31,14 +33,18 @@ export interface WorktreeProvider {
 }
 
 export interface LauncherDeps {
-  readonly queryFunction: QueryFunction;
+  /** The agents a run can use. A run takes its profile's agent, or Claude Code without one. */
+  readonly agents: AgentRegistry;
   readonly bus: EventBus;
   readonly broker: PermissionBroker;
   readonly worktrees?: WorktreeProvider | null;
   /** Loads the environment profiles are merged onto. Defaults to process.env. */
   readonly baseEnv?: () => Promise<Readonly<Record<string, string | undefined>>>;
-  /** Picks the claude binary, given the loaded base environment. Defaults to the SDK's own. */
-  readonly executablePath?: (env: Readonly<Record<string, string | undefined>>) => string | null;
+  /** Picks the agent's binary, given the loaded base environment. Null keeps the runtime's own. */
+  readonly executablePath?: (
+    agent: AgentId,
+    env: Readonly<Record<string, string | undefined>>,
+  ) => string | null;
   /** Rewrites a session's env to point at the boisestate.ai bridge when it opts in. */
   readonly resolveBridgeEnv?: (
     env: Readonly<Record<string, string>>,
@@ -52,7 +58,7 @@ export type LauncherSnapshot = Pick<LauncherState, 'runs' | 'maxConcurrency'>;
 interface RunRecord {
   run: LaunchRun;
   readonly profiles: readonly LaunchProfile[];
-  session: SdkSession | null;
+  session: AgentSession | null;
   result: TurnResult | null;
   startedAt: number;
   stopRequested: boolean;
@@ -148,7 +154,7 @@ export class Launcher {
     return this.runs().reduce((total, run) => total + run.costUsd, 0);
   }
 
-  session(runId: string): SdkSession | null {
+  session(runId: string): AgentSession | null {
     return this.records.get(runId)?.session ?? null;
   }
 
@@ -223,7 +229,9 @@ export class Launcher {
   private async runSession(record: RunRecord): Promise<void> {
     const { spec } = record.run;
     const baseEnv = this.deps.baseEnv === undefined ? process.env : await this.deps.baseEnv();
-    const settings = sessionSettings(spec, findProfile(spec, record.profiles), baseEnv);
+    const profile = findProfile(spec, record.profiles);
+    const { adapter, runtime } = this.runtimeFor(profile);
+    const settings = sessionSettings(spec, profile, baseEnv, adapter.modes);
     const lease = spec.worktree ? await this.acquireWorktree(record) : null;
     if (record.stopRequested) {
       this.finish(record, 'stopped', null);
@@ -234,9 +242,9 @@ export class Launcher {
       this.deps.resolveBridgeEnv === undefined
         ? mergedEnv
         : await this.deps.resolveBridgeEnv(mergedEnv);
-    const session = SdkSession.start(
+    const session = AgentSession.start(
       {
-        queryFunction: this.deps.queryFunction,
+        runtime,
         bus: this.deps.bus,
         broker: this.deps.broker,
         newId: this.newId,
@@ -244,29 +252,57 @@ export class Launcher {
       },
       {
         ...settings,
+        agent: adapter.id,
         env,
         cwd: lease?.path ?? spec.cwd,
         title: spec.label,
-        executablePath: this.deps.executablePath?.(baseEnv) ?? null,
+        executablePath: this.deps.executablePath?.(adapter.id, baseEnv) ?? null,
         // Checked before the rewrite, which swaps the placeholder for the real URL.
         noMcp: needsBridge(mergedEnv),
       },
     );
     record.session = session;
-    this.update(record, { sessionId: session.id });
+    this.follow(record, session);
+    session.send(spec.prompt);
+    this.settle(record, await session.finished);
+  }
+
+  /** Records the session id once known and the first turn's result, then closes the input. */
+  private follow(record: RunRecord, session: AgentSession): void {
+    if (session.id !== null) {
+      this.update(record, { sessionId: session.id });
+    }
     session.onEvent((event) => {
+      // An agent that mints its own id reports it after the start.
+      if (record.run.sessionId === null && session.id !== null) {
+        this.update(record, { sessionId: session.id });
+      }
       if (event.name === 'turn.result' && record.result === null) {
         record.result = event.payload;
         this.update(record, {
-          costUsd: event.payload.costUsd,
+          costUsd: event.payload.costUsd ?? record.run.costUsd,
           turns: event.payload.turns,
           result: event.payload.text,
         });
         session.close();
       }
     });
-    session.send(spec.prompt);
-    this.settle(record, await session.finished);
+  }
+
+  /** The profile's agent, Claude Code without a profile, and the runtime it runs on. */
+  private runtimeFor(profile: LaunchProfile | null): {
+    readonly adapter: AgentAdapter;
+    readonly runtime: NonNullable<AgentAdapter['runtime']>;
+  } {
+    const id = profile?.agent ?? CLAUDE_CODE;
+    const adapter = this.deps.agents.get(id);
+    if (adapter === null) {
+      throw new Error(`Unknown agent "${id}"`);
+    }
+    if (adapter.runtime === undefined) {
+      throw new Error(`${adapter.name} cannot run from the Launcher yet`);
+    }
+    return { adapter, runtime: adapter.runtime };
   }
 
   private settle(record: RunRecord, end: SessionEnd): void {

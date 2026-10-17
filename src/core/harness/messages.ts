@@ -4,6 +4,8 @@
 
 import { z } from 'zod';
 
+import type { ContextUsage } from '../agents/shared/events.js';
+
 const usageSchema = z.object({
   input_tokens: z.number(),
   output_tokens: z.number(),
@@ -103,12 +105,7 @@ const messageSchema = z.union([
 ]);
 
 export type SdkEvent = z.infer<typeof messageSchema>;
-export type InitMessage = z.infer<typeof initSchema>;
 export type AssistantMessage = z.infer<typeof assistantSchema>;
-export type ResultMessage = z.infer<typeof resultSchema>;
-export type TaskStartedMessage = z.infer<typeof taskStartedSchema>;
-export type TaskNotificationMessage = z.infer<typeof taskNotificationSchema>;
-export type RateLimitMessage = z.infer<typeof rateLimitSchema>;
 
 export function parseSdkMessage(raw: unknown): SdkEvent | null {
   const parsed = messageSchema.safeParse(raw);
@@ -193,18 +190,6 @@ const contextUsageSchema = z.object({
     z.object({ name: z.string(), tokens: z.number(), kind: z.string().optional() }),
   ),
 });
-
-export interface ContextUsage {
-  readonly totalTokens: number;
-  readonly maxTokens: number;
-  /** totalTokens / maxTokens, 0 to 1 or more when over the limit. */
-  readonly fill: number;
-  readonly categories: readonly {
-    readonly name: string;
-    readonly tokens: number;
-    readonly kind: string | null;
-  }[];
-}
 
 export function parseContextUsage(raw: unknown): ContextUsage {
   const parsed = contextUsageSchema.parse(raw);

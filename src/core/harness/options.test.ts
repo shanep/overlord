@@ -1,16 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import type { LaunchProfile, LaunchSpec } from '../../shared/model.js';
+import { claudeCode } from '../agents/claude/index.js';
 
-import {
-  findProfile,
-  mergeEnv,
-  parseExtraArgs,
-  sessionSettings,
-  toEffortLevel,
-  toPermissionMode,
-  toSdkPermissionMode,
-} from './options.js';
+import { findProfile, mergeEnv, parseExtraArgs, sessionSettings } from './options.js';
+
+const MODES = claudeCode.modes;
 
 const spec: LaunchSpec = {
   prompt: 'Fix it',
@@ -31,39 +26,6 @@ const profile: LaunchProfile = {
   env: { FOO: 'profile', EXTRA: '1' },
   extraArgs: ['--verbose-tools', '--add-dir', '/tmp/x', '--name=value'],
 };
-
-describe('toEffortLevel', () => {
-  it('accepts every SDK level and null', () => {
-    for (const level of ['low', 'medium', 'high', 'xhigh', 'max']) {
-      expect(toEffortLevel(level)).toBe(level);
-    }
-    expect(toEffortLevel(null)).toBeNull();
-  });
-
-  it('rejects unknown levels', () => {
-    expect(() => toEffortLevel('extreme')).toThrow('Unknown effort level "extreme"');
-  });
-});
-
-describe('toSdkPermissionMode', () => {
-  it('maps manual to default and passes the rest through', () => {
-    expect(toSdkPermissionMode('manual')).toBe('default');
-    expect(toSdkPermissionMode('plan')).toBe('plan');
-    expect(toSdkPermissionMode('bypassPermissions')).toBe('bypassPermissions');
-  });
-});
-
-describe('toPermissionMode', () => {
-  it('accepts every Claude mode and null', () => {
-    expect(toPermissionMode(null)).toBeNull();
-    expect(toPermissionMode('plan')).toBe('plan');
-    expect(toPermissionMode('manual')).toBe('manual');
-  });
-
-  it('rejects modes Claude does not have', () => {
-    expect(() => toPermissionMode('yolo')).toThrow('Unknown permission mode "yolo"');
-  });
-});
 
 describe('mergeEnv', () => {
   it('drops undefined values and lets overrides win', () => {
@@ -107,7 +69,7 @@ describe('findProfile', () => {
 describe('sessionSettings', () => {
   it('builds settings from the profile', () => {
     expect(
-      sessionSettings({ ...spec, maxBudgetUsd: 2 }, profile, { FOO: 'base', PATH: '/bin' }),
+      sessionSettings({ ...spec, maxBudgetUsd: 2 }, profile, { FOO: 'base', PATH: '/bin' }, MODES),
     ).toStrictEqual({
       model: 'opus',
       effort: 'high',
@@ -119,7 +81,7 @@ describe('sessionSettings', () => {
   });
 
   it('uses defaults with no profile and no caps', () => {
-    expect(sessionSettings(spec, null, { PATH: '/bin' })).toStrictEqual({
+    expect(sessionSettings(spec, null, { PATH: '/bin' }, MODES)).toStrictEqual({
       model: null,
       effort: null,
       permissionMode: null,
@@ -127,5 +89,18 @@ describe('sessionSettings', () => {
       extraArgs: {},
       maxBudgetUsd: null,
     });
+  });
+
+  it('rejects ids the agent does not list, and leaves agents that list none to their runtime', () => {
+    expect(() => sessionSettings(spec, { ...profile, effort: 'extreme' }, {}, MODES)).toThrow(
+      'Unknown effort level "extreme"',
+    );
+    expect(() => sessionSettings(spec, { ...profile, permissionMode: 'yolo' }, {}, MODES)).toThrow(
+      'Unknown permission mode "yolo"',
+    );
+    const open = { permission: [], effort: [] };
+    expect(
+      sessionSettings(spec, { ...profile, effort: 'extreme', permissionMode: 'yolo' }, {}, open),
+    ).toMatchObject({ effort: 'extreme', permissionMode: 'yolo' });
   });
 });

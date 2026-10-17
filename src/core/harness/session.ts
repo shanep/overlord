@@ -1,37 +1,32 @@
-// One Claude Code session run through the Agent SDK in streaming input mode.
-// The prompt is an async queue, so follow-ups, interrupts and live model or
-// mode changes all go to the same process. Every SDK message is mapped to
-// Overlord events and published on the bus.
+// One agent session run from code. The runtime starts the agent and turns
+// what it does into agent events, the reducer folds those into Overlord
+// events, and the session publishes them on the bus. Follow-ups, interrupts
+// and live model or mode changes all go to the same run.
 
 import { randomUUID } from 'node:crypto';
 
-import { CLAUDE_CODE } from '../../shared/agents.js';
+import type { AgentId } from '../../shared/agents.js';
 import type {
   AgentNode,
   PermissionDecision,
-  PermissionMode,
   PermissionRequest,
   SessionSummary,
 } from '../../shared/model.js';
+import type { ContextUsage } from '../agents/shared/events.js';
+import { SessionReducer } from '../agents/shared/reducer.js';
+import type {
+  AgentRun,
+  RuntimeFacet,
+  ToolPermissionContext,
+  ToolPermissionResult,
+} from '../agents/shared/runtime.js';
 import type { EventBus } from '../bus.js';
 
 import { errorMessage, type EndReason, type SessionEvent, type SessionInfo } from './events.js';
 import type { PermissionBroker } from './inbox.js';
-import { AsyncQueue } from './input-queue.js';
-import { MessageMapper } from './mapper.js';
-import { parseContextUsage, type ContextUsage } from './messages.js';
-import { toSdkPermissionMode } from './options.js';
-import type {
-  EffortLevel,
-  QueryFunction,
-  SessionQuery,
-  ToolPermissionContext,
-  ToolPermissionResult,
-  UserInput,
-} from './sdk-types.js';
 
 export interface SessionDeps {
-  readonly queryFunction: QueryFunction;
+  readonly runtime: RuntimeFacet;
   readonly bus: EventBus;
   readonly broker: PermissionBroker;
   readonly now?: () => number;
@@ -39,19 +34,20 @@ export interface SessionDeps {
 }
 
 export interface SessionConfig {
+  readonly agent: AgentId;
   readonly cwd: string;
   readonly title: string;
   readonly model: string | null;
-  readonly effort: EffortLevel | null;
-  readonly permissionMode: PermissionMode | null;
+  readonly effort: string | null;
+  readonly permissionMode: string | null;
   /** The full child environment (already merged onto process.env). */
   readonly env: Readonly<Record<string, string>>;
   readonly extraArgs: Readonly<Record<string, string | null>>;
   readonly maxBudgetUsd: number | null;
   readonly executablePath: string | null;
-  /** Runs the session without MCP servers. See QueryOptions. */
+  /** Runs the session without MCP servers. See StartOptions. */
   readonly noMcp?: boolean | undefined;
-  /** A UUID for the Claude session. One is generated when omitted. */
+  /** A UUID for the session. One is generated when omitted. */
   readonly sessionId?: string | undefined;
 }
 
@@ -61,6 +57,8 @@ export interface SessionEnd {
 }
 
 export type SessionListener = (event: SessionEvent) => void;
+
+type Step = (reducer: SessionReducer) => readonly SessionEvent[];
 
 export function toPermissionResult(
   decision: PermissionDecision,
@@ -78,80 +76,79 @@ function endReason(stopped: boolean, error: string | null): EndReason {
   return error === null ? 'completed' : 'failed';
 }
 
-export class SdkSession {
-  readonly id: string;
+export class AgentSession {
   private readonly deps: SessionDeps;
+  private readonly config: SessionConfig;
   private readonly newId: () => string;
   private readonly now: () => number;
-  private readonly mapper: MessageMapper;
-  private readonly input = new AsyncQueue<UserInput>();
-  private readonly abort = new AbortController();
+  private readonly run: AgentRun;
+  private reducer: SessionReducer | null = null;
+  /** What happened before the agent reported its id, replayed once it does. */
+  private readonly pending: Step[] = [];
   private readonly permissionAbort = new AbortController();
-  private readonly query: SessionQuery;
   private readonly listeners = new Set<SessionListener>();
   private openPrompts = 0;
+  private inputOpen = true;
   private stopped = false;
-  private run: Promise<SessionEnd> | null = null;
+  private pumping: Promise<SessionEnd> | null = null;
 
-  /** Creates the session and starts reading the SDK stream. */
-  static start(deps: SessionDeps, config: SessionConfig): SdkSession {
-    const session = new SdkSession(deps, config);
-    session.publish(session.mapper.started());
+  /** Creates the session and starts reading the run. */
+  static start(deps: SessionDeps, config: SessionConfig): AgentSession {
+    const session = new AgentSession(deps, config);
+    session.step((reducer) => reducer.started());
     void session.finished;
     return session;
   }
 
   private constructor(deps: SessionDeps, config: SessionConfig) {
     this.deps = deps;
+    this.config = config;
     this.newId = deps.newId ?? randomUUID;
     this.now = deps.now ?? Date.now;
-    this.id = config.sessionId ?? randomUUID();
-    this.mapper = new MessageMapper({
-      sessionId: this.id,
+    this.run = deps.runtime.start({
       cwd: config.cwd,
-      title: config.title,
-      model: config.model,
-      effort: config.effort,
-      permissionMode: config.permissionMode,
-      now: this.now,
-    });
-    this.query = deps.queryFunction(this.input, {
-      cwd: config.cwd,
-      sessionId: this.id,
+      sessionId: config.sessionId ?? randomUUID(),
+      resumeId: null,
+      fork: false,
       env: config.env,
-      abortController: this.abort,
       canUseTool: async (toolName, toolInput, context) => this.decide(toolName, toolInput, context),
       model: config.model,
       effort: config.effort,
-      permissionMode:
-        config.permissionMode === null ? null : toSdkPermissionMode(config.permissionMode),
+      permissionMode: config.permissionMode,
       extraArgs: config.extraArgs,
       maxBudgetUsd: config.maxBudgetUsd,
       executablePath: config.executablePath,
       noMcp: config.noMcp ?? false,
     });
+    this.adopt();
   }
 
-  /** Settles when the SDK stream ends, however it ends. */
+  /** The agent's id for the session, or null until it reports one. */
+  get id(): string | null {
+    return this.adopt()?.sessionId ?? null;
+  }
+
+  /** Settles when the run ends, however it ends. */
   get finished(): Promise<SessionEnd> {
-    this.run ??= this.pump();
-    return this.run;
+    this.pumping ??= this.pump();
+    return this.pumping;
   }
 
-  summary(): SessionSummary {
-    return this.mapper.summary();
+  /** Null until the agent reports its id. */
+  summary(): SessionSummary | null {
+    return this.adopt()?.summary() ?? null;
   }
 
   agents(): readonly AgentNode[] {
-    return this.mapper.agentList();
+    return this.adopt()?.agentList() ?? [];
   }
 
   info(): SessionInfo | null {
-    return this.mapper.info();
+    return this.adopt()?.info() ?? null;
   }
 
   get isOpen(): boolean {
-    return !this.input.ended;
+    return this.inputOpen;
   }
 
   onEvent(listener: SessionListener): () => void {
@@ -162,60 +159,101 @@ export class SdkSession {
   }
 
   send(text: string): void {
-    this.input.push({
-      type: 'user',
-      message: { role: 'user', content: text },
-      parent_tool_use_id: null,
-    });
-    this.publish(this.mapper.prompted(text));
+    this.run.send(text);
+    this.step((reducer) => reducer.prompted(text));
   }
 
   async interrupt(): Promise<void> {
-    await this.query.interrupt();
+    await this.run.interrupt();
   }
 
   async setModel(model: string): Promise<void> {
-    await this.query.setModel(model);
-    this.publish(this.mapper.modelChanged(model));
+    const { setModel } = this.run;
+    if (setModel === undefined) {
+      throw new Error('This agent cannot change model while it runs');
+    }
+    await setModel(model);
+    this.step((reducer) => reducer.modelChanged(model));
   }
 
-  async setPermissionMode(mode: PermissionMode): Promise<void> {
-    await this.query.setPermissionMode(toSdkPermissionMode(mode));
-    this.publish(this.mapper.permissionModeChanged(mode));
+  async setPermissionMode(mode: string): Promise<void> {
+    const { setPermissionMode } = this.run;
+    if (setPermissionMode === undefined) {
+      throw new Error('This agent cannot change permission mode while it runs');
+    }
+    await setPermissionMode(mode);
+    this.step((reducer) => reducer.permissionModeChanged(mode));
   }
 
   async contextUsage(): Promise<ContextUsage> {
-    const usage = parseContextUsage(await this.query.getContextUsage());
-    this.publish(this.mapper.contextMeasured(usage.fill));
+    const { contextUsage } = this.run;
+    if (contextUsage === undefined) {
+      throw new Error('This agent does not report its context use');
+    }
+    const usage = await contextUsage();
+    this.step((reducer) => reducer.contextMeasured(usage.fill));
     return usage;
   }
 
-  /** Ends the input so the CLI exits once the current turn is done. */
+  /** Ends the input so the agent exits once the current turn is done. */
   close(): void {
-    this.input.end();
+    this.inputOpen = false;
+    this.run.endInput();
   }
 
-  /** Kills the session now: aborts the process and cancels open permission prompts. */
+  /** Kills the session now: stops the agent and cancels open permission prompts. */
   stop(): void {
     this.stopped = true;
     this.permissionAbort.abort();
-    this.input.end();
-    this.abort.abort();
+    this.inputOpen = false;
+    this.run.stop();
+  }
+
+  /** Makes the reducer once the run knows its id, and replays what came before. */
+  private adopt(): SessionReducer | null {
+    if (this.reducer !== null || this.run.sessionId === null) {
+      return this.reducer;
+    }
+    const reducer = new SessionReducer({
+      agent: this.config.agent,
+      sessionId: this.run.sessionId,
+      cwd: this.config.cwd,
+      title: this.config.title,
+      model: this.config.model,
+      effort: this.config.effort,
+      permissionMode: this.config.permissionMode,
+      now: this.now,
+    });
+    this.reducer = reducer;
+    for (const step of this.pending.splice(0)) {
+      this.publish(step(reducer));
+    }
+    return reducer;
+  }
+
+  private step(step: Step): void {
+    const reducer = this.adopt();
+    if (reducer === null) {
+      this.pending.push(step);
+    } else {
+      this.publish(step(reducer));
+    }
   }
 
   private async pump(): Promise<SessionEnd> {
     let error: string | null = null;
     try {
-      for await (const raw of this.query) {
-        this.publish(this.mapper.translate(raw));
+      for await (const event of this.run) {
+        this.step((reducer) => reducer.apply(event));
       }
     } catch (error_) {
       error = errorMessage(error_);
     }
     this.permissionAbort.abort();
-    this.input.end();
+    this.inputOpen = false;
+    this.run.endInput();
     const reason = endReason(this.stopped, error);
-    this.publish(this.mapper.ended(reason));
+    this.step((reducer) => reducer.ended(reason));
     return { reason, error: this.stopped ? null : error };
   }
 
@@ -224,20 +262,27 @@ export class SdkSession {
     toolInput: Record<string, unknown>,
     context: ToolPermissionContext,
   ): Promise<ToolPermissionResult> {
+    const reducer = this.adopt();
+    if (reducer === null) {
+      return {
+        behavior: 'deny',
+        message: 'The agent asked about a tool before it named its session',
+      };
+    }
     const request: PermissionRequest = {
       id: this.newId(),
-      sessionId: this.id,
-      agent: CLAUDE_CODE,
-      agentId: context.agentId ?? this.id,
+      sessionId: reducer.sessionId,
+      agent: this.config.agent,
+      agentId: context.agentId ?? reducer.sessionId,
       toolName,
       input: toolInput,
       requestedAt: this.now(),
-      source: 'sdk',
+      source: this.deps.runtime.permissionSource,
     };
     this.openPrompts += 1;
     this.publish([
       { name: 'permission.requested', payload: request },
-      ...this.mapper.waiting(this.openPrompts),
+      ...reducer.waiting(this.openPrompts),
     ]);
     try {
       const signal = AbortSignal.any([context.signal, this.permissionAbort.signal]);
@@ -246,7 +291,7 @@ export class SdkSession {
       return { behavior: 'deny', message: errorMessage(error) };
     } finally {
       this.openPrompts -= 1;
-      this.publish(this.mapper.waiting(this.openPrompts));
+      this.publish(reducer.waiting(this.openPrompts));
     }
   }
 

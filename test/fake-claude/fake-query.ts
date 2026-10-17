@@ -2,14 +2,18 @@
 // and launcher. Tests push raw SDK messages with emit() and read back what
 // the harness sent: prompts, control calls and the options it passed.
 
+import { claudeCode } from '../../src/core/agents/claude/index.js';
+import {
+  claudeRuntime,
+  type QueryFunction,
+  type QueryOptions,
+  type SdkPermissionMode,
+  type SessionQuery,
+  type UserInput,
+} from '../../src/core/agents/claude/runtime.js';
+import { AgentRegistry } from '../../src/core/agents/registry.js';
+import type { RuntimeFacet } from '../../src/core/agents/shared/runtime.js';
 import type { SessionEvent } from '../../src/core/harness/events.js';
-import type {
-  QueryFunction,
-  QueryOptions,
-  SdkPermissionMode,
-  SessionQuery,
-  UserInput,
-} from '../../src/core/harness/sdk-types.js';
 
 /** Settles on a later microtask, so fakes behave like real async work. */
 export async function resolved<T>(value: T): Promise<T> {
@@ -137,6 +141,19 @@ export function fakeQueries(responder: Responder | null = null): FakeQueries {
     return query;
   };
   return { queryFunction, queries };
+}
+
+export interface FakeRuntime extends FakeQueries {
+  /** Claude's runtime over the fake queries. */
+  readonly runtime: RuntimeFacet;
+  /** A registry holding only Claude Code, on that runtime. */
+  readonly agents: AgentRegistry;
+}
+
+export function fakeRuntime(responder: Responder | null = null): FakeRuntime {
+  const fakes = fakeQueries(responder);
+  const runtime = claudeRuntime(fakes.queryFunction);
+  return { ...fakes, runtime, agents: new AgentRegistry([{ ...claudeCode, runtime }]) };
 }
 
 export function resultMessage(overrides: Record<string, unknown> = {}): Record<string, unknown> {

@@ -1,10 +1,19 @@
 import { describe, expect, it } from 'vitest';
 
-import { payloads } from '../../../test/fake-claude/fake-query.js';
-import { ZERO_USAGE, type SessionState } from '../../shared/model.js';
+import { payloads } from '../../../../test/fake-claude/fake-query.js';
+import { CLAUDE_CODE } from '../../../shared/agents.js';
+import { ZERO_USAGE, type SessionState } from '../../../shared/model.js';
+import type { EndReason, SessionEvent } from '../../harness/events.js';
+import { claudeEvents } from '../claude/runtime.js';
 
-import type { EndReason } from './events.js';
-import { MessageMapper } from './mapper.js';
+import { SessionReducer } from './reducer.js';
+
+/** Feeds raw SDK messages through the Claude translator, the way a Claude session does. */
+class MessageMapper extends SessionReducer {
+  translate(raw: unknown): SessionEvent[] {
+    return claudeEvents(raw).flatMap((event) => this.apply(event));
+  }
+}
 
 const SID = 'session-1';
 
@@ -30,6 +39,7 @@ interface Harness {
 function makeMapper(): Harness {
   let clock = 1000;
   const mapper = new MessageMapper({
+    agent: CLAUDE_CODE,
     sessionId: SID,
     cwd: '/repo',
     title: 'Fix the bug',
@@ -742,5 +752,130 @@ describe('MessageMapper rate limits and compaction', () => {
         at: 4000,
       },
     ]);
+  });
+});
+
+const USAGE = { input: 10, output: 5, cacheRead: 2, cacheCreation: 0, thinking: 1 };
+
+describe('SessionReducer events other agents send', () => {
+  it('records usage reported apart from the message, once per call', () => {
+    const { mapper } = makeMapper();
+    const message = mapper.apply({
+      type: 'message',
+      messageId: 'call-1',
+      requestId: null,
+      model: 'gpt',
+      agentId: null,
+      parentToolUseId: null,
+      usage: null,
+      blocks: [{ type: 'text', text: 'hi' }],
+    });
+    expect(payloads(message, 'request.recorded')).toStrictEqual([]);
+    const usage = {
+      type: 'usage',
+      messageId: 'call-1',
+      requestId: 'req-1',
+      model: 'gpt',
+      agentId: null,
+      parentToolUseId: null,
+      usage: USAGE,
+      costUsd: 0.02,
+      durationMs: 300,
+      ttftMs: 40,
+    } as const;
+    const events = mapper.apply(usage);
+    expect(payloads(events, 'request.recorded')).toMatchObject([
+      { messageId: 'call-1', requestId: 'req-1', usage: USAGE, costUsd: 0.02, durationMs: 300 },
+    ]);
+    expect(payloads(events, 'agent.upserted')[0]?.usage).toStrictEqual(USAGE);
+    expect(mapper.apply(usage)).toStrictEqual([]);
+  });
+
+  it('follows model, mode and context reports', () => {
+    const { mapper } = makeMapper();
+    expect(
+      payloads(mapper.apply({ type: 'model_changed', model: 'gpt-2' }), 'session.upserted')[0]
+        ?.model,
+    ).toBe('gpt-2');
+    expect(
+      payloads(
+        mapper.apply({ type: 'mode_changed', permissionMode: 'plan' }),
+        'session.upserted',
+      )[0]?.permissionMode,
+    ).toBe('plan');
+    expect(
+      payloads(
+        mapper.apply({ type: 'context', usedTokens: 25, maxTokens: 100 }),
+        'session.upserted',
+      )[0]?.contextFill,
+    ).toBe(0.25);
+    expect(
+      payloads(
+        mapper.apply({ type: 'context', usedTokens: 25, maxTokens: 0 }),
+        'session.upserted',
+      )[0]?.contextFill,
+    ).toBe(0);
+  });
+
+  it('puts notices and unsized compactions in the feed', () => {
+    const { mapper } = makeMapper();
+    expect(
+      payloads(mapper.apply({ type: 'notice', text: 'Config warning' }), 'feed.appended')[0]
+        ?.items[0],
+    ).toMatchObject({ kind: 'system', text: 'Config warning' });
+    expect(
+      payloads(
+        mapper.apply({ type: 'compacted', trigger: 'manual', preTokens: null }),
+        'feed.appended',
+      )[0]?.items[0],
+    ).toMatchObject({ text: 'Context compacted (manual)' });
+  });
+
+  it('fills a turn result the agent left partly blank', () => {
+    const { mapper } = makeMapper();
+    const turn = {
+      type: 'turn_result',
+      ok: false,
+      subtype: 'interrupted',
+      text: null,
+      costUsd: null,
+      turns: null,
+      durationMs: null,
+      usage: null,
+    } as const;
+    const first = mapper.apply(turn);
+    expect(payloads(first, 'turn.result')).toStrictEqual([
+      {
+        ok: false,
+        subtype: 'interrupted',
+        text: null,
+        costUsd: null,
+        turns: 1,
+        durationMs: null,
+        usage: ZERO_USAGE,
+      },
+    ]);
+    expect(payloads(first, 'session.upserted')[0]).toMatchObject({ costUsd: 0, usage: ZERO_USAGE });
+    expect(payloads(mapper.apply(turn), 'turn.result')[0]?.turns).toBe(2);
+  });
+
+  it('drops windows the bus has no slot for and folds the rest', () => {
+    const { mapper } = makeMapper();
+    const window = { usedPct: 40, resetsAt: 5000, windowMinutes: 43_200 };
+    expect(
+      mapper.apply({ type: 'rate_limit', windows: [{ id: 'codex', ...window }] }),
+    ).toStrictEqual([]);
+    expect(
+      payloads(
+        mapper.apply({
+          type: 'rate_limit',
+          windows: [
+            { id: 'five_hour', ...window },
+            { id: 'seven_day', ...window, usedPct: 10 },
+          ],
+        }),
+        'rateLimits.updated',
+      ),
+    ).toStrictEqual([{ fiveHourPct: 40, sevenDayPct: 10, resetsAt: 5000 }]);
   });
 });
