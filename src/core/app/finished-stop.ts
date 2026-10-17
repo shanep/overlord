@@ -91,6 +91,11 @@ async function stopOne(rt: Runtime, { at, job }: Finished): Promise<boolean> {
   ) {
     return false;
   }
+  // The checks above take a moment, and a prompt sent meanwhile starts a turn.
+  const again = await finishedJobs(rt, at);
+  if (!again.some((item) => item.job.id === job.id)) {
+    return false;
+  }
   return stopJob(rt, { background, cli: await agentCli(rt, at) }, job);
 }
 

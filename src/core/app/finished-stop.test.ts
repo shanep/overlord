@@ -157,6 +157,18 @@ describe('stopFinished', () => {
     }
   });
 
+  it('keeps a session that starts a turn while it is being checked', async () => {
+    let lists = 0;
+    const test = await afterGrace({
+      jobs: () => {
+        lists += 1;
+        return [{ ...DONE_JOB, ...(lists > 2 ? { status: 'busy', state: 'working' } : {}) }];
+      },
+    });
+    expect(lists).toBe(3);
+    expect(stopCalls(test)).toStrictEqual([]);
+  });
+
   it('counts the grace period again after the session works some more', async () => {
     let state = 'done';
     const { test, checkAt } = await setup({ jobs: () => [{ ...DONE_JOB, state }] });
