@@ -4,6 +4,7 @@
 // refreshes in the background once it is older than STALE_MS.
 
 import type { AutoApproveRule, MessagesState } from '../../../shared/protocol.js';
+import { claudeKnobs } from '../../agents/claude/config.js';
 import { SEND_MESSAGE_TOOL, toolPatternMatches } from '../../hooks/rules.js';
 import { loadCatalog } from '../../knobs/catalog.js';
 import { loadLayers } from '../../knobs/layers.js';
@@ -65,7 +66,12 @@ async function load(rt: Runtime, cache: MessagesCache): Promise<void> {
   try {
     const [scan, layers] = await Promise.all([
       cache.index.scan(liveTitles(rt)),
-      loadLayers({ paths: rt.paths, projectDir: rt.host.workspaceFolder(), env: rt.env }),
+      loadLayers({
+        knobs: claudeKnobs,
+        paths: rt.paths,
+        projectDir: rt.host.workspaceFolder(),
+        env: rt.env,
+      }),
     ]);
     cache.state = {
       ...cache.state,

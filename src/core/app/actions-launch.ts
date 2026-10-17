@@ -5,8 +5,9 @@ import path from 'node:path';
 
 import type { LaunchProfile, LaunchSpec } from '../../shared/model.js';
 import type { LaunchFolder } from '../../shared/protocol.js';
+import { agents } from '../agents/index.js';
 import { estimateBatch } from '../harness/estimate.js';
-import { deleteProfile, saveProfile } from '../knobs/profiles.js';
+import { deleteProfile, modesLookup, saveProfile } from '../knobs/profiles.js';
 import { DEFAULT_PRICES } from '../transcripts/pricing.js';
 
 import type { ActionHandlers } from './action-types.js';
@@ -167,7 +168,8 @@ export const launchActions: ActionHandlers<LaunchActions> = {
     }
   },
   saveProfile: async ({ rt }, action) => {
-    const result = await saveProfile(storagePath(rt.host.storageDir, 'profiles'), action.profile);
+    const file = storagePath(rt.host.storageDir, 'profiles');
+    const result = await saveProfile(file, action.profile, modesLookup(agents.list()));
     if (!result.ok) {
       rt.host.showError(result.error);
       return;

@@ -5,6 +5,7 @@ import path from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import * as vscode from 'vscode';
 
+import { agents } from '../core/agents/index.js';
 import { OverlordApp } from '../core/app/app.js';
 import type { PanelParams } from '../core/app/host-port.js';
 import { storagePath } from '../core/app/storage.js';
@@ -12,7 +13,7 @@ import { parseTransferUri } from '../core/app/transfer.js';
 import { fleetSessionName } from '../core/app/views/fleet.js';
 import { BOISESTATE_KEY_SECRET, BOISESTATE_PROFILE } from '../core/bridge/boisestate.js';
 import { isTerminal } from '../core/harness/launcher.js';
-import { listProfiles, saveProfile } from '../core/knobs/profiles.js';
+import { listProfiles, modesLookup, saveProfile } from '../core/knobs/profiles.js';
 import { runSelfCheck } from '../core/self-check.js';
 import type { HostToWebview, ViewId, WebviewAction } from '../shared/protocol.js';
 import { VIEW_IDS } from '../shared/protocol.js';
@@ -270,7 +271,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       const profilesFile = storagePath(host.storageDir, 'profiles');
       const { profiles } = await listProfiles(profilesFile);
       if (!profiles.some((profile) => profile.id === BOISESTATE_PROFILE.id)) {
-        await saveProfile(profilesFile, BOISESTATE_PROFILE);
+        await saveProfile(profilesFile, BOISESTATE_PROFILE, modesLookup(agents.list()));
         await overlord.refresh();
       }
       void vscode.window.showInformationMessage(

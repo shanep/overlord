@@ -6,6 +6,7 @@ import { access } from 'node:fs/promises';
 
 import type { EffectiveValue, LaunchProfile, SettingsFileSummary } from '../../../shared/model.js';
 import type { KnobsState } from '../../../shared/protocol.js';
+import { claudeKnobs } from '../../agents/claude/config.js';
 import { catalogEnvKeys, loadCatalog } from '../../knobs/catalog.js';
 import { computeEffective, flattenSettings } from '../../knobs/effective.js';
 import { readFeatureFlags } from '../../knobs/flags.js';
@@ -57,6 +58,7 @@ async function summarizeFiles(layers: readonly LayerData[]): Promise<SettingsFil
 
 export async function loadKnobs(deps: KnobsLoadDeps): Promise<KnobsData> {
   const layers = await loadLayers({
+    knobs: claudeKnobs,
     paths: deps.paths,
     projectDir: deps.workspace,
     env: deps.env,
@@ -72,7 +74,7 @@ export async function loadKnobs(deps: KnobsLoadDeps): Promise<KnobsData> {
     deps.report(SOURCE, flags.error);
   }
   return {
-    effective: computeEffective(layers),
+    effective: computeEffective(layers, claudeKnobs),
     files: await summarizeFiles(layers),
     featureFlags: flags.flags,
   };

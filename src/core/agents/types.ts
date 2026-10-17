@@ -14,6 +14,7 @@ import type {
 } from '../../shared/model.js';
 import type { HandoffKind, SurfaceSession } from '../../shared/protocol.js';
 import type { EditTools, HookDialect } from '../hooks/normalized.js';
+import type { KnobsFacet, SettingsFormat } from '../knobs/facet.js';
 import type { TelemetryDecode } from '../otel/decode.js';
 import type { ClaudePaths } from '../paths.js';
 import type { Collected } from '../surfaces/common.js';
@@ -344,7 +345,10 @@ export interface InstructionPolicy {
  * @public
  */
 export interface ConfigFacet {
-  readonly settingsFormat: 'json' | 'jsonc' | 'toml';
+  /** The format of the agent's main settings file. */
+  readonly settingsFormat: SettingsFormat;
+  /** Knob catalog, settings layers and precedence, and launch overrides. Workstream E2 owns it. */
+  readonly knobs?: KnobsFacet;
 }
 
 export interface AgentAdapter {

@@ -1,11 +1,11 @@
 // Actions that change config on disk: settings knobs, the claude.ai import,
 // config repo push and pull, and adopting a local item into the repo.
 
-import path from 'node:path';
-
 import { z } from 'zod';
 
-import { findKnob, loadCatalog } from '../knobs/catalog.js';
+import { claudeKnobs } from '../agents/claude/config.js';
+import { findKnob } from '../knobs/catalog.js';
+import type { KnobsFacet, SettingsFormat } from '../knobs/facet.js';
 import type { JsonValue } from '../knobs/json.js';
 import { writeSetting } from '../knobs/write.js';
 import { importClaudeAiExport } from '../surfaces/claude-ai-export.js';
@@ -35,26 +35,38 @@ type Layer = ActionMap['setKnob']['layer'];
 
 const jsonSchema = z.json();
 
-/** The settings key path for a catalog key: env vars live under env, CLI flags are not settings. */
-export function settingsKeyPath(key: string): string | null {
-  const knobs = loadCatalog().filter((knob) => knob.key === key);
-  if (knobs.length === 0 || knobs.some((knob) => knob.kind === 'setting')) {
+/**
+ * The settings key path for a catalog key: env vars live under the agent's
+ * env block, and CLI flags (or env vars an agent's settings cannot set) are
+ * not settings.
+ */
+export function settingsKeyPath(key: string, knobs: KnobsFacet = claudeKnobs): string | null {
+  const matches = knobs.catalog().filter((knob) => knob.key === key);
+  if (matches.length === 0 || matches.some((knob) => knob.kind === 'setting')) {
     return key;
   }
-  return knobs.some((knob) => knob.kind === 'env') ? `env.${key}` : null;
+  const isEnv = matches.some((knob) => knob.kind === 'env');
+  return isEnv && knobs.envBlock !== null ? `${knobs.envBlock}.${key}` : null;
+}
+
+interface LayerTarget {
+  readonly file: string;
+  readonly format: SettingsFormat;
 }
 
 /** The settings file for a layer, or null when the layer needs a workspace and none is open. */
-export function layerFile(rt: Runtime, layer: Layer): string | null {
-  if (layer === 'user') {
-    return rt.paths.userSettings;
-  }
-  const workspace = rt.host.workspaceFolder();
-  if (workspace === null) {
+export function layerFile(
+  rt: Runtime,
+  layer: Layer,
+  knobs: KnobsFacet = claudeKnobs,
+): LayerTarget | null {
+  const source = knobs.layers.find((item) => item.layer === layer);
+  if (source?.kind !== 'file' || !source.writable) {
     return null;
   }
-  const name = layer === 'project' ? 'settings.json' : 'settings.local.json';
-  return path.join(workspace, '.claude', name);
+  const place = { paths: rt.paths, projectDir: rt.host.workspaceFolder(), env: rt.env };
+  const file = source.file(place);
+  return file === null ? null : { file, format: source.format };
 }
 
 /** Null means remove the key. Anything else must be plain JSON. */
@@ -98,14 +110,14 @@ async function adopt(rt: Runtime, itemId: string): Promise<void> {
 export const configActions: ActionHandlers<ConfigActions> = {
   setKnob: async ({ rt }, action) => {
     const keyPath = settingsKeyPath(action.key);
-    const file = layerFile(rt, action.layer);
+    const target = layerFile(rt, action.layer);
     const json = toJson(action.value);
     if (keyPath === null) {
       rt.host.showInfo(`${action.key} is a CLI flag. Add it to a launch profile instead.`);
-    } else if (file === null) {
+    } else if (target === null) {
       rt.host.showInfo('Open a folder to change project settings.');
     } else if (json.ok) {
-      const result = await writeSetting({ file, keyPath, value: json.value });
+      const result = await writeSetting({ ...target, keyPath, value: json.value });
       if (!result.ok) {
         rt.host.showError(result.error);
         return;
@@ -122,7 +134,7 @@ export const configActions: ActionHandlers<ConfigActions> = {
   },
   openKnobDocs: async ({ rt }, action) => {
     // Only catalog doc links open, so a webview can never send the browser anywhere else.
-    const knob = findKnob(loadCatalog(), action.kind, action.key);
+    const knob = findKnob(claudeKnobs.catalog(), action.kind, action.key);
     if (knob === undefined) {
       rt.host.showInfo(`No docs page is known for ${action.key}.`);
       return;

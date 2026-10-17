@@ -2,15 +2,23 @@ import * as fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 
 import type { SettingsLayer } from '../../shared/model.js';
+import { claudeKnobs } from '../agents/claude/config.js';
 
 import {
   computeEffective,
   flattenSettings,
   isSecretKey,
-  LAYER_ORDER,
+  layerOrder,
   REDACTED,
 } from './effective.js';
 import type { LayerData } from './layers.js';
+
+const LAYER_ORDER = layerOrder(claudeKnobs);
+
+/** Claude Code's precedence and merge rules, which most cases here pin down. */
+function effectiveOf(layers: readonly LayerData[]): ReturnType<typeof computeEffective> {
+  return computeEffective(layers, claudeKnobs);
+}
 
 function layer(
   name: SettingsLayer,
@@ -20,8 +28,8 @@ function layer(
   return { layer: name, file, values, error: null };
 }
 
-describe('LAYER_ORDER', () => {
-  it('ranks managed highest and default lowest', () => {
+describe('layerOrder', () => {
+  it('ranks managed highest and default lowest for Claude Code', () => {
     expect(LAYER_ORDER).toStrictEqual([
       'managed',
       'cli',
@@ -84,7 +92,7 @@ describe('isSecretKey', () => {
 
 describe('computeEffective', () => {
   it('lets the highest layer win and records the whole chain', () => {
-    const effective = computeEffective([
+    const effective = effectiveOf([
       layer('user', { model: 'haiku', theme: 'dark' }, '/u.json'),
       layer('managed', { model: 'opus' }, '/m.json'),
       layer('project', { model: 'sonnet' }, '/p.json'),
@@ -110,16 +118,16 @@ describe('computeEffective', () => {
   });
 
   it('sorts keys and returns nothing for empty layers', () => {
-    expect(computeEffective([])).toStrictEqual([]);
-    expect(computeEffective([layer('user', {})])).toStrictEqual([]);
-    const keys = computeEffective([layer('user', { b: 1, a: 2, 'a.b': 3, A: 4 })]).map(
+    expect(effectiveOf([])).toStrictEqual([]);
+    expect(effectiveOf([layer('user', {})])).toStrictEqual([]);
+    const keys = effectiveOf([layer('user', { b: 1, a: 2, 'a.b': 3, A: 4 })]).map(
       (item) => item.key,
     );
     expect(keys).toStrictEqual(['A', 'a', 'a.b', 'b']);
   });
 
   it('merges list keys across layers, highest first, without duplicates', () => {
-    const [allow] = computeEffective([
+    const [allow] = effectiveOf([
       layer('user', { permissions: { allow: ['Read', 'Bash(ls)'] } }),
       layer('project-local', { permissions: { allow: ['Edit', 'Read'] } }),
       layer('managed', { permissions: { allow: [{ tool: 'x' }] } }),
@@ -137,12 +145,12 @@ describe('computeEffective', () => {
   });
 
   it('ignores lower values that are not lists when merging', () => {
-    const [dirs] = computeEffective([
+    const [dirs] = effectiveOf([
       layer('project', { additionalDirectories: ['../a'] }),
       layer('user', { additionalDirectories: 'oops' }),
     ]);
     expect(dirs?.value).toStrictEqual(['../a']);
-    const [scalar] = computeEffective([
+    const [scalar] = effectiveOf([
       layer('project', { additionalDirectories: 'winner' }),
       layer('user', { additionalDirectories: ['../b'] }),
     ]);
@@ -150,7 +158,7 @@ describe('computeEffective', () => {
   });
 
   it('does not merge fallbackModel or modelPicker', () => {
-    const effective = computeEffective([
+    const effective = effectiveOf([
       layer('user', { fallbackModel: ['haiku'], modelPicker: { options: ['b'] } }),
       layer('project', { fallbackModel: ['sonnet', 'opus'], modelPicker: ['x'] }),
       layer('managed', { modelPicker: { options: ['a'] } }),
@@ -167,17 +175,17 @@ describe('computeEffective', () => {
   });
 
   it('applies a managed availableModels list as-is and merges it otherwise', () => {
-    const managed = computeEffective([
+    const managed = effectiveOf([
       layer('managed', { availableModels: ['opus'] }),
       layer('user', { availableModels: ['haiku'] }),
     ]);
     expect(managed[0]?.value).toStrictEqual(['opus']);
-    const unmanaged = computeEffective([
+    const unmanaged = effectiveOf([
       layer('project', { availableModels: ['opus'] }),
       layer('user', { availableModels: ['haiku'] }),
     ]);
     expect(unmanaged[0]?.value).toStrictEqual(['opus', 'haiku']);
-    const otherManaged = computeEffective([
+    const otherManaged = effectiveOf([
       layer('managed', { deniedModels: ['opus'] }),
       layer('user', { deniedModels: ['haiku'] }),
     ]);
@@ -185,7 +193,7 @@ describe('computeEffective', () => {
   });
 
   it('includes env blocks from files and the process env with their layers', () => {
-    const effective = computeEffective([
+    const effective = effectiveOf([
       layer('env', { env: { ANTHROPIC_MODEL: 'shell', DEBUG: '1' } }),
       layer('user', { env: { ANTHROPIC_MODEL: 'file' } }, '/u.json'),
     ]);
@@ -209,7 +217,7 @@ describe('computeEffective', () => {
   });
 
   it('redacts secret env values in the value and the chain', () => {
-    const [secret] = computeEffective([
+    const [secret] = effectiveOf([
       layer('env', { env: { ANTHROPIC_API_KEY: 'sk-shell' } }),
       layer('user', { env: { ANTHROPIC_API_KEY: 'sk-file' } }, '/u.json'),
     ]);
@@ -234,7 +242,7 @@ describe('computeEffective', () => {
     fc.assert(
       fc.property(entries, (pairs) => {
         const layers = pairs.map(([name, value]) => layer(name, { k: value, [`z.${name}`]: 1 }));
-        const effective = computeEffective(layers).find((item) => item.key === 'k');
+        const effective = effectiveOf(layers).find((item) => item.key === 'k');
         const expected = pairs.toSorted(
           ([left], [right]) => LAYER_ORDER.indexOf(left) - LAYER_ORDER.indexOf(right),
         );
@@ -255,12 +263,36 @@ describe('computeEffective', () => {
     fc.assert(
       fc.property(entries, (pairs) => {
         const layers = pairs.map(([name, list]) => layer(name, { permissions: { deny: list } }));
-        const [effective] = computeEffective(layers);
+        const [effective] = effectiveOf(layers);
         const ordered = pairs
           .toSorted(([left], [right]) => LAYER_ORDER.indexOf(left) - LAYER_ORDER.indexOf(right))
           .flatMap(([, list]) => list);
         expect(effective?.value).toStrictEqual([...new Set(ordered)]);
       }),
     );
+  });
+
+  it('takes precedence and merge rules from the facet', () => {
+    const facet = {
+      layers: [
+        { kind: 'env', layer: 'env' },
+        { kind: 'cli', layer: 'cli' },
+      ] as const,
+      neverMerges: (key: string): boolean => key === 'chain',
+      managedReplaces: new Set<string>(),
+    };
+    const effective = computeEffective(
+      [
+        layer('cli', { model: 'cli', chain: ['b'], list: ['b'] }),
+        layer('env', { model: 'env', chain: ['a'], list: ['a'] }),
+      ],
+      facet,
+    );
+    expect(effective.map((item) => [item.key, item.value, item.layer])).toStrictEqual([
+      ['chain', ['a'], 'env'],
+      ['list', ['a', 'b'], 'env'],
+      ['model', 'env', 'env'],
+    ]);
+    expect(layerOrder(facet)).toStrictEqual(['env', 'cli', 'default']);
   });
 });

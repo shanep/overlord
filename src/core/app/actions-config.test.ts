@@ -3,6 +3,7 @@ import path from 'node:path';
 
 import { describe, expect, it, vi } from 'vitest';
 
+import { claudeKnobs } from '../agents/claude/config.js';
 import { isolatedExec } from '../sync/test-helpers/fixtures.js';
 
 import { layerFile, settingsKeyPath } from './actions-config.js';
@@ -23,6 +24,12 @@ describe('settingsKeyPath', () => {
     expect(settingsKeyPath('BASH_MAX_OUTPUT_LENGTH')).toBe('env.BASH_MAX_OUTPUT_LENGTH');
     expect(settingsKeyPath('--add-dir')).toBeNull();
     expect(settingsKeyPath('permissions.allow')).toBe('permissions.allow');
+  });
+
+  it('leaves env vars out when the agent cannot set them in settings', () => {
+    const knobs = { ...claudeKnobs, envBlock: null };
+    expect(settingsKeyPath('BASH_MAX_OUTPUT_LENGTH', knobs)).toBeNull();
+    expect(settingsKeyPath('model', knobs)).toBe('model');
   });
 });
 
@@ -63,7 +70,10 @@ describe('setKnob', () => {
     expect(await readJson(path.join(workspace, '.claude', 'settings.local.json'))).toStrictEqual({
       model: 'b',
     });
-    expect(layerFile(app.runtime, 'user')).toBe(env.paths.userSettings);
+    expect(layerFile(app.runtime, 'user')).toStrictEqual({
+      file: env.paths.userSettings,
+      format: 'json',
+    });
   });
 
   it('refuses flags, project layers without a folder, values that are not JSON and broken files', async () => {
@@ -86,6 +96,28 @@ describe('setKnob', () => {
     expect(env.host.errors[1]).toContain('is not valid JSON');
     expect(await readFile(env.paths.userSettings, 'utf8')).toBe('{broken');
     expect(layerFile(app.runtime, 'project-local')).toBeNull();
+  });
+
+  it('finds the file and format from the facet, and only for layers it may write', async () => {
+    const env = await makeEnv();
+    const { app } = makeApp(env);
+    const toml = path.join(env.paths.home, '.codex', 'config.toml');
+    const knobs = {
+      ...claudeKnobs,
+      layers: [
+        { kind: 'file', layer: 'user', format: 'toml', file: (): string => toml, writable: true },
+        {
+          kind: 'file',
+          layer: 'project',
+          format: 'json',
+          file: (): string => toml,
+          writable: false,
+        },
+      ] as const,
+    };
+    expect(layerFile(app.runtime, 'user', knobs)).toStrictEqual({ file: toml, format: 'toml' });
+    expect(layerFile(app.runtime, 'project', knobs)).toBeNull();
+    expect(layerFile(app.runtime, 'project-local', knobs)).toBeNull();
   });
 });
 

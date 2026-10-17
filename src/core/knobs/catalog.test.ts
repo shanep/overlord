@@ -4,6 +4,7 @@ import { KNOB_AREAS } from '../../shared/knob-areas.js';
 import type { KnobDefinition } from '../../shared/model.js';
 
 import {
+  bundledCatalog,
   catalogAreas,
   catalogEnvKeys,
   filterCatalog,
@@ -37,6 +38,15 @@ const SAMPLE: readonly KnobDefinition[] = [
 function countKind(catalog: readonly KnobDefinition[], kind: KnobDefinition['kind']): number {
   return catalog.filter((item) => item.kind === kind).length;
 }
+
+describe('bundledCatalog', () => {
+  it('validates on the first call only and fails loudly on bad data', () => {
+    const load = bundledCatalog(SAMPLE);
+    expect(load()).toStrictEqual(SAMPLE);
+    expect(load()).toBe(load());
+    expect(bundledCatalog([{ key: 'x' }])).toThrow();
+  });
+});
 
 describe('loadCatalog', () => {
   const catalog = loadCatalog();

@@ -4,6 +4,7 @@
 import path from 'node:path';
 
 import type { ContextSnapshot, LoadedInstruction, SessionSummary } from '../../../shared/model.js';
+import { claudeKnobs } from '../../agents/claude/config.js';
 import type { FileSystem } from '../../context/fs.js';
 import { resolveContext } from '../../context/resolve.js';
 import { discoverSkills } from '../../context/skills.js';
@@ -96,12 +97,13 @@ export async function resolveSnapshot(
   const { cwd } = job.session;
   const gitRoot = await repoRootOf(deps.exec, cwd);
   const layers = await loadLayers({
+    knobs: claudeKnobs,
     paths: deps.paths,
     projectDir: cwd,
     env: deps.env,
     envKeys: catalogEnvKeys(loadCatalog()),
   });
-  const settings = contextSettings(layers, computeEffective(layers), deps.env);
+  const settings = contextSettings(layers, computeEffective(layers, claudeKnobs), deps.env);
   const touched = touchedFiles(deps.store, job.session, deps.clock());
   const observedLoaded = mergeLoaded(job.base.loaded, job.observed);
   const resolved = await resolveContext({

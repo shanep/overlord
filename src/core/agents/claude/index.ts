@@ -11,6 +11,7 @@ import { DEFAULT_MODEL } from '../../app/prices.js';
 import { DEFAULT_PRICES, findPrice } from '../../transcripts/pricing.js';
 import type { AgentAdapter, DetectInput, Detected } from '../types.js';
 
+import { claudeConfig } from './config.js';
 import { claudeHooks } from './hooks.js';
 import { claudeInject } from './inject.js';
 import { claudeObserverFacet } from './observer.js';
@@ -89,4 +90,5 @@ export const claudeCode: AgentAdapter = {
   hooks: claudeHooks,
   telemetry: claudeTelemetry,
   inject: claudeInject,
+  config: claudeConfig,
 };

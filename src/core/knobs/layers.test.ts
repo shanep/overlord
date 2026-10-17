@@ -5,10 +5,16 @@ import path from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
+import { claudeKnobs } from '../agents/claude/config.js';
+
+import type { KnobsFacet } from './facet.js';
 import { envLayer, loadLayers, readSettingsFile } from './layers.js';
 
-function paths(root: string): { managedDir: string; userSettings: string } {
+const CLAUDE_PREFIX = claudeKnobs.envPrefix;
+
+function paths(root: string): { home: string; managedDir: string; userSettings: string } {
   return {
+    home: path.join(root, 'home'),
     managedDir: path.join(root, 'managed'),
     userSettings: path.join(root, 'home', '.claude', 'settings.json'),
   };
@@ -96,6 +102,7 @@ describe('layers', () => {
           XANTHROPIC_Y: 'no',
         },
         new Set(['BASH_MAX_OUTPUT_LENGTH', 'NOT_SET']),
+        CLAUDE_PREFIX,
       );
       expect(layer).toStrictEqual({
         layer: 'env',
@@ -113,7 +120,8 @@ describe('layers', () => {
     });
 
     it('is empty when nothing matches', () => {
-      expect(envLayer({ PATH: '/bin' }, new Set()).values).toStrictEqual({});
+      expect(envLayer({ PATH: '/bin' }, new Set(), CLAUDE_PREFIX).values).toStrictEqual({});
+      expect(envLayer({ CLAUDE_X: '1' }, new Set(), null).values).toStrictEqual({});
     });
   });
 
@@ -124,6 +132,7 @@ describe('layers', () => {
       const shared = await put('project/.claude/settings.json', '{"c":3}');
       const user = await put('home/.claude/settings.json', '{"d":4}');
       const layers = await loadLayers({
+        knobs: claudeKnobs,
         paths: paths(dir),
         projectDir: path.join(dir, 'project'),
         cli: { file: '/tmp/cli.json', values: { e: 5 } },
@@ -147,6 +156,7 @@ describe('layers', () => {
 
     it('skips project layers outside a project and defaults cli and env keys', async () => {
       const layers = await loadLayers({
+        knobs: claudeKnobs,
         paths: paths(dir),
         projectDir: null,
         env: { CUSTOM: 'x', CLAUDE_CODE_Y: '1' },
@@ -158,6 +168,7 @@ describe('layers', () => {
 
     it('accepts inline --settings JSON with no file', async () => {
       const layers = await loadLayers({
+        knobs: claudeKnobs,
         paths: paths(dir),
         projectDir: null,
         cli: { file: null, values: { model: 'haiku' } },
@@ -175,6 +186,7 @@ describe('layers', () => {
       await put('project/.claude/settings.json', 'nope');
       await put('home/.claude/settings.json', '{"ok":true}');
       const layers = await loadLayers({
+        knobs: claudeKnobs,
         paths: paths(dir),
         projectDir: path.join(dir, 'project'),
         cli: null,
@@ -184,6 +196,52 @@ describe('layers', () => {
       expect(project?.error).toMatch(/^Invalid JSON in /u);
       expect(layers.find((layer) => layer.layer === 'user')?.values).toStrictEqual({ ok: true });
       expect(layers.find((layer) => layer.layer === 'project-local')?.error).toBeNull();
+    });
+
+    it('reads the layers, formats and order another agent lists', async () => {
+      const user = await put(
+        'home/.codex/config.toml',
+        '# mine\nmodel = "o3"\nwhen = 1979-05-27T07:32:00Z\n[tui]\nnotifications = true\n',
+      );
+      const broken = await put('project/.codex/config.toml', 'model = \n');
+      const knobs: KnobsFacet = {
+        ...claudeKnobs,
+        envPrefix: /^CODEX_/u,
+        layers: [
+          { kind: 'cli', layer: 'cli' },
+          {
+            kind: 'file',
+            layer: 'project',
+            format: 'toml',
+            file: ({ projectDir }) =>
+              projectDir === null ? null : path.join(projectDir, '.codex', 'config.toml'),
+            writable: true,
+          },
+          {
+            kind: 'file',
+            layer: 'user',
+            format: 'toml',
+            file: (place) => path.join(place.env['CODEX_HOME'] ?? '', 'config.toml'),
+            writable: true,
+          },
+          { kind: 'env', layer: 'env' },
+        ],
+      };
+      const layers = await loadLayers({
+        knobs,
+        paths: paths(dir),
+        projectDir: path.join(dir, 'project'),
+        env: { CODEX_HOME: path.dirname(user), CLAUDE_X: '1' },
+      });
+      expect(layers.map((layer) => layer.layer)).toStrictEqual(['cli', 'project', 'user', 'env']);
+      expect(layers[1]?.error?.startsWith(`Invalid TOML in ${broken}: `)).toBe(true);
+      expect(layers[2]).toStrictEqual({
+        layer: 'user',
+        file: user,
+        values: { model: 'o3', when: '1979-05-27T07:32:00.000Z', tui: { notifications: true } },
+        error: null,
+      });
+      expect(layers[3]?.values).toStrictEqual({ env: { CODEX_HOME: path.dirname(user) } });
     });
   });
 });

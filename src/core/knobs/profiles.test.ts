@@ -5,14 +5,23 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import type { LaunchProfile } from '../../shared/model.js';
+import { claudeCode } from '../agents/claude/index.js';
 
 import {
   deleteProfile,
   listProfiles,
+  modesLookup,
   saveProfile,
-  toExtraArgs,
-  toLaunchOptions,
+  type AgentModes,
 } from './profiles.js';
+
+const CODEX_MODES: AgentModes = {
+  permission: [{ id: 'on-request', label: 'On request' }],
+  effort: [],
+};
+
+/** Claude Code from its adapter, and a stand-in Codex with modes of its own. */
+const MODES = modesLookup([claudeCode, { id: 'codex', modes: CODEX_MODES }]);
 
 function profile(id: string, partial: Partial<LaunchProfile> = {}): LaunchProfile {
   return {
@@ -75,9 +84,9 @@ describe('profiles', () => {
   describe('saveProfile', () => {
     it('appends new profiles and writes a versioned, formatted store', async () => {
       const first = profile('a', { model: 'opus', env: { DEBUG: '1' }, extraArgs: ['--verbose'] });
-      expect(await saveProfile(store, first)).toStrictEqual({ ok: true, profiles: [first] });
+      expect(await saveProfile(store, first, MODES)).toStrictEqual({ ok: true, profiles: [first] });
       const second = profile('b', { permissionMode: 'plan', effort: 'high' });
-      expect(await saveProfile(store, second)).toStrictEqual({
+      expect(await saveProfile(store, second, MODES)).toStrictEqual({
         ok: true,
         profiles: [first, second],
       });
@@ -96,7 +105,7 @@ describe('profiles', () => {
 
     it('keeps the agent and backend of a profile for another agent', async () => {
       const codex = profile('c', { agent: 'codex', backend: 'boisestate' });
-      expect(await saveProfile(store, codex)).toStrictEqual({ ok: true, profiles: [codex] });
+      expect(await saveProfile(store, codex, MODES)).toStrictEqual({ ok: true, profiles: [codex] });
       expect(await listProfiles(store)).toStrictEqual({ profiles: [codex], error: null });
       const file = await readFile(store, 'utf8');
       expect(file).toContain('"agent": "codex"');
@@ -104,10 +113,10 @@ describe('profiles', () => {
     });
 
     it('replaces a profile with the same id in place', async () => {
-      await saveProfile(store, profile('a'));
-      await saveProfile(store, profile('b'));
+      await saveProfile(store, profile('a'), MODES);
+      await saveProfile(store, profile('b'), MODES);
       const renamed = profile('a', { name: 'Renamed' });
-      const result = await saveProfile(store, renamed);
+      const result = await saveProfile(store, renamed, MODES);
       expect(result).toStrictEqual({ ok: true, profiles: [renamed, profile('b')] });
       expect(await readFile(`${store}.bak`, 'utf8')).toContain('"Profile a"');
     });
@@ -116,6 +125,10 @@ describe('profiles', () => {
       ['an empty id', { ...profile('a'), id: '' }],
       ['an empty name', { ...profile('a'), name: '' }],
       ['an unknown permission mode', { ...profile('a'), permissionMode: 'yolo' }],
+      ['an unknown effort level', { ...profile('a'), effort: 'ultra' }],
+      ['an effort for an agent with none', { ...profile('a'), agent: 'codex', effort: 'high' }],
+      ['a Claude mode on Codex', { ...profile('a'), agent: 'codex', permissionMode: 'plan' }],
+      ['an agent Overlord does not know', { ...profile('a'), agent: 'gemini' }],
       ['a non-string env value', { ...profile('a'), env: { A: 1 } }],
       ['an empty env name', { ...profile('a'), env: { '': 'x' } }],
       ['a non-string extra arg', { ...profile('a'), extraArgs: [1] }],
@@ -126,24 +139,53 @@ describe('profiles', () => {
       ['an empty backend', { ...profile('a'), backend: '' }],
       ['a non-object', 'profile'],
     ])('rejects %s', async (_label, raw) => {
-      const result = await saveProfile(store, raw);
+      const result = await saveProfile(store, raw, MODES);
       expect(result.ok).toBe(false);
       expect(result.ok ? '' : result.error).toMatch(/^Invalid profile: /u);
       expect(await listProfiles(store)).toStrictEqual({ profiles: [], error: null });
+    });
+
+    it('names the modes the agent does have', async () => {
+      const yolo = await saveProfile(store, profile('a', { permissionMode: 'yolo' }), MODES);
+      expect(yolo.ok ? '' : yolo.error).toBe(
+        'Invalid profile: "yolo" is not a permission mode of claude-code. Use one of default, acceptEdits, plan, auto, dontAsk, bypassPermissions, manual.',
+      );
+      const codex = await saveProfile(
+        store,
+        profile('a', { agent: 'codex', effort: 'high' }),
+        MODES,
+      );
+      expect(codex.ok ? '' : codex.error).toBe(
+        'Invalid profile: codex has no effort level to set, so "high" cannot be used.',
+      );
+      const gemini = await saveProfile(store, profile('a', { agent: 'gemini' }), MODES);
+      expect(gemini.ok ? '' : gemini.error).toBe(
+        'Invalid profile: Overlord has no agent called gemini.',
+      );
+    });
+
+    it('still lists a profile saved before modes were checked', async () => {
+      await mkdir(path.dirname(store), { recursive: true });
+      const old = stored(profile('a', { effort: 'High', permissionMode: 'on-request' }));
+      await writeFile(store, JSON.stringify({ version: 1, profiles: [old] }));
+      expect(await listProfiles(store)).toStrictEqual({
+        profiles: [profile('a', { effort: 'High', permissionMode: 'on-request' })],
+        error: null,
+      });
     });
 
     it('backs up an unreadable store and starts fresh', async () => {
       await mkdir(path.dirname(store), { recursive: true });
       await writeFile(store, 'corrupt');
       const fresh = profile('a');
-      expect(await saveProfile(store, fresh)).toStrictEqual({ ok: true, profiles: [fresh] });
+      expect(await saveProfile(store, fresh, MODES)).toStrictEqual({ ok: true, profiles: [fresh] });
       expect(await readFile(`${store}.bak`, 'utf8')).toBe('corrupt');
     });
 
     it('reports a store it cannot write', async () => {
       await writeFile(path.join(dir, 'plain'), 'x');
       const blocked = path.join(dir, 'plain', 'profiles.json');
-      const result = await saveProfile(blocked, profile('a'));
+      const result = await saveProfile(blocked, profile('a'), MODES);
       expect(result.ok).toBe(false);
       expect(result.ok ? '' : result.error).toContain(`Cannot write ${blocked}: `);
     });
@@ -151,8 +193,8 @@ describe('profiles', () => {
 
   describe('deleteProfile', () => {
     it('removes the profile with that id and nothing else', async () => {
-      await saveProfile(store, profile('a'));
-      await saveProfile(store, profile('b'));
+      await saveProfile(store, profile('a'), MODES);
+      await saveProfile(store, profile('b'), MODES);
       expect(await deleteProfile(store, 'a')).toStrictEqual({ ok: true, profiles: [profile('b')] });
       expect(await deleteProfile(store, 'missing')).toStrictEqual({
         ok: true,
@@ -160,53 +202,6 @@ describe('profiles', () => {
       });
       const listed = await listProfiles(store);
       expect(listed.profiles).toStrictEqual([profile('b')]);
-    });
-  });
-
-  describe('toExtraArgs', () => {
-    it.each([
-      [[], {}],
-      [['--verbose'], { verbose: null }],
-      [['--max-turns', '5'], { 'max-turns': '5' }],
-      [['--debug=api,mcp'], { debug: 'api,mcp' }],
-      [['--empty='], { empty: '' }],
-      [['--a', '--b', 'x', '--c'], { a: null, b: 'x', c: null }],
-      [['--a', '-p', 'stray'], { a: null }],
-      [['-w', 'name', '--tmux'], { tmux: null }],
-      [['positional', '--', '--x', 'y'], { x: 'y' }],
-    ])('turns %j into %j', (args, expected) => {
-      expect(toExtraArgs(args)).toStrictEqual(expected);
-    });
-  });
-
-  describe('toLaunchOptions', () => {
-    it('leaves out unset fields', () => {
-      const options = toLaunchOptions(profile('a'));
-      expect(options).toStrictEqual({ env: {}, extraArgs: {} });
-      expect('model' in options).toBe(false);
-      expect('effort' in options).toBe(false);
-      expect('permissionMode' in options).toBe(false);
-    });
-
-    it('copies every set field', () => {
-      const env = { CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS: '4' };
-      const options = toLaunchOptions(
-        profile('a', {
-          model: 'opus',
-          effort: 'xhigh',
-          permissionMode: 'acceptEdits',
-          env,
-          extraArgs: ['--max-turns', '9'],
-        }),
-      );
-      expect(options).toStrictEqual({
-        model: 'opus',
-        effort: 'xhigh',
-        permissionMode: 'acceptEdits',
-        env,
-        extraArgs: { 'max-turns': '9' },
-      });
-      expect(options.env).not.toBe(env);
     });
   });
 });

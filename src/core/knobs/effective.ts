@@ -1,32 +1,20 @@
-// The effective value of every settings key, with provenance. Precedence is
-// managed > cli > project-local > project > user > env, as settings.md
-// documents, and list keys merge across layers instead of overriding.
+// The effective value of every settings key, with provenance. Precedence and
+// which list keys merge across layers instead of overriding come from the
+// agent's config facet.
 
 import type { EffectiveValue, SettingsLayer } from '../../shared/model.js';
 
+import type { KnobsFacet } from './facet.js';
 import { isArray, isPlainObject, type JsonRecord } from './json.js';
 import type { LayerData } from './layers.js';
 
-export const LAYER_ORDER: readonly SettingsLayer[] = [
-  'managed',
-  'cli',
-  'project-local',
-  'project',
-  'user',
-  'env',
-  'default',
-];
+/** What computeEffective needs from a facet. */
+type MergeRules = Pick<KnobsFacet, 'layers' | 'neverMerges' | 'managedReplaces'>;
 
-/**
- * List keys that settings.md says do not merge: fallbackModel is an ordered
- * chain and modelPicker rows come from one source, so the highest layer wins.
- */
-function neverMerges(key: string): boolean {
-  return key === 'fallbackModel' || key === 'modelPicker' || key.startsWith('modelPicker.');
+/** The facet's layers, highest precedence first, then built-in defaults. */
+export function layerOrder(rules: Pick<KnobsFacet, 'layers'>): readonly SettingsLayer[] {
+  return [...rules.layers.map((source) => source.layer), 'default'];
 }
-
-/** A managed availableModels list applies as-is, with no entries added from lower layers. */
-const MANAGED_REPLACES = new Set(['availableModels']);
 
 /** Env var names whose values never leave the extension host. */
 const SECRET_ENV = /KEY|TOKEN|SECRET|PASSWORD|PASSPHRASE|CREDENTIAL|AUTH|HEADERS|COOKIE/iu;
@@ -54,10 +42,6 @@ export function flattenSettings(values: JsonRecord): ReadonlyMap<string, unknown
   return out;
 }
 
-function layerRank(layer: SettingsLayer): number {
-  return LAYER_ORDER.indexOf(layer);
-}
-
 export function isSecretKey(key: string): boolean {
   return key.startsWith('env.') && SECRET_ENV.test(key.slice(4));
 }
@@ -80,11 +64,16 @@ function mergeArrays(chain: readonly ChainLink[]): readonly unknown[] {
   return merged;
 }
 
-function resolveValue(key: string, chain: readonly ChainLink[], winner: ChainLink): unknown {
-  if (!isArray(winner.value) || neverMerges(key)) {
+function resolveValue(
+  key: string,
+  chain: readonly ChainLink[],
+  winner: ChainLink,
+  rules: MergeRules,
+): unknown {
+  if (!isArray(winner.value) || rules.neverMerges(key)) {
     return winner.value;
   }
-  if (winner.layer === 'managed' && MANAGED_REPLACES.has(key)) {
+  if (winner.layer === 'managed' && rules.managedReplaces.has(key)) {
     return winner.value;
   }
   return mergeArrays(chain);
@@ -105,8 +94,13 @@ interface KeyChain {
 }
 
 /** One EffectiveValue per dotted key set in any layer, sorted by key. */
-export function computeEffective(layers: readonly LayerData[]): readonly EffectiveValue[] {
-  const ordered = layers.toSorted((left, right) => layerRank(left.layer) - layerRank(right.layer));
+export function computeEffective(
+  layers: readonly LayerData[],
+  rules: MergeRules,
+): readonly EffectiveValue[] {
+  const order = layerOrder(rules);
+  const rank = (layer: SettingsLayer): number => order.indexOf(layer);
+  const ordered = layers.toSorted((left, right) => rank(left.layer) - rank(right.layer));
   const chains = new Map<string, KeyChain>();
   for (const layer of ordered) {
     for (const [key, value] of flattenSettings(layer.values)) {
@@ -125,7 +119,7 @@ export function computeEffective(layers: readonly LayerData[]): readonly Effecti
       const secret = isSecretKey(key);
       return {
         key,
-        value: secret ? REDACTED : resolveValue(key, links, winner),
+        value: secret ? REDACTED : resolveValue(key, links, winner, rules),
         layer: winner.layer,
         chain: secret ? redactChain(links) : links,
       };

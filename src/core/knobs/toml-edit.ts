@@ -26,6 +26,7 @@ import { verifyEdit, type Expectation } from './toml-verify.js';
 
 export { formatTomlKey, formatTomlValue, parseTomlKey, type TomlEditValue } from './toml-scan.js';
 
+/** @public */
 export interface TomlEntry {
   readonly key: readonly string[];
   readonly value: TomlEditValue;

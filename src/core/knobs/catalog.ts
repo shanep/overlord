@@ -30,7 +30,11 @@ export function parseCatalog(raw: unknown): readonly KnobDefinition[] {
   return knobs;
 }
 
-/** A loader for one agent's bundled catalog that validates it on the first call and reuses it after. */
+/**
+ * A loader for one agent's bundled catalog that validates it on the first
+ * call and reuses it after. Each config facet's `catalog` is one of these.
+ * @public
+ */
 export function bundledCatalog(raw: unknown): () => readonly KnobDefinition[] {
   let cached: readonly KnobDefinition[] | null = null;
   return () => {
