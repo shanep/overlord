@@ -254,6 +254,12 @@
         "title": "Help",
         "category": "Overlord",
         "icon": "$(question)"
+      },
+      {
+        "command": "overlord.newSession",
+        "title": "New Session...",
+        "category": "Overlord",
+        "icon": "$(sparkle)"
       }
     ],
     "viewsContainers": {
@@ -293,7 +299,7 @@
       ],
       "view/title": [
         {
-          "command": "overlord.newClaudeSession",
+          "command": "overlord.newSession",
           "when": "view == overlord.fleet",
           "group": "navigation@1"
         },

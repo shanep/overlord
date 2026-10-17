@@ -27,7 +27,7 @@ const LANE_GAP = 16;
 
 const WAYS: readonly Way[] = [
   [
-    { title: 'Sparkle button', areas: [4], lines: ['New Claude Code Session'] },
+    { title: 'Sparkle button', areas: [4], lines: ['New Session'] },
     { title: 'Background job', lines: ['`claude --bg', 'in its own worktree'] },
     { title: 'Editor tab', areas: [6], lines: ['`claude attach <id>'] },
     { title: 'Stops when idle', lines: ['Mid turn, it keeps', 'going in the background'] },

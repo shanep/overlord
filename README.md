@@ -86,8 +86,9 @@ skipped with a warning.
 
 ## What it does
 
-- **Claude Code in a tab**: **Overlord: New Claude Code Session** (or the sparkle button in the
-  Overlord sidebar) asks which project to start in, with this window's folder first, so Enter
+- **Claude Code in a tab**: **Overlord: New Claude Code Session** (or **New Session...** and the
+  sparkle button in the Overlord sidebar, which first ask which agent once another one can open in
+  a tab) asks which project to start in, with this window's folder first, so Enter
   starts where it always did. It starts a `claude` session in the background, in its own worktree
   of that project's repo (see [Worktrees](#worktrees)), and attaches an editor tab to it. Closing the tab
   leaves the session running in the background instead of asking to terminate it, and clicking it in

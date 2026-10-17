@@ -15,6 +15,7 @@ import { BOISESTATE_KEY_SECRET, BOISESTATE_PROFILE } from '../core/bridge/boises
 import { isTerminal } from '../core/harness/launcher.js';
 import { listProfiles, modesLookup, saveProfile } from '../core/knobs/profiles.js';
 import { runSelfCheck } from '../core/self-check.js';
+import { CLAUDE_CODE } from '../shared/agents.js';
 import type { HostToWebview, ViewId, WebviewAction } from '../shared/protocol.js';
 import { VIEW_IDS } from '../shared/protocol.js';
 
@@ -285,7 +286,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     register('overlord.enableTelemetry', async () => overlord.setup.enableTelemetry()),
     register('overlord.disableTelemetry', async () => overlord.setup.disableTelemetry()),
     // Each new session gets its own worktree, so sessions never share files.
-    register('overlord.newClaudeSession', async () => dispatch({ type: 'newSession' })),
+    // New Session asks which agent once another one can open in a tab.
+    register('overlord.newSession', async () => dispatch({ type: 'newSession' })),
+    register('overlord.newClaudeSession', async () =>
+      dispatch({ type: 'newSession', agent: CLAUDE_CODE }),
+    ),
     register('overlord.newBoisestateChat', async () => dispatch({ type: 'newBridgeChat' })),
     register('overlord.openProject', async () => dispatch({ type: 'openProject' })),
     register('overlord.showProperties', (): void => {
