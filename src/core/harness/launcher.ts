@@ -264,7 +264,12 @@ export class Launcher {
       this.finish(record, 'stopped', null);
       return;
     }
-    const routed = await this.onBackend(backend, adapter.id, { ...settings.env, ...lease?.env });
+    const routed = await this.onBackend(
+      backend,
+      adapter.id,
+      { ...settings.env, ...lease?.env },
+      settings.permissionMode,
+    );
     const session = AgentSession.start(
       {
         runtime,
@@ -303,21 +308,35 @@ export class Launcher {
     return this.deps.executablePath?.(agent, env) ?? null;
   }
 
-  /** A run's env and MCP choice on its backend, once the backend's endpoint is up. */
+  /**
+   * A run's env, MCP choice and permission mode on its backend, once the
+   * backend's endpoint is up. A backend with a safe mode takes it in place of
+   * auto mode, or of no mode, which leaves the user's default (maybe auto).
+   */
   private async onBackend(
     backend: Backend | null,
     agent: AgentId,
     env: Readonly<Record<string, string>>,
-  ): Promise<{ readonly env: Record<string, string>; readonly noMcp: boolean }> {
+    mode: string | null,
+  ): Promise<{
+    readonly env: Record<string, string>;
+    readonly noMcp: boolean;
+    readonly permissionMode: string | null;
+  }> {
     if (backend === null) {
-      return { env: { ...env }, noMcp: false };
+      return { env: { ...env }, noMcp: false, permissionMode: mode };
     }
     const source = this.deps.backendEndpoint;
     if (source === undefined) {
       throw new Error(`The ${backend.name} backend is not available here.`);
     }
     const endpoint = await source(backend.id);
-    return { env: { ...env, ...backend.env(agent, endpoint, 'run') }, noMcp: backend.noMcp };
+    const safe = backend.safeMode !== null && (mode === null || mode === 'auto');
+    return {
+      env: { ...env, ...backend.env(agent, endpoint, 'run') },
+      noMcp: backend.noMcp,
+      permissionMode: safe ? backend.safeMode : mode,
+    };
   }
 
   /** Records the session id once known and the first turn's result, then closes the input. */

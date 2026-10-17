@@ -39,6 +39,12 @@ export interface Backend {
   readonly noMcp: boolean;
   /** The endpoint goes away with the window, so its sessions run in their tab, not the background. */
   readonly windowBound: boolean;
+  /**
+   * The permission mode a session starts in when it would otherwise run in
+   * auto mode. Auto mode asks a model to approve every tool call, and on a
+   * metered backend that model bills the same quota. Null leaves the mode alone.
+   */
+  readonly safeMode: string | null;
   /** True when an env from before profiles had a backend field opts into this one. */
   readonly claims: (env: Readonly<Record<string, string>>) => boolean;
 }

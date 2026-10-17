@@ -493,6 +493,26 @@ describe('Launcher backends', () => {
     });
   });
 
+  it.each([
+    ['plan', 'plan'],
+    ['auto', 'default'],
+    [null, 'default'],
+  ])(
+    'runs a bridge profile in %s mode as %s, since auto mode would bill the quota',
+    async (mode, runs) => {
+      const { launcher, queries } = setup(1, endpoints([]));
+      const bridged: LaunchProfile = {
+        ...PROFILE,
+        id: 'bsu',
+        backend: BOISESTATE_PROFILE.backend ?? '',
+        permissionMode: mode,
+      };
+      launcher.launch([spec('ok:0', { profileId: 'bsu' })], [bridged]);
+      await launcher.idle();
+      expect(queries[0]?.options.permissionMode).toBe(runs);
+    },
+  );
+
   it('fails a run whose backend is unknown or has no endpoint here', async () => {
     const { launcher } = setup(2);
     const unknown: LaunchProfile = { ...PROFILE, id: 'u', backend: 'nope' };

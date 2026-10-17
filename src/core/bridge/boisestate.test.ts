@@ -26,14 +26,17 @@ describe('BOISESTATE', () => {
     });
   });
 
-  it('starts a tab on the bridge model, with no MCP servers, in the foreground', () => {
+  it('starts a tab on the bridge model, with no MCP servers and not in auto mode, in the foreground', () => {
     expect(BOISESTATE.tabArgs(CLAUDE_CODE)).toStrictEqual([
       '--model',
       BOISESTATE_PROFILE.model,
       '--strict-mcp-config',
+      '--permission-mode',
+      'default',
     ]);
     expect(BOISESTATE.noMcp).toBe(true);
     expect(BOISESTATE.windowBound).toBe(true);
+    expect(BOISESTATE.safeMode).toBe('default');
   });
 
   it('claims an env only when the base URL is the placeholder', () => {

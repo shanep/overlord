@@ -714,7 +714,15 @@ describe('worktrees in the app', { timeout: 30_000 }, () => {
       await continueOld(test, null);
       expect(lastTerminal(test)).toMatchObject({
         cwd: plain,
-        args: ['--model', 'claude-opus-5-5', '--strict-mcp-config', '--resume', 'old'],
+        args: [
+          '--model',
+          'claude-opus-5-5',
+          '--strict-mcp-config',
+          '--permission-mode',
+          'default',
+          '--resume',
+          'old',
+        ],
         env: { ANTHROPIC_BASE_URL: 'http://127.0.0.1:9', ANTHROPIC_AUTH_TOKEN: 'tok' },
       });
 
@@ -750,6 +758,8 @@ describe('worktrees in the app', { timeout: 30_000 }, () => {
           '--model',
           'claude-opus-5-5',
           '--strict-mcp-config',
+          '--permission-mode',
+          'default',
           '--session-id',
           terminal.sessionId,
         ],

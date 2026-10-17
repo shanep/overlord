@@ -55,11 +55,14 @@ export const BOISESTATE: Backend = {
     [BASE_URL]: endpoint.baseUrl,
     [surface === 'tab' ? 'ANTHROPIC_AUTH_TOKEN' : 'ANTHROPIC_API_KEY']: endpoint.token,
   }),
-  // The bridge's model, and no MCP servers, since the bridge sends every
-  // tool's definition as text in each request.
-  tabArgs: () => ['--model', BRIDGE_MODEL, '--strict-mcp-config'],
+  // The bridge's model, no MCP servers, since the bridge sends every tool's
+  // definition as text in each request, and not auto mode. Auto mode's
+  // approval checks ran on Sonnet through the bridge, about six 55k-token
+  // calls per turn, and used up a month's quota in under an hour.
+  tabArgs: () => ['--model', BRIDGE_MODEL, '--strict-mcp-config', '--permission-mode', 'default'],
   noMcp: true,
   windowBound: true,
+  safeMode: 'default',
   claims: (env) => env[BASE_URL] === BRIDGE_BASE_URL,
 };
 
