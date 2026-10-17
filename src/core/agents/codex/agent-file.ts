@@ -40,6 +40,8 @@ const EDIT_TOOLS: ReadonlySet<string> = new Set([
   'NotebookEdit',
 ]);
 
+/** A key TOML takes without quotes. */
+const BARE_KEY = /^[\w-]+$/u;
 const SURROGATES = { low: 0xd8_00, high: 0xdf_ff } as const;
 const DELETE = 0x7f;
 const SPACE = 0x20;
@@ -118,7 +120,7 @@ function renderToml(table: Readonly<Record<string, unknown>>): string {
   for (const key of keys) {
     const value = tomlValue(table[key]);
     if (value !== null) {
-      lines.push(`${key} = ${value}`);
+      lines.push(`${BARE_KEY.test(key) ? key : tomlString(key)} = ${value}`);
     }
   }
   return `${lines.join('\n')}\n`;
