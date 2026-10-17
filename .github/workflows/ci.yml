@@ -1,8 +1,13 @@
 name: CI
 
+# A pushed v* tag also publishes a GitHub release of the packaged .vsix, once
+# every check passes, so pushing the tag is the release. scripts/create-release.sh
+# pushes it, and it needs the owner's explicit go-ahead.
+
 on:
   push:
     branches: [master]
+    tags: ['v*']
   pull_request:
 
 permissions:
@@ -27,15 +32,16 @@ jobs:
       - run: npm ci
       - run: npm run check
       # Mutation test only what changed. The full sweep runs nightly.
+      # A tag has no diff to mutate, and master already ran this on the commit.
       - name: Restore mutation cache
-        if: runner.os == 'Linux'
+        if: runner.os == 'Linux' && github.ref_type != 'tag'
         uses: actions/cache@v4
         with:
           path: reports/stryker-incremental-fast.json
           key: stryker-${{ github.sha }}
           restore-keys: stryker-
       - name: Mutation test changed files
-        if: runner.os == 'Linux'
+        if: runner.os == 'Linux' && github.ref_type != 'tag'
         env:
           MUTATION_BASE: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || (github.event.before != '0000000000000000000000000000000000000000' && github.event.before || 'HEAD~1') }}
         run: npm run test:mutation:changed
@@ -73,3 +79,62 @@ jobs:
           languages: javascript-typescript
           queries: security-and-quality
       - uses: github/codeql-action/analyze@v3
+
+  release:
+    name: GitHub release
+    if: github.event_name == 'push' && github.ref_type == 'tag'
+    needs: [check, audit, codeql]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      # The tag comes through the environment, never pasted into a script.
+      TAG: ${{ github.ref_name }}
+      # Publishing to the Marketplace is on once this secret exists.
+      VSCE_PAT: ${{ secrets.VSCE_PAT }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history and tags, for the notes since the previous release.
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Package the .vsix with the tag's version
+        run: |
+          version="${TAG#v}"
+          npm version "$version" --no-git-tag-version --allow-same-version
+          npm run package
+          # Also attach it under a name with no version in it, so
+          # releases/latest/download/overlord.vsix is a link that never changes.
+          cp "overlord-$version.vsix" overlord.vsix
+      - name: Write the release notes
+        run: |
+          previous="$(git describe --tags --abbrev=0 --match 'v[0-9]*' "$TAG^" 2>/dev/null || true)"
+          {
+            if [ -n "$previous" ]; then
+              echo "## Changes since $previous"
+              echo
+              git log --no-merges --format='- %s' "$previous..$TAG"
+            else
+              echo "The first release of Overlord."
+            fi
+            echo
+            echo "## Install"
+            echo
+            echo '```sh'
+            echo "code --install-extension overlord-${TAG#v}.vsix"
+            echo '```'
+          } > notes.md
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${TAG#v}"
+          gh release create "$TAG" "overlord-$version.vsix" overlord.vsix \
+            --verify-tag --title "Overlord $version" --notes-file notes.md
+      - name: Publish to the VS Code Marketplace
+        if: env.VSCE_PAT != ''
+        run: npx vsce publish --packagePath "overlord-${TAG#v}.vsix"

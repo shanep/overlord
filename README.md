@@ -114,11 +114,14 @@ See [PLAN.md](PLAN.md) for the full design and the decisions behind it.
 
 ## Install
 
-Grab the `.vsix` from the GitHub releases page and install it:
+Download the latest `.vsix` from the GitHub releases page and install it:
 
 ```sh
-code --install-extension overlord-0.1.0.vsix
+gh release download --repo shanep/overlord --pattern overlord.vsix
+code --install-extension overlord.vsix
 ```
+
+Every release also has `overlord-X.Y.Z.vsix` if you want a specific version.
 
 Then open the Overlord icon in the activity bar. Run **Overlord: Set Up Hooks and Telemetry**
 to get live permission requests, memory load events and per-request cost. Both are off until
@@ -258,6 +261,28 @@ It builds `HEAD` in a temporary worktree, installs the package, and waits
 until a window reloads. Installed copies watch their own bundle and reload the
 window when a new one lands, so there is no Reload Window to press. The first
 install over a copy older than this needs one reload by hand.
+
+## Releasing
+
+Pushing a `v*` tag is the release. The script tags the tip of `origin/master`,
+but only once CI has passed on it (it waits if CI is still running):
+
+```sh
+scripts/create-release.sh patch        # or minor, major, or an exact 1.2.0
+scripts/create-release.sh -n minor     # dry run, tags nothing
+```
+
+CI then reruns every check on the tag, packages the `.vsix` with the tag's
+version and publishes the GitHub release, with notes listing the commits since
+the last one. The version in `package.json` is a placeholder for local builds,
+so a release never needs a version bump commit.
+
+Publishing to the VS Code Marketplace turns on once the repo has a `VSCE_PAT`
+secret, a Marketplace token for the `shanep` publisher:
+
+```sh
+gh secret set VSCE_PAT --repo shanep/overlord
+```
 
 ## Testing
 
