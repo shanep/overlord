@@ -4,6 +4,7 @@ import {
   assistant,
   attachment,
   system,
+  T0,
   text,
   toolResult,
   toolUse,
@@ -15,6 +16,8 @@ import type { MeasureInput } from './measure.js';
 import { BIG_RESULT_CHARS, costTotal, IDLE_GAP_MS, measureSession } from './measure.js';
 
 const SESSION = 'aaaaaaaa-1111-4111-8111-111111111111';
+const MINUTE = 60_000;
+const HOUR = 60 * MINUTE;
 
 type Fields = Readonly<Record<string, unknown>>;
 
@@ -344,6 +347,69 @@ describe('measureSession', () => {
     expect(result.subagentRequests).toBe(3);
     expect(result.premiumSubagentRequests).toBe(1);
     expect(result.subagentUsd).toBeCloseTo((1000 * 20 + 1000 * 0.5) / 1_000_000);
+  });
+
+  it('splits spend by clock hour into what each habit could save', () => {
+    const subagent = lines([
+      assistant({
+        uuid: 's1',
+        at: 30 * MINUTE,
+        messageId: 'x1',
+        content: [],
+        usage: usage({ output: 1000 }),
+      }),
+    ]);
+    const result = measure(
+      [
+        assistant({
+          uuid: 'a1',
+          at: 0,
+          messageId: 'm1',
+          content: [],
+          usage: usage({ input: 50_000 }),
+        }),
+        assistant({
+          uuid: 'a2',
+          at: HOUR + MINUTE,
+          messageId: 'm2',
+          content: [],
+          model: 'claude-sonnet-5-5',
+          usage: usage({ cacheRead: 200_000 }),
+        }),
+      ],
+      { subagents: [subagent] },
+    );
+    // T0 starts an hour, so the hours count from it.
+    const rounded = result.hours.map((hour) =>
+      Object.fromEntries(
+        Object.entries({ ...hour, at: hour.at - T0 }).map(([key, value]) => [
+          key,
+          Math.round(value * 1e6) / 1e6,
+        ]),
+      ),
+    );
+    expect(rounded).toStrictEqual([
+      {
+        at: 0,
+        usd: 0.22,
+        subagentUsd: 0.02,
+        premiumUsd: 0.2,
+        premiumSavingUsd: 0.1,
+        subagentSavingUsd: 0.01,
+        bigContextUsd: 0,
+        idleRewriteUsd: 0,
+      },
+      {
+        at: HOUR,
+        usd: 0.04,
+        subagentUsd: 0,
+        premiumUsd: 0,
+        premiumSavingUsd: 0,
+        subagentSavingUsd: 0,
+        bigContextUsd: 0.02,
+        idleRewriteUsd: 0,
+      },
+    ]);
   });
 
   it('uses the price table it is given', () => {

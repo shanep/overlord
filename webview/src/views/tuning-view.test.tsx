@@ -2,6 +2,7 @@ import { fireEvent, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import type { ImpactMetric, TipImpact, TuningState } from '../../../src/shared/tuning.js';
+import { EMPTY_LIMIT } from '../../../src/shared/tuning.js';
 import { NOW } from '../../test/fixtures.js';
 import { expectAccessible, renderView } from '../../test/render.js';
 
@@ -72,6 +73,7 @@ const EMPTY: TuningState = {
   largestContext: 0,
   tips: [],
   suggestions: [],
+  limit: EMPTY_LIMIT,
   rows: [],
   scannedAt: null,
 };
@@ -132,6 +134,7 @@ const STATE: TuningState = {
       installed: true,
     },
   ],
+  limit: EMPTY_LIMIT,
   rows: [
     {
       sessionId: S1,
@@ -165,7 +168,9 @@ describe('TuningView', () => {
   it('shows the headline numbers, advice, suggestions and sessions, and passes axe', async () => {
     const { getByRole, getByText, container } = renderView(<TuningView state={STATE} />);
     expect(getByText('Sessions', { selector: 'dt' }).nextElementSibling?.textContent).toBe('2');
-    expect(getByText('Spend').nextElementSibling?.textContent).toBe('$20.00 est.');
+    expect(getByText('Spend', { selector: 'dt' }).nextElementSibling?.textContent).toBe(
+      '$20.00 est.',
+    );
     expect(getByText('Re-reading context').nextElementSibling?.textContent).toBe('60%');
     expect(getByText('Average context', { selector: 'dt' }).nextElementSibling?.textContent).toBe(
       '250K',

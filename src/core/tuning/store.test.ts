@@ -23,11 +23,26 @@ describe('tips index', () => {
   it('round trips entries and the scan time', async () => {
     const file = await temporaryFile();
     const index = emptyIndex();
-    const measure = measureOf({ spawns: { Explore: 2 }, topRepeat: { command: 'ls', runs: 3 } });
+    const measure = measureOf({
+      spawns: { Explore: 2 },
+      topRepeat: { command: 'ls', runs: 3 },
+      hours: [
+        {
+          at: 3_600_000,
+          usd: 1,
+          subagentUsd: 0.5,
+          premiumUsd: 0.5,
+          premiumSavingUsd: 0.25,
+          subagentSavingUsd: 0.1,
+          bigContextUsd: 0.2,
+          idleRewriteUsd: 0,
+        },
+      ],
+    });
     index.entries.set('/p/s.jsonl', { stamp: { mtimeMs: 5, size: 9 }, measure, live: false });
     index.scannedAt = 77;
     await saveIndex(file, index);
-    expect(JSON.parse(await readFile(file, 'utf8'))).toMatchObject({ version: 2, scannedAt: 77 });
+    expect(JSON.parse(await readFile(file, 'utf8'))).toMatchObject({ version: 3, scannedAt: 77 });
     const loaded = await loadIndex(file);
     expect(loaded.scannedAt).toBe(77);
     expect(loaded.entries.get('/p/s.jsonl')).toStrictEqual({
@@ -35,6 +50,23 @@ describe('tips index', () => {
       measure,
       live: false,
     });
+  });
+
+  it('keeps a version 2 file but measures its live transcripts again', async () => {
+    const file = await temporaryFile();
+    const old = Object.fromEntries(Object.entries(measureOf()).filter(([key]) => key !== 'hours'));
+    const entries = {
+      '/p/live.jsonl': { stamp: { mtimeMs: 5, size: 9 }, measure: old, live: true },
+      '/p/gone.jsonl': { stamp: { mtimeMs: 6, size: 9 }, measure: old, live: false },
+    };
+    await writeFile(file, JSON.stringify({ version: 2, scannedAt: 1, entries }));
+    const loaded = await loadIndex(file);
+    expect(loaded.entries.get('/p/live.jsonl')).toStrictEqual({
+      stamp: { mtimeMs: -1, size: -1 },
+      measure: measureOf(),
+      live: true,
+    });
+    expect(loaded.entries.get('/p/gone.jsonl')?.stamp).toStrictEqual({ mtimeMs: 6, size: 9 });
   });
 
   it('starts over from bad JSON, a wrong shape or an older version', async () => {

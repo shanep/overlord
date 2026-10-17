@@ -116,6 +116,74 @@ export interface TuningSessionRow {
   readonly tips: readonly string[];
 }
 
+/** One plan limit window and how fast it is filling. */
+export interface LimitWindow {
+  /** The server's meter kind: "session" or "weekly_all". */
+  readonly kind: string;
+  readonly label: string;
+  /** Share of the window used, 0 to 100. */
+  readonly percent: number;
+  /** The server's grading: "normal", "warning" or "critical". */
+  readonly severity: string;
+  readonly startsAt: number | null;
+  readonly resetsAt: number | null;
+  /** When it fills at the pace so far, or null when it lasts until the reset. */
+  readonly runsOutAt: number | null;
+}
+
+/** A session's part of the spend in the current session window. */
+export interface LimitSession {
+  readonly sessionId: string;
+  readonly title: string;
+  readonly usd: number;
+  /** Share of the window's spend, 0 to 1. */
+  readonly share: number;
+}
+
+/** A change of habit, and how much of the last week's usage it would have saved. */
+export interface LimitLever {
+  readonly id: string;
+  readonly title: string;
+  /** What the last week shows, with numbers. */
+  readonly finding: string;
+  /** What to do, one step per entry. */
+  readonly advice: readonly string[];
+  readonly savedUsd: number;
+  /** Share of the week's spend saved, 0 to 1. The limit lasts 1 / (1 - saving) times as long. */
+  readonly saving: number;
+  /** The tip with more on it, or null. */
+  readonly tipId: string | null;
+}
+
+/** How the plan's usage limits are being used, and what would stretch them. */
+export interface LimitState {
+  /** "pro", "max", "team" or "enterprise", or null when unknown. */
+  readonly subscription: string | null;
+  /** The session and weekly windows, empty when plan limits could not be read. */
+  readonly windows: readonly LimitWindow[];
+  /** Start of the current session window, or five hours ago when it is unknown. */
+  readonly windowStart: number;
+  /** Spend since windowStart, at list price. */
+  readonly windowUsd: number;
+  /** Sessions that spent in the window, biggest first. */
+  readonly sessions: readonly LimitSession[];
+  /** Spend over the last seven days, which the levers are measured against. */
+  readonly weekUsd: number;
+  /** Biggest saving first. Each one alone; they overlap, so they do not add up. */
+  readonly levers: readonly LimitLever[];
+}
+
+/** Before the first scan, and when nothing has been spent. */
+export const EMPTY_LIMIT: LimitState = {
+  subscription: null,
+  windows: [],
+  windowStart: 0,
+  windowUsd: 0,
+  sessions: [],
+  weekUsd: 0,
+  levers: [],
+};
+
 export interface TuningState {
   readonly sessions: number;
   readonly totalUsd: number;
@@ -125,6 +193,7 @@ export interface TuningState {
   readonly largestContext: number;
   readonly tips: readonly Tip[];
   readonly suggestions: readonly Suggestion[];
+  readonly limit: LimitState;
   /** Most expensive first. */
   readonly rows: readonly TuningSessionRow[];
   /** When the transcripts were last measured, or null before the first scan. */

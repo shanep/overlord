@@ -157,6 +157,95 @@
       "installed": true
     }
   ],
+  "limit": {
+    "subscription": "max",
+    "windows": [
+      {
+        "kind": "session",
+        "label": "Current session",
+        "percent": 71,
+        "severity": "warning",
+        "startsAt": 1792202400000,
+        "resetsAt": 1792220400000,
+        "runsOutAt": 1792213320000
+      },
+      {
+        "kind": "weekly_all",
+        "label": "Current week (all models)",
+        "percent": 38,
+        "severity": "normal",
+        "startsAt": 1791950880000,
+        "resetsAt": 1792555680000,
+        "runsOutAt": null
+      }
+    ],
+    "windowStart": 1792202400000,
+    "windowUsd": 31.4,
+    "sessions": [
+      {
+        "sessionId": "s-7",
+        "title": "Profile the hook server",
+        "usd": 14.2,
+        "share": 0.452
+      },
+      {
+        "sessionId": "s-3",
+        "title": "Download grades from Canvas",
+        "usd": 8.1,
+        "share": 0.258
+      },
+      {
+        "sessionId": "s-2",
+        "title": "Docs pass on the README",
+        "usd": 5.6,
+        "share": 0.178
+      },
+      {
+        "sessionId": "s-6",
+        "title": "Write the CS 321 project 3 rubric",
+        "usd": 3.5,
+        "share": 0.111
+      }
+    ],
+    "weekUsd": 128.4,
+    "levers": [
+      {
+        "id": "routine-model",
+        "title": "Run routine work on Sonnet",
+        "finding": "84% of the last week went to Opus, Fable or Mythos in main sessions. Changing this would have saved about $46 of $128.",
+        "advice": [
+          "Start routine sessions (small fixes, tests, docs, landing work) on Sonnet with /model sonnet.",
+          "Use /model opusplan for bigger tasks: Opus plans, then Sonnet makes the edits.",
+          "Keep Opus for design work and bugs Sonnet has already failed to fix."
+        ],
+        "savedUsd": 46,
+        "saving": 0.358,
+        "tipId": null
+      },
+      {
+        "id": "context",
+        "title": "Keep context small",
+        "finding": "Every request sends the whole context again. Context past 100K tokens is where this much went. Changing this would have saved about $22 of $128.",
+        "advice": [
+          "Use /clear between tasks, and write a handoff note first when the task goes on."
+        ],
+        "savedUsd": 22,
+        "saving": 0.171,
+        "tipId": "huge-context"
+      },
+      {
+        "id": "subagent-model",
+        "title": "Run subagents on a cheaper model",
+        "finding": "Subagents used 18% of the last week, much of it on premium models. Changing this would have saved about $9.40 of $128.",
+        "advice": [
+          "Set CLAUDE_CODE_SUBAGENT_MODEL to sonnet in Knobs, or give your own agents model: sonnet."
+        ],
+        "savedUsd": 9.4,
+        "saving": 0.073,
+        "tipId": "subagent-model"
+      }
+    ]
+  },
   "rows": [
     {
       "sessionId": "s-3",

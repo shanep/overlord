@@ -26,6 +26,7 @@ describe('summarize', () => {
       installed: new Set(['handoff']),
       home: HOME,
       scannedAt: 9,
+      plan: null,
     });
     expect(state).toMatchObject({
       sessions: 2,
@@ -61,6 +62,7 @@ describe('summarize', () => {
       installed: new Set(),
       home: HOME,
       scannedAt: null,
+      plan: null,
     });
     expect(state).toMatchObject({ sessions: 0, averageContext: 0, largestContext: 0, rows: [] });
   });
@@ -75,6 +77,7 @@ describe('summarize', () => {
       installed: new Set(),
       home: HOME,
       scannedAt: null,
+      plan: null,
     });
     expect(state.rows).toHaveLength(200);
     expect(state.rows[0]?.sessionId).toBe('s204');

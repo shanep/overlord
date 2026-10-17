@@ -12,6 +12,9 @@ import type { ContentBlock, TranscriptRecord } from '../transcripts/schemas.js';
 import { parseTimestamp, parseTranscriptLine } from '../transcripts/schemas.js';
 import { resultText } from '../transcripts/text.js';
 
+import type { SpendHour } from './spend-hours.js';
+import { HourTally, isPremium } from './spend-hours.js';
+
 /** US dollars at list price, split by token kind. */
 export interface CostSplit {
   readonly input: number;
@@ -72,6 +75,8 @@ export interface SessionMeasure {
   readonly subagentUsd: number;
   /** Main thread commands and searches by family. */
   readonly families: Readonly<Record<CommandFamily, number>>;
+  /** Spend by clock hour, oldest first, for the plan limit windows. */
+  readonly hours: readonly SpendHour[];
 }
 
 export interface MeasureInput {
@@ -94,7 +99,6 @@ const COMMAND_CHARS = 120;
 
 const DENIAL =
   /doesn't want to proceed|denied by (?:the )?(?:Claude Code )?auto[- ]mode|permission to use \S+ (?:has been|was) denied/iu;
-const PREMIUM = /claude-(?:opus|fable|mythos)/u;
 const CD_FIRST = /^\s*cd\s/u;
 
 // Simple patterns, several per family, so each stays easy to read and check.
@@ -248,7 +252,10 @@ class MainTally {
   private readonly toolIds = new Set<string>();
   private lastRequestAt: number | null = null;
 
-  constructor(private readonly prices: PriceTable) {}
+  constructor(
+    private readonly prices: PriceTable,
+    private readonly hours: HourTally,
+  ) {}
 
   ingest(record: TranscriptRecord): void {
     if (record.type === 'custom-title') {
@@ -292,17 +299,24 @@ class MainTally {
     this.requests += 1;
     this.contextTokens += context;
     this.peakContext = Math.max(this.peakContext, context);
-    const cost = costOfUsage(model, usage, this.prices);
-    if (cost !== null) {
-      this.cost = addCost(this.cost, cost);
-    }
+    const cost = costOfUsage(model, usage, this.prices) ?? ZERO_COST;
+    this.cost = addCost(this.cost, cost);
     const paused =
       at !== null && this.lastRequestAt !== null && at - this.lastRequestAt >= IDLE_GAP_MS;
-    if (paused && usage.cacheWrite >= IDLE_REWRITE_MIN_TOKENS && usage.cacheWrite * 2 >= context) {
+    const rewrite =
+      paused && usage.cacheWrite >= IDLE_REWRITE_MIN_TOKENS && usage.cacheWrite * 2 >= context;
+    if (rewrite) {
       this.idleRewrites += 1;
-      this.idleRewriteUsd += cost?.cacheWrite ?? 0;
+      this.idleRewriteUsd += cost.cacheWrite;
     }
     this.lastRequestAt = at ?? this.lastRequestAt;
+    this.hours.main({
+      at,
+      model,
+      tokens: usage,
+      cost,
+      idleRewriteUsd: rewrite ? cost.cacheWrite : 0,
+    });
   }
 
   private tool(name: string, input: unknown): void {
@@ -356,7 +370,12 @@ interface SubagentTally {
   usd: number;
 }
 
-function tallySubagent(lines: readonly string[], prices: PriceTable, into: SubagentTally): void {
+function tallySubagent(
+  lines: readonly string[],
+  prices: PriceTable,
+  into: SubagentTally,
+  hours: HourTally,
+): void {
   const seen = new Set<string>();
   for (const line of lines) {
     const record = parseTranscriptLine(line);
@@ -365,9 +384,17 @@ function tallySubagent(lines: readonly string[], prices: PriceTable, into: Subag
       continue;
     }
     into.requests += 1;
-    into.premium += PREMIUM.test(record.message.model) ? 1 : 0;
-    const cost = costOfUsage(record.message.model, usage, prices);
-    into.usd += cost === null ? 0 : costTotal(cost);
+    into.premium += isPremium(record.message.model) ? 1 : 0;
+    const cost = costOfUsage(record.message.model, usage, prices) ?? ZERO_COST;
+    into.usd += costTotal(cost);
+    const { model } = record.message;
+    hours.subagent({
+      at: parseTimestamp(record.timestamp),
+      model,
+      tokens: usage,
+      cost,
+      idleRewriteUsd: 0,
+    });
   }
 }
 
@@ -393,7 +420,8 @@ function familyCounts(families: ReadonlyMap<string, number>): Record<CommandFami
 
 export function measureSession(input: MeasureInput): SessionMeasure {
   const prices = input.prices ?? DEFAULT_PRICES;
-  const main = new MainTally(prices);
+  const hours = new HourTally(prices);
+  const main = new MainTally(prices, hours);
   for (const line of input.main) {
     const record = parseTranscriptLine(line);
     if (record !== null) {
@@ -402,7 +430,7 @@ export function measureSession(input: MeasureInput): SessionMeasure {
   }
   const sub: SubagentTally = { requests: 0, premium: 0, usd: 0 };
   for (const lines of input.subagents) {
-    tallySubagent(lines, prices, sub);
+    tallySubagent(lines, prices, sub, hours);
   }
   const prompts = transcriptPrompts(input.main, {
     sessionId: input.sessionId,
@@ -437,5 +465,6 @@ export function measureSession(input: MeasureInput): SessionMeasure {
     premiumSubagentRequests: sub.premium,
     subagentUsd: sub.usd,
     families: familyCounts(main.families),
+    hours: hours.hours(),
   };
 }

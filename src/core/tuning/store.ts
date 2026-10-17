@@ -38,6 +38,17 @@ const costSchema = z.object({
   cacheWrite: count,
 });
 
+const hourSchema = z.object({
+  at: z.number(),
+  usd: count,
+  subagentUsd: count,
+  premiumUsd: count,
+  premiumSavingUsd: count,
+  subagentSavingUsd: count,
+  bigContextUsd: count,
+  idleRewriteUsd: count,
+});
+
 const measureSchema = z.object({
   sessionId: z.string(),
   title: z.string(),
@@ -72,11 +83,15 @@ const measureSchema = z.object({
     buildTest: count,
     search: count,
   }),
+  // Version 2 files have no hours. They read as none, and the scan measures
+  // live transcripts again to fill them in.
+  hours: z.array(hourSchema).readonly().default([]),
 }) satisfies z.ZodType<SessionMeasure>;
 
 const fileSchema = z.object({
   // Bump when the measure changes meaning, so old entries are measured again.
-  version: z.literal(2),
+  // Version 2 lacks the hours, so its live entries are measured again.
+  version: z.union([z.literal(2), z.literal(3)]),
   scannedAt: z.number().nullable(),
   entries: z.record(
     z.string(),
@@ -87,6 +102,9 @@ const fileSchema = z.object({
     }),
   ),
 });
+
+/** Matches no file, so the next scan measures the transcript again. */
+const STALE_STAMP: FileStamp = { mtimeMs: -1, size: -1 };
 
 export function emptyIndex(): TuningIndex {
   return { entries: new Map(), scannedAt: null };
@@ -103,9 +121,12 @@ function parseIndex(text: string): TuningIndex | null {
   if (!parsed.success) {
     return null;
   }
+  const { version, entries, scannedAt } = parsed.data;
+  const stale = (entry: IndexEntry): IndexEntry =>
+    version < 3 && entry.live ? { ...entry, stamp: STALE_STAMP } : entry;
   return {
-    entries: new Map(Object.entries(parsed.data.entries)),
-    scannedAt: parsed.data.scannedAt,
+    entries: new Map(Object.entries(entries).map(([file, entry]) => [file, stale(entry)])),
+    scannedAt,
   };
 }
 
@@ -117,7 +138,7 @@ export async function loadIndex(file: string): Promise<TuningIndex> {
 
 export async function saveIndex(file: string, index: TuningIndex): Promise<void> {
   const data: z.input<typeof fileSchema> = {
-    version: 2,
+    version: 3,
     scannedAt: index.scannedAt,
     entries: Object.fromEntries(index.entries),
   };

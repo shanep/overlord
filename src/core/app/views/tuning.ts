@@ -8,6 +8,7 @@ import { stat } from 'node:fs/promises';
 import path from 'node:path';
 
 import type { TuningState } from '../../../shared/tuning.js';
+import { EMPTY_LIMIT } from '../../../shared/tuning.js';
 import type { AdviceStep } from '../../tuning/build.js';
 import { tipsTakenBy } from '../../tuning/build.js';
 import { scanInto } from '../../tuning/scan.js';
@@ -20,6 +21,8 @@ import { loadTracked, saveTracked } from '../../tuning/tracked.js';
 import { messageOf } from '../errors.js';
 import type { Runtime } from '../runtime.js';
 
+import { currentPlan } from './usage.js';
+
 export const EMPTY_TUNING: TuningState = {
   sessions: 0,
   totalUsd: 0,
@@ -28,6 +31,7 @@ export const EMPTY_TUNING: TuningState = {
   largestContext: 0,
   tips: [],
   suggestions: [],
+  limit: EMPTY_LIMIT,
   rows: [],
   scannedAt: null,
 };
@@ -178,6 +182,7 @@ function stateOf(rt: Runtime, entry: Entry): TuningState {
     installed: entry.installed,
     home: rt.paths.home,
     scannedAt: index.scannedAt,
+    plan: currentPlan(rt),
   });
 }
 

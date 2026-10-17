@@ -1,8 +1,10 @@
 // Turns the session measures into what the Tuning view shows.
 
+import type { PlanLimits } from '../../shared/protocol.js';
 import type { TuningSessionRow, TuningState } from '../../shared/tuning.js';
 
 import { buildTips, tipsFor } from './build.js';
+import { buildLimit } from './limit.js';
 import type { SessionMeasure } from './measure.js';
 import { cacheReadShare } from './rules.js';
 import { buildSuggestions } from './suggestions.js';
@@ -22,6 +24,8 @@ export interface SummaryInputs {
   readonly installed: ReadonlySet<string>;
   readonly home: string;
   readonly scannedAt: number | null;
+  /** The plan limits, or null when they do not apply or could not be read. */
+  readonly plan: PlanLimits | null;
 }
 
 export function summarize(inputs: SummaryInputs): TuningState {
@@ -58,6 +62,11 @@ export function summarize(inputs: SummaryInputs): TuningState {
     largestContext: totals.largestContext,
     tips,
     suggestions: buildSuggestions(totals, inputs.installed),
+    limit: buildLimit({
+      plan: inputs.plan,
+      measures: [...measures, ...inputs.history],
+      now: inputs.now,
+    }),
     rows,
     scannedAt: inputs.scannedAt,
   };

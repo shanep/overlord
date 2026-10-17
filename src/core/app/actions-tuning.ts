@@ -11,7 +11,7 @@ import { refreshInstalled, rescanTuning, setTipTracked, trackAdviceTaken } from 
 
 export const tuningActions: ActionHandlers<'rescanTuning' | 'createSuggestion' | 'trackTip'> = {
   rescanTuning: async ({ rt }) => {
-    const state = await rescanTuning(rt);
+    const [state] = await Promise.all([rescanTuning(rt), rt.caches.plan.refresh()]);
     rt.host.showInfo(
       `Tuning rescan done: ${plural(state.sessions, 'session')}, ${plural(state.tips.length, 'tip')}.`,
     );

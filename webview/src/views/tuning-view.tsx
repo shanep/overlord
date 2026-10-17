@@ -10,6 +10,7 @@ import { useNow } from '../clock.js';
 import { formatAgo, formatCompact, formatCost, formatDateTime, formatPercent } from '../format.js';
 import { usePostAction } from '../vscode-context.js';
 
+import { LimitSection } from './tuning-limit.js';
 import { SuggestionList, TipList, TuningSessionTable } from './tuning-lists.js';
 
 function Stat(props: { readonly label: string; readonly value: string }): ReactElement {
@@ -84,7 +85,14 @@ export function TuningView(props: { readonly state: TuningState }): ReactElement
           10% counts as no change, since the work and the model change too. Setting a knob or
           creating a skill or agent a tip names starts tracking on its own.
         </p>
+        <p>
+          The session limit part reads the same plan limits as /usage. It treats spend at list price
+          as usage, since the limits weigh tokens by model in much the same way, so the savings are
+          estimates. Each saving is worked out on its own over the last 7 days, and they overlap, so
+          they do not add up.
+        </p>
       </details>
+      <LimitSection limit={state.limit} tips={titles} />
       <TipList tips={state.tips} names={names} />
       <SuggestionList suggestions={state.suggestions} />
       <TuningSessionTable rows={state.rows} titles={titles} />

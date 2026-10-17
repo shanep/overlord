@@ -34,6 +34,7 @@ export function measureOf(overrides: Partial<SessionMeasure> = {}): SessionMeasu
     premiumSubagentRequests: 0,
     subagentUsd: 0,
     families: { land: 0, ci: 0, server: 0, buildTest: 0, search: 0 },
+    hours: [],
     ...overrides,
   };
 }
