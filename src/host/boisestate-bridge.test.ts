@@ -1,4 +1,4 @@
-import type { ChildProcess, spawn } from 'node:child_process';
+import type { spawn } from 'node:child_process';
 import { EventEmitter } from 'node:events';
 import { PassThrough } from 'node:stream';
 
@@ -11,11 +11,14 @@ const BRIDGE_ENV = { ANTHROPIC_BASE_URL: 'overlord://boisestate' };
 interface Spawned {
   readonly key: string | undefined;
   readonly port: string | undefined;
-  readonly child: ChildProcess;
+  readonly child: { readonly signalCode: NodeJS.Signals | null };
 }
 
 /** A sidecar stand-in that reports ready on the port it was asked for, or 4000. */
 function fakeSpawn(spawned: Spawned[]): typeof spawn {
+  // The fake has only what the bridge uses (stdout, stderr, kill and exit), not
+  // a whole ChildProcess, so it cannot satisfy spawn's type without a cast.
+  // type-coverage:ignore-next-line
   return ((_command: string, _args: readonly string[], options: { env: NodeJS.ProcessEnv }) => {
     const stdout = new PassThrough();
     // eslint-disable-next-line unicorn/prefer-event-target -- the bridge listens with ChildProcess.once and .on
@@ -33,8 +36,7 @@ function fakeSpawn(spawned: Spawned[]): typeof spawn {
       },
     });
     const port = options.env['BRIDGE_PORT'];
-    // The test drives the child through its stdout and exit events only.
-    spawned.push({ key: options.env['BOISESTATE_API_KEY'], port, child: child as never });
+    spawned.push({ key: options.env['BOISESTATE_API_KEY'], port, child });
     setImmediate(() => {
       stdout.write(`${JSON.stringify({ ready: true, port: Number(port) || 4000 })}\n`);
     });
