@@ -320,6 +320,8 @@ describe('tips for another agent', () => {
       compactCommand: '/compact',
       clearCommand: '/new',
       rewind: null,
+      taskList: 'update_plan',
+      connectorExamples: null,
     },
     knobs: { 'repeated-commands': ['some_knob'] },
   };

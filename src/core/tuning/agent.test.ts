@@ -19,6 +19,8 @@ const OTHER: TuningAgent = {
     compactCommand: '/compact',
     clearCommand: '/new',
     rewind: null,
+    taskList: 'update_plan',
+    connectorExamples: null,
   },
   knobs: { 'huge-context': ['model_auto_compact_token_limit'] },
 };

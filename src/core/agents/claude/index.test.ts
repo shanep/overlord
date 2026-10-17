@@ -75,6 +75,11 @@ describe('claudeCode', () => {
       clearCommand: '/clear',
       rewind: '/rewind (or press Esc twice)',
       settingsFile: 'settings.json',
+      taskList: 'TaskCreate or TodoWrite',
+      connectorExamples: {
+        examples: 'Claude in Chrome, a headless browser, Google Docs, Drive, Gmail or Calendar',
+        probe: 'list_connected_browsers for Chrome',
+      },
     });
     expect(claudeCode.tuning).toBeDefined();
     expect(claudeCode.observer?.userPrompts).toBeDefined();

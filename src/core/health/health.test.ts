@@ -64,6 +64,8 @@ const OTHER: HealthAgent = {
     compactCommand: '/compact',
     clearCommand: '/new',
     rewind: null,
+    taskList: 'update_plan',
+    connectorExamples: null,
   },
 };
 

@@ -93,6 +93,14 @@ export interface AgentWords {
   readonly rewind: string | null;
   /** The settings file the Knobs view names, such as settings.json or config.toml. Left out, it says "settings file". */
   readonly settingsFile?: string;
+  /**
+   * The tools that keep the task list the Fleet's progress reads, as the
+   * session note names them, such as update_plan. Null when Overlord does
+   * not read the agent's list, so the note does not ask for one.
+   */
+  readonly taskList: string | null;
+  /** Connectors the session note names as examples, and a cheap call that checks one. Null for none. */
+  readonly connectorExamples: { readonly examples: string; readonly probe: string } | null;
 }
 
 /** The binary to run outside a terminal tab, and the login shell's environment for it. */

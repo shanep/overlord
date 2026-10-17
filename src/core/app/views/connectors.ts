@@ -7,8 +7,9 @@ import type { AgentId } from '../../../shared/agents.js';
 import { CLAUDE_CODE } from '../../../shared/agents.js';
 import type { ConnectorsState } from '../../../shared/connectors.js';
 import { connectorsFor } from '../../../shared/connectors.js';
-import { connectorBriefing } from '../../connectors/briefing.js';
-import { PROGRESS_RULE } from '../../progress/briefing.js';
+import { agents } from '../../agents/index.js';
+import { checkRule, connectorBriefing } from '../../connectors/briefing.js';
+import { progressRule } from '../../progress/briefing.js';
 import type { Runtime } from '../runtime.js';
 
 export const CONNECTORS_REFRESH_MS = 10 * 60 * 1000;
@@ -25,17 +26,23 @@ export function clockTime(at: number): string {
 }
 
 /**
- * The SessionStart note for a session of the agent: the connectors from the
- * last check, with only the rows that agent can reach, then the ask to keep
- * its task list whole. Reading it starts the first check.
+ * The SessionStart note for a session of the agent, in its words: the
+ * connectors from the last check, with only the rows that agent can reach,
+ * then the ask to keep its task list whole when Overlord reads that list.
+ * Reading it starts the first check.
  */
 export function sessionBriefing(rt: Runtime, agent: AgentId = CLAUDE_CODE): string {
   const { value } = rt.caches.connectors;
+  const adapter = agents.get(agent);
+  const words = adapter?.words;
+  const subagents = adapter?.capabilities.subagents ?? false;
   const connectors = connectorBriefing(
     { checkedAt: value.checkedAt, connectors: connectorsFor(agent, value.connectors) },
     clockTime,
+    checkRule({ examples: words?.connectorExamples ?? null, subagents }),
   );
-  return `${connectors}\n\n${PROGRESS_RULE}`;
+  const taskList = words?.taskList ?? null;
+  return taskList === null ? connectors : `${connectors}\n\n${progressRule(taskList, subagents)}`;
 }
 
 /** Checks again now, showing the view as checking while it runs. */

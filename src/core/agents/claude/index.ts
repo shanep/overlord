@@ -46,6 +46,11 @@ const WORDS: AgentWords = {
   clearCommand: '/clear',
   rewind: '/rewind (or press Esc twice)',
   settingsFile: 'settings.json',
+  taskList: 'TaskCreate or TodoWrite',
+  connectorExamples: {
+    examples: 'Claude in Chrome, a headless browser, Google Docs, Drive, Gmail or Calendar',
+    probe: 'list_connected_browsers for Chrome',
+  },
 };
 
 /** Finds the binary the way SDK runs do, without running it, so the version stays unknown. */

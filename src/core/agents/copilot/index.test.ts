@@ -111,6 +111,8 @@ describe('copilot', () => {
       clearCommand: '/clear',
       rewind: '/rewind',
       settingsFile: 'settings.json',
+      taskList: null,
+      connectorExamples: null,
     });
     expect(nanoAiuToUsd(1e9)).toBeCloseTo(0.01, 12);
   });

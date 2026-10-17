@@ -105,6 +105,25 @@ describe('connectors for an agent past Claude Code', () => {
     expect(sessionBriefing(rt, 'codex')).not.toContain('- Claude in Chrome');
   });
 
+  it('brief each agent in its own words', async () => {
+    const test = await setup();
+    const rt = test.app.runtime;
+    const claude = sessionBriefing(rt);
+    expect(claude).toContain('(for example Claude in Chrome,');
+    expect(claude).toContain('Subagents you start rely on the same connectors');
+    expect(claude).toContain(
+      '(TaskCreate or TodoWrite) before you start: one entry per step or per subagent',
+    );
+    const codex = sessionBriefing(rt, 'codex');
+    expect(codex).not.toContain('Chrome');
+    expect(codex).not.toContain('Subagents');
+    expect(codex).toContain('(update_plan) before you start: one entry per step, not one entry');
+    // Overlord does not read Copilot's todo list, so its note asks for no task list.
+    const copilotNote = sessionBriefing(rt, 'copilot');
+    expect(copilotNote).toContain('Subagents you start rely on the same connectors');
+    expect(copilotNote).not.toContain('Overlord progress.');
+  });
+
   it('leaves out an agent that is not installed', async () => {
     withCodex(null);
     const test = await setup();

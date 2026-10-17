@@ -49,6 +49,9 @@ const WORDS: AgentWords = {
   clearCommand: '/clear',
   rewind: '/rewind',
   settingsFile: 'settings.json',
+  // Overlord does not read Copilot's todo list yet, so its note asks for none.
+  taskList: null,
+  connectorExamples: null,
 };
 
 /** Finds the binary on the login shell's PATH without running it, so the version stays unknown. */

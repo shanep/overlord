@@ -30,6 +30,8 @@ const PLAIN_WORDS: AgentWords = {
   compactCommand: null,
   clearCommand: null,
   rewind: null,
+  taskList: null,
+  connectorExamples: null,
 };
 
 /** An agent Overlord has no adapter for: no window, no cache signal and plain advice. */

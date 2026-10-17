@@ -48,6 +48,8 @@ const WORDS: AgentWords = {
   clearCommand: '/new',
   rewind: null,
   settingsFile: 'config.toml',
+  taskList: 'update_plan',
+  connectorExamples: null,
 };
 
 export const codex: AgentAdapter = {
