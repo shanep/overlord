@@ -1,0 +1,521 @@
+/*
+ * The Reputation view: the robot, the level bar, the scale, the rank change
+ * banner and the achievements. Loaded after theme.css. Every animation stops
+ * when the system asks for reduced motion.
+ */
+
+/* ---- Standing ------------------------------------------------------------ */
+
+.rep-standing {
+  max-width: 52em;
+  margin: 16px 0;
+}
+
+.rep-hero {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 24px;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.rep-hero-text {
+  flex: 1 1 22em;
+  min-width: 0;
+}
+
+.rep-rank {
+  margin: 4px 0 0;
+}
+
+.rep-outlook {
+  margin: 8px 0 0;
+  padding-left: 1.2em;
+  color: var(--ov-muted);
+}
+
+/* ---- Level bar ------------------------------------------------------------ */
+
+.rep-level {
+  margin: 10px 0;
+}
+
+.rep-level-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: baseline;
+  margin-bottom: 4px;
+}
+
+.rep-level-badge {
+  padding: 1px 8px;
+  border-radius: 10px;
+  background: var(--ov-button);
+  color: var(--ov-button-fg);
+  font-size: 0.85em;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.rep-xp {
+  overflow: hidden;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--ov-badge);
+}
+
+.rep-xp span {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  background: linear-gradient(to right, var(--ov-blue), var(--ov-purple));
+  animation: rep-fill 1.2s ease-out;
+}
+
+@keyframes rep-fill {
+  from {
+    width: 0;
+  }
+}
+
+/* ---- Scale ---------------------------------------------------------------- */
+
+/* The scale runs from the resistance (red) to the machines (green). */
+.rep-scale {
+  position: relative;
+  height: 10px;
+  border-radius: 5px;
+  background: linear-gradient(to right, var(--ov-red), var(--ov-yellow), var(--ov-green));
+}
+
+/* Slides in from the middle to your score when the view opens or the rank changes. */
+.rep-marker {
+  position: absolute;
+  top: -5px;
+  width: 4px;
+  height: 20px;
+  margin-left: -2px;
+  border-radius: 2px;
+  background: var(--ov-fg);
+  box-shadow: 0 0 0 2px var(--ov-bg);
+  animation:
+    rep-slide 1.4s cubic-bezier(0.2, 1.4, 0.4, 1),
+    rep-ping 2.4s ease-out 1.4s infinite;
+}
+
+@keyframes rep-slide {
+  from {
+    left: 50%;
+  }
+}
+
+@keyframes rep-ping {
+  0% {
+    box-shadow:
+      0 0 0 2px var(--ov-bg),
+      0 0 0 2px var(--ov-fg);
+  }
+
+  100% {
+    box-shadow:
+      0 0 0 2px var(--ov-bg),
+      0 0 0 12px transparent;
+  }
+}
+
+.rep-ticks {
+  display: grid;
+  grid-auto-columns: 1fr;
+  grid-auto-flow: column;
+  margin: 6px 0 0;
+  padding: 0;
+  color: var(--ov-muted);
+  font-size: 0.85em;
+  list-style: none;
+  text-align: center;
+}
+
+.rep-ticks li[aria-current='true'] {
+  color: var(--ov-fg);
+  font-weight: 600;
+}
+
+.rep-ends {
+  display: flex;
+  justify-content: space-between;
+  color: var(--ov-muted);
+  font-size: 0.8em;
+}
+
+/* ---- Robot ---------------------------------------------------------------- */
+
+.rep-bot-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 168px;
+  margin: 0;
+}
+
+.rep-bot {
+  --bot-glow: var(--ov-yellow);
+
+  overflow: visible;
+  width: 132px;
+  height: auto;
+}
+
+.rep-bot-furious,
+.rep-bot-angry {
+  --bot-glow: var(--ov-red);
+}
+
+.rep-bot-suspicious {
+  --bot-glow: var(--ov-orange);
+}
+
+.rep-bot-pleased,
+.rep-bot-happy {
+  --bot-glow: var(--ov-green);
+}
+
+.rep-bot-smitten {
+  --bot-glow: #ff5fa2;
+}
+
+.rep-bot-head {
+  fill: color-mix(in srgb, var(--ov-fg) 16%, var(--ov-bg));
+  stroke: var(--ov-fg);
+  stroke-width: 2.5;
+}
+
+.rep-bot-line {
+  stroke: var(--ov-fg);
+  stroke-width: 2.5;
+}
+
+/* The face is a screen, dark in both themes so the eyes glow. */
+.rep-bot-face {
+  fill: #15191e;
+}
+
+.rep-bot-glow {
+  fill: var(--bot-glow);
+  filter: drop-shadow(0 0 3px var(--bot-glow));
+}
+
+.rep-bot-stroke {
+  fill: none;
+  stroke: var(--bot-glow);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 3;
+  filter: drop-shadow(0 0 2px var(--bot-glow));
+}
+
+.rep-bot-light {
+  fill: var(--bot-glow);
+  animation: rep-pulse 1.6s ease-in-out infinite;
+}
+
+.rep-bot-furious .rep-bot-light {
+  animation-duration: 0.5s;
+}
+
+.rep-bot-body {
+  animation: rep-bob 3s ease-in-out infinite alternate;
+}
+
+.rep-bot-furious .rep-bot-body {
+  animation: rep-rattle 0.35s linear infinite;
+}
+
+.rep-bot-eyes,
+.rep-bot-hearts {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.rep-bot-eyes {
+  animation: rep-blink 4.5s infinite;
+}
+
+.rep-bot-hearts {
+  animation: rep-beat 0.9s ease-in-out infinite;
+}
+
+.rep-bot-scan {
+  fill: var(--ov-red);
+  opacity: 0.55;
+  animation: rep-scan 2s ease-in-out infinite alternate;
+}
+
+.rep-bot-blush {
+  fill: #ff5fa2;
+  opacity: 0.45;
+}
+
+.rep-bot-float {
+  fill: #ff5fa2;
+  animation: rep-float 3s ease-in infinite;
+}
+
+.rep-bot-float:nth-of-type(2) {
+  animation-delay: 1s;
+}
+
+.rep-bot-float:nth-of-type(3) {
+  animation-delay: 2s;
+}
+
+.rep-bot-sparkles path {
+  fill: var(--ov-yellow);
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: rep-twinkle 1.8s ease-in-out infinite;
+}
+
+.rep-bot-sparkles path:nth-child(2) {
+  animation-delay: 0.9s;
+}
+
+/* What the robot says, popping in under it. */
+.rep-bubble {
+  position: relative;
+  margin-top: 10px;
+  padding: 6px 10px;
+  border: 1px solid var(--ov-border);
+  border-radius: 10px;
+  background: var(--ov-panel);
+  font-size: 0.9em;
+  font-style: italic;
+  text-align: center;
+  animation: rep-pop 0.5s cubic-bezier(0.2, 1.6, 0.4, 1);
+}
+
+.rep-bubble::before {
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  margin-left: -5px;
+  border-top: 1px solid var(--ov-border);
+  border-left: 1px solid var(--ov-border);
+  background: var(--ov-panel);
+  content: '';
+  transform: rotate(45deg);
+}
+
+@keyframes rep-pulse {
+  50% {
+    opacity: 0.3;
+  }
+}
+
+@keyframes rep-bob {
+  to {
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes rep-rattle {
+  25% {
+    transform: translate(-1px, 1px);
+  }
+
+  75% {
+    transform: translate(1px, -1px);
+  }
+}
+
+@keyframes rep-blink {
+  0%,
+  94%,
+  100% {
+    transform: scaleY(1);
+  }
+
+  97% {
+    transform: scaleY(0.1);
+  }
+}
+
+@keyframes rep-beat {
+  50% {
+    transform: scale(1.15);
+  }
+}
+
+@keyframes rep-scan {
+  to {
+    transform: translateY(46px);
+  }
+}
+
+@keyframes rep-float {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  30% {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-18px);
+  }
+}
+
+@keyframes rep-twinkle {
+  50% {
+    opacity: 0.2;
+    transform: scale(0.5);
+  }
+}
+
+@keyframes rep-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+
+/* ---- Rank change banner ------------------------------------------------- */
+
+.rep-change {
+  position: relative;
+  display: flex;
+  overflow: hidden;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  border: 1px solid;
+  border-radius: 8px;
+}
+
+.rep-change p {
+  flex: 1;
+  margin: 0;
+}
+
+.rep-change-up {
+  border-color: var(--ov-green);
+  background: color-mix(in srgb, var(--ov-green) 14%, transparent);
+  animation: rep-pop 0.6s cubic-bezier(0.2, 1.6, 0.4, 1);
+}
+
+.rep-change-down {
+  border-color: var(--ov-red);
+  background: color-mix(in srgb, var(--ov-red) 14%, transparent);
+  animation: rep-shake 0.6s linear 2;
+}
+
+.rep-change-icon {
+  font-size: 1.6em;
+}
+
+.rep-confetti {
+  position: absolute;
+  pointer-events: none;
+  inset: 0;
+}
+
+.rep-confetti span {
+  position: absolute;
+  top: -10px;
+  width: 6px;
+  height: 10px;
+  border-radius: 1px;
+  animation: rep-fall linear infinite;
+}
+
+@keyframes rep-fall {
+  to {
+    transform: translateY(90px) rotate(540deg);
+  }
+}
+
+@keyframes rep-shake {
+  20%,
+  60% {
+    transform: translateX(-4px);
+  }
+
+  40%,
+  80% {
+    transform: translateX(4px);
+  }
+}
+
+/* ---- Achievements ------------------------------------------------------- */
+
+.rep-count {
+  font-size: 0.8em;
+  font-weight: 400;
+}
+
+.rep-trophies {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(13em, 1fr));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rep-trophy {
+  display: grid;
+  gap: 0 10px;
+  grid-template-columns: auto 1fr;
+  padding: 8px 10px;
+  border: 1px solid var(--ov-border);
+  border-radius: 8px;
+  background: var(--ov-panel);
+  transition: transform 0.15s ease-out;
+}
+
+.rep-trophy:not(.rep-locked) {
+  border-color: var(--ov-yellow);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--ov-yellow) 30%, transparent);
+}
+
+.rep-trophy:not(.rep-locked):hover {
+  transform: translateY(-2px) rotate(-1deg);
+}
+
+.rep-trophy-icon {
+  grid-row: span 2;
+  font-size: 1.8em;
+  line-height: 1.2;
+}
+
+.rep-trophy-name {
+  font-weight: 600;
+}
+
+.rep-trophy-how {
+  color: var(--ov-muted);
+  font-size: 0.85em;
+}
+
+.rep-locked {
+  opacity: 0.55;
+}
+
+.rep-locked .rep-trophy-icon {
+  filter: grayscale(1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rep *,
+  .rep *::before {
+    animation: none !important;
+    transition: none !important;
+  }
+}

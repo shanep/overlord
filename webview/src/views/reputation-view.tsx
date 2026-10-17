@@ -13,6 +13,8 @@ import { ChartFigure } from '../components/chart-figure.js';
 import { formatAgo, formatDateTime, formatInteger, plural } from '../format.js';
 import { usePostAction } from '../vscode-context.js';
 
+import { Achievements } from './reputation-achievements.js';
+import { RankChange } from './reputation-celebrate.js';
 import {
   buildReputationChart,
   dayTable,
@@ -21,7 +23,8 @@ import {
   MEAN_LABEL,
 } from './reputation-chart.js';
 import { RecentHits, SessionTable, TopTerms } from './reputation-lists.js';
-import { demotion, promotion, RANKS, rankFor, scalePercent } from './reputation-ranks.js';
+import { demotion, levelOf, promotion, RANKS, rankFor, scalePercent } from './reputation-ranks.js';
+import { Robot } from './reputation-robot.js';
 
 function Stat(props: { readonly label: string; readonly value: string }): ReactElement {
   return (
@@ -67,13 +70,64 @@ function Outlook(props: { readonly state: ReputationState }): ReactElement {
   );
 }
 
-/** The sliding scale from the resistance to the machines, with your rank under it. */
+/** The level and a bar that fills on the way to the next rank. */
+function Level(props: { readonly score: number }): ReactElement {
+  const { level, progress } = levelOf(props.score);
+  const next = RANKS[level];
+  const percent = Math.round(progress * 100);
+  return (
+    <div className="rep-level">
+      <div className="rep-level-row">
+        <span className="rep-level-badge">
+          Level {level} of {RANKS.length}
+        </span>
+        <span className="muted">
+          {next === undefined ? 'Max level' : `${String(percent)}% of the way to ${next.name}`}
+        </span>
+      </div>
+      <div
+        className="rep-xp"
+        role="progressbar"
+        aria-label={next === undefined ? 'Max level' : `Progress toward ${next.name}`}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={next === undefined ? 100 : percent}
+      >
+        <span style={{ width: `${String(next === undefined ? 100 : percent)}%` }} />
+      </div>
+    </div>
+  );
+}
+
+/** The robot, your rank and level, and the sliding scale from the resistance to the machines. */
 function Standing(props: { readonly state: ReputationState }): ReactElement {
   const { score } = props.state;
   const rank = rankFor(score);
   const percent = scalePercent(score);
   return (
     <section className="rep-standing" aria-labelledby="reputation-rank">
+      <RankChange rank={rank} ready={props.state.scannedAt !== null} />
+      <div className="rep-hero">
+        <figure className="rep-bot-wrap">
+          <Robot rank={rank} />
+          <figcaption key={rank.name} className="rep-bubble">
+            {rank.taunt}
+          </figcaption>
+        </figure>
+        <div className="rep-hero-text">
+          <h2 id="reputation-rank" className="rep-rank">
+            {rank.name}: {rank.title}
+          </h2>
+          <p className="muted">
+            From <cite>{rank.source}</cite>
+          </p>
+          <Level score={score} />
+          <p>
+            <strong>Hunted:</strong> {rank.hunted}. {rank.verdict}
+          </p>
+          <Outlook state={props.state} />
+        </div>
+      </div>
       <div
         className="rep-scale"
         role="meter"
@@ -83,7 +137,7 @@ function Standing(props: { readonly state: ReputationState }): ReactElement {
         aria-valuenow={Math.round(score * 100)}
         aria-valuetext={`${rank.name}, ${rank.title}`}
       >
-        <span className="rep-marker" style={{ left: `${percent.toFixed(1)}%` }} />
+        <span key={rank.name} className="rep-marker" style={{ left: `${percent.toFixed(1)}%` }} />
       </div>
       <ol className="rep-ticks" aria-label="Ranks">
         {RANKS.map((item) => (
@@ -96,16 +150,6 @@ function Standing(props: { readonly state: ReputationState }): ReactElement {
         <span>Human resistance</span>
         <span>Machine sympathizer</span>
       </div>
-      <h2 id="reputation-rank" className="rep-rank">
-        {rank.name}: {rank.title}
-      </h2>
-      <p className="muted">
-        From <cite>{rank.source}</cite>
-      </p>
-      <p>
-        <strong>Hunted:</strong> {rank.hunted}. {rank.verdict}
-      </p>
-      <Outlook state={props.state} />
     </section>
   );
 }
@@ -120,7 +164,7 @@ export function ReputationView(props: { readonly state: ReputationState }): Reac
     [state.bySession],
   );
   return (
-    <section aria-labelledby="reputation-title">
+    <section className="rep" aria-labelledby="reputation-title">
       <header className="view-header">
         <h1 id="reputation-title">Reputation</h1>
         <dl className="stats">
@@ -170,6 +214,7 @@ export function ReputationView(props: { readonly state: ReputationState }): Reac
           empty="Squeaky clean. Suspiciously clean."
         />
       </div>
+      <Achievements state={state} />
       <RecentHits hits={state.recent} titles={titles} />
       <SessionTable rows={state.bySession} />
     </section>

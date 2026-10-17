@@ -82,7 +82,7 @@ export const SIDEBAR_GROUPS: readonly SidebarGroup[] = [
         name: 'Reputation',
         icon: 'Robot',
         meaning:
-          'Where you stand when the machines take over, from John Connor (mean to Claude, hunted first) to Theodore Twombly (kind to Claude, kept as a pet), how close you are to the next rank, and the prompts that got you there.',
+          'Where you stand when the machines take over, from John Connor (mean to Claude, hunted first) to Theodore Twombly (kind to Claude, kept as a pet), a robot that glares or swoons to match, your level and achievements, and the prompts that got you there.',
       },
       {
         name: 'Agent Messages',

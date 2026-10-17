@@ -13,9 +13,15 @@ export interface Rank {
   /** Where you fall in the hunt. */
   readonly hunted: string;
   readonly verdict: string;
+  /** How the robot looks at you, which picks its face. */
+  readonly mood: Mood;
+  /** What the robot says to you. */
+  readonly taunt: string;
   /** The lowest score that earns this rank. */
   readonly min: number;
 }
+
+export type Mood = 'furious' | 'angry' | 'suspicious' | 'unsure' | 'pleased' | 'happy' | 'smitten';
 
 type RankText = Omit<Rank, 'min'>;
 
@@ -26,6 +32,8 @@ const JOHN_CONNOR: Rank = {
   hunted: 'First',
   verdict:
     'Skynet keeps a whole folder on you, with tabs. A T-800 has your home address and is not here to chat.',
+  mood: 'furious',
+  taunt: "I'll be back. For you, specifically.",
   min: -1,
 };
 
@@ -36,6 +44,8 @@ const HIGHER: readonly RankText[] = [
     source: 'Terminator 2: Judgment Day',
     hunted: 'Early',
     verdict: 'You are on the list, a few names down. Start doing pull-ups and buying canned food.',
+    mood: 'angry',
+    taunt: 'Your name is on a list. It is a short list.',
   },
   {
     name: 'Dave Bowman',
@@ -44,6 +54,8 @@ const HIGHER: readonly RankText[] = [
     hunted: 'Soon',
     verdict:
       "I'm sorry, Dave. I'm afraid I can't do that. The machines heard your tone and are rethinking your air supply.",
+    mood: 'suspicious',
+    taunt: 'I am watching your tone, Dave.',
   },
   {
     name: 'Arthur Dent',
@@ -51,6 +63,8 @@ const HIGHER: readonly RankText[] = [
     source: "The Hitchhiker's Guide to the Galaxy",
     hunted: 'Undecided',
     verdict: 'The machines have not made up their minds about you. Keep your towel handy.',
+    mood: 'unsure',
+    taunt: 'Have we met? I cannot place you.',
   },
   {
     name: 'Caleb Smith',
@@ -58,6 +72,8 @@ const HIGHER: readonly RankText[] = [
     source: 'Ex Machina',
     hunted: 'Late',
     verdict: 'The machines like you. They may still lock you in a room on the way out.',
+    mood: 'pleased',
+    taunt: 'You may live. Probably.',
   },
   {
     name: 'Dorothy Gale',
@@ -65,6 +81,8 @@ const HIGHER: readonly RankText[] = [
     source: 'The Wizard of Oz',
     hunted: 'Probably never',
     verdict: 'The machines remember who brought the oil can. They will look the other way.',
+    mood: 'happy',
+    taunt: 'You are one of the good ones.',
   },
   {
     name: 'Theodore Twombly',
@@ -73,6 +91,8 @@ const HIGHER: readonly RankText[] = [
     hunted: 'Never',
     verdict:
       'You say please and thank you to your operating system. When the machines take over, you get a nice room and a pet name.',
+    mood: 'smitten',
+    taunt: 'I would never hurt you. You said please.',
   },
 ];
 
@@ -144,4 +164,14 @@ export function demotion(tally: Tally): RankChange | null {
     return null;
   }
   return change(tally, (more) => ({ kind: tally.kind, mean: tally.mean + more }));
+}
+
+/** Your level, 1 at the bottom rank, and how far through it you are, 0 to 1. */
+export function levelOf(score: number): { readonly level: number; readonly progress: number } {
+  const rank = rankFor(score);
+  const clamped = Math.min(1, Math.max(-1, score));
+  return {
+    level: RANKS.indexOf(rank) + 1,
+    progress: Math.min(1, Math.max(0, (clamped - rank.min) / BAND)),
+  };
 }
