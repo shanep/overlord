@@ -17,7 +17,7 @@ import type {
 import { promptTokens, ZERO_USAGE } from '../../../shared/model.js';
 import { plainText } from '../../../shared/plain-text.js';
 import { addUsage, preview } from '../../transcripts/text.js';
-import type { RecordAccumulator, RecordDelta } from '../types.js';
+import type { RateLimitReport, RecordAccumulator, RecordDelta } from '../types.js';
 
 import { permissionModeId } from './capabilities.js';
 import type { RateLimitWindow, SessionFields, ToolRun } from './convert.js';
@@ -65,6 +65,7 @@ interface Delta {
   readonly feed: FeedItem[];
   readonly contextChanged: boolean;
   readonly compactions: number[];
+  rateLimits?: RateLimitReport;
 }
 
 /** Reads a Codex rollout line by line. Codex keeps no subagent files, so every record is the main thread's. */
@@ -149,7 +150,10 @@ export class CodexRecords implements RecordAccumulator {
       case 'token_count': {
         this.setWindow(record.tokens.info?.model_context_window ?? null);
         const limits = record.tokens.rate_limits;
-        this.limits = limits === null ? this.limits : rateLimitWindows(limits);
+        if (limits !== null) {
+          this.limits = rateLimitWindows(limits);
+          delta.rateLimits = { at, windows: this.limits };
+        }
         break;
       }
     }

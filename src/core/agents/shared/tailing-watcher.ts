@@ -5,16 +5,18 @@
 
 import { watch } from 'node:fs';
 
-import type { ApiRequest, FeedItem, ToolCall } from '../../../shared/model.js';
 import type { EventBus, EventName, OverlordEvents } from '../../bus.js';
 import { IncrementalReader } from '../../transcripts/reader.js';
 import type {
   ObservedSession,
+  RateLimitReport,
   RecordAccumulator,
   RecordDelta,
   SessionObserver,
   TailedFile,
 } from '../types.js';
+
+import { collectBatch } from './tailing-batch.js';
 
 export interface WatchHandle {
   readonly close: () => void;
@@ -90,45 +92,6 @@ function sameIds(current: ReadonlySet<string>, next: readonly string[]): boolean
   return ids.size === current.size && [...ids].every((id) => current.has(id));
 }
 
-interface Batch {
-  readonly tools: Map<string, ToolCall>;
-  readonly requests: Map<string, ApiRequest>;
-  readonly feed: Map<string, FeedItem[]>;
-  readonly contexts: Set<string>;
-  readonly compactions: { readonly agentId: string; readonly at: number }[];
-}
-
-/** Merge per-record results: the last version of each tool and request wins, feed items keep order. */
-function collectBatch(results: readonly RecordDelta[]): Batch {
-  const batch: Batch = {
-    tools: new Map(),
-    requests: new Map(),
-    feed: new Map(),
-    contexts: new Set(),
-    compactions: [],
-  };
-  for (const result of results) {
-    for (const tool of result.tools) {
-      batch.tools.set(tool.id, tool);
-    }
-    for (const request of result.requests) {
-      batch.requests.set(request.messageId, request);
-    }
-    if (result.feed.length > 0) {
-      const items = batch.feed.get(result.agentId) ?? [];
-      items.push(...result.feed);
-      batch.feed.set(result.agentId, items);
-    }
-    if (result.contextChanged) {
-      batch.contexts.add(result.agentId);
-    }
-    for (const at of result.compactions) {
-      batch.compactions.push({ agentId: result.agentId, at });
-    }
-  }
-  return batch;
-}
-
 function mainFile(info: ObservedSession): TailedFile {
   return { path: info.transcriptPath, agentId: info.sessionId, metaPath: null };
 }
@@ -157,6 +120,8 @@ export class TailingWatcher<A extends RecordAccumulator = RecordAccumulator> {
   private running: Promise<void> | null = null;
   private rerun = false;
   private disposed = false;
+  /** When the newest rate limit report on the bus was made, across every session. */
+  private limitsAt = Number.NEGATIVE_INFINITY;
 
   constructor(options: TailingWatcherOptions<A>) {
     this.observer = options.observer;
@@ -453,6 +418,25 @@ export class TailingWatcher<A extends RecordAccumulator = RecordAccumulator> {
     for (const compaction of batch.compactions) {
       this.emit('compaction.recorded', { sessionId, ...compaction });
     }
+    this.publishLimits(batch.rateLimits);
+  }
+
+  /**
+   * Plan limits are the account's, not the session's, so a report goes out
+   * only when it is newer than the last one. Reading an older session's
+   * file later never puts its stale numbers back.
+   */
+  private publishLimits(report: RateLimitReport | null): void {
+    if (report === null || report.at <= this.limitsAt || report.windows.length === 0) {
+      return;
+    }
+    this.limitsAt = report.at;
+    this.emit('rateLimits.updated', {
+      fiveHourPct: null,
+      sevenDayPct: null,
+      resetsAt: null,
+      windows: report.windows,
+    });
   }
 
   private reportError(error: unknown): void {

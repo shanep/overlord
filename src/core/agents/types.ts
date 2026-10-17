@@ -3,7 +3,12 @@
 // a first sketch that its Phase 1 workstream in META-HARNESS.md owns and may
 // reshape.
 
-import type { AgentCapabilities, AgentId, ModeOption } from '../../shared/agents.js';
+import type {
+  AgentCapabilities,
+  AgentId,
+  ModeOption,
+  RateLimitWindow,
+} from '../../shared/agents.js';
 import type { Connector } from '../../shared/connectors.js';
 import type {
   AgentNode,
@@ -220,6 +225,12 @@ export interface TailedFile {
   readonly metaPath: string | null;
 }
 
+/** Rate limit windows a record reported, and when, so an older file never undoes a newer one. */
+export interface RateLimitReport {
+  readonly at: number;
+  readonly windows: readonly RateLimitWindow[];
+}
+
 /** What one record added, for the bus. */
 export interface RecordDelta {
   readonly agentId: string;
@@ -229,6 +240,8 @@ export interface RecordDelta {
   readonly contextChanged: boolean;
   /** When the thread compacted, in ms. */
   readonly compactions: readonly number[];
+  /** Plan limits the record reported, for an agent that writes them to its files, like Codex. */
+  readonly rateLimits?: RateLimitReport;
 }
 
 /** Folds one session's records, from every file it has, into the shared model. */

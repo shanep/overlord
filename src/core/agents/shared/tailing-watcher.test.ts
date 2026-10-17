@@ -24,9 +24,12 @@ const NOW = 1_800_000_000_000;
 
 /** One line of the fake agents' files. Subagent records name their thread inline, like Copilot's. */
 interface FakeLine {
-  readonly type: 'prompt' | 'reply' | 'tool' | 'usage';
+  readonly type: 'prompt' | 'reply' | 'tool' | 'usage' | 'limit';
   readonly agentId?: string;
   readonly id?: string;
+  /** For a limit line: when it was reported and the percent used. */
+  readonly at?: number;
+  readonly used?: number;
 }
 
 function isFakeLine(value: unknown): value is FakeLine {
@@ -81,6 +84,22 @@ class FakeRecords implements RecordAccumulator {
       feed: [],
       contextChanged: true,
       compactions: [],
+      ...(value.type === 'limit'
+        ? {
+            rateLimits: {
+              at: value.at ?? 0,
+              windows: [
+                {
+                  agent: this.agentName,
+                  id: 'primary',
+                  label: '5 hour',
+                  usedPct: value.used ?? null,
+                  resetsAt: null,
+                },
+              ],
+            },
+          }
+        : {}),
     };
   }
 
@@ -261,5 +280,35 @@ describe('TailingWatcher with other agents', () => {
       source: 'codex',
       message: 'this observer has nothing to watch',
     });
+  });
+
+  it('sends the newest rate limits from any rollout and never an older one after them', async () => {
+    const day = path.join(root, '2026', '10', '16');
+    await mkdir(day, { recursive: true });
+    const older = path.join(
+      day,
+      'rollout-2026-10-16T22-06-42-019a0000-6060-7000-8000-000000000002.jsonl',
+    );
+    const newer = path.join(
+      day,
+      'rollout-2026-10-16T22-07-10-019a0000-6060-7000-8000-000000000003.jsonl',
+    );
+    await writeFile(older, lines([{ type: 'limit', at: 100, used: 10 }]));
+    await writeFile(newer, lines([{ type: 'limit', at: 200, used: 50 }]));
+    const bus = new EventBus();
+    const used: (number | null)[] = [];
+    bus.on('rateLimits.updated', (limits) => {
+      used.push(...(limits.windows ?? []).map((window) => window.usedPct));
+    });
+    const watcher = make(codexObserver(root), bus);
+    await watcher.start();
+    expect(used.at(-1)).toBe(50);
+    expect(used.slice(used.indexOf(50))).toStrictEqual([50]);
+    await appendFile(older, lines([{ type: 'limit', at: 150, used: 20 }, { type: 'reply' }]));
+    await watcher.refresh();
+    expect(used.at(-1)).toBe(50);
+    await appendFile(older, lines([{ type: 'limit', at: 300, used: 70 }]));
+    await watcher.refresh();
+    expect(used.at(-1)).toBe(70);
   });
 });

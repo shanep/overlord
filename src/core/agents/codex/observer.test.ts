@@ -27,6 +27,7 @@ function capture(bus: EventBus): { name: EventName; payload: unknown }[] {
     'agent.upserted',
     'request.recorded',
     'feed.appended',
+    'rateLimits.updated',
     'source.error',
   ];
   for (const name of names) {
@@ -141,6 +142,12 @@ describe('codex observer', () => {
       id: EDIT,
       agent: 'codex',
       title: 'Append the line world to notes.txt by editing the file (use apply_patch). Then r...',
+    });
+    // The plan limits go to the Usage view and the Fleet header, like Claude Code's.
+    expect(events.findLast((event) => event.name === 'rateLimits.updated')?.payload).toMatchObject({
+      windows: [
+        { agent: 'codex', id: 'primary', label: '30 day', usedPct: 0, resetsAt: 1_794_802_006_000 },
+      ],
     });
   });
 });
