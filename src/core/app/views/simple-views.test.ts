@@ -516,6 +516,27 @@ describe('knobs view', () => {
     expect(knobsOf(all, 'nobody')).toBe(EMPTY_KNOBS);
     expect(report).not.toHaveBeenCalled();
   });
+
+  it('reports an agent whose load throws and still loads the others', async () => {
+    const env = await makeEnv();
+    const broken = agents.withBuiltIn('codex', (adapter) => ({
+      ...adapter,
+      config: {
+        settingsFormat: 'toml',
+        knobs: {
+          ...codexKnobs,
+          catalog: (): never => {
+            throw new Error('bad catalog');
+          },
+        },
+      },
+    }));
+    const report = vi.fn<(source: string, message: string) => void>();
+    const all = await loadAllKnobs(broken, { paths: env.paths, env: {}, workspace: null, report });
+    expect(all['codex']).toBe(EMPTY_KNOBS);
+    expect(all['claude-code']?.files.length).toBeGreaterThan(0);
+    expect(report).toHaveBeenCalledWith('knobs', 'codex: bad catalog');
+  });
 });
 
 describe('usage view', () => {

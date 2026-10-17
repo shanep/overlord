@@ -199,30 +199,6 @@
       "managedOnly": false
     },
     {
-      "key": "COPILOT_PROVIDERS_CONFIG",
-      "kind": "env",
-      "area": "auth",
-      "valueType": "string",
-      "defaultValue": "<COPILOT_HOME>/providers.json",
-      "allowed": [],
-      "description": "Path to a JSON file that defines a bring-your-own-key (BYOK) provider and model registry, as an object with providers and models keys. Default: /providers.json. When this file declares any provider or model, it takes precedence over the legacy COPILOT_PROVIDER_* environment variables. See providers.json.",
-      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#environment-variables",
-      "appliesAt": "next-launch",
-      "managedOnly": false
-    },
-    {
-      "key": "COPILOT_PROVIDER_API_KEY_COMMAND",
-      "kind": "env",
-      "area": "auth",
-      "valueType": "string",
-      "defaultValue": null,
-      "allowed": [],
-      "description": "Shell command that prints a fresh bring-your-own-key (BYOK) API key before each provider request. Takes precedence over the COPILOT_PROVIDER_API_KEY environment variable. Its output replaces the matching credential header even if a custom header set via COPILOT_PROVIDER_HEADERS would otherwise collide.",
-      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#environment-variables",
-      "appliesAt": "next-launch",
-      "managedOnly": false
-    },
-    {
       "key": "COPILOT_SKILLS_DIRS",
       "kind": "env",
       "area": "plugins",
@@ -230,18 +206,6 @@
       "defaultValue": null,
       "allowed": [],
       "description": "Comma-separated list of additional directories for skills.",
-      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#environment-variables",
-      "appliesAt": "next-launch",
-      "managedOnly": false
-    },
-    {
-      "key": "COPILOT_STRIP_REASONING_ON_RESUME",
-      "kind": "env",
-      "area": "sessions",
-      "valueType": "string",
-      "defaultValue": null,
-      "allowed": [],
-      "description": "Set to 0 or false to keep BYOK reasoning tokens across a session resume instead of stripping them. Defaults to stripping them.",
       "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#environment-variables",
       "appliesAt": "next-launch",
       "managedOnly": false
@@ -343,18 +307,6 @@
       "managedOnly": false
     },
     {
-      "key": "USE_TGREP",
-      "kind": "env",
-      "area": "network",
-      "valueType": "boolean",
-      "defaultValue": null,
-      "allowed": [],
-      "description": "Set to true to always use tgrep, a trigram-indexed search engine, even outside a Git repository or on a virtualized or network filesystem (for example, a VFS for Git checkout, or an SMB/9p mount), or false to always use ripgrep. When forced outside a Git repository, tgrep indexes the working directory itself, so avoid forcing it somewhere large such as your home directory. Windows cloud-sync folders (for example, OneDrive) always use ripgrep, even when this is set to true. When unset, Copilot CLI automatically switches from ripgrep to tgrep only inside a Git repository, on a non-virtualized filesystem, and once it reaches the file-count threshold set by TGREP_FILE_COUNT_THRESHOLD. Setting USE_TGREP=true bypasses this threshold entirely. USE_TGREP=false still disables tgrep.",
-      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#environment-variables",
-      "appliesAt": "next-launch",
-      "managedOnly": false
-    },
-    {
       "key": "--acp",
       "kind": "flag",
       "area": "subagents",
@@ -386,18 +338,6 @@
       "defaultValue": null,
       "allowed": [],
       "description": "Add a tool to enable for the GitHub MCP server, instead of the default CLI subset (can be used multiple times). Use * for all tools.",
-      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#command-line-options",
-      "appliesAt": "next-launch",
-      "managedOnly": false
-    },
-    {
-      "key": "--add-github-mcp-toolset",
-      "kind": "flag",
-      "area": "mcp",
-      "valueType": "string",
-      "defaultValue": null,
-      "allowed": [],
-      "description": "Add a toolset to enable for the GitHub MCP server, instead of the default CLI subset (can be used multiple times). Use all for all toolsets.",
       "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#command-line-options",
       "appliesAt": "next-launch",
       "managedOnly": false

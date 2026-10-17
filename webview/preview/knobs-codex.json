@@ -103,18 +103,6 @@
       "managedOnly": false
     },
     {
-      "key": "oss_provider",
-      "kind": "setting",
-      "area": "auth",
-      "valueType": "enum",
-      "defaultValue": null,
-      "allowed": ["lmstudio", "ollama"],
-      "description": "Default local provider used when running with `--oss` (defaults to prompting if unset).",
-      "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
-      "appliesAt": "next-launch",
-      "managedOnly": false
-    },
-    {
       "key": "approval_policy",
       "kind": "setting",
       "area": "permissions",
@@ -134,30 +122,6 @@
       "defaultValue": null,
       "allowed": [],
       "description": "When `true`, sandbox escalation approval prompts are allowed to surface.",
-      "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
-      "appliesAt": "next-launch",
-      "managedOnly": false
-    },
-    {
-      "key": "approval_policy.granular.rules",
-      "kind": "setting",
-      "area": "permissions",
-      "valueType": "boolean",
-      "defaultValue": null,
-      "allowed": [],
-      "description": "When `true`, approvals triggered by execpolicy `prompt` rules are allowed to surface.",
-      "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
-      "appliesAt": "next-launch",
-      "managedOnly": false
-    },
-    {
-      "key": "approval_policy.granular.mcp_elicitations",
-      "kind": "setting",
-      "area": "permissions",
-      "valueType": "boolean",
-      "defaultValue": null,
-      "allowed": [],
-      "description": "When `true`, MCP elicitation prompts are allowed to surface instead of being auto-rejected.",
       "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
       "appliesAt": "next-launch",
       "managedOnly": false
@@ -254,18 +218,6 @@
       "defaultValue": null,
       "allowed": [],
       "description": "Native macOS app access keyed by bundle identifier.",
-      "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
-      "appliesAt": "next-launch",
-      "managedOnly": false
-    },
-    {
-      "key": "computer_use.windows.aumids",
-      "kind": "setting",
-      "area": "tools",
-      "valueType": "json",
-      "defaultValue": null,
-      "allowed": [],
-      "description": "Packaged Windows app access keyed by Application User Model ID (AUMID).",
       "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
       "appliesAt": "next-launch",
       "managedOnly": false
@@ -638,18 +590,6 @@
       "defaultValue": "false",
       "allowed": [],
       "description": "Set to `1`, `true`, or `yes` to skip installer prompts. Prompts use their default response, so use this for scripted installs and updates, not first-run setup.",
-      "docUrl": "https://learn.chatgpt.com/docs/config-file/environment-variables",
-      "appliesAt": "next-launch",
-      "managedOnly": false
-    },
-    {
-      "key": "CODEX_INSTALL_DIR",
-      "kind": "env",
-      "area": "updates",
-      "valueType": "string",
-      "defaultValue": "~/.local/bin on macOS/Linux; %LOCALAPPDATA%\\Programs\\OpenAI\\Codex\\bin on Windows",
-      "allowed": [],
-      "description": "Changes where the visible `codex` command is installed. The standalone package cache still lives under `CODEX_HOME/packages/standalone`.",
       "docUrl": "https://learn.chatgpt.com/docs/config-file/environment-variables",
       "appliesAt": "next-launch",
       "managedOnly": false

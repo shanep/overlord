@@ -18,6 +18,7 @@ import { readFeatureFlags } from '../../knobs/flags.js';
 import { loadLayers, type LayerData } from '../../knobs/layers.js';
 import { listProfiles } from '../../knobs/profiles.js';
 import type { ClaudePaths } from '../../paths.js';
+import { messageOf } from '../errors.js';
 
 /** One agent's knobs as read from its settings files. */
 export interface KnobsData {
@@ -118,6 +119,16 @@ export async function loadKnobs(
   };
 }
 
+/** One agent's knobs, or none with a report when the load throws, so one agent cannot sink the rest. */
+async function loadOrReport(deps: KnobsLoadDeps, agentKnobs: AgentKnobs): Promise<KnobsData> {
+  try {
+    return await loadKnobs(deps, agentKnobs);
+  } catch (error) {
+    deps.report(SOURCE, `${agentKnobs.agent}: ${messageOf(error)}`);
+    return EMPTY_KNOBS;
+  }
+}
+
 /** The knobs of every agent with a knobs facet, enabled or not, since a launch reads Claude Code's. */
 export async function loadAllKnobs(
   registry: AgentRegistry,
@@ -129,7 +140,7 @@ export async function loadAllKnobs(
       return knobs === undefined
         ? []
         : [
-            loadKnobs(deps, { agent: adapter.id, knobs }).then(
+            loadOrReport(deps, { agent: adapter.id, knobs }).then(
               (data) => [adapter.id, data] as const,
             ),
           ];
