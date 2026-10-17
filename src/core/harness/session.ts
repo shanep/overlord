@@ -48,6 +48,8 @@ export interface SessionConfig {
   readonly extraArgs: Readonly<Record<string, string | null>>;
   readonly maxBudgetUsd: number | null;
   readonly executablePath: string | null;
+  /** Runs the session as plain chat with this system prompt. See QueryOptions. */
+  readonly chatPrompt?: string | null | undefined;
   /** A UUID for the Claude session. One is generated when omitted. */
   readonly sessionId?: string | undefined;
 }
@@ -125,6 +127,7 @@ export class SdkSession {
       extraArgs: config.extraArgs,
       maxBudgetUsd: config.maxBudgetUsd,
       executablePath: config.executablePath,
+      chatPrompt: config.chatPrompt ?? null,
     });
   }
 

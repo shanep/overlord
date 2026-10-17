@@ -7,6 +7,7 @@ import { randomUUID } from 'node:crypto';
 
 import type { LaunchProfile, LaunchSpec } from '../../shared/model.js';
 import type { LaunchRun, LauncherState } from '../../shared/protocol.js';
+import { BRIDGE_CHAT_PROMPT, needsBridge } from '../bridge/boisestate.js';
 import type { EventBus } from '../bus.js';
 
 import { errorMessage, type TurnResult } from './events.js';
@@ -247,6 +248,8 @@ export class Launcher {
         cwd: lease?.path ?? spec.cwd,
         title: spec.label,
         executablePath: this.deps.executablePath?.(baseEnv) ?? null,
+        // Checked before the rewrite, which swaps the placeholder for the real URL.
+        chatPrompt: needsBridge(mergedEnv) ? BRIDGE_CHAT_PROMPT : null,
       },
     );
     record.session = session;

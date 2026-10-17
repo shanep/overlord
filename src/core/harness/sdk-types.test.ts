@@ -22,6 +22,7 @@ function options(overrides: Partial<QueryOptions> = {}): QueryOptions {
     extraArgs: {},
     maxBudgetUsd: null,
     executablePath: null,
+    chatPrompt: null,
     ...overrides,
   };
 }
@@ -73,6 +74,22 @@ describe('toSdkOptions', () => {
     const sdk = toSdkOptions(options());
     expect(sdk.systemPrompt).toStrictEqual({ type: 'preset', preset: 'claude_code' });
     expect(sdk.settingSources).toStrictEqual(['user', 'project', 'local']);
+  });
+
+  it('runs a chat session with its own prompt, no tools and no MCP servers', () => {
+    const sdk = toSdkOptions(options({ chatPrompt: 'Just chat.' }));
+    expect(sdk.systemPrompt).toBe('Just chat.');
+    expect(sdk.tools).toStrictEqual([]);
+    expect(sdk.strictMcpConfig).toBe(true);
+    expect(sdk.mcpServers).toStrictEqual({});
+    expect(sdk.settingSources).toStrictEqual(['user', 'project', 'local']);
+  });
+
+  it('leaves tools and MCP alone outside chat sessions', () => {
+    const sdk = toSdkOptions(options());
+    expect(sdk.tools).toBeUndefined();
+    expect(sdk.strictMcpConfig).toBeUndefined();
+    expect(sdk.mcpServers).toBeUndefined();
   });
 
   it('allows bypassPermissions explicitly', () => {

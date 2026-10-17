@@ -31,6 +31,17 @@ export const BOISESTATE_PROFILE: LaunchProfile = {
   extraArgs: [],
 };
 
+/**
+ * The system prompt a bridge session gets in place of Claude Code's own. The
+ * backend runs no tools, so the session gets none either, and the tool
+ * instructions that made up most of each request go away.
+ */
+export const BRIDGE_CHAT_PROMPT =
+  'You are answering a request through the Boise State AI gateway, which runs no tools. ' +
+  'You cannot read or write files, run commands or browse the web here, so put any code, ' +
+  'commands or text the user needs right in your reply. Skip any instruction that only ' +
+  'makes sense with tools, such as running checks, committing or reporting on the project setup.';
+
 /** True when a launch env opts into the bridge through the placeholder URL. */
 export function needsBridge(env: Readonly<Record<string, string>>): boolean {
   return env['ANTHROPIC_BASE_URL'] === BRIDGE_BASE_URL;
