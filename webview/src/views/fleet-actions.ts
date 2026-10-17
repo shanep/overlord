@@ -37,7 +37,8 @@ const ACTION_TIPS: Readonly<Record<RowAction | ProjectAction, string>> = {
   context: 'See what fills the context window',
   interrupt: 'Stop the current turn, keep the session',
   stop: 'End the session',
-  remove: 'Take this launched session out of the fleet, stopping it first if it still runs',
+  remove:
+    'Take this session out of the fleet: a launched one stops first if it still runs, and a failed background job is deleted',
   renameSession: 'Give this session a new name',
   move: 'Put this session in another project',
   relocate: 'Continue a copy of this session in another folder',

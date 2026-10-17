@@ -292,6 +292,27 @@ describe('FleetView', () => {
     expect(api.actions()).toStrictEqual([{ type: 'removeSession', sessionId: 's3' }]);
   });
 
+  it('offers to delete a failed background job, which stays until it is deleted', async () => {
+    const user = userEvent.setup();
+    const state: FleetState = {
+      ...fleetState,
+      sessions: fleetState.sessions.map((item) =>
+        item.title === 'Write docs' ? { ...item, state: 'failed' } : item,
+      ),
+    };
+    const { api } = setup(state);
+    await user.click(screen.getByRole('button', { name: 'Remove from fleet Write docs' }));
+    const bar = screen.getByRole('group', { name: 'Confirm' });
+    expect(
+      within(bar).getByText(
+        'Delete the failed background job "Write docs", and its worktree if it made one?',
+      ),
+    ).toBeDefined();
+    await user.click(within(bar).getByRole('button', { name: 'Remove' }));
+    const id = state.sessions.find((item) => item.title === 'Write docs')?.id;
+    expect(api.actions()).toStrictEqual([{ type: 'removeSession', sessionId: id }]);
+  });
+
   it('moves, expands, collapses, opens and interrupts from the keyboard', async () => {
     const user = userEvent.setup();
     const { api } = setup();

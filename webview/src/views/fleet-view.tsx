@@ -51,8 +51,11 @@ function confirmMessage(confirm: PendingConfirm): string {
   if (confirm.kind !== 'remove') {
     return `${CONFIRMS[confirm.kind].verb} ${title}?`;
   }
-  return confirm.row.state === 'running' || confirm.row.state === 'waiting'
-    ? `Stop ${title} and remove it from the fleet?`
+  if (confirm.row.state === 'running' || confirm.row.state === 'waiting') {
+    return `Stop ${title} and remove it from the fleet?`;
+  }
+  return confirm.row.state === 'failed' && !confirm.row.launched
+    ? `Delete the failed background job ${title}, and its worktree if it made one?`
     : `Remove ${title} from the fleet?`;
 }
 

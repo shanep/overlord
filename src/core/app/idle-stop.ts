@@ -4,6 +4,7 @@
 // prompt, keeps running. `claude stop` keeps the conversation, so Continue in
 // All Sessions picks it back up later. Each step goes through the session's
 // agent's background facet, and an agent without one never stops this way.
+// Removing a failed job from the fleet deletes it the same way.
 
 import type { AgentCli, BackgroundFacet } from '../agents/types.js';
 import type { AgentEntry } from '../surfaces/live.js';
@@ -83,6 +84,34 @@ export async function stopJob(rt: Runtime, control: JobControl, job: RunningJob)
   }
   await waitForExit(rt, job.pid);
   void rt.places.refresh();
+  void rt.jobs.refresh();
+  return true;
+}
+
+/**
+ * A failed background job stays in the agent's list, and so in the fleet,
+ * until the agent deletes it. Continuing it starts a new session instead, so
+ * Remove deletes it. False after saying why when it could not.
+ */
+export async function removeFailedJob(rt: Runtime, sessionId: string): Promise<boolean> {
+  const at = sessionTerminal(rt, sessionId);
+  const background = at?.terminal.background;
+  if (at === null || background === undefined) {
+    return true;
+  }
+  const cli = await agentCli(rt, at);
+  const listed = await background.list({ exec: rt.surfacesExec, bin: cli.bin, all: true });
+  const job = listed.items.find(
+    (entry) => entry.sessionId === sessionId && entry.state === 'failed',
+  );
+  if (job === undefined || job.id === null) {
+    return true;
+  }
+  const failed = await background.remove({ run: rt.exec, cli, jobId: job.id });
+  if (failed !== null) {
+    rt.host.showWarning(failed);
+    return false;
+  }
   void rt.jobs.refresh();
   return true;
 }

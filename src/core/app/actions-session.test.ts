@@ -233,6 +233,52 @@ describe('SDK sessions Overlord launched', () => {
   });
 });
 
+const FAILED = { id: 'fe967c4d', sessionId: 'fe967c4d-full', kind: 'background', state: 'failed' };
+
+interface Call {
+  readonly args: readonly string[];
+}
+
+function failedJob(call: Call): ExecResult | undefined {
+  return call.args[0] === 'agents' ? ok(JSON.stringify([FAILED])) : undefined;
+}
+
+function removes(call: Call): ExecResult | undefined {
+  return call.args[0] === 'rm' ? ok('removed fe967c4d\n') : undefined;
+}
+
+function refuses(call: Call): ExecResult | undefined {
+  return call.args[0] === 'rm' ? { code: 1, stdout: '', stderr: 'unpushed commits\n' } : undefined;
+}
+
+function rmCalls(test: TestApp): readonly (readonly string[])[] {
+  return test.calls.filter((call) => call.args[0] === 'rm').map((call) => call.args);
+}
+
+describe('removeSession for a failed background job', () => {
+  it('deletes the job so it leaves the fleet', async () => {
+    const env = await makeEnv();
+    const test = makeApp(env, { responders: [failedJob, removes] });
+    await test.app.dispatch({ type: 'removeSession', sessionId: FAILED.sessionId }, {});
+    expect(rmCalls(test)).toStrictEqual([['rm', 'fe967c4d']]);
+    expect(env.host.warnings).toStrictEqual([]);
+  });
+
+  it('says why when the agent will not delete it', async () => {
+    const env = await makeEnv();
+    const test = makeApp(env, { responders: [failedJob, refuses] });
+    await test.app.dispatch({ type: 'removeSession', sessionId: FAILED.sessionId }, {});
+    expect(env.host.warnings).toStrictEqual(['claude rm fe967c4d failed: unpushed commits']);
+  });
+
+  it('leaves a job that did not fail alone', async () => {
+    const env = await makeEnv();
+    const test = makeApp(env, { responders: [failedJob] });
+    await test.app.dispatch({ type: 'removeSession', sessionId: 'other-session' }, {});
+    expect(rmCalls(test)).toStrictEqual([]);
+  });
+});
+
 describe('stopNow', () => {
   it('stops an SDK run or a live process without asking, and reports one it cannot reach', async () => {
     const env = await makeEnv();

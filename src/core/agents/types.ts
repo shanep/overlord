@@ -130,6 +130,13 @@ export type BackgroundStarted = { readonly jobId: string } | { readonly error: s
  * blocked, done, stopped, failed) and status (busy, idle), so another agent
  * maps its own onto them.
  */
+/** One background job to act on through the agent's CLI. */
+interface JobCall {
+  readonly run: Exec;
+  readonly cli: AgentCli;
+  readonly jobId: string;
+}
+
 export interface BackgroundFacet {
   start: (input: BackgroundStart) => Promise<BackgroundStarted>;
   /** Args for a tab that shows a running job. */
@@ -141,11 +148,12 @@ export interface BackgroundFacet {
     readonly all: boolean;
   }) => Promise<Collected<AgentEntry>>;
   /** Stops a job and keeps its conversation. Resolves to null, or why it did not stop. */
-  stop: (input: {
-    readonly run: Exec;
-    readonly cli: AgentCli;
-    readonly jobId: string;
-  }) => Promise<string | null>;
+  stop: (input: JobCall) => Promise<string | null>;
+  /**
+   * Deletes a job that already ended, and the worktree it made if it made
+   * one. Resolves to null, or why it did not.
+   */
+  remove: (input: JobCall) => Promise<string | null>;
   /** The clients showing a job, from `ps -A -o pid=,ppid=,args=`. */
   attachClients: (ps: string) => readonly AttachClient[];
 }

@@ -7,3 +7,11 @@ import type { FleetRow } from './fleet-rows.js';
 export function isLaunched(row: FleetRow): boolean {
   return row.kind === 'session' && row.launched;
 }
+
+/**
+ * A session row Remove takes out of the fleet: one the Launcher started, or
+ * a failed background job, which stays until it is deleted.
+ */
+export function isRemovable(row: FleetRow): boolean {
+  return isLaunched(row) || (row.kind === 'session' && row.state === 'failed');
+}

@@ -29,7 +29,7 @@ import { LeftCell, ProgressCell } from './fleet-progress.js';
 import type { FleetRow, VisibleRow } from './fleet-rows.js';
 import { elapsedMs, rowCallsPerMinute } from './fleet-rows.js';
 import { TitleCell } from './fleet-title-cell.js';
-import { isLaunched } from './launched.js';
+import { isLaunched, isRemovable } from './launched.js';
 
 const COLUMNS: readonly { readonly id: string; readonly label: string }[] = [
   { id: 'state', label: 'State' },
@@ -128,7 +128,7 @@ function RowActions(props: {
           {button('combine')}
           {button('interrupt', !row.sessionActive || !agent.capabilities.interrupt)}
           {button('stop', !row.sessionActive)}
-          {isLaunched(row) ? button('remove') : null}
+          {isRemovable(row) ? button('remove') : null}
         </>
       ) : null}
     </span>

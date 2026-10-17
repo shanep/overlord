@@ -28,7 +28,7 @@ import {
   sessionTerminal,
   terminalCommand,
 } from './agent-terminal.js';
-import { stopJob } from './idle-stop.js';
+import { removeFailedJob, stopJob } from './idle-stop.js';
 import { continueHere } from './resume.js';
 import type { Runtime } from './runtime.js';
 import { shortId } from './text.js';
@@ -358,13 +358,17 @@ export const sessionActions: ActionHandlers<SessionActions> = {
       );
     }
   },
-  // Launched sessions stay in the fleet until this. One still running stops
-  // first, so a last update from it cannot bring the row back.
+  // Launched sessions and failed background jobs stay in the fleet until
+  // this. A launched one still running stops first, so a last update from it
+  // cannot bring the row back.
   removeSession: async ({ rt }, action) => {
     const target = sdkTarget(rt, action.sessionId);
     if (target !== null) {
       rt.launcher.stopRun(target.run.id);
       await target.session.finished;
+    }
+    if (!(await removeFailedJob(rt, action.sessionId))) {
+      return;
     }
     await rt.launched.remove(action.sessionId);
     await rt.dismissTranscript(action.sessionId);

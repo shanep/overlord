@@ -118,6 +118,21 @@ describe('claudeTerminal', () => {
     ]);
   });
 
+  it('deletes an ended background job and passes on why it would not', async () => {
+    const background = claudeTerminal.background;
+    const removed = runner({ code: 0, stdout: 'removed j\n', stderr: '' });
+    await expect(
+      background?.remove({ run: removed.run, cli: CLI, jobId: 'j' }),
+    ).resolves.toBeNull();
+    expect(removed.calls).toStrictEqual([
+      { command: '/bin/claude', args: ['rm', 'j'], options: { timeoutMs: 15_000, env: CLI.env } },
+    ]);
+    const refused = runner({ code: 1, stdout: 'worktree has unpushed commits\n', stderr: '' });
+    await expect(background?.remove({ run: refused.run, cli: CLI, jobId: 'j' })).resolves.toBe(
+      'claude rm j failed: worktree has unpushed commits',
+    );
+  });
+
   it('builds the handoffs Claude Code offers for a session', () => {
     expect(claudeTerminal.handoff?.('resume-local', SESSION, '/bin/claude')).toMatchObject({
       command: '/bin/claude',

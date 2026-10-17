@@ -1,6 +1,6 @@
 // Claude Code in a terminal: the argv for new and resumed tabs, background
-// jobs through `claude --bg`, `claude attach`, `claude agents` and `claude
-// stop`, the session registry in ~/.claude/sessions, and the handoffs to
+// jobs through `claude --bg`, `claude attach`, `claude agents`, `claude stop`
+// and `claude rm`, the session registry in ~/.claude/sessions, and the handoffs to
 // Desktop, the cloud and Remote Control. The builders and parsers stay where
 // they were, in surfaces/, and this file points at them.
 
@@ -53,6 +53,16 @@ const background: BackgroundFacet = {
       env: input.cli.env,
     });
     return result.code === 0 ? null : `claude stop ${input.jobId} failed: ${result.stderr.trim()}`;
+  },
+  // `claude rm` refuses a worktree with unpushed work and says how to discard
+  // it, so the whole message goes back to the user.
+  remove: async (input): Promise<string | null> => {
+    const result = await input.run(input.cli.bin, ['rm', input.jobId], {
+      timeoutMs: STOP_TIMEOUT_MS,
+      env: input.cli.env,
+    });
+    const why = result.stderr.trim() || result.stdout.trim();
+    return result.code === 0 ? null : `claude rm ${input.jobId} failed: ${why}`;
   },
   attachClients: parseAttachClients,
 };
