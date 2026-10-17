@@ -3,6 +3,7 @@
 
 import { claudeCode } from './claude/index.js';
 import { codex } from './codex/index.js';
+import { copilot } from './copilot/index.js';
 import { AgentRegistry } from './registry.js';
 
-export const agents = new AgentRegistry([claudeCode, codex]);
+export const agents = new AgentRegistry([claudeCode, codex, copilot]);

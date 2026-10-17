@@ -473,10 +473,12 @@ describe('OverlordApp', () => {
     expect(before.map((agent) => [agent.id, agent.installed])).toStrictEqual([
       ['claude-code', false],
       ['codex', false],
+      ['copilot', false],
     ]);
     await app.runtime.caches.agents.refresh();
     expect(app.stateFor('help', {}).agents.map((agent) => agent.installed)).toStrictEqual([
       true,
+      false,
       false,
     ]);
   });

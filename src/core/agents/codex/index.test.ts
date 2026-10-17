@@ -21,7 +21,12 @@ describe('codex', () => {
 
   it('names itself and is registered after Claude Code', () => {
     expect([codex.id, codex.name, codex.short]).toStrictEqual(['codex', 'Codex CLI', 'Codex']);
-    expect(agents.list().map((adapter) => adapter.id)).toStrictEqual(['claude-code', 'codex']);
+    expect(
+      agents
+        .list()
+        .map((adapter) => adapter.id)
+        .slice(0, 2),
+    ).toStrictEqual(['claude-code', 'codex']);
     expect(agents.get('codex')).toBe(codex);
   });
 
