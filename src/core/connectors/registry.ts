@@ -12,11 +12,6 @@ import type {
   InstallOption,
   RegistryServer,
 } from '../../shared/connectors.js';
-import type { FetchFunction } from '../sync/github.js';
-
-export const REGISTRY_URL = 'https://registry.modelcontextprotocol.io/v0.1/servers';
-export const REGISTRY_LIMIT = 30;
-const REGISTRY_TIMEOUT_MS = 15_000;
 
 /** A piece of a value: literal text, or what the user typed for an input. */
 type Part = string | { readonly input: string };
@@ -56,7 +51,8 @@ export interface RegistryEntry {
 
 export interface RegistryPage {
   readonly entries: readonly RegistryEntry[];
-  readonly more: boolean;
+  /** Where the next page starts, or null on the last page. */
+  readonly next: string | null;
 }
 
 const input = z.looseObject({
@@ -447,28 +443,5 @@ export function parseRegistry(value: unknown): RegistryPage {
     seen.add(item.server.name);
     return [entryFrom(item.server)];
   });
-  return { entries, more: parsed.metadata?.nextCursor !== undefined };
-}
-
-export function registryUrl(query: string): string {
-  const params = new URLSearchParams({ limit: String(REGISTRY_LIMIT), version: 'latest' });
-  if (query.trim() !== '') {
-    params.set('search', query.trim());
-  }
-  return `${REGISTRY_URL}?${params.toString()}`;
-}
-
-/** Searches the registry by server name. An empty query lists the first page. */
-export async function searchRegistry(
-  fetchFunction: FetchFunction,
-  query: string,
-): Promise<RegistryPage> {
-  const response = await fetchFunction(registryUrl(query), {
-    headers: { Accept: 'application/json' },
-    signal: AbortSignal.timeout(REGISTRY_TIMEOUT_MS),
-  });
-  if (!response.ok) {
-    throw new Error(`The MCP registry answered ${String(response.status)}.`);
-  }
-  return parseRegistry(await response.json());
+  return { entries, next: parsed.metadata?.nextCursor ?? null };
 }

@@ -125,6 +125,73 @@ describe('the registry search', () => {
   });
 });
 
+function listed(name: string): Record<string, unknown> {
+  return { name, repository: { url: `https://github.com/${name}` } };
+}
+
+/** Two pages: a and b, then b again and c, so the repeat is dropped. */
+function pages(fail: { value: boolean }): () => Response {
+  let calls = 0;
+  return () => {
+    calls += 1;
+    if (calls > 1 && fail.value) {
+      return new Response('', { status: 502 });
+    }
+    return calls === 1
+      ? Response.json({
+          servers: [{ server: listed('io.github.x/a') }, { server: listed('io.github.x/b') }],
+          metadata: { nextCursor: 'io.github.x/b:1.0.0' },
+        })
+      : Response.json({
+          servers: [{ server: listed('io.github.x/b') }, { server: listed('io.github.x/c') }],
+          metadata: {},
+        });
+  };
+}
+
+describe('browsing the registry', () => {
+  it('pages through every server, keeping what it already has', async () => {
+    const { test, urls, rt } = await setup([mcpList], pages({ value: false }));
+    await test.app.dispatch({ type: 'moreRegistry' }, {});
+    expect(urls).toStrictEqual([]);
+    await test.app.dispatch({ type: 'searchRegistry', query: '' }, {});
+    expect(buildConnectors(rt).registry.more).toBe(true);
+    await test.app.dispatch({ type: 'moreRegistry' }, {});
+    expect(urls[1]).toContain('cursor=io.github.x%2Fb%3A1.0.0');
+    expect(urls[1]).not.toContain('search=');
+    const state = buildConnectors(rt).registry;
+    expect(state.results.map((entry) => entry.name)).toStrictEqual([
+      'io.github.x/a',
+      'io.github.x/b',
+      'io.github.x/c',
+    ]);
+    expect(state).toMatchObject({ more: false, loadingMore: false, error: null });
+    await test.app.dispatch({ type: 'moreRegistry' }, {});
+    expect(urls).toHaveLength(2);
+  });
+
+  it('keeps the results it has when the next page fails', async () => {
+    const { test, rt } = await setup([mcpList], pages({ value: true }));
+    await test.app.dispatch({ type: 'searchRegistry', query: '' }, {});
+    await test.app.dispatch({ type: 'moreRegistry' }, {});
+    expect(buildConnectors(rt).registry).toMatchObject({
+      more: true,
+      loadingMore: false,
+      error: 'Could not load more from the MCP registry: The MCP registry answered 502.',
+    });
+    expect(buildConnectors(rt).registry.results).toHaveLength(2);
+  });
+
+  it('opens a repository the registry listed and nothing else', async () => {
+    const { test } = await setup([mcpList], pages({ value: false }));
+    await test.app.dispatch({ type: 'searchRegistry', query: '' }, {});
+    for (const url of ['https://github.com/io.github.x/a', 'https://evil.example', 'file:///etc']) {
+      await test.app.dispatch({ type: 'openRegistryLink', url }, {});
+    }
+    expect(test.env.host.external).toStrictEqual(['https://github.com/io.github.x/a']);
+  });
+});
+
 describe('installing a server from the registry', () => {
   it('adds it to user scope with add-json, then checks the connectors again', async () => {
     const { test, rt } = await setup([mcpList, adds]);

@@ -82,6 +82,8 @@ export interface RegistryState {
   readonly results: readonly RegistryServer[];
   /** True when the registry has more matches than it sent. */
   readonly more: boolean;
+  /** True while the next page loads. */
+  readonly loadingMore: boolean;
   readonly error: string | null;
   /** The registry name being installed right now. */
   readonly installing: string | null;
@@ -93,6 +95,7 @@ export const EMPTY_REGISTRY: RegistryState = {
   searching: false,
   results: [],
   more: false,
+  loadingMore: false,
   error: null,
   installing: null,
   notice: null,

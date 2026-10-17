@@ -1,15 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import { buildConfig } from './install.js';
+import { REGISTRY_LIMIT, REGISTRY_URL, registryUrl, searchRegistry } from './registry-api.js';
 import type { RegistryEntry } from './registry.js';
-import {
-  parseRegistry,
-  REGISTRY_LIMIT,
-  REGISTRY_URL,
-  registryUrl,
-  searchRegistry,
-  suggestName,
-} from './registry.js';
+import { parseRegistry, suggestName } from './registry.js';
 
 function meta(status = 'active'): Record<string, unknown> {
   return { 'io.modelcontextprotocol.registry/official': { status, isLatest: true } };
@@ -276,7 +270,7 @@ describe('parseRegistry', () => {
       ],
       metadata: { nextCursor: 'io.github.c/plain:1.0.0' },
     });
-    expect(page.more).toBe(true);
+    expect(page.next).toBe('io.github.c/plain:1.0.0');
     expect(
       page.entries.map((entry) => [entry.server.name, entry.server.options.length]),
     ).toStrictEqual([

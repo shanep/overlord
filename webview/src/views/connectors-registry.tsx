@@ -1,5 +1,5 @@
-// The registry search under the Connectors table: find a server in the public
-// MCP registry, fill in what it needs, and add it to user scope.
+// The registry search under the Connectors table: browse or search the public
+// MCP registry, fill in what a server needs, and add it to user scope.
 
 import type { ReactElement, SubmitEvent } from 'react';
 import { useState } from 'react';
@@ -22,6 +22,25 @@ const INSTALL_KIND_LABELS: Readonly<Record<InstallKind, string>> = {
 };
 
 const NAME_PATTERN = /^[\w-]{1,64}$/u;
+
+type KindFilter = 'all' | 'remote' | 'npm' | 'pypi' | 'docker';
+
+const KIND_FILTERS: readonly { readonly value: KindFilter; readonly label: string }[] = [
+  { value: 'all', label: 'All' },
+  { value: 'remote', label: 'Remote' },
+  { value: 'npm', label: 'npm' },
+  { value: 'pypi', label: 'PyPI' },
+  { value: 'docker', label: 'Docker' },
+];
+
+function matchesKind(server: RegistryServer, filter: KindFilter): boolean {
+  if (filter === 'all') {
+    return true;
+  }
+  return server.options.some((option) =>
+    filter === 'remote' ? option.kind === 'http' || option.kind === 'sse' : option.kind === filter,
+  );
+}
 
 function initialValues(inputs: readonly InstallInput[]): Record<string, string> {
   return Object.fromEntries(inputs.map((entry) => [entry.id, entry.initial]));
@@ -156,12 +175,14 @@ function Result(props: {
   readonly onToggle: () => void;
 }): ReactElement {
   const { server } = props;
+  const post = usePostAction();
   const kinds = [...new Set(server.options.map((entry) => entry.kind))];
+  const { repository } = server;
   return (
     <li>
       <div className="toolbar">
         <strong>{server.title}</strong>
-        <span className="muted" title={server.repository ?? undefined}>
+        <span className="muted">
           {server.name}
           {server.version === '' ? '' : ` ${server.version}`}
         </span>
@@ -169,6 +190,18 @@ function Result(props: {
           <Badge key={kind} label={INSTALL_KIND_LABELS[kind]} tone="info" />
         ))}
         <span className="spacer" />
+        {repository === null ? null : (
+          <button
+            type="button"
+            className="link-button"
+            title={repository}
+            onClick={() => {
+              post({ type: 'openRegistryLink', url: repository });
+            }}
+          >
+            Repository
+          </button>
+        )}
         {server.options.length === 0 ? (
           <span className="muted">Not installable from here</span>
         ) : (
@@ -187,19 +220,54 @@ function Result(props: {
 
 function Results(props: { readonly registry: RegistryState }): ReactElement | null {
   const { registry } = props;
+  const post = usePostAction();
   const [open, setOpen] = useState<string | null>(null);
-  if (registry.query === null || registry.error !== null) {
+  const [kind, setKind] = useState<KindFilter>('all');
+  if (registry.query === null) {
     return null;
   }
   if (registry.results.length === 0) {
+    if (registry.error !== null) {
+      return null;
+    }
     return (
       <p className="muted">{registry.searching ? 'Searching…' : 'No servers match that name.'}</p>
     );
   }
+  const shown = registry.results.filter((server) => matchesKind(server, kind));
+  const what =
+    registry.query.trim() === ''
+      ? 'servers from the registry'
+      : `servers whose name has "${registry.query.trim()}"`;
   return (
     <>
+      <div className="toolbar">
+        <span className="muted">
+          {String(registry.results.length)} {what}
+          {registry.more ? ' so far' : ''}
+          {kind === 'all' ? '' : `, ${String(shown.length)} shown`}
+        </span>
+        <div role="group" aria-label="Runs as" className="chips">
+          {KIND_FILTERS.map((item) => (
+            <button
+              key={item.value}
+              type="button"
+              className="press"
+              aria-pressed={kind === item.value}
+              onClick={() => {
+                setKind(item.value);
+              }}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      {shown.length === 0 ? (
+        <p className="muted">None of these run that way. Show more or pick another filter.</p>
+      ) : null}
       <ul className="feed" aria-label="Registry results">
-        {registry.results.map((server) => (
+        {shown.map((server) => (
           <Result
             key={server.name}
             server={server}
@@ -213,7 +281,17 @@ function Results(props: { readonly registry: RegistryState }): ReactElement | nu
         ))}
       </ul>
       {registry.more ? (
-        <p className="muted">There are more matches. Type more of the name to narrow them down.</p>
+        <div className="toolbar">
+          <button
+            type="button"
+            disabled={registry.loadingMore}
+            onClick={() => {
+              post({ type: 'moreRegistry' });
+            }}
+          >
+            {registry.loadingMore ? 'Loading…' : 'Show more'}
+          </button>
+        </div>
       ) : null}
     </>
   );
@@ -231,8 +309,8 @@ export function RegistrySection(props: { readonly registry: RegistryState }): Re
     <section className="section" aria-labelledby="registry-title">
       <h2 id="registry-title">Add from the MCP registry</h2>
       <p className="muted">
-        Search the public MCP registry by name and add a server for every project, the same as{' '}
-        <code>claude mcp add --scope user</code>. A package runs on this machine with your
+        Browse the public MCP registry or search it by name, and add a server for every project, the
+        same as <code>claude mcp add --scope user</code>. A package runs on this machine with your
         permissions, so add only servers you trust. A remote server that needs a sign in shows up
         above with a Sign in button.
       </p>
@@ -242,7 +320,7 @@ export function RegistrySection(props: { readonly registry: RegistryState }): Re
           <input
             type="search"
             value={query}
-            placeholder="for example github, sentry or postgres"
+            placeholder="github, sentry, postgres"
             onChange={(event) => {
               setQuery(event.target.value);
             }}
@@ -250,6 +328,16 @@ export function RegistrySection(props: { readonly registry: RegistryState }): Re
         </label>
         <button type="submit" disabled={registry.searching}>
           {registry.searching ? 'Searching…' : 'Search'}
+        </button>
+        <button
+          type="button"
+          disabled={registry.searching}
+          onClick={() => {
+            setQuery('');
+            post({ type: 'searchRegistry', query: '' });
+          }}
+        >
+          Browse all
         </button>
       </form>
       {registry.notice === null ? null : (

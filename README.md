@@ -86,8 +86,10 @@ See [PLAN.md](PLAN.md) for the full design and the decisions behind it.
   Overlord rechecks every ten minutes, and its SessionStart hook hands each new session the last
   result with an instruction to confirm the connectors its task needs before starting, so a
   missing one stops the work up front instead of halfway through a plan. Turn that off with
-  `overlord.connectors.briefSessions`. **Add from the MCP registry** searches the public
-  registry at registry.modelcontextprotocol.io by name and installs a server for every project
+  `overlord.connectors.briefSessions`. **Add from the MCP registry** browses the public
+  registry at registry.modelcontextprotocol.io a page at a time, or searches it by name, with
+  filters for remote servers and npm, PyPI or Docker packages and a link to each server's
+  repository. It installs a server for every project
   with `claude mcp add-json --scope user`. It asks for the API keys, headers and paths the
   registry says the server needs, and runs npm packages with `npx`, PyPI packages with `uvx` and
   images with `docker run`.

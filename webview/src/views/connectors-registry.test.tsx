@@ -75,7 +75,7 @@ describe('RegistrySection', () => {
       <RegistrySection registry={found({ more: true })} />,
     );
     expect(container.textContent).toContain('Not installable from here');
-    expect(container.textContent).toContain('There are more matches.');
+    expect(container.textContent).toContain('2 servers whose name has "sentry" so far');
     fireEvent.click(getByRole('button', { name: 'Install…' }));
     expect(getByRole('combobox', { name: 'Install as' })).toBeDefined();
     fireEvent.change(getByRole('combobox', { name: 'Install as' }), { target: { value: '1' } });
@@ -147,5 +147,42 @@ describe('RegistrySection', () => {
       <RegistrySection registry={found({ notice: { ok: false, text: 'Fill in X first.' } })} />,
     );
     expect(refused.getByRole('alert').textContent).toContain('Not added');
+  });
+
+  it('browses everything, pages, filters by how a server runs and opens its repository', () => {
+    const { getByRole, getAllByRole, container, api } = renderView(
+      <RegistrySection registry={found({ query: '', more: true })} />,
+    );
+    expect(container.textContent).toContain('2 servers from the registry so far');
+    fireEvent.click(getByRole('button', { name: 'Browse all' }));
+    fireEvent.click(getByRole('button', { name: 'Show more' }));
+    fireEvent.click(getAllByRole('button', { name: 'Repository' })[0] ?? container);
+    expect(api.actions()).toStrictEqual([
+      { type: 'searchRegistry', query: '' },
+      { type: 'moreRegistry' },
+      { type: 'openRegistryLink', url: 'https://github.com/getsentry/sentry-mcp' },
+    ]);
+    expect(getAllByRole('button', { name: 'Repository' })).toHaveLength(1);
+    fireEvent.click(getByRole('button', { name: 'Docker' }));
+    expect(getByRole('button', { name: 'Docker' }).getAttribute('aria-pressed')).toBe('true');
+    expect(container.textContent).toContain('2 servers from the registry so far, 0 shown');
+    expect(container.textContent).toContain('None of these run that way.');
+    fireEvent.click(getByRole('button', { name: 'Remote' }));
+    expect(getAllByRole('listitem')).toHaveLength(1);
+    fireEvent.click(getByRole('button', { name: 'npm' }));
+    expect(getAllByRole('listitem')).toHaveLength(1);
+    fireEvent.click(getByRole('button', { name: 'All' }));
+    expect(getAllByRole('listitem')).toHaveLength(2);
+  });
+
+  it('keeps the results when a page fails to load, and says so', () => {
+    const { getByRole, getAllByRole } = renderView(
+      <RegistrySection
+        registry={found({ loadingMore: true, more: true, error: 'Could not load more: offline' })}
+      />,
+    );
+    expect(getAllByRole('listitem')).toHaveLength(2);
+    expect(getByRole('alert').textContent).toBe('Could not load more: offline');
+    expect(getByRole('button', { name: 'Loading…' })).toHaveProperty('disabled', true);
   });
 });

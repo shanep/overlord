@@ -445,6 +445,8 @@ export type WebviewAction =
   | { readonly type: 'recheckConnectors' }
   | { readonly type: 'fixConnector'; readonly connectorId: string }
   | { readonly type: 'searchRegistry'; readonly query: string }
+  | { readonly type: 'moreRegistry' }
+  | { readonly type: 'openRegistryLink'; readonly url: string }
   | {
       readonly type: 'installConnector';
       /** The registry name of the server. */

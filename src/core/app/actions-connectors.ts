@@ -77,7 +77,12 @@ async function install(rt: Runtime, action: ActionMap['installConnector']): Prom
 }
 
 export const connectorActions: ActionHandlers<
-  'recheckConnectors' | 'fixConnector' | 'searchRegistry' | 'installConnector'
+  | 'recheckConnectors'
+  | 'fixConnector'
+  | 'searchRegistry'
+  | 'moreRegistry'
+  | 'openRegistryLink'
+  | 'installConnector'
 > = {
   recheckConnectors: async ({ rt }) => {
     await recheckConnectors(rt);
@@ -94,6 +99,15 @@ export const connectorActions: ActionHandlers<
   },
   searchRegistry: async ({ rt }, action) => {
     await rt.registry.search(action.query);
+  },
+  moreRegistry: async ({ rt }) => {
+    await rt.registry.more();
+  },
+  openRegistryLink: async ({ rt }, action) => {
+    // Only a repository the registry listed, so the webview cannot open any URL it likes.
+    if (rt.registry.knowsLink(action.url) && /^https?:\/\//u.test(action.url)) {
+      await rt.host.openExternal(action.url);
+    }
   },
   installConnector: async ({ rt }, action) => {
     if (rt.registry.view().installing !== null) {
