@@ -14,6 +14,7 @@ function fleet(overrides: Partial<FleetState> = {}): FleetState {
     projects: [],
     sessionProjects: {},
     workspaceProjects: [],
+    launched: [],
     activeSessionId: null,
     activeVersion: 0,
     rateLimits: { fiveHourPct: null, sevenDayPct: null, resetsAt: null },

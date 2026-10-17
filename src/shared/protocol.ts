@@ -102,6 +102,8 @@ export interface FleetState {
   readonly spendPerHourUsd: number;
   /** Health of each unfinished session that is wearing out, by session id. Healthy ones are left out. */
   readonly health: Readonly<Record<string, Exclude<HealthLevel, 'good'>>>;
+  /** The sessions the Launcher started, which stay in the fleet until removed by hand. */
+  readonly launched: readonly string[];
 }
 
 export interface AgentDetailState {
@@ -416,6 +418,7 @@ export type WebviewAction =
   | { readonly type: 'openProperties'; readonly sessionId: string }
   | { readonly type: 'interrupt'; readonly sessionId: string }
   | { readonly type: 'stop'; readonly sessionId: string }
+  | { readonly type: 'removeSession'; readonly sessionId: string }
   | { readonly type: 'setModel'; readonly sessionId: string; readonly model: string }
   | { readonly type: 'setPermissionMode'; readonly sessionId: string; readonly mode: string }
   | {

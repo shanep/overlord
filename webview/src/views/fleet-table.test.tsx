@@ -40,7 +40,7 @@ function renderTable(state: FleetState, showSummary = true): HTMLElement {
 
 describe('FleetTable', () => {
   it('renders rows with no history yet and no selection', () => {
-    const grid = renderTable(fleetState);
+    const grid = renderTable({ ...fleetState, launched: [] });
     expect(grid.querySelectorAll('tr[aria-selected="true"]')).toHaveLength(0);
     expect(grid.querySelectorAll('tbody tr')).toHaveLength(5);
     // Start order has no header, so no column claims the sort.
@@ -71,6 +71,10 @@ describe('FleetTable', () => {
     expect(row?.textContent).toContain('Old run');
     expect(row?.dataset['launched']).toBe('true');
     expect(grid.querySelectorAll('tr[data-launched="true"]')).toHaveLength(1);
+    // It stays until removed by hand, so it has no hourglass and has a Remove button.
+    expect(screen.queryByRole('img', { name: 'No window' })).toBeNull();
+    const removes = screen.getAllByRole('button', { name: /^Remove from fleet / });
+    expect(removes.map((button) => button.closest('tr'))).toStrictEqual([row]);
   });
 
   it('shows what a session is working on under its title', () => {

@@ -225,6 +225,17 @@ describe('FleetView', () => {
     ]);
   });
 
+  it('confirms before taking a launched session out of the fleet', async () => {
+    const user = userEvent.setup();
+    const { api } = setup();
+    expect(screen.queryByRole('button', { name: 'Remove from fleet Write docs' })).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Remove from fleet Old run' }));
+    const bar = screen.getByRole('group', { name: 'Confirm' });
+    expect(within(bar).getByText('Remove "Old run" from the fleet?')).toBeDefined();
+    await user.click(within(bar).getByRole('button', { name: 'Remove' }));
+    expect(api.actions()).toStrictEqual([{ type: 'removeSession', sessionId: 's3' }]);
+  });
+
   it('moves, expands, collapses, opens and interrupts from the keyboard', async () => {
     const user = userEvent.setup();
     const { api } = setup();

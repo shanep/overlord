@@ -1,6 +1,7 @@
 // The buttons on Fleet rows: what each one is called and what its tooltip says.
 
-export type RowAction = 'open' | 'context' | 'interrupt' | 'stop' | 'move' | 'relocate' | 'combine';
+export type RowAction =
+  'open' | 'context' | 'interrupt' | 'stop' | 'remove' | 'move' | 'relocate' | 'combine';
 /** A row button, or the health badge, which opens Session Properties. */
 export type RowEvent = RowAction | 'properties';
 export type ProjectAction = 'newSession' | 'openFolder' | 'setFolder' | 'rename' | 'delete';
@@ -10,6 +11,7 @@ export const ACTION_LABELS: Readonly<Record<RowAction | ProjectAction, string>> 
   context: 'Context Inspector',
   interrupt: 'Interrupt',
   stop: 'Stop',
+  remove: 'Remove from fleet',
   move: 'Move to project',
   relocate: 'Continue in folder',
   combine: 'Combine sessions',
@@ -26,6 +28,7 @@ const ACTION_TIPS: Readonly<Record<RowAction | ProjectAction, string>> = {
   context: 'See what fills the context window',
   interrupt: 'Stop the current turn, keep the session',
   stop: 'End the session',
+  remove: 'Take this launched session out of the fleet, stopping it first if it still runs',
   move: 'Put this session in another project',
   relocate: 'Continue a copy of this session in another folder',
   combine: 'Start one new session from a digest of this and others',

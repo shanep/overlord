@@ -31,6 +31,10 @@ describe('isWindowless', () => {
     expect(isWindowless(sessionRow('waiting', 'background'))).toBe(false);
   });
 
+  it('leaves a launched session alone, since it stays until removed by hand', () => {
+    expect(isWindowless({ ...sessionRow('done', null), launched: true })).toBe(false);
+  });
+
   it('leaves agent and project rows alone', () => {
     const quiet = sessionRow('done', null);
     expect(isWindowless({ ...quiet, kind: 'agent' })).toBe(false);

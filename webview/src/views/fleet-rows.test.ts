@@ -205,6 +205,7 @@ describe('buildFleetTree', () => {
       projectFolder: null,
       inWorkspace: false,
       health: null,
+      launched: false,
     });
     const worn = buildFleetTree({ ...fleetState, health: { s1: 'watch' } });
     expect(firstRow(worn).health).toBe('watch');

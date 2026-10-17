@@ -40,6 +40,7 @@ describe('storagePath', () => {
       memoryState: 'memory-state.json',
       dryRun: 'dry-run.txt',
       projects: 'projects.json',
+      launched: 'launched.json',
     });
   });
 });

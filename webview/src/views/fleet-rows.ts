@@ -58,6 +58,8 @@ export interface FleetRow {
   readonly inWorkspace: boolean;
   /** On a session's row, how worn out it is, or null when it is healthy or finished. */
   readonly health: Exclude<HealthLevel, 'good'> | null;
+  /** On a session's row, true when the Launcher started it, so it stays until removed by hand. */
+  readonly launched: boolean;
 }
 
 export interface FleetNode {
@@ -84,7 +86,10 @@ function isActive(state: SessionState): boolean {
 }
 
 /** What a session's node looks up by its id. */
-type SessionLookups = Pick<FleetState, 'agents' | 'places' | 'sessionProjects' | 'health'>;
+type SessionLookups = Pick<
+  FleetState,
+  'agents' | 'places' | 'sessionProjects' | 'health' | 'launched'
+>;
 
 function sessionRow(
   session: SessionSummary,
@@ -126,6 +131,7 @@ function sessionRow(
     projectFolder: null,
     inWorkspace: false,
     health: state.health[session.id] ?? null,
+    launched: state.launched.includes(session.id),
   };
 }
 
@@ -160,6 +166,7 @@ function agentRow(agent: AgentNode, session: FleetRow): FleetRow {
     projectFolder: null,
     inWorkspace: false,
     health: null,
+    launched: false,
   };
 }
 
@@ -271,6 +278,7 @@ function projectRow(
     contextFill: null,
     costUsd: costs.length === 0 ? null : total(costs),
     needsProject: rows.some((row) => row.needsProject),
+    launched: false,
     ...projectFields(project, state),
   };
 }

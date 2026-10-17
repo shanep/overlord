@@ -30,6 +30,7 @@ type SessionActions =
   | 'openView'
   | 'interrupt'
   | 'stop'
+  | 'removeSession'
   | 'setModel'
   | 'setPermissionMode'
   | 'handoff';
@@ -288,6 +289,18 @@ export const sessionActions: ActionHandlers<SessionActions> = {
     if (live !== null && (await agreed(rt, live, 'Stop')) && !(await terminate(rt, live))) {
       rt.host.showWarning(`Claude Code did not stop session ${shortId(action.sessionId)}.`);
     }
+  },
+  // Launched sessions stay in the fleet until this. One still running stops
+  // first, so a last update from it cannot bring the row back.
+  removeSession: async ({ rt }, action) => {
+    const target = sdkTarget(rt, action.sessionId);
+    if (target !== null) {
+      rt.launcher.stopRun(target.run.id);
+      await target.session.finished;
+    }
+    await rt.launched.remove(action.sessionId);
+    await rt.dismissTranscript(action.sessionId);
+    rt.bus.emit('session.removed', { sessionId: action.sessionId });
   },
   setModel: async ({ rt }, action) => {
     const target = sdkTarget(rt, action.sessionId);

@@ -147,6 +147,8 @@ export class TranscriptWatcher {
   private finished: ReadonlySet<string> = new Set();
   /** Sessions dropped as idle, with the mtime they had then. A newer write brings them back. */
   private readonly settled = new Map<string, number>();
+  /** Sessions removed by hand, settled on their next visit so only a newer write brings them back. */
+  private readonly dismissed = new Set<string>();
   private timer: NodeJS.Timeout | null = null;
   private handle: WatchHandle | null = null;
   private running: Promise<void> | null = null;
@@ -214,6 +216,13 @@ export class TranscriptWatcher {
     if (differs) {
       await this.refresh();
     }
+  }
+
+  /** Drop a session from the fleet now. It comes back only when its transcript changes. */
+  async dismiss(sessionId: string): Promise<void> {
+    this.pinned.delete(sessionId);
+    this.dismissed.add(sessionId);
+    await this.refresh();
   }
 
   /** Run one scan and read cycle. Calls made while one runs share a single follow-up cycle. */
@@ -311,6 +320,10 @@ export class TranscriptWatcher {
     if (this.pinned.has(info.sessionId) || this.kept.has(info.sessionId)) {
       await this.poll(info, now);
       return true;
+    }
+    if (this.dismissed.delete(info.sessionId)) {
+      this.settled.set(info.sessionId, info.mtimeMs);
+      return false;
     }
     if (now - info.mtimeMs > this.activeWindowMs) {
       return false;

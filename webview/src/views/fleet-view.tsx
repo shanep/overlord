@@ -36,9 +36,31 @@ import {
 import { FleetTable } from './fleet-table.js';
 import { FleetViewMenu } from './fleet-view-menu.js';
 
+type ConfirmKind = 'interrupt' | 'stop' | 'remove';
+
 interface PendingConfirm {
-  readonly kind: 'interrupt' | 'stop';
+  readonly kind: ConfirmKind;
   readonly row: FleetRow;
+}
+
+/** What the confirm bar asks, its button, and the host action it posts. */
+const CONFIRMS = {
+  interrupt: { verb: 'Interrupt', action: 'interrupt' },
+  stop: { verb: 'Stop', action: 'stop' },
+  remove: { verb: 'Remove', action: 'removeSession' },
+} as const satisfies Record<
+  ConfirmKind,
+  { readonly verb: string; readonly action: 'interrupt' | 'stop' | 'removeSession' }
+>;
+
+function confirmMessage(confirm: PendingConfirm): string {
+  const title = `"${confirm.row.sessionTitle}"`;
+  if (confirm.kind !== 'remove') {
+    return `${CONFIRMS[confirm.kind].verb} ${title}?`;
+  }
+  return confirm.row.state === 'running' || confirm.row.state === 'waiting'
+    ? `Stop ${title} and remove it from the fleet?`
+    : `Remove ${title} from the fleet?`;
 }
 
 const NO_KEYS: readonly string[] = [];
@@ -192,7 +214,8 @@ export function FleetView(props: { readonly state: FleetState }): ReactElement {
         break;
       }
       case 'interrupt':
-      case 'stop': {
+      case 'stop':
+      case 'remove': {
         setConfirm({ kind: action, row });
         break;
       }
@@ -319,10 +342,10 @@ export function FleetView(props: { readonly state: FleetState }): ReactElement {
       </div>
       {confirm === null ? null : (
         <ConfirmBar
-          message={`${confirm.kind === 'stop' ? 'Stop' : 'Interrupt'} "${confirm.row.sessionTitle}"?`}
-          confirmLabel={confirm.kind === 'stop' ? 'Stop' : 'Interrupt'}
+          message={confirmMessage(confirm)}
+          confirmLabel={CONFIRMS[confirm.kind].verb}
           onConfirm={() => {
-            post({ type: confirm.kind, sessionId: confirm.row.sessionId });
+            post({ type: CONFIRMS[confirm.kind].action, sessionId: confirm.row.sessionId });
             closeConfirm();
           }}
           onCancel={closeConfirm}

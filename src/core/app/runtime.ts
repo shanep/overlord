@@ -26,6 +26,7 @@ import type { AsyncValue } from './async-value.js';
 import type { CatalogBrowser } from './catalog-browser.js';
 import type { HostPort } from './host-port.js';
 import type { BackgroundJobs } from './jobs.js';
+import type { LaunchedSessions } from './launched-sessions.js';
 import type { PermissionHub } from './permissions.js';
 import type { SessionPlaces } from './places.js';
 import type { KillFunction } from './process.js';
@@ -83,6 +84,8 @@ export interface Runtime {
   readonly jobs: BackgroundJobs;
   /** Each session's project, and the projects made by hand. */
   readonly projects: ProjectIndex;
+  /** The sessions the Launcher started, held in the fleet until removed by hand. */
+  readonly launched: LaunchedSessions;
   readonly caches: Caches;
   readonly context: ContextViews;
   /** The MCP registry search in the Connectors view. */
@@ -102,6 +105,8 @@ export interface Runtime {
   readonly notify: () => void;
   /** Loads a session's transcript into the store, even an old one. True when it was found. */
   readonly openTranscript: (sessionId: string) => Promise<boolean>;
+  /** Drops a session's transcript from the fleet until it changes again. */
+  readonly dismissTranscript: (sessionId: string) => Promise<void>;
   /** True while the session's transcript has a turn open or a tool call without a result. */
   readonly sessionBusy: (sessionId: string) => boolean;
   /** The claude binary and the login shell's environment, for running the CLI outside a terminal. */

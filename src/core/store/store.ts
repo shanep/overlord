@@ -140,6 +140,7 @@ export class OverlordStore {
     | 'sessionProjects'
     | 'workspaceProjects'
     | 'health'
+    | 'launched'
   > {
     return {
       sessions: [...this.sessions.values()].toSorted(

@@ -217,6 +217,20 @@ describe('SDK sessions Overlord launched', () => {
     expect(env.host.questions).toStrictEqual([]);
     expect(test.kills).toStrictEqual([]);
   });
+
+  it('holds a launched session until it is removed, stopping it first', async () => {
+    const env = await makeEnv();
+    const test = makeApp(env);
+    const { runtime } = test.app;
+    const sessionId = await launched(test);
+    await waitFor(() => runtime.launched.has(sessionId));
+    expect(test.app.stateFor('fleet', {})).toMatchObject({ state: { launched: [sessionId] } });
+    await test.app.dispatch({ type: 'removeSession', sessionId }, {});
+    expect(runtime.launcher.runs()[0]?.state).toBe('stopped');
+    expect(runtime.launched.list()).toStrictEqual([]);
+    expect(runtime.store.fleetState(0).sessions.map((item) => item.id)).not.toContain(sessionId);
+    expect(env.host.questions).toStrictEqual([]);
+  });
 });
 
 describe('stopNow', () => {

@@ -115,6 +115,7 @@ function RowActions(props: {
           {button('combine')}
           {button('interrupt', !row.sessionActive)}
           {button('stop', !row.sessionActive)}
+          {isLaunched(row) ? button('remove') : null}
         </>
       ) : null}
     </span>

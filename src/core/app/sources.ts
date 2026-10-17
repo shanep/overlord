@@ -50,6 +50,8 @@ export class Sources {
   private finished: readonly string[] = [];
   /** Sessions open in a terminal, held for as long as the window shows them. */
   private viewed: readonly string[] = [];
+  /** Sessions the Launcher started, held until removed by hand. */
+  private launched: readonly string[] = [];
   private hooks: HookServer | null = null;
   private offInstructions: (() => void) | null = null;
   private receiver: OtlpReceiver | null = null;
@@ -88,7 +90,18 @@ export class Sources {
   }
 
   private held(): string[] {
-    return [...new Set([...this.kept, ...this.viewed])];
+    return [...new Set([...this.kept, ...this.viewed, ...this.launched])];
+  }
+
+  /** Holds the sessions the Launcher started however long they have been quiet, until removed by hand. */
+  async keepLaunched(sessionIds: readonly string[]): Promise<void> {
+    this.launched = sessionIds;
+    await this.watcher?.keep(this.held(), this.finished);
+  }
+
+  /** Drops a session from the fleet until its transcript changes again. */
+  async dismissTranscript(sessionId: string): Promise<void> {
+    await this.watcher?.dismiss(sessionId);
   }
 
   /**

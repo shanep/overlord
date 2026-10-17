@@ -376,6 +376,28 @@ describe('TranscriptWatcher', () => {
     expect(names(events).at(-1)).toBe('session.removed');
   });
 
+  it('drops a dismissed session at once until its transcript changes', async () => {
+    await writeFile(layout.transcriptPath, jsonl([userPrompt('u1', 0, 'hi')]));
+    const recent = new Date(Date.now() - 60_000);
+    await utimes(layout.transcriptPath, recent, recent);
+    clock = Date.now();
+    const watcher = make({ activeWindowMs: 30 * 60_000, idleWindowMs: 10 * 60_000 });
+    await watcher.refresh();
+    expect(watcher.sessionIds()).toStrictEqual([SESSION]);
+
+    await watcher.dismiss(SESSION);
+    expect(watcher.sessionIds()).toStrictEqual([]);
+    expect(names(events).at(-1)).toBe('session.removed');
+    events.length = 0;
+    await watcher.refresh();
+    expect(events).toStrictEqual([]);
+
+    const now = new Date();
+    await utimes(layout.transcriptPath, now, now);
+    await watcher.refresh();
+    expect(watcher.sessionIds()).toStrictEqual([SESSION]);
+  });
+
   it('holds finished sessions past the idle window but not the active one', async () => {
     await writeFile(
       layout.transcriptPath,

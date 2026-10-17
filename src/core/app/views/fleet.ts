@@ -152,6 +152,8 @@ export interface FleetInputs {
   readonly jobs: readonly BackgroundJob[];
   /** Busy, idle or waiting from Claude Code's session registry, by session id. */
   readonly statuses: Readonly<Record<string, RegistryStatus>>;
+  /** The sessions the Launcher started. */
+  readonly launched: readonly string[];
   /** The projects, and the project of each session and workspace folder that has been checked. */
   readonly projects: (
     sessions: readonly SessionFolder[],
@@ -226,6 +228,7 @@ export function buildFleet(input: FleetInputs): FleetState {
     rateLimits: withPlanLimits(normalizeRateLimits(base.rateLimits), input.plan),
     spendPerHourUsd: base.spendPerHourUsd,
     health: fleetHealth(input.store, sessions),
+    launched: input.launched,
   };
 }
 
@@ -242,6 +245,7 @@ export function fleetFor(rt: Runtime): FleetState {
     workspaceFolders: rt.host.workspaceFolders(),
     jobs: rt.jobs.value,
     statuses: rt.places.statuses,
+    launched: rt.launched.list(),
     projects: (sessions, workspace) => rt.projects.view(sessions, workspace),
   });
 }

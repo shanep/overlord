@@ -15,6 +15,8 @@ const SHAPES = {
   ),
   interrupt: <path d="M6 4v8M10 4v8" />,
   stop: <rect x="4" y="4" width="8" height="8" rx="1" fill="currentColor" />,
+  /** A cross: take a launched session out of the fleet. */
+  remove: <path d="m4 4 8 8M12 4l-8 8" />,
   /** A terminal window: the CLI in a VS Code terminal. */
   window: (
     <>

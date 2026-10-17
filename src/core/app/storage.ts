@@ -1,6 +1,7 @@
 // The small JSON files Overlord keeps in the extension's storage folder:
-// auto-approve rules, prompt drafts, projects and the claude.ai import. Every file is
-// checked with zod on read, so a hand edit gone wrong is an error, not a crash.
+// auto-approve rules, prompt drafts, projects, launched sessions and the
+// claude.ai import. Every file is checked with zod on read, so a hand edit
+// gone wrong is an error, not a crash.
 
 import path from 'node:path';
 
@@ -18,7 +19,15 @@ export interface StoredImport {
 }
 
 export type StorageName =
-  'rules' | 'audit' | 'profiles' | 'drafts' | 'claudeAi' | 'memoryState' | 'dryRun' | 'projects';
+  | 'rules'
+  | 'audit'
+  | 'profiles'
+  | 'drafts'
+  | 'claudeAi'
+  | 'memoryState'
+  | 'dryRun'
+  | 'projects'
+  | 'launched';
 
 export const STORAGE_FILES: Readonly<Record<StorageName, string>> = {
   rules: 'rules.json',
@@ -29,6 +38,7 @@ export const STORAGE_FILES: Readonly<Record<StorageName, string>> = {
   memoryState: 'memory-state.json',
   dryRun: 'dry-run.txt',
   projects: 'projects.json',
+  launched: 'launched.json',
 };
 
 export function storagePath(storageDir: string, name: StorageName): string {
@@ -74,6 +84,11 @@ const projectsFileSchema = z.object({
   ),
   rules: z.array(z.object({ folder: z.string().min(1), projectId: z.string().min(1).nullable() })),
   repos: z.array(z.string().min(1)).default([]),
+});
+
+const launchedFileSchema = z.object({
+  version: z.literal(1),
+  sessions: z.array(z.string().min(1)),
 });
 
 /** Parsed file contents, or `fallback` when the file does not exist. */
@@ -164,4 +179,14 @@ export async function writeProjects(file: string, book: ProjectBook): Promise<vo
     rules: book.rules,
     repos: book.repos,
   });
+}
+
+/** The ids of the sessions the Launcher started that are still in the fleet. */
+export async function readLaunched(file: string): Promise<readonly string[]> {
+  const data = await readChecked(file, launchedFileSchema, { version: 1, sessions: [] });
+  return data.sessions;
+}
+
+export async function writeLaunched(file: string, sessions: readonly string[]): Promise<void> {
+  await writeJson(file, { version: 1, sessions });
 }

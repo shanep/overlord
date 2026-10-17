@@ -33,6 +33,7 @@ import { ErrorLog } from './errors.js';
 import type { PanelParams } from './host-port.js';
 import { BackgroundJobs } from './jobs.js';
 import { createLaunchChecker } from './launch-check.js';
+import { LaunchedSessions } from './launched-sessions.js';
 import { PermissionHub } from './permissions.js';
 import type { ActiveTerminal } from './places.js';
 import { SessionPlaces } from './places.js';
@@ -46,6 +47,7 @@ import { once, readLoginShellEnv } from './shell-env.js';
 import { Sources } from './sources.js';
 import type { RunningItem } from './status.js';
 import { runningItems, statusLine } from './status.js';
+import { storagePath } from './storage.js';
 import { SyncCommands } from './sync-commands.js';
 import { startTimers } from './timers.js';
 import { installTransferSkill } from './transfer.js';
@@ -161,6 +163,12 @@ export class OverlordApp {
       ...events,
     });
     const projects = createProjectIndex(host.storageDir, worktrees, { ...events, clock });
+    const launched = new LaunchedSessions({
+      ...events,
+      file: storagePath(host.storageDir, 'launched'),
+      // Sources is built below, and this only runs after construction.
+      keep: async (ids): Promise<void> => this.sources.keepLaunched(ids),
+    });
     const base: CacheRuntime = {
       paths: this.paths,
       host,
@@ -183,6 +191,7 @@ export class OverlordApp {
       places,
       jobs,
       projects,
+      launched,
       report,
       planUsage: async (): Promise<unknown> => {
         const usageEnv = await launchEnv();
@@ -195,6 +204,7 @@ export class OverlordApp {
       notify,
       // Sources is built below, and this only runs after construction.
       openTranscript: async (id: string): Promise<boolean> => this.sources.openTranscript(id),
+      dismissTranscript: async (id: string): Promise<void> => this.sources.dismissTranscript(id),
       sessionBusy: (id: string): boolean => this.sources.sessionBusy(id),
       claudeCli: deps.claudeCli ?? cliLoader(host.settings, launchEnv, platform),
       // The config sync is built below, once the runtime it needs exists.
@@ -222,7 +232,7 @@ export class OverlordApp {
       agent: new CatalogBrowser({ kind: 'agent', reader, fetch: base.fetch, notify }),
     };
     this.rt = { ...base, caches: createCaches(base), context, activity, registry, catalogs };
-    this.cleanups.push(store.onChange(notify), launcher.onChange(notify));
+    this.cleanups.push(store.onChange(notify), launcher.onChange(notify), launched.track(launcher));
     const coordinator = createCoordinator(this.rt);
     const launchCheck = createLaunchChecker(this.rt);
     this.cleanups.push(
@@ -270,6 +280,7 @@ export class OverlordApp {
     this.started = true;
     await this.rt.permissions.load();
     await this.rt.worktrees.load();
+    await this.rt.launched.load();
     await this.sources.startWatcher();
     await this.sources.sync();
     this.cleanups.push(...startTimers(this.rt, this.interval));
@@ -420,6 +431,7 @@ export class OverlordApp {
     this.rt.permissions.inbox.cancelAll();
     this.rt.store.dispose();
     this.changes.clear();
+    await this.rt.launched.idle();
     await this.sources.stop();
   }
 }

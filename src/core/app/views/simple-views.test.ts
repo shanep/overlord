@@ -78,6 +78,7 @@ describe('fleet view', () => {
       jobs: [],
       projects: noProjects,
       statuses: {},
+      launched: [],
     };
     expect(buildFleet(inputs).activeSessionId).toBe('mine');
     expect(buildFleet(inputs).activeVersion).toBe(3);
@@ -153,6 +154,7 @@ describe('fleet view', () => {
       jobs: [],
       projects: noProjects,
       statuses: {},
+      launched: [],
     });
     expect(state.activeSessionId).toBe('s1');
     expect(state.sessions.map((item) => item.id)).toStrictEqual(['s1']);
@@ -166,6 +168,7 @@ describe('fleet view', () => {
       'activeVersion',
       'agents',
       'health',
+      'launched',
       'pendingPermissions',
       'places',
       'projects',
@@ -242,6 +245,7 @@ describe('fleet view', () => {
       jobs,
       projects: noProjects,
       statuses: {},
+      launched: [],
     });
     const byId = new Map(state.sessions.map((item) => [item.id, item]));
     expect(byId.get('live')?.state).toBe('running');
@@ -307,6 +311,7 @@ describe('fleet view', () => {
         jobs: [],
         projects: noProjects,
         statuses: {},
+        launched: [],
       }).rateLimits,
     ).toStrictEqual({
       fiveHourPct: 0.01,

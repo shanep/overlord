@@ -227,6 +227,25 @@ describe('OverlordApp', () => {
     await app.dispose();
   });
 
+  it('keeps a session the Launcher started past the active window, after a reload too', async () => {
+    const env = await makeEnv();
+    const line = JSON.stringify({ ...userPrompt('u1', 0, 'hello'), sessionId: 'abc' });
+    await writeText(path.join(env.paths.projectsDir, '-work', 'abc.jsonl'), `${line}\n`);
+    await writeJson(path.join(env.host.storageDir, 'launched.json'), {
+      version: 1,
+      sessions: ['abc'],
+    });
+    const now = Date.now() + (env.host.settings.activeWindowMinutes + 1) * 60_000;
+    const { app } = makeApp(env, { deps: { clock: () => now } });
+    await app.start();
+    const message = app.stateFor('fleet', {});
+    expect(
+      message.view === 'fleet' ? message.state.sessions.map((item) => item.id) : [],
+    ).toStrictEqual(['abc']);
+    expect(message.view === 'fleet' ? message.state.launched : []).toStrictEqual(['abc']);
+    await app.dispose();
+  });
+
   it('keeps a quiet session while a terminal shows it and lets it go once the terminal closes', async () => {
     const env = await makeEnv();
     const line = JSON.stringify({ ...userPrompt('u1', 0, 'hello'), sessionId: 'abc' });

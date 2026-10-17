@@ -142,6 +142,7 @@ export const fleetState: FleetState = {
   projects: [],
   sessionProjects: {},
   workspaceProjects: [],
+  launched: ['s3'],
   activeSessionId: null,
   activeVersion: 0,
   rateLimits: { fiveHourPct: 0.64, sevenDayPct: 0.2, resetsAt: NOW + 90 * MINUTE },
