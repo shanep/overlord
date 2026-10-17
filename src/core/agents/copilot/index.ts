@@ -18,6 +18,7 @@ import { copilotMcp } from './mcp.js';
 import { COPILOT_DEFAULT_MODEL, copilotContextWindow } from './models.js';
 import { copilotObserverFacet } from './observer.js';
 import { copilotRuntime } from './runtime.js';
+import { copilotSync } from './sync.js';
 import { COPILOT_BINARY, copilotTerminal } from './terminal.js';
 
 /** The agent modes from --mode, plus --allow-all, which turns every permission prompt off. */
@@ -78,5 +79,5 @@ export const copilot: AgentAdapter = {
   hooks: copilotHooks,
   inject: copilotInject,
   instructions: copilotInstructions,
-  config: { settingsFormat: 'json', mcp: copilotMcp, library: copilotLibrary },
+  config: { settingsFormat: 'json', mcp: copilotMcp, library: copilotLibrary, sync: copilotSync },
 };

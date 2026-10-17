@@ -12,6 +12,7 @@ import type { ConfigItem } from '../../shared/model.js';
 import { claudeCode } from '../agents/claude/index.js';
 import { codex as codexAdapter } from '../agents/codex/index.js';
 import { codexSync } from '../agents/codex/sync.js';
+import { copilot as copilotAdapter } from '../agents/copilot/index.js';
 import { copilotSync } from '../agents/copilot/sync.js';
 import type {
   AgentAdapter,
@@ -718,5 +719,33 @@ describe('agentSyncTargets', () => {
         mcpStore: true,
       },
     ]);
+  });
+
+  it('lists the Copilot adapter items from COPILOT_HOME', async () => {
+    const home = await scratchDir();
+    const repo = await scratchDir();
+    const copilotHome = path.join(home, 'copilot-home');
+    await writeTree(copilotHome, {
+      'copilot-instructions.md': 'be brief',
+      'skills/ship/SKILL.md': '---\nname: ship\ndescription: Ship it.\n---\n',
+      'agents/checker.md': '---\nname: checker\n---\n',
+      'settings.json': '{"model":"gpt-5"}',
+      'mcp-config.json': '{"mcpServers":{"docs":{"type":"http","url":"https://x"}}}',
+    });
+    const targets = agentSyncTargets([claudeCode, copilotAdapter], home, {
+      COPILOT_HOME: copilotHome,
+    });
+    expect(targets.map((target) => [target.agent, target.dir])).toStrictEqual([
+      ['copilot', copilotHome],
+    ]);
+    const items = await agentInventory(
+      must(targets[0]),
+      await createStatusResolver(exec, repo),
+      'box',
+    );
+    expect(items.every((entry) => entry.agent === 'copilot')).toBe(true);
+    expect(items.map((entry) => entry.kind)).toStrictEqual(
+      expect.arrayContaining(['claude-md', 'skill', 'agent', 'settings', 'mcp-server']),
+    );
   });
 });

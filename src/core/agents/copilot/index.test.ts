@@ -15,6 +15,7 @@ import { copilotInstructions } from './instructions.js';
 import { copilotLibrary } from './library.js';
 import { copilotMcp } from './mcp.js';
 import { formatVerified, nanoAiuToUsd } from './models.js';
+import { copilotSync } from './sync.js';
 import { copilotTerminal } from './terminal.js';
 
 import { copilot } from './index.js';
@@ -68,6 +69,7 @@ describe('copilot', () => {
       settingsFormat: 'json',
       mcp: copilotMcp,
       library: copilotLibrary,
+      sync: copilotSync,
     });
     expect(copilot.hooks).toBe(copilotHooks);
     expect(copilot.inject).toBe(copilotInject);
