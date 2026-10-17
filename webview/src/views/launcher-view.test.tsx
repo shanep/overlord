@@ -255,7 +255,7 @@ describe('folder picker', () => {
 });
 
 describe('runs', () => {
-  it('lists runs with profile, state, cost, time and result', () => {
+  it('lists runs with profile, state, cost, time and result, and no cost for a run without one', () => {
     const [running, done] = launcherState.runs;
     if (running === undefined || done === undefined) {
       throw new Error('fixture runs missing');
@@ -265,6 +265,7 @@ describe('runs', () => {
       id: 'r3',
       spec: { ...running.spec, profileId: 'gone', label: 'Orphan' },
       state: 'failed',
+      costUsd: null,
     };
     const state: LauncherState = { ...launcherState, runs: [...launcherState.runs, orphan] };
     renderView(<LauncherView state={state} />);
@@ -276,7 +277,7 @@ describe('runs', () => {
     expect(rows).toStrictEqual([
       'Flaky testFastrunning$0.30 est.41m 35sn/ar1Agent viewStop',
       'Flaky testnonedone$0.80 est.95m 00sFixed by adding a wait.',
-      'Orphangonefailed$0.80 est.95m 00sFixed by adding a wait.',
+      'Orphangonefailed95m 00sFixed by adding a wait.',
     ]);
     expect(screen.getByText('1 active, max 4 at once')).toBeDefined();
   });

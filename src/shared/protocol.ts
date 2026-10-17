@@ -157,7 +157,8 @@ export interface LaunchRun {
   readonly spec: LaunchSpec;
   readonly sessionId: string | null;
   readonly state: 'queued' | 'running' | 'done' | 'failed' | 'stopped';
-  readonly costUsd: number;
+  /** What the run cost so far, or null until it reports dollars. Agents like Codex never do. */
+  readonly costUsd: number | null;
   readonly turns: number;
   readonly durationMs: number;
   readonly result: string | null;

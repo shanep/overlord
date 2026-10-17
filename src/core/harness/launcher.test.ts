@@ -577,7 +577,7 @@ describe('Launcher agents', () => {
     ]);
   });
 
-  it('records an id the agent reports late and keeps cost at zero without dollars', async () => {
+  it('records an id the agent reports late and leaves the cost unknown without dollars', async () => {
     const agents = new AgentRegistry([lateAgent()]);
     const { launcher } = setup(1, { agents });
     launcher.launch([spec('go', { profileId: 'late' })], [{ ...profile('late'), effort: null }]);
@@ -585,7 +585,7 @@ describe('Launcher agents', () => {
     expect(launcher.runs()[0]).toMatchObject({
       sessionId: 'thread-1',
       state: 'done',
-      costUsd: 0,
+      costUsd: null,
       turns: 1,
       result: 'late',
     });

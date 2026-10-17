@@ -131,7 +131,7 @@ export class Launcher {
         spec,
         sessionId: null,
         state: 'queued',
-        costUsd: 0,
+        costUsd: null,
         turns: 0,
         durationMs: 0,
         result: null,
@@ -162,7 +162,7 @@ export class Launcher {
 
   /** Total reported spend across every run so far. */
   spendUsd(): number {
-    return this.runs().reduce((total, run) => total + run.costUsd, 0);
+    return this.runs().reduce((total, run) => total + (run.costUsd ?? 0), 0);
   }
 
   session(runId: string): AgentSession | null {

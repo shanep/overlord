@@ -76,8 +76,9 @@ function runColumns(profiles: readonly LaunchProfile[]): Column<LaunchRun>[] {
       id: 'cost',
       header: 'Cost',
       numeric: true,
-      cell: (run) => formatCost(run.costUsd),
-      sortValue: (run) => run.costUsd,
+      // A run with no dollars yet, or from an agent that never reports them, shows nothing.
+      cell: (run) => (run.costUsd === null ? '' : formatCost(run.costUsd)),
+      sortValue: (run) => run.costUsd ?? -1,
     },
     {
       id: 'turns',
