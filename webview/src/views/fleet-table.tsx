@@ -6,6 +6,9 @@ import type { KeyboardEvent, ReactElement, RefObject } from 'react';
 import { useMemo } from 'react';
 
 import type { AgentId } from '../../../src/shared/agents.js';
+import { CLAUDE_CODE } from '../../../src/shared/agents.js';
+import type { Backend } from '../../../src/shared/backends.js';
+import { backendOf } from '../../../src/shared/backends.js';
 import { NOT_REPORTED, soleAgent, useAgent, useAgents } from '../agents.js';
 import type { ChartTheme } from '../charts/chart-theme.js';
 import { EChart } from '../charts/chart.js';
@@ -216,6 +219,11 @@ function ReportedCell(props: {
   );
 }
 
+/** The backend logo a Claude Code session row shows, or null on every other row. */
+function rowBackend(row: FleetRow): Backend | null {
+  return row.kind === 'session' && row.agent === CLAUDE_CODE ? backendOf(row.model) : null;
+}
+
 function SessionCells(props: FleetTableRowProps): ReactElement {
   const { visible, selected, now, history, theme } = props;
   const { row } = visible;
@@ -233,6 +241,7 @@ function SessionCells(props: FleetTableRowProps): ReactElement {
       <TitleCell
         visible={visible}
         agent={session && props.showAgent(row.agent) ? agent : null}
+        backend={rowBackend(row)}
         showSummary={props.showSummary}
         onToggle={props.onToggle}
       />

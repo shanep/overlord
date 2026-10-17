@@ -2,18 +2,12 @@
 // strings. A value that is already a backend model_id passes through unchanged,
 // a known alias is translated, and anything else falls back to the default.
 
+import { BOISESTATE_MODEL_IDS } from '../../shared/backends.js';
+
 import { DEFAULT_MODEL_ID } from './config.js';
 
 /** The seven models the api key grants, by backend model_id. */
-export const MODEL_IDS = [
-  'global.anthropic.claude-opus-5-5',
-  'global.anthropic.claude-sonnet-5',
-  'global.anthropic.claude-haiku-4-5-20251001-v1:0',
-  'global.openai.gpt-6-sol',
-  'global.openai.gpt-5.6-terra',
-  'global.openai.gpt-6-luna',
-  'google.gemma-4-31b',
-] as const;
+export const MODEL_IDS = BOISESTATE_MODEL_IDS;
 
 const KNOWN: ReadonlySet<string> = new Set(MODEL_IDS);
 

@@ -1,7 +1,10 @@
 import type { ReactElement } from 'react';
 
 import type { AgentInfo } from '../../../src/shared/agents.js';
+import type { Backend } from '../../../src/shared/backends.js';
 import type { SessionPlace, SessionState, Surface } from '../../../src/shared/model.js';
+import boisestateLogo from '../assets/boisestate.png';
+import clawdLogo from '../assets/clawd.svg';
 import type { Tone } from '../labels.js';
 import {
   LAUNCHED_INFO,
@@ -85,13 +88,39 @@ export function LaunchedMarker(): ReactElement {
   );
 }
 
-/** The agent CLI behind a session: its icon and short name, quiet so the title still leads. */
-export function AgentMark(props: { readonly agent: AgentInfo }): ReactElement {
-  const { agent } = props;
-  const version = agent.version === null ? '' : ` ${agent.version}`;
+const BACKENDS: Readonly<Record<Backend, { readonly logo: string; readonly name: string }>> = {
+  anthropic: { logo: clawdLogo, name: 'Anthropic' },
+  boisestate: { logo: boisestateLogo, name: 'boisestate.ai' },
+};
+
+/** Clawd for a session on Anthropic, the Boise State B for one on the boisestate.ai bridge. */
+function BackendLogo(props: { readonly backend: Backend }): ReactElement {
+  return <img className="backend-logo" src={BACKENDS[props.backend].logo} alt="" />;
+}
+
+/** The backend a Claude Code session talks to, as its logo alone. */
+export function BackendMark(props: { readonly backend: Backend }): ReactElement {
   return (
-    <span className="agent-mark" data-tip={`Agent: ${agent.name}${version}`}>
-      <Icon name={agentIcon(agent.icon)} />
+    <span className="backend-mark" data-tip={`Backend: ${BACKENDS[props.backend].name}`}>
+      <BackendLogo backend={props.backend} />
+    </span>
+  );
+}
+
+/**
+ * The agent CLI behind a session: its icon and short name, quiet so the title
+ * still leads. A known backend shows its logo in place of the agent's icon.
+ */
+export function AgentMark(props: {
+  readonly agent: AgentInfo;
+  readonly backend?: Backend | null;
+}): ReactElement {
+  const { agent, backend = null } = props;
+  const version = agent.version === null ? '' : ` ${agent.version}`;
+  const on = backend === null ? '' : ` on ${BACKENDS[backend].name}`;
+  return (
+    <span className="agent-mark" data-tip={`Agent: ${agent.name}${version}${on}`}>
+      {backend === null ? <Icon name={agentIcon(agent.icon)} /> : <BackendLogo backend={backend} />}
       <span className="agent-mark-name">{agent.short}</span>
     </span>
   );

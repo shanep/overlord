@@ -7,13 +7,12 @@
 import type { FileHandle } from 'node:fs/promises';
 import { open } from 'node:fs/promises';
 
+import { backendOf } from '../../shared/backends.js';
 import type { ClaudePaths } from '../paths.js';
-import { MODEL_IDS } from '../proxy/models.js';
 import { transcriptPathFor } from '../surfaces/desktop.js';
 
 /** The last replies sit near the end, after any long tool output. */
 const TAIL_BYTES = 1024 * 1024;
-const BRIDGE_MODELS: ReadonlySet<string> = new Set(MODEL_IDS);
 // Claude Code writes this model on the error notes it adds itself.
 const SYNTHETIC = '<synthetic>';
 
@@ -74,5 +73,5 @@ export async function ranOnBridge(
 ): Promise<boolean> {
   const tail = await readTail(transcriptPathFor(paths, cwd, sessionId), TAIL_BYTES);
   const model = tail === null ? null : lastModel(tail);
-  return model !== null && BRIDGE_MODELS.has(model);
+  return backendOf(model) === 'boisestate';
 }

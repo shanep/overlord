@@ -860,6 +860,18 @@ fieldset.chips {
   height: 12px;
 }
 
+/* A backend's logo keeps its own colors and shape, so only its height is set. */
+.backend-mark {
+  display: inline-flex;
+  margin-right: 6px;
+}
+
+.backend-logo {
+  align-self: center;
+  width: auto;
+  height: 12px;
+}
+
 /* A session the Launcher started gets a stripe down its left edge. */
 .tree-table tr[data-launched='true'] > td:first-child {
   box-shadow: inset 3px 0 0 var(--ov-purple);
