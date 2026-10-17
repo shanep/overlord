@@ -40,17 +40,17 @@ describe('copilot', () => {
     expect(agents.get('copilot')).toBe(copilot);
   });
 
-  it('only claims what milestones 1 and 2 can show', () => {
+  it('only claims what milestones 1 to 3 can show', () => {
     expect(copilot.capabilities).toStrictEqual({
-      launch: false,
+      launch: true,
       terminal: true,
       background: false,
       resume: true,
       fork: false,
-      interrupt: false,
+      interrupt: true,
       liveModelChange: false,
       livePermissionMode: false,
-      approvals: false,
+      approvals: true,
       subagents: true,
       cacheReads: true,
       cacheWrites: true,
@@ -62,7 +62,6 @@ describe('copilot', () => {
     });
     expect(copilot.terminal).toBe(copilotTerminal);
     expect(copilot.config).toStrictEqual({ settingsFormat: 'json', mcp: copilotMcp });
-    expect(copilot.runtime).toBeUndefined();
     expect(copilot.hooks).toBeUndefined();
   });
 

@@ -5,19 +5,23 @@ import type { AgentCapabilities } from '../../../shared/agents.js';
 
 export const COPILOT_SHORT = 'Copilot';
 
-/** Milestones 1 and 2 of META-HARNESS.md: Overlord reads Copilot sessions and starts them in tabs. */
+/**
+ * Milestones 1 to 3 of META-HARNESS.md: Overlord reads Copilot sessions,
+ * starts them in tabs and drives them from the Launcher over ACP.
+ */
 export const COPILOT_CAPABILITIES: AgentCapabilities = {
-  launch: false,
+  launch: true,
   terminal: true,
   background: false,
   resume: true,
-  // Copilot forks only with /fork inside its TUI, so nothing outside can continue a copy.
+  // Copilot forks only with /fork inside its TUI, and its ACP server has no session/fork.
   fork: false,
-  // SIGINT quits the TUI, so only Esc in its tab stops a turn.
-  interrupt: false,
+  // A Launcher run stops its turn with session/cancel. In a tab SIGINT quits, so Esc there does it.
+  interrupt: true,
   liveModelChange: false,
   livePermissionMode: false,
-  approvals: false,
+  // A Launcher run's session/request_permission goes to the inbox.
+  approvals: true,
   subagents: true,
   // session.shutdown reports cache reads and writes per model.
   cacheReads: true,
