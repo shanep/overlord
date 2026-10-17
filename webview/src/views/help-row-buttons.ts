@@ -22,6 +22,12 @@ export const ROW_BUTTONS: readonly RowButton[] = [
       'Opens the context inspector: the system prompt, every memory file that loaded and why, and every file that did not load and why not.',
   },
   {
+    icon: 'renameSession',
+    name: 'Rename session',
+    meaning:
+      'Gives the session a new name, the same as /rename in it. The fleet, /resume and its terminal tab show the new name.',
+  },
+  {
     icon: 'move',
     name: 'Move to project',
     meaning:

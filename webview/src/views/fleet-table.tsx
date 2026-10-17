@@ -110,6 +110,7 @@ function RowActions(props: {
       {button('context')}
       {row.kind === 'session' ? (
         <>
+          {button('renameSession')}
           {button('move')}
           {button('relocate')}
           {button('combine')}

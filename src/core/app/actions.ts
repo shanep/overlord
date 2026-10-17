@@ -14,6 +14,7 @@ import { launchActions } from './actions-launch.js';
 import { messageActions } from './actions-messages.js';
 import { openProjectActions } from './actions-open-project.js';
 import { projectActions } from './actions-projects.js';
+import { renameActions } from './actions-rename.js';
 import { reputationActions } from './actions-reputation.js';
 import { sessionActions } from './actions-session.js';
 import { tuningActions } from './actions-tuning.js';
@@ -36,6 +37,7 @@ const HANDLERS: ActionHandlers<ActionType> = {
   ...worktreeActions,
   ...projectActions,
   ...combineActions,
+  ...renameActions,
   ...openProjectActions,
   ...bridgeActions,
 };

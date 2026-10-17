@@ -4,6 +4,8 @@
 
 import type { ReactElement } from 'react';
 
+const PENCIL = <path d="m10.5 3 2.5 2.5L6 12.5H3.5V10zM9 4.5 11.5 7" />;
+
 const SHAPES = {
   open: <path d="M9 3h4v4M13 3 7.5 8.5M12 9.5V13H3V4h3.5" />,
   /** A magnifying glass: the Context Inspector. */
@@ -37,7 +39,8 @@ const SHAPES = {
   /** A folder with a plus: choose the project's folder. */
   setFolder: <path d="M2 4.5h4l1.5 1.5H14v6.5H2zM8 7.5v3.5M6.25 9.25h3.5" />,
   /** A pencil: rename. */
-  rename: <path d="m10.5 3 2.5 2.5L6 12.5H3.5V10zM9 4.5 11.5 7" />,
+  rename: PENCIL,
+  renameSession: PENCIL,
   /** A bin: delete. */
   delete: <path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.7 8.5h5.6l.7-8.5" />,
   /** A four point star: start a new Claude Code session, like VS Code's sparkle. */

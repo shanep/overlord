@@ -490,6 +490,7 @@ export type WebviewAction =
   | { readonly type: 'openProjectFolder'; readonly projectId: string }
   | { readonly type: 'setProjectFolder'; readonly projectId: string }
   | { readonly type: 'combineSessions'; readonly sessionId: string }
+  | { readonly type: 'renameSession'; readonly sessionId: string }
   | { readonly type: 'openProject' }
   | { readonly type: 'newProjectSession'; readonly projectId: string };
 

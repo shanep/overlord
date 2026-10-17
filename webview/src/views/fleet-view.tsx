@@ -197,6 +197,10 @@ export function FleetView(props: { readonly state: FleetState }): ReactElement {
         post({ type: 'openContext', sessionId: row.sessionId, agentId });
         break;
       }
+      case 'renameSession': {
+        post({ type: 'renameSession', sessionId: row.sessionId });
+        break;
+      }
       case 'move': {
         post({ type: 'moveSession', sessionId: row.sessionId });
         break;
