@@ -37,6 +37,23 @@ minutes and CI runs it on every push anyway.
 Run a command once and read its log. Do not rerun a passing check to confirm
 it, and do not rerun the whole suite to see one failing test.
 
+## Landing
+
+Land finished work with `npm run land` instead of rebasing and pushing by
+hand. Give it a 20 minute timeout or run it in the background.
+
+- It reviews the change first: a fresh Claude session on Sonnet reads the
+  diff and stops the landing when it finds a real bug, with the file, the
+  problem and a fix. Fix it, commit and land again. When a finding is wrong,
+  land again with `npm run land -- --accept-review`. Changes under 30 lines
+  are not reviewed.
+- Then it takes the repository's land lock, so only one session lands at a
+  time, rebases onto `origin/master`, pushes (the pre-push hook runs the
+  checks once) and confirms the commit is on master. "Waiting for another
+  session to land" is not a hang.
+- Exit 0 means landed, 1 means something failed (it says what), and 2 means
+  the review found a blocking problem.
+
 ## Setup
 
 Overlord clones `node_modules` into new worktrees. Only run `npm ci` when

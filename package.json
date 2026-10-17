@@ -475,7 +475,9 @@
     "check": "npm run typecheck && npm run lint && npm run format:check && npm run test:coverage && npm run type-coverage && npm run knip && npm run depcruise && npm run spell && npm run mdlint && npm run nodash",
     "check:fast": "npm run typecheck:fast && npm run lint:changed && npm run format:check && npm run nodash && npm run spell && npm run mdlint && npm run knip && npm run depcruise && npm run type-coverage && npm run test:changed",
     "package": "node scripts/build.mjs --production && vsce package --no-dependencies",
-    "install:local": "node scripts/install-local.mjs"
+    "install:local": "node scripts/install-local.mjs",
+    "land": "node scripts/land.mjs",
+    "review": "node scripts/review.mjs"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.3.301",
