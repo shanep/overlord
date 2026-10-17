@@ -8,5 +8,5 @@ workers_dev = true
 [[d1_databases]]
 binding = "DB"
 database_name = "overlord-leaderboard"
-database_id = "REPLACE_ON_FIRST_DEPLOY"
+database_id = "a1e333df-0bb6-4409-a787-025cffd4e6ad"
 migrations_dir = "migrations"

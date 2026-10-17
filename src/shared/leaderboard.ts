@@ -3,7 +3,7 @@
 // An upload carries a display name and three counts, nothing else.
 
 /** The Cloudflare Worker that serves the board, the default for overlord.leaderboard.url. */
-export const LEADERBOARD_URL = '';
+export const LEADERBOARD_URL = 'https://overlord-leaderboard.shane-f34.workers.dev';
 /** Anyone with fewer prompts on file is left off the board, since a short history is mostly noise. */
 export const MIN_PROMPTS = 100;
 /** Rows in each list. */
