@@ -185,7 +185,6 @@ export class OverlordApp {
       // Sources is built below, and this only runs after construction.
       keep: async (ids): Promise<void> => this.sources.keepLaunched(ids),
     });
-    const budgets = new TokenBudgets({ ...events, file: storagePath(host.storageDir, 'budgets') });
     const base: CacheRuntime = {
       paths: this.paths,
       host,
@@ -210,7 +209,7 @@ export class OverlordApp {
       jobs,
       projects,
       launched,
-      budgets,
+      budgets: new TokenBudgets({ ...events, file: storagePath(host.storageDir, 'budgets') }),
       report,
       planUsage: async (): Promise<unknown> => {
         const usageEnv = await launchEnv();
@@ -299,8 +298,7 @@ export class OverlordApp {
     this.started = true;
     await this.rt.permissions.load();
     await this.rt.worktrees.load();
-    await this.rt.launched.load();
-    await this.rt.budgets.load();
+    await Promise.all([this.rt.launched.load(), this.rt.budgets.load()]);
     await this.sources.startWatcher();
     await this.sources.sync();
     this.cleanups.push(...startTimers(this.rt, this.interval));
@@ -453,8 +451,7 @@ export class OverlordApp {
     this.rt.permissions.inbox.cancelAll();
     this.rt.store.dispose();
     this.changes.clear();
-    await this.rt.launched.idle();
-    await this.rt.budgets.idle();
+    await Promise.all([this.rt.launched.idle(), this.rt.budgets.idle()]);
     await this.sources.stop();
   }
 }
