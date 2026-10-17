@@ -9,8 +9,10 @@ import type { Runtime } from '../runtime.js';
 
 export const CONNECTORS_REFRESH_MS = 10 * 60 * 1000;
 
+/** The view's state. Opening it the first time also starts browsing the registry. */
 export function buildConnectors(rt: Runtime): ConnectorsState {
   const { connectors } = rt.caches;
+  rt.registry.start();
   return { ...connectors.value, checking: connectors.loading, registry: rt.registry.view() };
 }
 

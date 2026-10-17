@@ -61,7 +61,7 @@ describe('the Connectors view', () => {
     expect(buildConnectors(rt)).toStrictEqual({
       ...EMPTY_CONNECTORS,
       checking: true,
-      registry: EMPTY_REGISTRY,
+      registry: { ...EMPTY_REGISTRY, query: '', searching: true },
     });
     await waitFor(() => rt.caches.connectors.peek().checkedAt !== null);
     const state = buildConnectors(rt);

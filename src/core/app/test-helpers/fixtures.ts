@@ -211,6 +211,11 @@ export function makeApp(env: TestEnv, options: AppOptions = {}): TestApp {
       await Promise.resolve();
       return '[]';
     },
+    // Opening the Connectors view browses the MCP registry, so tests get an empty one, not the network.
+    fetch: async (): Promise<Response> => {
+      await Promise.resolve();
+      return Response.json({ servers: [] });
+    },
     ...options.deps,
   });
   onTestFinished(async () => {

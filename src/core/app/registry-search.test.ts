@@ -5,7 +5,7 @@ import type { FetchFunction } from '../sync/github.js';
 
 import type { Runtime } from './runtime.js';
 import type { Responder, TestApp } from './test-helpers/fixtures.js';
-import { makeApp, makeEnv, ok } from './test-helpers/fixtures.js';
+import { makeApp, makeEnv, ok, waitFor } from './test-helpers/fixtures.js';
 import { buildConnectors } from './views/connectors.js';
 
 const SERVERS = [
@@ -69,11 +69,20 @@ async function setup(
 }
 
 describe('the registry search', () => {
-  it('starts empty, then shows what the registry found', async () => {
+  it('browses the whole registry when the view first opens, then searches', async () => {
     const { test, urls, rt } = await setup([mcpList]);
-    expect(buildConnectors(rt).registry).toStrictEqual(EMPTY_REGISTRY);
-    await test.app.dispatch({ type: 'searchRegistry', query: 'sentry' }, {});
+    expect(buildConnectors(rt).registry).toStrictEqual({
+      ...EMPTY_REGISTRY,
+      query: '',
+      searching: true,
+    });
+    await waitFor(() => !buildConnectors(rt).registry.searching);
     expect(urls).toHaveLength(1);
+    expect(urls[0]).not.toContain('search=');
+    expect(buildConnectors(rt).registry.results).toHaveLength(1);
+    await test.app.dispatch({ type: 'searchRegistry', query: 'sentry' }, {});
+    expect(urls).toHaveLength(2);
+    expect(urls[1]).toContain('search=sentry');
     const state = buildConnectors(rt).registry;
     expect(state).toMatchObject({ query: 'sentry', searching: false, error: null, more: false });
     expect(state.results.map((server) => [server.name, server.options.length])).toStrictEqual([

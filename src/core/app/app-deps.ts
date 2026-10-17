@@ -50,7 +50,7 @@ export interface AppDeps {
   readonly pid?: number;
   /** Where claude runs from outside a terminal. Tests pass a fake so no login shell starts. */
   readonly claudeCli?: () => Promise<ClaudeCli>;
-  /** Calls the GitHub REST API. Defaults to the global fetch. */
+  /** Calls the GitHub REST API and the MCP registry. Defaults to the global fetch. */
   readonly fetch?: FetchFunction;
   /** Calls a tool on a stdio MCP server. Tests pass a fake so no Chrome server starts. */
   readonly callTool?: StdioToolCaller;

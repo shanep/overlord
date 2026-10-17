@@ -20,10 +20,20 @@ export class RegistrySearch {
   private entries: readonly RegistryEntry[] = [];
   private latest = 0;
   private next: string | null = null;
+  private started = false;
   private readonly deps: RegistrySearchDeps;
 
   constructor(deps: RegistrySearchDeps) {
     this.deps = deps;
+  }
+
+  /** Loads the first page of the whole registry, once, so the view opens on something to browse. */
+  start(): void {
+    if (this.started || this.state.query !== null) {
+      return;
+    }
+    this.started = true;
+    void this.search('');
   }
 
   view(): RegistryState {
