@@ -9,6 +9,7 @@ import type {
   EffortLevel,
   Options,
   PermissionMode as SdkPermissionMode,
+  PermissionResult,
 } from '@anthropic-ai/claude-agent-sdk';
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import { z } from 'zod';
@@ -31,6 +32,7 @@ import type {
   RuntimeFacet,
   StartOptions,
   ToolPermissionHandler,
+  ToolPermissionResult,
 } from '../shared/runtime.js';
 
 /** One prompt written to the CLI in streaming input mode. */
@@ -95,6 +97,19 @@ function noMcpOptions(): Options {
   return { strictMcpConfig: true, mcpServers: {} };
 }
 
+/**
+ * The SDK's answer for a decision. Claude requests offer no session allow, so
+ * one that arrives anyway allows once. A cancel uses the SDK's interrupt.
+ */
+export function sdkPermissionResult(result: ToolPermissionResult): PermissionResult {
+  if (result.behavior === 'allow') {
+    return { behavior: 'allow', updatedInput: result.updatedInput };
+  }
+  return result.interrupt === true
+    ? { behavior: 'deny', message: result.message, interrupt: true }
+    : { behavior: 'deny', message: result.message };
+}
+
 export function toSdkOptions(options: QueryOptions): Options {
   const { canUseTool } = options;
   return {
@@ -109,11 +124,13 @@ export function toSdkOptions(options: QueryOptions): Options {
     abortController: options.abortController,
     extraArgs: { ...options.extraArgs },
     canUseTool: async (toolName, input, context) =>
-      canUseTool(toolName, input, {
-        signal: context.signal,
-        toolUseId: context.toolUseID,
-        agentId: context.agentID ?? null,
-      }),
+      sdkPermissionResult(
+        await canUseTool(toolName, input, {
+          signal: context.signal,
+          toolUseId: context.toolUseID,
+          agentId: context.agentID ?? null,
+        }),
+      ),
     ...(options.model === null ? {} : { model: options.model }),
     ...(options.effort === null ? {} : { effort: options.effort }),
     ...(options.permissionMode === null ? {} : { permissionMode: options.permissionMode }),

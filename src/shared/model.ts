@@ -389,11 +389,54 @@ export interface PermissionRequest {
   readonly requestedAt: number;
   /** Runtime is any programmatic driver other than the Claude SDK. */
   readonly source: 'sdk' | 'hook' | 'runtime';
+  /** The answers this request takes. Unset means allow and deny only. */
+  readonly choices?: readonly PermissionChoice[];
 }
 
+/**
+ * One answer to a permission request: allow this call, allow it for the rest
+ * of the session, deny it, or deny it and stop the turn. Each runtime maps
+ * these to its agent's own options.
+ */
+export type PermissionChoice = 'allow' | 'allow_session' | 'deny' | 'cancel';
+
 export type PermissionDecision =
-  | { readonly behavior: 'allow'; readonly ruleId: string | null }
-  | { readonly behavior: 'deny'; readonly message: string; readonly ruleId: string | null };
+  | {
+      readonly behavior: 'allow';
+      readonly ruleId: string | null;
+      /** Session lets the agent skip asking again. Unset is once. */
+      readonly scope?: 'once' | 'session';
+    }
+  | {
+      readonly behavior: 'deny';
+      readonly message: string;
+      readonly ruleId: string | null;
+      /** Also stops the current turn. */
+      readonly interrupt?: boolean;
+    };
+
+/** What the inbox may offer for a request. */
+export function permissionChoices(request: PermissionRequest): readonly PermissionChoice[] {
+  return request.choices ?? ['allow', 'deny'];
+}
+
+/** The decision an inbox button sends. */
+export function choiceDecision(choice: PermissionChoice, denyMessage: string): PermissionDecision {
+  switch (choice) {
+    case 'allow': {
+      return { behavior: 'allow', ruleId: null };
+    }
+    case 'allow_session': {
+      return { behavior: 'allow', ruleId: null, scope: 'session' };
+    }
+    case 'deny': {
+      return { behavior: 'deny', message: denyMessage, ruleId: null };
+    }
+    case 'cancel': {
+      return { behavior: 'deny', message: denyMessage, ruleId: null, interrupt: true };
+    }
+  }
+}
 
 export interface LaunchProfile {
   readonly id: string;

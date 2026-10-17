@@ -2,7 +2,7 @@
 // it while it runs and reads what it does. Each agent's runtime fills it in
 // over its own driver (the Agent SDK for Claude, JSON-RPC for the others).
 
-import type { PermissionRequest } from '../../../shared/model.js';
+import type { PermissionChoice, PermissionRequest } from '../../../shared/model.js';
 
 import type { AgentEvent, ContextUsage } from './events.js';
 
@@ -11,11 +11,23 @@ export interface ToolPermissionContext {
   readonly toolUseId: string;
   /** The subagent asking, or null for the main thread. */
   readonly agentId: string | null;
+  /** The answers the agent takes for this call. Unset means allow and deny only. */
+  readonly choices?: readonly PermissionChoice[];
 }
 
 export type ToolPermissionResult =
-  | { readonly behavior: 'allow'; readonly updatedInput: Record<string, unknown> }
-  | { readonly behavior: 'deny'; readonly message: string };
+  | {
+      readonly behavior: 'allow';
+      readonly updatedInput: Record<string, unknown>;
+      /** Session asks the agent not to ask again. Unset is once. */
+      readonly scope?: 'once' | 'session';
+    }
+  | {
+      readonly behavior: 'deny';
+      readonly message: string;
+      /** Also stops the current turn. */
+      readonly interrupt?: boolean;
+    };
 
 /** Asks the permission inbox about one tool call. The runtime answers the agent with the result. */
 export type ToolPermissionHandler = (

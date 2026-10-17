@@ -2,7 +2,12 @@
 
 import type { ReactElement } from 'react';
 
-import type { PermissionRequest, SessionSummary } from '../../../src/shared/model.js';
+import {
+  permissionChoices,
+  type PermissionChoice,
+  type PermissionRequest,
+  type SessionSummary,
+} from '../../../src/shared/model.js';
 import type { FleetState } from '../../../src/shared/protocol.js';
 import { knownAgents, knowsClaude, useAgents } from '../agents.js';
 import { Badge } from '../components/badge.js';
@@ -91,7 +96,8 @@ export function FleetHeader(props: {
   );
 }
 
-export type PermissionChoice = 'allow' | 'always' | 'deny';
+/** A banner button: one of the request's choices, or Always allow, which adds a rule. */
+export type BannerChoice = PermissionChoice | 'always';
 
 /** What an Always allow rule for this tool covers, for the button's tooltip. */
 export function alwaysAllowScope(toolName: string): string {
@@ -100,10 +106,15 @@ export function alwaysAllowScope(toolName: string): string {
     : `Allow every ${toolName} request from now on, in every session`;
 }
 
+/** True when the request takes this answer. */
+export function offers(request: PermissionRequest, choice: PermissionChoice): boolean {
+  return permissionChoices(request).includes(choice);
+}
+
 export function PermissionBanner(props: {
   readonly requests: readonly PermissionRequest[];
   readonly sessions: readonly SessionSummary[];
-  readonly onResolve: (request: PermissionRequest, choice: PermissionChoice) => void;
+  readonly onResolve: (request: PermissionRequest, choice: BannerChoice) => void;
 }): ReactElement {
   const { requests, sessions, onResolve } = props;
   const titleOf = (sessionId: string): string =>
@@ -152,6 +163,30 @@ export function PermissionBanner(props: {
                 >
                   Deny
                 </button>
+                {offers(request, 'allow_session') ? (
+                  <button
+                    type="button"
+                    data-tip="Let this call run and let the agent skip asking again in this session"
+                    aria-label={`Allow ${request.toolName} for the rest of ${title}`}
+                    onClick={() => {
+                      onResolve(request, 'allow_session');
+                    }}
+                  >
+                    Allow for session
+                  </button>
+                ) : null}
+                {offers(request, 'cancel') ? (
+                  <button
+                    type="button"
+                    data-tip="Block this call and stop the current turn"
+                    aria-label={`Deny ${request.toolName} and stop ${title}`}
+                    onClick={() => {
+                      onResolve(request, 'cancel');
+                    }}
+                  >
+                    Stop turn
+                  </button>
+                ) : null}
               </span>
             </li>
           );

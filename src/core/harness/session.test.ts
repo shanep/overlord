@@ -337,6 +337,21 @@ describe('toPermissionResult', () => {
       message: 'm',
     });
   });
+
+  it('keeps a session allow and a stopped turn', () => {
+    const allow: PermissionDecision = { behavior: 'allow', ruleId: null, scope: 'session' };
+    expect(toPermissionResult(allow, {})).toStrictEqual({
+      behavior: 'allow',
+      updatedInput: {},
+      scope: 'session',
+    });
+    expect(
+      toPermissionResult({ behavior: 'allow', ruleId: null, scope: 'once' }, {}),
+    ).toStrictEqual({ behavior: 'allow', updatedInput: {} });
+    expect(
+      toPermissionResult({ behavior: 'deny', message: 'm', ruleId: null, interrupt: true }, {}),
+    ).toStrictEqual({ behavior: 'deny', message: 'm', interrupt: true });
+  });
 });
 
 /** A bare runtime whose agent mints its own id after the start, like Codex. */
@@ -434,6 +449,35 @@ describe('AgentSession with a late id', () => {
       },
     );
     expect(asked).toMatchObject([{ sessionId: 'thread-2', agent: 'codex', source: 'runtime' }]);
+    expect(asked[0]?.choices).toBeUndefined();
+  });
+
+  it('passes the choices the runtime offers to the inbox', async () => {
+    const asked: PermissionRequest[] = [];
+    const broker: PermissionBroker = {
+      request: async (request) => {
+        asked.push(request);
+        return resolved({ behavior: 'allow', ruleId: null, scope: 'session' });
+      },
+    };
+    const { run } = lateSetup(broker);
+    run.sessionId = 'thread-3';
+    const result = await run.options?.canUseTool(
+      'Bash',
+      { command: 'ls' },
+      {
+        signal: new AbortController().signal,
+        toolUseId: 't',
+        agentId: null,
+        choices: ['allow', 'allow_session', 'deny'],
+      },
+    );
+    expect(asked[0]?.choices).toStrictEqual(['allow', 'allow_session', 'deny']);
+    expect(result).toStrictEqual({
+      behavior: 'allow',
+      updatedInput: { command: 'ls' },
+      scope: 'session',
+    });
   });
 
   it('refuses live changes the runtime does not offer', async () => {

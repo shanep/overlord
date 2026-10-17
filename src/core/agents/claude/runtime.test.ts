@@ -5,6 +5,7 @@ import type { StartOptions, ToolPermissionContext } from '../shared/runtime.js';
 
 import {
   claudeEvents,
+  sdkPermissionResult,
   toEffortLevel,
   toPermissionMode,
   toPlanUsageOptions,
@@ -132,6 +133,21 @@ describe('toSdkOptions', () => {
       { signal, toolUseId: 'tu1', agentId: null },
       { signal, toolUseId: 'tu2', agentId: 'agent-7' },
     ]);
+  });
+});
+
+describe('sdkPermissionResult', () => {
+  it('allows once even when asked for the session, and keeps an interrupt', () => {
+    expect(
+      sdkPermissionResult({ behavior: 'allow', updatedInput: { a: 1 }, scope: 'session' }),
+    ).toStrictEqual({ behavior: 'allow', updatedInput: { a: 1 } });
+    expect(sdkPermissionResult({ behavior: 'deny', message: 'no', interrupt: true })).toStrictEqual(
+      { behavior: 'deny', message: 'no', interrupt: true },
+    );
+    expect(sdkPermissionResult({ behavior: 'deny', message: 'no' })).toStrictEqual({
+      behavior: 'deny',
+      message: 'no',
+    });
   });
 });
 

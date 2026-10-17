@@ -5,7 +5,7 @@
 import type { KeyboardEvent, ReactElement } from 'react';
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
 
-import type { PermissionRequest } from '../../../src/shared/model.js';
+import { choiceDecision, type PermissionRequest } from '../../../src/shared/model.js';
 import type { FleetState } from '../../../src/shared/protocol.js';
 import { useChartTheme } from '../charts/chart-theme.js';
 import { useNow } from '../clock.js';
@@ -16,7 +16,7 @@ import { usePostAction } from '../vscode-context.js';
 import type { ProjectAction, RowEvent } from './fleet-actions.js';
 import { useFleetAgents } from './fleet-agents.js';
 import { filterTree } from './fleet-filter.js';
-import type { PermissionChoice } from './fleet-header.js';
+import type { BannerChoice } from './fleet-header.js';
 import { FleetHeader, PermissionBanner } from './fleet-header.js';
 import { historySamples, useRowHistory } from './fleet-history.js';
 import type { FleetCommand } from './fleet-keys.js';
@@ -254,7 +254,7 @@ export function FleetView(props: { readonly state: FleetState }): ReactElement {
     selectedRef.current?.focus();
   };
 
-  const onResolve = (request: PermissionRequest, choice: PermissionChoice): void => {
+  const onResolve = (request: PermissionRequest, choice: BannerChoice): void => {
     if (choice === 'always') {
       post({ type: 'alwaysAllowPermission', requestId: request.id });
       return;
@@ -262,10 +262,7 @@ export function FleetView(props: { readonly state: FleetState }): ReactElement {
     post({
       type: 'resolvePermission',
       requestId: request.id,
-      decision:
-        choice === 'allow'
-          ? { behavior: 'allow', ruleId: null }
-          : { behavior: 'deny', message: 'Denied from Overlord', ruleId: null },
+      decision: choiceDecision(choice, 'Denied from Overlord'),
     });
   };
 

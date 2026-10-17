@@ -360,6 +360,46 @@ describe('permission inbox', () => {
   });
 });
 
+describe('permission inbox choices', () => {
+  it('offers session allow and stop turn when the request takes them', async () => {
+    const [first] = launcherState.pendingPermissions;
+    if (first === undefined) {
+      throw new Error('fixture has no request');
+    }
+    const asks = { ...first, choices: ['allow', 'allow_session', 'deny', 'cancel'] as const };
+    const { api } = renderView(
+      <LauncherView state={{ ...launcherState, pendingPermissions: [asks] }} />,
+    );
+    const inbox = within(region('Permission inbox 1'));
+    await userEvent.click(inbox.getByRole('button', { name: 'Allow Bash for the rest of s1' }));
+    await userEvent.click(inbox.getByRole('button', { name: 'Deny Bash and stop s1' }));
+    expect(api.actions()).toStrictEqual([
+      {
+        type: 'resolvePermission',
+        requestId: 'perm-1',
+        decision: { behavior: 'allow', ruleId: null, scope: 'session' },
+      },
+      {
+        type: 'resolvePermission',
+        requestId: 'perm-1',
+        decision: {
+          behavior: 'deny',
+          message: 'Denied from Overlord',
+          ruleId: null,
+          interrupt: true,
+        },
+      },
+    ]);
+  });
+
+  it('shows only allow, deny and always allow for a request with no choices', () => {
+    renderView(<LauncherView state={launcherState} />);
+    const inbox = within(region('Permission inbox 1'));
+    expect(inbox.queryByRole('button', { name: /for the rest of/u })).toBeNull();
+    expect(inbox.queryByRole('button', { name: /and stop/u })).toBeNull();
+  });
+});
+
 describe('auto-approve rules', () => {
   it('lists rules and toggles and deletes them', async () => {
     const { api } = renderView(<LauncherView state={launcherState} />);

@@ -64,8 +64,13 @@ export function toPermissionResult(
   decision: PermissionDecision,
   input: Record<string, unknown>,
 ): ToolPermissionResult {
-  return decision.behavior === 'allow'
-    ? { behavior: 'allow', updatedInput: input }
+  if (decision.behavior === 'allow') {
+    return decision.scope === 'session'
+      ? { behavior: 'allow', updatedInput: input, scope: 'session' }
+      : { behavior: 'allow', updatedInput: input };
+  }
+  return decision.interrupt === true
+    ? { behavior: 'deny', message: decision.message, interrupt: true }
     : { behavior: 'deny', message: decision.message };
 }
 
@@ -278,6 +283,7 @@ export class AgentSession {
       input: toolInput,
       requestedAt: this.now(),
       source: this.deps.runtime.permissionSource,
+      ...(context.choices === undefined ? {} : { choices: context.choices }),
     };
     this.openPrompts += 1;
     this.publish([

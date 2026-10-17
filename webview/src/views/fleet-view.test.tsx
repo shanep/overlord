@@ -148,6 +148,39 @@ describe('FleetView', () => {
     ]);
   });
 
+  it('offers session allow and stop turn only when the request takes them', async () => {
+    const user = userEvent.setup();
+    const asks = { ...permission, choices: ['allow', 'allow_session', 'deny', 'cancel'] as const };
+    const { api } = setup({ ...fleetState, pendingPermissions: [asks] });
+    await user.click(
+      screen.getByRole('button', { name: 'Allow Bash for the rest of Refactor parser' }),
+    );
+    await user.click(screen.getByRole('button', { name: 'Deny Bash and stop Refactor parser' }));
+    expect(api.actions()).toStrictEqual([
+      {
+        type: 'resolvePermission',
+        requestId: 'perm-1',
+        decision: { behavior: 'allow', ruleId: null, scope: 'session' },
+      },
+      {
+        type: 'resolvePermission',
+        requestId: 'perm-1',
+        decision: {
+          behavior: 'deny',
+          message: 'Denied from Overlord',
+          ruleId: null,
+          interrupt: true,
+        },
+      },
+    ]);
+  });
+
+  it('leaves session allow and stop turn off for a request with no choices', () => {
+    setup({ ...fleetState, pendingPermissions: [permission] });
+    expect(screen.queryByRole('button', { name: /for the rest of/u })).toBeNull();
+    expect(screen.queryByRole('button', { name: /and stop/u })).toBeNull();
+  });
+
   it('says what always allow covers for shells and for other tools', () => {
     expect(alwaysAllowScope('PowerShell')).toBe(
       'Allow this exact command from now on, in every session',

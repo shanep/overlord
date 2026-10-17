@@ -2,14 +2,18 @@
 
 import type { ReactElement } from 'react';
 
-import type { PermissionRequest } from '../../../src/shared/model.js';
+import {
+  choiceDecision,
+  type PermissionChoice,
+  type PermissionRequest,
+} from '../../../src/shared/model.js';
 import { useNow } from '../clock.js';
 import { Card, CardGrid, StatusDot } from '../components/card.js';
 import { JsonView } from '../components/json-view.js';
 import { formatAgo } from '../format.js';
 import { usePostAction } from '../vscode-context.js';
 
-import { alwaysAllowScope } from './fleet-header.js';
+import { alwaysAllowScope, offers } from './fleet-header.js';
 
 const DENY_MESSAGE = 'Denied from Overlord';
 
@@ -18,6 +22,13 @@ export function PermissionInbox(props: {
 }): ReactElement {
   const post = usePostAction();
   const now = useNow();
+  const answer = (request: PermissionRequest, choice: PermissionChoice): void => {
+    post({
+      type: 'resolvePermission',
+      requestId: request.id,
+      decision: choiceDecision(choice, DENY_MESSAGE),
+    });
+  };
   return (
     <section className="section" aria-labelledby="inbox-heading">
       <h2 id="inbox-heading" className="section-title">
@@ -60,25 +71,41 @@ export function PermissionInbox(props: {
                 type="button"
                 aria-label={`Deny ${request.toolName} for ${request.sessionId}`}
                 onClick={() => {
-                  post({
-                    type: 'resolvePermission',
-                    requestId: request.id,
-                    decision: { behavior: 'deny', message: DENY_MESSAGE, ruleId: null },
-                  });
+                  answer(request, 'deny');
                 }}
               >
                 Deny
               </button>
+              {offers(request, 'cancel') ? (
+                <button
+                  type="button"
+                  title="Block this call and stop the current turn"
+                  aria-label={`Deny ${request.toolName} and stop ${request.sessionId}`}
+                  onClick={() => {
+                    answer(request, 'cancel');
+                  }}
+                >
+                  Stop turn
+                </button>
+              ) : null}
+              {offers(request, 'allow_session') ? (
+                <button
+                  type="button"
+                  title="Let this call run and let the agent skip asking again in this session"
+                  aria-label={`Allow ${request.toolName} for the rest of ${request.sessionId}`}
+                  onClick={() => {
+                    answer(request, 'allow_session');
+                  }}
+                >
+                  Allow for session
+                </button>
+              ) : null}
               <button
                 type="button"
                 className="primary"
                 aria-label={`Allow ${request.toolName} for ${request.sessionId}`}
                 onClick={() => {
-                  post({
-                    type: 'resolvePermission',
-                    requestId: request.id,
-                    decision: { behavior: 'allow', ruleId: null },
-                  });
+                  answer(request, 'allow');
                 }}
               >
                 Allow
