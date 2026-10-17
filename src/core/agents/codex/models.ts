@@ -5,7 +5,7 @@
 import type { ModelFacet } from '../types.js';
 
 /** What Codex 0.163.0 runs on a ChatGPT plan when config.toml sets no model. */
-export const CODEX_DEFAULT_MODEL = 'gpt-6-luna';
+const CODEX_DEFAULT_MODEL = 'gpt-6-luna';
 
 const windows = new Map<string, number>();
 
