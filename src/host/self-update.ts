@@ -8,6 +8,8 @@ import path from 'node:path';
 import * as vscode from 'vscode';
 
 import type { ClaudePaths } from '../core/paths.js';
+import type { SelfCheckReport } from '../core/self-check.js';
+import { selfCheckPath, writeSelfCheck } from '../core/self-check.js';
 import type { ReloadBlockers, WatchFile } from '../core/self-update.js';
 import {
   heldMarkerPath,
@@ -19,6 +21,8 @@ import {
 
 const POLL_MS = 1000;
 const SETTLE_MS = 2000;
+/** Lets activation finish before the self-check starts building views. */
+const CHECK_DELAY_MS = 3000;
 
 const pollFile: WatchFile = (file, listener) => {
   const onPoll = (current: { readonly mtimeMs: number }): void => {
@@ -82,4 +86,31 @@ export function reloadOnUpdate(
       notice?.dispose();
     },
   };
+}
+
+/**
+ * Runs the self-check once, a moment after an installed build loads, and
+ * writes the result for the install script. A development host skips it.
+ */
+export function selfCheckOnLoad(
+  context: vscode.ExtensionContext,
+  paths: ClaudePaths,
+  run: () => Promise<Omit<SelfCheckReport, 'bundleMtimeMs'>>,
+): vscode.Disposable {
+  if (context.extensionMode !== vscode.ExtensionMode.Production) {
+    return new vscode.Disposable(() => {
+      // Nothing to stop in a development host.
+    });
+  }
+  const bundle = path.join(context.extensionUri.fsPath, 'dist', 'extension.cjs');
+  const bundleMtimeMs = statSync(bundle, { throwIfNoEntry: false })?.mtimeMs ?? 0;
+  const timer = setTimeout(() => {
+    // Like the markers, the check only feeds the install script, so a failure stays quiet.
+    run()
+      .then(async (report) => writeSelfCheck(selfCheckPath(paths), { ...report, bundleMtimeMs }))
+      .catch(ignore);
+  }, CHECK_DELAY_MS);
+  return new vscode.Disposable(() => {
+    clearTimeout(timer);
+  });
 }

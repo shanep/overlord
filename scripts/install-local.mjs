@@ -6,6 +6,9 @@
 // Launcher runs going holds the reload until they finish and writes held.json
 // instead, since a reload would end them. Builds from before the move wrote
 // both markers under ~/.claude/overlord/, so that folder is checked second.
+// Once reloaded, the new build builds every view from the real data on this
+// machine and writes check.json, and this reports which views failed and what
+// errors came up meanwhile.
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, statSync, symlinkSync } from 'node:fs';
 import os from 'node:os';
@@ -29,6 +32,8 @@ const bundle = path.join(
 );
 const configDir = process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude');
 const markerDirs = [path.join(os.homedir(), '.overlord'), path.join(configDir, 'overlord')];
+/** The build waits a few seconds, then lets caches load for 20 before it measures. */
+const CHECK_TIMEOUT_MS = 90_000;
 
 function run(command, args, cwd = repo) {
   process.stdout.write(`$ ${command} ${args.join(' ')}\n`);
@@ -85,11 +90,53 @@ try {
   rmSync(path.dirname(tree), { recursive: true, force: true });
 }
 
+/** Waits for the new build's self-check. Null when it did not come in time. */
+async function waitForCheck(installed) {
+  const deadline = Date.now() + CHECK_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    const check = findMarker('check.json', installed);
+    if (check !== null) {
+      return check;
+    }
+    await sleep(POLL_MS);
+  }
+  return null;
+}
+
+/** Prints the self-check. True when every view built. */
+function reportCheck(check) {
+  const failed = check.views.filter((view) => !view.ok);
+  const slow = check.views.filter((view) => view.ok && view.ms > 500);
+  process.stdout.write(
+    `Self-check: ${check.views.length.toString()} views built from real data, ${failed.length.toString()} failed.\n`,
+  );
+  for (const view of failed) {
+    process.stderr.write(`  ${view.view} failed: ${view.error}\n`);
+  }
+  for (const view of slow) {
+    process.stdout.write(
+      `  ${view.view} is slow: ${Math.round(view.ms).toString()} ms to build.\n`,
+    );
+  }
+  for (const error of check.errors) {
+    process.stdout.write(`  ${error.source} reported: ${error.message}\n`);
+  }
+  process.stdout.write(`  Details in ${path.join(markerDirs[0], 'check.json')}.\n`);
+  return failed.length === 0;
+}
+
 const installed = statSync(bundle).mtimeMs;
 process.stdout.write(`Installed ${bundle}. Waiting for a VS Code window to reload onto it.\n`);
 const result = await waitForReload(installed);
 if (result.reloaded) {
   process.stdout.write('Reloaded: a VS Code window is running the new build.\n');
+  const check = await waitForCheck(installed);
+  if (check === null) {
+    process.stderr.write('The new build did not write its self-check in time.\n');
+    process.exitCode = 1;
+  } else if (!reportCheck(check)) {
+    process.exitCode = 1;
+  }
 } else if (result.runs > 0) {
   process.stdout.write(
     `Held: a VS Code window reloads onto the new build once its ${result.runs.toString()} ` +

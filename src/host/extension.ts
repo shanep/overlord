@@ -2,6 +2,7 @@
 // status bar, and maps every contributed command onto the app.
 
 import path from 'node:path';
+import { setTimeout as sleep } from 'node:timers/promises';
 import * as vscode from 'vscode';
 
 import { OverlordApp } from '../core/app/app.js';
@@ -12,14 +13,16 @@ import { fleetSessionName } from '../core/app/views/fleet.js';
 import { BOISESTATE_KEY_SECRET, BOISESTATE_PROFILE } from '../core/bridge/boisestate.js';
 import { isTerminal } from '../core/harness/launcher.js';
 import { listProfiles, saveProfile } from '../core/knobs/profiles.js';
+import { runSelfCheck } from '../core/self-check.js';
 import type { HostToWebview, ViewId, WebviewAction } from '../shared/protocol.js';
+import { VIEW_IDS } from '../shared/protocol.js';
 
 import { BoisestateBridge, type SavedEndpoint } from './boisestate-bridge.js';
 import { CliTabs } from './cli-tabs.js';
 import { createVscodeHostPort } from './host-port.js';
 import { keepAwake } from './keep-awake.js';
 import { PanelManager, SidebarView } from './panels.js';
-import { reloadOnUpdate } from './self-update.js';
+import { reloadOnUpdate, selfCheckOnLoad } from './self-update.js';
 
 let app: OverlordApp | null = null;
 
@@ -58,6 +61,16 @@ const PALETTE_VIEWS: readonly ViewEntry[] = [
 const VIEW_COMMANDS = [...GLOBAL_VIEWS, ...FLEET_TITLE_VIEWS, ...PALETTE_VIEWS];
 
 /** Where the bridge sidecar's token (SecretStorage) and this window's port (workspace state) live. */
+/**
+ * The views the self-check builds after an install. Session views need a
+ * session to show, and Skills and Agents only list a GitHub collection.
+ */
+const CHECKED_VIEWS: readonly ViewId[] = VIEW_IDS.filter(
+  (view) => !['agent', 'context', 'properties', 'skills', 'agents'].includes(view),
+);
+/** How long the self-check lets caches load and the Tuning scan run before measuring. */
+const CHECK_SETTLE_MS = 20_000;
+
 const BRIDGE_TOKEN_SECRET = 'overlord.boisestate.bridgeToken';
 const BRIDGE_PORT_STATE = 'overlord.boisestate.bridgePort';
 
@@ -194,6 +207,15 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       active: () => overlord.runtime.launcher.runs().filter((run) => !isTerminal(run.state)).length,
       idle: async () => overlord.runtime.launcher.idle(),
     }),
+    selfCheckOnLoad(context, overlord.paths, async () =>
+      runSelfCheck({
+        views: CHECKED_VIEWS,
+        build: (view) => overlord.stateFor(view, {}),
+        settle: async () => sleep(CHECK_SETTLE_MS),
+        errors: () => overlord.errorList(),
+        clock: Date.now,
+      }),
+    ),
     keepAwake(),
     fleetSidebar,
     propertiesSidebar,

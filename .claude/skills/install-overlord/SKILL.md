@@ -26,7 +26,14 @@ and without pressing Reload Window himself.
    marker to `~/.claude/overlord/loaded.json`, so the script checks there
    too.
 
-3. Report the result in one line: installed and reloaded, held, or what failed.
+   Once the window reloads, the new build builds every view from the real
+   data on this machine and writes `~/.overlord/check.json`. The
+   script waits for it (up to 90 seconds) and prints how many views built,
+   any that failed or are slow, and errors the sources reported. A failed
+   view exits 1: the change breaks on real data, so fix it before moving on.
+
+3. Report the result in one line: installed and reloaded, held, or what failed,
+   plus the self-check's result.
    **"Held"** means a window has Launcher runs going. A reload would end them,
    so the window waits for them to finish and then reloads on its own. The
    install worked and there is nothing more to do.
