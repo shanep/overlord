@@ -19,8 +19,11 @@ function connector(overrides: Partial<Connector> & Pick<Connector, 'id' | 'name'
   };
 }
 
-function cell(row: HTMLElement | undefined, index: number): HTMLTableCellElement | undefined {
-  return row?.querySelectorAll('td')[index];
+/** The names on the cards in one group, in the order they show. */
+function names(list: HTMLElement): (string | null)[] {
+  return within(list)
+    .getAllByRole('listitem')
+    .map((item) => item.querySelector('.conn-name')?.textContent ?? null);
 }
 
 const STATE: ConnectorsState = {
@@ -54,18 +57,18 @@ const STATE: ConnectorsState = {
 };
 
 describe('ConnectorsView', () => {
-  it('lists problems first with their fix buttons, and passes axe', async () => {
+  it('groups problems first with their fix buttons, and passes axe', async () => {
     const { container, getByRole, api } = renderView(<ConnectorsView state={STATE} />);
-    const rows = within(getByRole('table')).getAllByRole('row').slice(1);
-    expect(rows.map((row) => cell(row, 0)?.textContent)).toStrictEqual([
-      'Claude in Chrome',
-      'sentry',
-      'Gmail',
-    ]);
-    expect(cell(rows[2], 0)?.firstElementChild?.getAttribute('title')).toBe('https://gmail');
-    expect(cell(rows[0], 0)?.firstElementChild?.hasAttribute('title')).toBe(false);
-    expect(cell(rows[2], 1)?.textContent).toBe('claude.ai connector');
-    expect(cell(rows[1], 2)?.textContent).toBe('Needs sign in');
+    const attention = getByRole('list', { name: 'Needs attention 2' });
+    const ready = getByRole('list', { name: 'Ready 1' });
+    expect(names(attention)).toStrictEqual(['Claude in Chrome', 'sentry']);
+    expect(names(ready)).toStrictEqual(['Gmail']);
+    expect(ready.querySelector('.conn-name')?.getAttribute('title')).toBe('https://gmail');
+    expect(attention.querySelector('.conn-name')?.hasAttribute('title')).toBe(false);
+    expect(ready.textContent).toContain('claude.ai connector');
+    expect(ready.querySelector('.badge')).toBeNull();
+    expect(attention.textContent).toContain('Needs sign in');
+    expect(attention.querySelector('.conn-card')?.className).toBe('conn-card conn-critical');
     expect(getByRole('heading', { level: 1 }).textContent).toBe('Connectors (MCP)');
     expect(container.textContent).toContain('from /work/repo');
     expect(container.textContent).toContain('Last checked');

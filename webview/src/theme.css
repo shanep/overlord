@@ -1389,3 +1389,400 @@ summary > h2 {
 .activity-process .badge {
   margin-right: 4px;
 }
+
+/* ---- Connectors ----------------------------------------------------------- */
+
+.conn {
+  max-width: 1400px;
+}
+
+.conn .view-header {
+  align-items: center;
+}
+
+.conn-about {
+  margin: 4px 0 8px;
+  color: var(--ov-muted);
+}
+
+.conn-about > p {
+  max-width: 80ch;
+  margin: 4px 0 0 1em;
+}
+
+.conn-group > h2,
+.reg > h2 {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin: 16px 0 8px;
+}
+
+.count {
+  padding: 0 6px;
+  border-radius: 8px;
+  color: var(--ov-badge-fg);
+  background: var(--ov-badge);
+  font-size: 0.8em;
+  font-weight: 600;
+}
+
+.conn-grid,
+.reg-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Dense, so the cards after an open one fill the gap it leaves above. */
+.reg-grid {
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-auto-flow: dense;
+  gap: 10px;
+}
+
+.conn-card,
+.reg-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--ov-border);
+  border-radius: 6px;
+  background: var(--vscode-editorWidget-background, var(--ov-panel));
+}
+
+.reg-card:hover {
+  border-color: var(--ov-focus);
+}
+
+.conn-card {
+  border-left-width: 3px;
+}
+
+.conn-good {
+  border-left-color: var(--ov-green);
+}
+
+.conn-warning {
+  border-left-color: var(--ov-yellow);
+}
+
+.conn-critical {
+  border-left-color: var(--ov-red);
+}
+
+.conn-head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.conn-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ov-muted);
+}
+
+.conn-good .conn-dot {
+  background: var(--ov-green);
+}
+
+.conn-warning .conn-dot {
+  background: var(--ov-yellow);
+}
+
+.conn-critical .conn-dot {
+  background: var(--ov-red);
+}
+
+.conn-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.conn-kind {
+  padding-left: 16px;
+  color: var(--ov-muted);
+  font-size: 0.85em;
+}
+
+.conn-detail {
+  margin: 2px 0 0;
+  padding-left: 16px;
+  color: var(--ov-muted);
+  font-size: 0.9em;
+}
+
+.conn-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: auto;
+  padding-top: 4px;
+}
+
+.conn-empty,
+.reg-empty {
+  padding: 16px 0;
+}
+
+/* ---- Connectors: the MCP registry ---- */
+
+.reg {
+  margin-top: 24px;
+  padding-top: 4px;
+  border-top: 1px solid var(--ov-border);
+}
+
+.reg-lede {
+  max-width: 90ch;
+}
+
+.reg-search {
+  display: flex;
+  gap: 6px;
+  max-width: 720px;
+  margin: 10px 0;
+}
+
+.reg-search input[type='search'] {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 8px;
+}
+
+.reg-search button {
+  padding: 4px 12px;
+}
+
+.reg-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 8px 0;
+}
+
+.reg-bar .spacer,
+.reg-foot .spacer,
+.reg-form-actions .spacer {
+  flex: 1;
+}
+
+.segmented {
+  display: inline-flex;
+  overflow: hidden;
+  border: 1px solid var(--ov-border);
+  border-radius: 4px;
+}
+
+.segmented button {
+  padding: 2px 10px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.segmented button + button {
+  border-left: 1px solid var(--ov-border);
+}
+
+.segmented button[aria-pressed='true'] {
+  color: var(--ov-button-fg);
+  background: var(--ov-button);
+}
+
+.reg-notice {
+  margin: 8px 0;
+  padding: 6px 10px;
+  border: 1px solid var(--ov-border);
+  border-left-width: 3px;
+  border-radius: 4px;
+}
+
+.reg-notice-good {
+  border-left-color: var(--ov-green);
+}
+
+.reg-notice-critical {
+  border-left-color: var(--ov-red);
+}
+
+.reg-open {
+  grid-column: 1 / -1;
+  border-color: var(--ov-focus);
+}
+
+.reg-head {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+}
+
+.reg-avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 1.1em;
+  font-weight: 700;
+}
+
+.reg-avatar-0 {
+  background: var(--ov-blue);
+}
+
+.reg-avatar-1 {
+  background: var(--ov-green);
+}
+
+.reg-avatar-2 {
+  background: var(--ov-purple);
+}
+
+.reg-avatar-3 {
+  background: var(--ov-orange);
+}
+
+.reg-avatar-4 {
+  background: var(--ov-red);
+}
+
+.reg-avatar-5 {
+  background: var(--ov-yellow);
+}
+
+.reg-titles {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.reg-title,
+.reg-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reg-title {
+  font-weight: 600;
+}
+
+.reg-name {
+  color: var(--ov-muted);
+  font-family: var(--ov-mono);
+  font-size: 0.8em;
+}
+
+/* Three lines of description keep the cards the same height. */
+.reg-desc {
+  display: -webkit-box;
+  min-height: 3.9em;
+  margin: 4px 0;
+  overflow: hidden;
+  color: var(--ov-muted);
+  font-size: 0.92em;
+  line-height: 1.3;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.reg-open .reg-desc {
+  display: block;
+  min-height: 0;
+}
+
+.reg-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin-top: auto;
+}
+
+.reg-kind {
+  padding: 0 6px;
+  border: 1px solid var(--ov-border);
+  border-radius: 8px;
+  color: var(--ov-muted);
+  font-size: 0.8em;
+  white-space: nowrap;
+}
+
+.reg-kind-none {
+  border-style: dashed;
+}
+
+.reg-form {
+  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--ov-border);
+}
+
+.reg-form select {
+  max-width: 100%;
+}
+
+.reg-command {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: baseline;
+  margin: 0 0 8px;
+}
+
+.reg-command code {
+  padding: 2px 6px;
+  overflow-wrap: anywhere;
+  border-radius: 3px;
+  background: var(--vscode-textCodeBlock-background, var(--ov-hover));
+}
+
+.reg-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 4px 16px;
+}
+
+.reg-field .field {
+  align-items: stretch;
+  margin-bottom: 2px;
+}
+
+.reg-field .field > input {
+  width: 100%;
+}
+
+.reg-field .hint {
+  margin: 0 0 6px;
+}
+
+.reg-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.reg-more {
+  display: flex;
+  justify-content: center;
+  margin: 12px 0;
+}

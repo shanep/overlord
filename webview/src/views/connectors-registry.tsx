@@ -1,5 +1,6 @@
-// The registry search under the Connectors table: browse or search the public
-// MCP registry, fill in what a server needs, and add it to user scope.
+// The registry section under your connectors: browse or search the public MCP
+// registry as a grid of cards, fill in what a server needs, and add it to
+// user scope.
 
 import type { ReactElement, SubmitEvent } from 'react';
 import { useState } from 'react';
@@ -33,6 +34,9 @@ const KIND_FILTERS: readonly { readonly value: KindFilter; readonly label: strin
   { value: 'docker', label: 'Docker' },
 ];
 
+/** How many avatar colors theme.css defines. */
+const AVATAR_COLORS = 6;
+
 function matchesKind(server: RegistryServer, filter: KindFilter): boolean {
   if (filter === 'all') {
     return true;
@@ -46,6 +50,22 @@ function initialValues(inputs: readonly InstallInput[]): Record<string, string> 
   return Object.fromEntries(inputs.map((entry) => [entry.id, entry.initial]));
 }
 
+/** The card's heading: the registry title, or the last part of the name when it has none. */
+function headingOf(server: RegistryServer): string {
+  return server.title === server.name
+    ? (server.name.split('/').at(-1) ?? server.name)
+    : server.title;
+}
+
+/** The same color for the same server every time, so the grid is easy to scan. */
+function avatarClass(name: string): string {
+  let hash = 0;
+  for (const char of name) {
+    hash = (hash * 31 + (char.codePointAt(0) ?? 0)) % 9973;
+  }
+  return `reg-avatar reg-avatar-${String(hash % AVATAR_COLORS)}`;
+}
+
 function InputField(props: {
   readonly input: InstallInput;
   readonly value: string;
@@ -54,7 +74,7 @@ function InputField(props: {
   const { input } = props;
   const hintId = `hint-${input.id}`;
   return (
-    <>
+    <div className="reg-field">
       <label className="field">
         <span>
           {input.label}
@@ -76,7 +96,7 @@ function InputField(props: {
           {input.description}
         </p>
       )}
-    </>
+    </div>
   );
 }
 
@@ -103,7 +123,7 @@ function InstallForm(props: {
     post({ type: 'installConnector', server: server.name, option: choice, name, values });
   };
   return (
-    <form onSubmit={submit} aria-label={`Install ${server.title}`}>
+    <form className="reg-form" onSubmit={submit} aria-label={`Install ${server.title}`}>
       {server.options.length > 1 ? (
         <label className="field">
           <span>Install as</span>
@@ -122,46 +142,55 @@ function InstallForm(props: {
             ))}
           </select>
         </label>
-      ) : (
-        <p className="hint">
-          {INSTALL_KIND_LABELS[option.kind]}: <code>{option.summary}</code>
-        </p>
-      )}
-      <label className="field">
-        <span>Name in Claude Code</span>
-        <input
-          type="text"
-          value={name}
-          onChange={(event) => {
-            setName(event.target.value);
-          }}
-        />
-        {nameOk ? null : (
-          <span className="error-text" role="alert">
-            Use only letters, digits, dashes and underscores.
-          </span>
-        )}
-      </label>
-      {option.inputs.map((entry) => (
-        <InputField
-          key={entry.id}
-          input={entry}
-          value={values[entry.id] ?? ''}
-          onChange={(value) => {
-            setValues({ ...values, [entry.id]: value });
-          }}
-        />
-      ))}
-      <div className="toolbar">
-        <button type="submit" disabled={props.installing || missing.length > 0 || !nameOk}>
-          {props.installing ? 'Installing…' : 'Install'}
-        </button>
-        <button type="button" onClick={props.onCancel}>
-          Cancel
-        </button>
+      ) : null}
+      <p className="reg-command">
+        <span className="muted">{INSTALL_KIND_LABELS[option.kind]}</span>
+        <code>{option.summary}</code>
+      </p>
+      <div className="reg-fields">
+        <div className="reg-field">
+          <label className="field">
+            <span>Name in Claude Code</span>
+            <input
+              type="text"
+              value={name}
+              onChange={(event) => {
+                setName(event.target.value);
+              }}
+            />
+          </label>
+          {nameOk ? null : (
+            <p className="error-text" role="alert">
+              Use only letters, digits, dashes and underscores.
+            </p>
+          )}
+        </div>
+        {option.inputs.map((entry) => (
+          <InputField
+            key={entry.id}
+            input={entry}
+            value={values[entry.id] ?? ''}
+            onChange={(value) => {
+              setValues({ ...values, [entry.id]: value });
+            }}
+          />
+        ))}
+      </div>
+      <div className="reg-form-actions">
         {missing.length > 0 ? (
           <span className="muted">Fill in {missing.map((entry) => entry.label).join(', ')}.</span>
         ) : null}
+        <span className="spacer" />
+        <button type="button" onClick={props.onCancel}>
+          Cancel
+        </button>
+        <button
+          type="submit"
+          className="primary"
+          disabled={props.installing || missing.length > 0 || !nameOk}
+        >
+          {props.installing ? 'Installing…' : 'Install'}
+        </button>
       </div>
     </form>
   );
@@ -178,17 +207,37 @@ function Result(props: {
   const post = usePostAction();
   const kinds = [...new Set(server.options.map((entry) => entry.kind))];
   const { repository } = server;
+  const heading = headingOf(server);
   return (
-    <li>
-      <div className="toolbar">
-        <strong>{server.title}</strong>
-        <span className="muted">
-          {server.name}
-          {server.version === '' ? '' : ` ${server.version}`}
+    <li className={props.open ? 'reg-card reg-open' : 'reg-card'}>
+      <div className="reg-head">
+        <span className={avatarClass(server.name)} aria-hidden="true">
+          {heading.slice(0, 1).toUpperCase()}
         </span>
+        <div className="reg-titles">
+          <span className="reg-title" title={heading}>
+            {heading}
+          </span>
+          <span className="reg-name" title={server.name}>
+            {server.name}
+            {server.version === '' ? '' : ` · ${server.version}`}
+          </span>
+        </div>
+      </div>
+      {server.description === '' ? null : (
+        <p className="reg-desc" title={server.description}>
+          {server.description}
+        </p>
+      )}
+      <div className="reg-foot">
         {kinds.map((kind) => (
-          <Badge key={kind} label={INSTALL_KIND_LABELS[kind]} tone="info" />
+          <span key={kind} className="reg-kind">
+            {INSTALL_KIND_LABELS[kind]}
+          </span>
         ))}
+        {server.options.length === 0 ? (
+          <span className="reg-kind reg-kind-none">Not installable from here</span>
+        ) : null}
         <span className="spacer" />
         {repository === null ? null : (
           <button
@@ -202,19 +251,38 @@ function Result(props: {
             Repository
           </button>
         )}
-        {server.options.length === 0 ? (
-          <span className="muted">Not installable from here</span>
-        ) : (
+        {server.options.length === 0 ? null : (
           <button type="button" disabled={props.busy && !props.open} onClick={props.onToggle}>
             {props.open ? 'Close' : 'Install…'}
           </button>
         )}
       </div>
-      {server.description === '' ? null : <p className="hint">{server.description}</p>}
       {props.open ? (
         <InstallForm server={server} installing={props.installing} onCancel={props.onToggle} />
       ) : null}
     </li>
+  );
+}
+
+function KindFilters(props: {
+  readonly value: KindFilter;
+  readonly onChange: (value: KindFilter) => void;
+}): ReactElement {
+  return (
+    <div role="group" aria-label="Runs as" className="segmented">
+      {KIND_FILTERS.map((item) => (
+        <button
+          key={item.value}
+          type="button"
+          aria-pressed={props.value === item.value}
+          onClick={() => {
+            props.onChange(item.value);
+          }}
+        >
+          {item.label}
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -231,7 +299,9 @@ function Results(props: { readonly registry: RegistryState }): ReactElement | nu
       return null;
     }
     return (
-      <p className="muted">{registry.searching ? 'Searching…' : 'No servers match that name.'}</p>
+      <p className="reg-empty muted">
+        {registry.searching ? 'Searching…' : 'No servers match that name.'}
+      </p>
     );
   }
   const shown = registry.results.filter((server) => matchesKind(server, kind));
@@ -241,32 +311,21 @@ function Results(props: { readonly registry: RegistryState }): ReactElement | nu
       : `servers whose name has "${registry.query.trim()}"`;
   return (
     <>
-      <div className="toolbar">
+      <div className="reg-bar">
         <span className="muted">
           {String(registry.results.length)} {what}
           {registry.more ? ' so far' : ''}
           {kind === 'all' ? '' : `, ${String(shown.length)} shown`}
         </span>
-        <div role="group" aria-label="Runs as" className="chips">
-          {KIND_FILTERS.map((item) => (
-            <button
-              key={item.value}
-              type="button"
-              className="press"
-              aria-pressed={kind === item.value}
-              onClick={() => {
-                setKind(item.value);
-              }}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
+        <span className="spacer" />
+        <KindFilters value={kind} onChange={setKind} />
       </div>
       {shown.length === 0 ? (
-        <p className="muted">None of these run that way. Show more or pick another filter.</p>
+        <p className="reg-empty muted">
+          None of these run that way. Show more or pick another filter.
+        </p>
       ) : null}
-      <ul className="feed" aria-label="Registry results">
+      <ul className="reg-grid" aria-label="Registry results">
         {shown.map((server) => (
           <Result
             key={server.name}
@@ -281,7 +340,7 @@ function Results(props: { readonly registry: RegistryState }): ReactElement | nu
         ))}
       </ul>
       {registry.more ? (
-        <div className="toolbar">
+        <div className="reg-more">
           <button
             type="button"
             disabled={registry.loadingMore}
@@ -297,6 +356,22 @@ function Results(props: { readonly registry: RegistryState }): ReactElement | nu
   );
 }
 
+function Notice(props: { readonly registry: RegistryState }): ReactElement | null {
+  const { notice } = props.registry;
+  if (notice === null) {
+    return null;
+  }
+  return (
+    <p
+      className={notice.ok ? 'reg-notice reg-notice-good' : 'reg-notice reg-notice-critical'}
+      role={notice.ok ? 'status' : 'alert'}
+    >
+      <Badge label={notice.ok ? 'Added' : 'Not added'} tone={notice.ok ? 'good' : 'critical'} />{' '}
+      {notice.text}
+    </p>
+  );
+}
+
 export function RegistrySection(props: { readonly registry: RegistryState }): ReactElement {
   const { registry } = props;
   const post = usePostAction();
@@ -306,27 +381,24 @@ export function RegistrySection(props: { readonly registry: RegistryState }): Re
     post({ type: 'searchRegistry', query });
   };
   return (
-    <section className="section" aria-labelledby="registry-title">
-      <h2 id="registry-title">Add from the MCP registry</h2>
-      <p className="muted">
-        Browse the public MCP registry or search it by name, and add a server for every project, the
-        same as <code>claude mcp add --scope user</code>. A package runs on this machine with your
-        permissions, so add only servers you trust. A remote server that needs a sign in shows up
-        above with a Sign in button.
+    <section className="reg" aria-labelledby="registry-title">
+      <h2 id="registry-title">Discover MCP servers</h2>
+      <p className="muted reg-lede">
+        From the public MCP registry. Install adds a server for every project, the same as{' '}
+        <code>claude mcp add --scope user</code>. Packages run on this machine with your
+        permissions, so add only servers you trust.
       </p>
-      <form className="toolbar" role="search" onSubmit={search}>
-        <label>
-          Server name
-          <input
-            type="search"
-            value={query}
-            placeholder="github, sentry, postgres"
-            onChange={(event) => {
-              setQuery(event.target.value);
-            }}
-          />
-        </label>
-        <button type="submit" disabled={registry.searching}>
+      <form className="reg-search" role="search" onSubmit={search}>
+        <input
+          type="search"
+          aria-label="Server name"
+          value={query}
+          placeholder="Search by name: github, sentry, postgres…"
+          onChange={(event) => {
+            setQuery(event.target.value);
+          }}
+        />
+        <button type="submit" className="primary" disabled={registry.searching}>
           {registry.searching ? 'Searching…' : 'Search'}
         </button>
         <button
@@ -340,15 +412,7 @@ export function RegistrySection(props: { readonly registry: RegistryState }): Re
           Browse all
         </button>
       </form>
-      {registry.notice === null ? null : (
-        <p role={registry.notice.ok ? 'status' : 'alert'}>
-          <Badge
-            label={registry.notice.ok ? 'Added' : 'Not added'}
-            tone={registry.notice.ok ? 'good' : 'critical'}
-          />{' '}
-          {registry.notice.text}
-        </p>
-      )}
+      <Notice registry={registry} />
       {registry.error === null ? null : (
         <p className="error-text" role="alert">
           {registry.error}
