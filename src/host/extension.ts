@@ -33,7 +33,7 @@ const GLOBAL_VIEWS: readonly ViewEntry[] = [
   ['overlord.openReputation', 'reputation', 'Reputation', 'robot'],
   ['overlord.openMessages', 'messages', 'Agent Messages', 'comment-discussion'],
   ['overlord.openTuning', 'tuning', 'Tuning', 'tools'],
-  ['overlord.openConnectors', 'connectors', 'Connectors', 'plug'],
+  ['overlord.openConnectors', 'connectors', 'Connectors (MCP)', 'plug'],
   ['overlord.openHelp', 'help', 'Help', 'question'],
 ];
 

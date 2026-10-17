@@ -219,7 +219,7 @@
       },
       {
         "command": "overlord.openConnectors",
-        "title": "Connectors",
+        "title": "Connectors (MCP)",
         "category": "Overlord",
         "icon": "$(plug)"
       },

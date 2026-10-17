@@ -35,7 +35,7 @@ const TITLES: Readonly<Record<ViewId, string>> = {
   properties: 'Overlord: Properties',
   help: 'Overlord: Help',
   tuning: 'Overlord: Tuning',
-  connectors: 'Overlord: Connectors',
+  connectors: 'Overlord: Connectors (MCP)',
   activity: 'Overlord: Activity',
 };
 
