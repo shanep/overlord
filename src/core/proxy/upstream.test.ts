@@ -177,6 +177,36 @@ describe('onUsage', () => {
   });
 });
 
+describe('quota refusals', () => {
+  it('go on as a 403 with the figures, and onQuota hears them, streamed or not', async () => {
+    const heard: unknown[] = [];
+    const config: UpstreamConfig = { ...CONFIG, onQuota: (quota) => heard.push(quota) };
+    stubFetch(() => jsonResponse(429, { detail: 'Quota exceeded: $30.10 / $30.00' }));
+    const result = await callOnce(config, REQUEST);
+    expect(result).toStrictEqual({
+      ok: false,
+      error: {
+        status: 403,
+        code: 'quota',
+        message:
+          'Your boisestate.ai quota is used up: $30.10 of $30.00 this month. It resets at the start of next month.',
+        quota: { spentUsd: 30.1, limitUsd: 30 },
+      },
+    });
+    stubFetch(() => jsonResponse(429, { detail: 'Quota exceeded: $31 / $30' }));
+    const events = await collect(streamUpstream(config, REQUEST));
+    expect(events[0]).toMatchObject({ kind: 'error', error: { status: 403, code: 'quota' } });
+    stubFetch(() => jsonResponse(429, { detail: 'Quota exceeded: $1.2.3 / $30' }));
+    expect(await callOnce(config, REQUEST)).toMatchObject({ error: { status: 429 } });
+    stubFetch(() => jsonResponse(429, { detail: 'Too many requests' }));
+    expect(await callOnce(config, REQUEST)).toMatchObject({ error: { status: 429 } });
+    expect(heard).toStrictEqual([
+      { spentUsd: 30.1, limitUsd: 30 },
+      { spentUsd: 31, limitUsd: 30 },
+    ]);
+  });
+});
+
 describe('streamUpstream', () => {
   it('yields normalized events for a full stream and sends stream:true', async () => {
     const capture = stubFetch(() =>

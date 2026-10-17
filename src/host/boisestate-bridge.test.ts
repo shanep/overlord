@@ -10,6 +10,7 @@ interface Spawned {
   readonly key: string | undefined;
   readonly port: string | undefined;
   readonly child: { readonly signalCode: NodeJS.Signals | null };
+  readonly stdout: PassThrough;
 }
 
 /** A sidecar stand-in that reports ready on the port it was asked for, or 4000. */
@@ -34,7 +35,7 @@ function fakeSpawn(spawned: Spawned[]): typeof spawn {
       },
     });
     const port = options.env['BRIDGE_PORT'];
-    spawned.push({ key: options.env['BOISESTATE_API_KEY'], port, child });
+    spawned.push({ key: options.env['BOISESTATE_API_KEY'], port, child, stdout });
     setImmediate(() => {
       stdout.write(`${JSON.stringify({ ready: true, port: Number(port) || 4000 })}\n`);
     });
@@ -78,5 +79,30 @@ describe('BoisestateBridge.restart', () => {
     await bridge.restart();
 
     expect(spawned).toStrictEqual([]);
+  });
+});
+
+describe('BoisestateBridge quota notices', () => {
+  it('hands on each notice the sidecar prints after it is ready, even split across chunks', async () => {
+    const spawned: Spawned[] = [];
+    const heard: unknown[] = [];
+    const bridge = new BoisestateBridge({
+      proxyPath: 'proxy.cjs',
+      getKey: async (): Promise<string> => {
+        await Promise.resolve();
+        return 'key';
+      },
+      spawnFn: fakeSpawn(spawned),
+      onQuotaNotice: (notice): void => {
+        heard.push(notice);
+      },
+    });
+    await bridge.endpointFor('boisestate');
+    const line = JSON.stringify({ quotaNotice: { level: 80, spentUsd: 24.5, limitUsd: 30 } });
+    spawned[0]?.stdout.write(`noise\n${line.slice(0, 10)}`);
+    spawned[0]?.stdout.write(`${line.slice(10)}\n`);
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(heard).toStrictEqual([{ level: 80, spentUsd: 24.5, limitUsd: 30 }]);
+    bridge.dispose();
   });
 });

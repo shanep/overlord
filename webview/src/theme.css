@@ -396,18 +396,21 @@ kbd {
   margin: 0;
 }
 
-/* A plan limit's meter runs the width of its card. */
-.plan-limits .meter-wrap {
+/* A plan limit's meter, and the Boise State quota's, runs the width of its card. */
+.plan-limits .meter-wrap,
+.bridge-quota .meter-wrap {
   display: flex;
   margin: 4px 0 0 16px;
 }
 
-.plan-limits .meter {
+.plan-limits .meter,
+.bridge-quota .meter {
   flex: 1;
   height: 8px;
 }
 
-.plan-limits .meter-text {
+.plan-limits .meter-text,
+.bridge-quota .meter-text {
   font-weight: 600;
   text-align: right;
 }
@@ -423,6 +426,10 @@ kbd {
 
 .usage .bridge-usage .grid + .grid {
   margin-top: 12px;
+}
+
+.usage .bridge-quota {
+  margin-bottom: 12px;
 }
 
 /* ---- Header stats and banners ----------------------------------------- */

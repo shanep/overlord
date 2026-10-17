@@ -13,6 +13,8 @@ import process from 'node:process';
 
 import type { BackendEndpoint } from '../core/bridge/backend.js';
 import { BOISESTATE, parseReadyLine } from '../core/bridge/boisestate.js';
+import type { QuotaNotice } from '../core/bridge/quota-watch.js';
+import { parseNoticeLine } from '../core/bridge/quota-watch.js';
 
 type SpawnFunction = typeof spawn;
 
@@ -28,6 +30,8 @@ export interface BoisestateBridgeOptions {
   /** Reads the boisestate.ai api key from SecretStorage, or undefined if unset. */
   readonly getKey: () => Promise<string | undefined>;
   readonly onError?: (message: string) => void;
+  /** Hears the sidecar's warning that this month's quota crossed 80% or 100%. */
+  readonly onQuotaNotice?: (notice: QuotaNotice) => void;
   /** The last sidecar's port and token, or null for a fresh start. */
   readonly loadEndpoint?: () => Promise<SavedEndpoint | null>;
   readonly saveEndpoint?: (endpoint: SavedEndpoint) => Promise<void>;
@@ -53,6 +57,7 @@ export class BoisestateBridge {
   private readonly proxyPath: string;
   private readonly getKey: () => Promise<string | undefined>;
   private readonly onError: (message: string) => void;
+  private readonly onQuotaNotice: (notice: QuotaNotice) => void;
   private readonly loadEndpoint: (() => Promise<SavedEndpoint | null>) | null;
   private readonly saveEndpoint: ((endpoint: SavedEndpoint) => Promise<void>) | null;
   private readonly spawnFn: SpawnFunction;
@@ -66,6 +71,11 @@ export class BoisestateBridge {
       options.onError ??
       ((): void => {
         // No error sink configured.
+      });
+    this.onQuotaNotice =
+      options.onQuotaNotice ??
+      ((): void => {
+        // No notice sink configured.
       });
     // With nowhere to save it, every sidecar starts fresh.
     this.loadEndpoint = options.loadEndpoint ?? null;
@@ -222,8 +232,13 @@ export class BoisestateBridge {
         buffer += chunk;
         let newline = buffer.indexOf('\n');
         while (newline !== -1) {
-          const port = parseReadyLine(buffer.slice(0, newline));
+          const line = buffer.slice(0, newline);
+          const port = parseReadyLine(line);
+          const notice = parseNoticeLine(line);
           buffer = buffer.slice(newline + 1);
+          if (notice !== null) {
+            this.onQuotaNotice(notice);
+          }
           if (port !== null) {
             finish(() => {
               resolve(port);

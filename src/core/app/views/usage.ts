@@ -17,9 +17,9 @@ import type { Runtime } from '../runtime.js';
 export const PLAN_STALE_MS = 5 * 60_000;
 
 /** The bridge's logged calls, or null when nothing has gone through it yet. */
-async function readBridgeUsage(home: string): Promise<BridgeUsage | null> {
+async function readBridgeUsage(home: string, now: number): Promise<BridgeUsage | null> {
   try {
-    return summarizeUsage(await readFile(bridgeUsageFile(home), 'utf8'));
+    return summarizeUsage(await readFile(bridgeUsageFile(home), 'utf8'), now);
   } catch {
     return null;
   }
@@ -28,13 +28,14 @@ async function readBridgeUsage(home: string): Promise<BridgeUsage | null> {
 export async function loadUsage(
   paths: ClaudePaths,
   report: (source: string, message: string) => void,
+  clock: () => number = Date.now,
 ): Promise<UsageStats> {
   const read = await readUsageHistory(paths);
   for (const error of read.errors) {
     report('usage', error.message);
   }
   const usage = read.history?.usage ?? EMPTY_USAGE;
-  const bridge = await readBridgeUsage(paths.home);
+  const bridge = await readBridgeUsage(paths.home, clock());
   return bridge === null ? usage : { ...usage, bridge };
 }
 

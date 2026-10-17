@@ -12,10 +12,12 @@ import { storagePath } from '../core/app/storage.js';
 import { parseTransferUri } from '../core/app/transfer.js';
 import { fleetSessionName } from '../core/app/views/fleet.js';
 import { BOISESTATE_KEY_SECRET, BOISESTATE_PROFILE } from '../core/bridge/boisestate.js';
+import { noticeText } from '../core/bridge/quota-watch.js';
 import { isTerminal } from '../core/harness/launcher.js';
 import { listProfiles, modesLookup, saveProfile } from '../core/knobs/profiles.js';
 import { runSelfCheck } from '../core/self-check.js';
 import { CLAUDE_CODE } from '../shared/agents.js';
+import { BOISESTATE_USAGE_URL } from '../shared/bridge-usage.js';
 import type { HostToWebview, ViewId, WebviewAction } from '../shared/protocol.js';
 import { VIEW_IDS } from '../shared/protocol.js';
 
@@ -31,6 +33,8 @@ let app: OverlordApp | null = null;
 type ViewEntry = readonly [command: string, view: ViewId, label: string, icon: string];
 
 /** Settings and history that apply across every session. */
+/** The button on a quota warning that opens boisestate.ai's own usage page. */
+const OPEN_USAGE = 'Open boisestate.ai usage';
 const GLOBAL_VIEWS: readonly ViewEntry[] = [
   ['overlord.openKnobs', 'knobs', 'Knobs', 'settings-gear'],
   ['overlord.openConfig', 'config', 'Config and Sync', 'repo'],
@@ -98,6 +102,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const propertiesHolder: { current: SidebarView | null } = { current: null };
   const tabsHolder: { current: CliTabs | null } = { current: null };
   const bridgeLog = vscode.window.createOutputChannel('Overlord Bridge', { log: true });
+  /** Shows a quota warning, with a button to boisestate.ai's own usage page. */
+  const warnQuota = async (text: string): Promise<void> => {
+    bridgeLog.warn(text);
+    const choice = await vscode.window.showWarningMessage(text, OPEN_USAGE);
+    if (choice === OPEN_USAGE) {
+      await vscode.env.openExternal(vscode.Uri.parse(BOISESTATE_USAGE_URL));
+    }
+  };
   const bridge = new BoisestateBridge({
     proxyPath: path.join(context.extensionUri.fsPath, 'dist', 'overlord-proxy.cjs'),
     getKey: async (): Promise<string | undefined> => {
@@ -106,6 +118,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     },
     onError: (message: string): void => {
       bridgeLog.error(message);
+    },
+    onQuotaNotice: (notice): void => {
+      void warnQuota(noticeText(notice));
     },
     // The token is shared by every window, and the port is this window's own.
     loadEndpoint: async (): Promise<SavedEndpoint | null> => {

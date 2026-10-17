@@ -442,37 +442,43 @@
         "date": "2026-10-10",
         "calls": 12,
         "inputTokens": 310000,
-        "outputTokens": 18000
+        "outputTokens": 18000,
+        "costUsd": 1.6
       },
       {
         "date": "2026-10-12",
         "calls": 41,
         "inputTokens": 1120000,
-        "outputTokens": 64000
+        "outputTokens": 64000,
+        "costUsd": 5.76
       },
       {
         "date": "2026-10-13",
         "calls": 8,
         "inputTokens": 190000,
-        "outputTokens": 9000
+        "outputTokens": 9000,
+        "costUsd": 0.94
       },
       {
         "date": "2026-10-14",
         "calls": 65,
         "inputTokens": 1840000,
-        "outputTokens": 121000
+        "outputTokens": 121000,
+        "costUsd": 9.78
       },
       {
         "date": "2026-10-15",
         "calls": 23,
         "inputTokens": 640000,
-        "outputTokens": 30500
+        "outputTokens": 30500,
+        "costUsd": 3.17
       },
       {
         "date": "2026-10-16",
         "calls": 3,
         "inputTokens": 52000,
-        "outputTokens": 2100
+        "outputTokens": 2100,
+        "costUsd": 0.25
       }
     ],
     "models": [
@@ -480,14 +486,24 @@
         "model": "global.anthropic.claude-opus-5-5",
         "calls": 143,
         "inputTokens": 4062000,
-        "outputTokens": 239600
+        "outputTokens": 239600,
+        "priced": true,
+        "costUsd": 21.04
       },
       {
         "model": "global.anthropic.claude-sonnet-5",
         "calls": 9,
         "inputTokens": 90000,
-        "outputTokens": 5000
+        "outputTokens": 5000,
+        "priced": true,
+        "costUsd": 0.23
       }
-    ]
+    ],
+    "quota": {
+      "period": "2026-10",
+      "limitUsd": 30,
+      "spentUsd": 25.2,
+      "reportedAt": null
+    }
   }
 }

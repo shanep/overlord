@@ -1,22 +1,35 @@
 import { within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import type { BridgeUsageDay } from '../../../src/shared/bridge-usage.js';
+import type {
+  BridgeUsage,
+  BridgeUsageDay,
+  BridgeUsageModel,
+} from '../../../src/shared/bridge-usage.js';
 import type { PlanLimits } from '../../../src/shared/protocol.js';
 import { usageState } from '../../test/fixtures-tools.js';
 import { NOW } from '../../test/fixtures.js';
 import { expectAccessible, renderView } from '../../test/render.js';
 
+import { bridgeTotals, formatUsd, localDate, quotaTone } from './usage-bridge.js';
 import {
-  bridgeTotals,
   dailyTable,
   formatAmount,
   hourTable,
-  localDate,
   severityTone,
   totalTokensAll,
   UsageView,
 } from './usage-view.js';
+
+/** A model's row: half a dollar a call when it has a rate. */
+const modelUsage = (model: string, calls: number, priced: boolean): BridgeUsageModel => ({
+  model,
+  calls,
+  inputTokens: calls * 1000,
+  outputTokens: calls * 100,
+  costUsd: priced ? calls * 0.5 : 0,
+  priced,
+});
 
 describe('usage tables', () => {
   it('builds the daily table twin in date order', () => {
@@ -83,49 +96,73 @@ describe('UsageView', () => {
     await expectAccessible(container);
   });
 
-  it('shows Boise State usage by day and by model, only when the bridge logged calls', async () => {
+  it('shows Boise State spend against the quota, and usage by day and by model', async () => {
     const day = 24 * 60 * 60_000;
     const row = (at: number, calls: number): BridgeUsageDay => ({
       date: localDate(at),
       calls,
       inputTokens: calls * 1000,
       outputTokens: calls * 100,
+      costUsd: calls * 0.5,
     });
-    const bridge = {
+    const bridge: BridgeUsage = {
       days: [row(NOW - 20 * day, 5), row(NOW - 3 * day, 2), row(NOW, 1)],
       models: [
-        {
-          model: 'global.anthropic.claude-opus-5-5',
-          calls: 7,
-          inputTokens: 7000,
-          outputTokens: 700,
-        },
-        {
-          model: 'global.anthropic.claude-sonnet-5',
-          calls: 1,
-          inputTokens: 1000,
-          outputTokens: 100,
-        },
+        modelUsage('global.anthropic.claude-opus-5-5', 7, true),
+        modelUsage('google.gemma-4-31b', 1, false),
       ],
+      quota: { period: '2026-10', limitUsd: 30, spentUsd: 25.2, reportedAt: null },
     };
     expect(bridgeTotals(bridge, localDate(NOW - 6 * day))).toStrictEqual({
       calls: 3,
       inputTokens: 3000,
       outputTokens: 300,
+      costUsd: 1.5,
     });
-    const { getByRole, container } = renderView(<UsageView state={{ ...usageState, bridge }} />);
+    const { getByRole, getByText, container } = renderView(
+      <UsageView state={{ ...usageState, bridge }} />,
+    );
+    expect(getByText('This month: $25.20 of $30.00')).toBeDefined();
+    expect(getByRole('article', { name: 'Boise State quota' }).textContent).toContain('84%');
+    expect(getByText(/Logged through the bridge only/u)).toBeDefined();
+    expect(getByRole('link', { name: 'Open boisestate.ai usage' }).getAttribute('href')).toBe(
+      'https://boisestate.ai/settings/usage',
+    );
     const tiles = container.querySelector('[aria-label="Boise State usage"]');
-    expect(tiles?.textContent).toContain('Today1.1K1 calls');
-    expect(tiles?.textContent).toContain('Last 7 days3.3K3 calls');
-    expect(tiles?.textContent).toContain('All time8.8K8 calls');
+    expect(tiles?.textContent).toContain('Today1.1K1 calls, $0.50');
+    expect(tiles?.textContent).toContain('Last 7 days3.3K3 calls, $1.50');
+    expect(tiles?.textContent).toContain('All time8.8K8 calls, $4.00');
     const byDay = getByRole('table', { name: 'Boise State usage by day' });
     expect(within(byDay).getAllByRole('row')).toHaveLength(4);
     expect(within(byDay).getAllByRole('row')[1]?.textContent).toContain(localDate(NOW));
-    expect(getByRole('table', { name: 'Boise State usage by model' })).toBeDefined();
+    const byModel = getByRole('table', { name: 'Boise State usage by model' });
+    expect(within(byModel).getAllByRole('row')[2]?.textContent).toContain('no rate');
     await expectAccessible(container);
 
     const plain = renderView(<UsageView state={usageState} />);
     expect(within(plain.container).queryByRole('heading', { name: /Boise State/ })).toBeNull();
+  });
+
+  it("turns the quota card red once used up, and names boisestate.ai's own report", () => {
+    expect([10, 80, 99, 100].map((percent) => quotaTone(percent))).toStrictEqual([
+      'info',
+      'warning',
+      'warning',
+      'critical',
+    ]);
+    expect([0.0004, 0.05, 1.234].map((value) => formatUsd(value))).toStrictEqual([
+      '$0.000',
+      '$0.050',
+      '$1.23',
+    ]);
+    const bridge: BridgeUsage = {
+      days: [],
+      models: [],
+      quota: { period: '2026-10', limitUsd: 30, spentUsd: 30.1, reportedAt: NOW },
+    };
+    const { getByText } = renderView(<UsageView state={{ ...usageState, bridge }} />);
+    expect(getByText('Used up')).toBeDefined();
+    expect(getByText(/boisestate.ai's own figure from/u)).toBeDefined();
   });
 
   it('says there is no data for an empty history and leaves the climate section out', () => {

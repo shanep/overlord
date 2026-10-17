@@ -45,14 +45,47 @@ type UpstreamErrorCode =
   | 'auth' // 401
   | 'model_access' // 403
   | 'bad_request' // 400 or 422
+  | 'quota' // 429 "Quota exceeded", sent on as 403 so clients do not retry it
   | 'timeout' // 504 or an aborted request
   | 'upstream'; // anything else
+
+/** boisestate.ai's own spend and limit, from a request it refused for the quota. */
+export interface QuotaReport {
+  readonly spentUsd: number;
+  readonly limitUsd: number;
+}
 
 /** A normalized upstream failure, in terms each front-end route can map. */
 interface UpstreamError {
   readonly status: number;
   readonly code: UpstreamErrorCode;
   readonly message: string;
+  readonly quota?: QuotaReport;
+}
+
+// The backend refuses a call over the quota with 429 and this detail.
+const QUOTA_PATTERN = /^Quota exceeded: \$([\d.]+) \/ \$([\d.]+)$/u;
+
+/**
+ * A quota refusal, worded for the user. It goes on as 403 because clients
+ * retry a 429 as a rate limit, and this one lasts until next month.
+ */
+function quotaError(detail: string): UpstreamError | null {
+  const match = QUOTA_PATTERN.exec(detail.trim());
+  if (match === null) {
+    return null;
+  }
+  const quota = { spentUsd: Number(match[1]), limitUsd: Number(match[2]) };
+  if (!Number.isFinite(quota.spentUsd) || !Number.isFinite(quota.limitUsd)) {
+    return null;
+  }
+  const used = `$${quota.spentUsd.toFixed(2)} of $${quota.limitUsd.toFixed(2)}`;
+  return {
+    status: 403,
+    code: 'quota',
+    message: `Your boisestate.ai quota is used up: ${used} this month. It resets at the start of next month.`,
+    quota,
+  };
 }
 
 export type UpstreamResult =
@@ -81,6 +114,8 @@ export interface UpstreamConfig {
   readonly timeoutMs: number;
   /** Hears each call's usage once the backend reports it, for the usage log. */
   readonly onUsage?: (usage: CallUsage) => void;
+  /** Hears boisestate.ai's own spend and limit whenever it refuses a call for the quota. */
+  readonly onQuota?: (quota: QuotaReport) => void;
 }
 
 function reportUsage(config: UpstreamConfig, model: string, usage: ConverseUsage): void {
@@ -140,9 +175,22 @@ function errorFromStatus(status: number, body: string): UpstreamError {
     };
   }
   const detail = detailMessage(body);
+  const quota = detail === null ? null : quotaError(detail);
+  if (quota !== null) {
+    return quota;
+  }
   const message =
     detail ?? (body.trim() === '' ? `HTTP ${String(status)}` : body.trim().slice(0, 200));
   return { status, code: codeForStatus(status), message };
+}
+
+/** The failure for a refused call, after telling onQuota about a quota refusal. */
+function refused(config: UpstreamConfig, status: number, body: string): UpstreamError {
+  const error = errorFromStatus(status, body);
+  if (error.quota !== undefined) {
+    config.onQuota?.(error.quota);
+  }
+  return error;
 }
 
 function abortError(error: unknown, timeoutMs: number): UpstreamError {
@@ -182,7 +230,7 @@ export async function callOnce(
     });
     const text = await response.text();
     if (!response.ok) {
-      return { ok: false, error: errorFromStatus(response.status, text) };
+      return { ok: false, error: refused(config, response.status, text) };
     }
     const parsed = responseSchema.safeParse(safeJson(text));
     if (!parsed.success) {
@@ -286,7 +334,7 @@ async function startStream(
   const body = response.body as ByteStream | null;
   if (!response.ok || body === null) {
     const text = body === null ? '' : await response.text();
-    return { ok: false, error: errorFromStatus(response.status, text) };
+    return { ok: false, error: refused(config, response.status, text) };
   }
   return { ok: true, stream: body };
 }

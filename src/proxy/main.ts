@@ -3,10 +3,12 @@
 // line (a JSON object), and points sessions at http://127.0.0.1:<port> through
 // ANTHROPIC_BASE_URL. Run it standalone with `npm run proxy` after a build.
 
+import { readFile } from 'node:fs/promises';
 import os from 'node:os';
 import process from 'node:process';
 
-import { bridgeUsageFile, logUsage } from '../core/bridge/usage-log.js';
+import { noticeLine, QuotaWatch } from '../core/bridge/quota-watch.js';
+import { bridgeUsageFile, logQuota, logUsage } from '../core/bridge/usage-log.js';
 import {
   countTokensHandler,
   makeAnthropicHandler,
@@ -27,14 +29,27 @@ async function main(): Promise<void> {
   }
   const config = result.config;
   const usageFile = process.env['BRIDGE_USAGE_LOG'] ?? bridgeUsageFile(os.homedir());
+  const warn = (message: string): void => {
+    process.stderr.write(`boisestate bridge: ${message}\n`);
+  };
+  const watch = new QuotaWatch({
+    read: async (): Promise<string | null> => readFile(usageFile, 'utf8').catch(() => null),
+    now: Date.now,
+    notify: (notice): void => {
+      process.stdout.write(`${noticeLine(notice)}\n`);
+    },
+  });
+  // Learn where this month already stands, so only a new crossing warns.
+  await watch.check();
   const upstream: UpstreamConfig = {
     endpoint: config.endpoint,
     apiKey: config.apiKey,
     timeoutMs: config.timeoutMs,
     onUsage: (usage): void => {
-      void logUsage(usageFile, usage, Date.now(), (message) => {
-        process.stderr.write(`boisestate bridge: ${message}\n`);
-      });
+      void logUsage(usageFile, usage, Date.now(), warn).then(async () => watch.check());
+    },
+    onQuota: (quota): void => {
+      void logQuota(usageFile, quota, Date.now(), warn).then(async () => watch.check());
     },
   };
   const routes: ReadonlyMap<string, RouteHandler> = new Map([
