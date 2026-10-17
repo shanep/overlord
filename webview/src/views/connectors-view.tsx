@@ -14,6 +14,7 @@ import type {
 } from '../../../src/shared/connectors.js';
 import { useNow } from '../clock.js';
 import { Badge } from '../components/badge.js';
+import { Card, CardGroup, StatusDot } from '../components/card.js';
 import { formatAgo, formatDateTime } from '../format.js';
 import type { Tone } from '../labels.js';
 import { usePostAction } from '../vscode-context.js';
@@ -73,22 +74,23 @@ function ConnectorCard(props: { readonly connector: Connector }): ReactElement {
   const { connector } = props;
   const info = STATUS_INFO[connector.status];
   return (
-    <li className={`conn-card conn-${info.tone}`}>
-      <div className="conn-head">
-        <span className="conn-dot" aria-hidden="true" />
-        <span className="conn-name" title={connector.target === '' ? undefined : connector.target}>
+    <Card tone={info.tone}>
+      <div className="card-head">
+        <StatusDot tone={info.tone} />
+        <span className="card-title" title={connector.target === '' ? undefined : connector.target}>
           {displayName(connector)}
         </span>
         {connector.status === 'ok' ? null : <Badge label={info.label} tone={info.tone} />}
       </div>
-      <div className="conn-kind">{KIND_LABELS[connector.kind]}</div>
-      <p className="conn-detail">{connector.detail}</p>
+      <div className="card-sub conn-indent">{KIND_LABELS[connector.kind]}</div>
+      <p className="card-text conn-indent">{connector.detail}</p>
       {connector.fix === null ? null : (
-        <div className="conn-actions">
+        <div className="card-foot">
+          <span className="spacer" />
           <FixButton connector={connector} />
         </div>
       )}
-    </li>
+    </Card>
   );
 }
 
@@ -97,20 +99,12 @@ function ConnectorGroup(props: {
   readonly title: string;
   readonly connectors: readonly Connector[];
 }): ReactElement | null {
-  if (props.connectors.length === 0) {
-    return null;
-  }
   return (
-    <section className="conn-group" aria-labelledby={props.id}>
-      <h2 id={props.id}>
-        {props.title} <span className="count">{String(props.connectors.length)}</span>
-      </h2>
-      <ul className="conn-grid" aria-labelledby={props.id}>
-        {props.connectors.map((connector) => (
-          <ConnectorCard key={connector.id} connector={connector} />
-        ))}
-      </ul>
-    </section>
+    <CardGroup id={props.id} title={props.title} count={props.connectors.length}>
+      {props.connectors.map((connector) => (
+        <ConnectorCard key={connector.id} connector={connector} />
+      ))}
+    </CardGroup>
   );
 }
 
@@ -135,7 +129,7 @@ function LastChecked(props: { readonly state: ConnectorsState }): ReactElement {
 
 function About(props: { readonly folder: string | null }): ReactElement {
   return (
-    <details className="conn-about">
+    <details className="about">
       <summary>How this works</summary>
       <p>
         These are the MCP servers and claude.ai connectors as <code>claude mcp list</code> sees them
@@ -181,7 +175,7 @@ export function ConnectorsView(props: { readonly state: ConnectorsState }): Reac
       </header>
       <About folder={state.folder} />
       {state.connectors.length === 0 ? (
-        <p className="conn-empty muted">{state.checking ? 'Checking…' : 'No connectors found.'}</p>
+        <p className="empty-line muted">{state.checking ? 'Checking…' : 'No connectors found.'}</p>
       ) : null}
       <ConnectorGroup
         id="conn-attention"

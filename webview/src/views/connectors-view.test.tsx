@@ -23,7 +23,7 @@ function connector(overrides: Partial<Connector> & Pick<Connector, 'id' | 'name'
 function names(list: HTMLElement): (string | null)[] {
   return within(list)
     .getAllByRole('listitem')
-    .map((item) => item.querySelector('.conn-name')?.textContent ?? null);
+    .map((item) => item.querySelector('.card-title')?.textContent ?? null);
 }
 
 const STATE: ConnectorsState = {
@@ -63,12 +63,12 @@ describe('ConnectorsView', () => {
     const ready = getByRole('list', { name: 'Ready 1' });
     expect(names(attention)).toStrictEqual(['Claude in Chrome', 'sentry']);
     expect(names(ready)).toStrictEqual(['Gmail']);
-    expect(ready.querySelector('.conn-name')?.getAttribute('title')).toBe('https://gmail');
-    expect(attention.querySelector('.conn-name')?.hasAttribute('title')).toBe(false);
+    expect(ready.querySelector('.card-title')?.getAttribute('title')).toBe('https://gmail');
+    expect(attention.querySelector('.card-title')?.hasAttribute('title')).toBe(false);
     expect(ready.textContent).toContain('claude.ai connector');
     expect(ready.querySelector('.badge')).toBeNull();
     expect(attention.textContent).toContain('Needs sign in');
-    expect(attention.querySelector('.conn-card')?.className).toBe('conn-card conn-critical');
+    expect(attention.querySelector('.card')?.className).toBe('card card-edge card-critical');
     expect(getByRole('heading', { level: 1 }).textContent).toBe('Connectors (MCP)');
     expect(container.textContent).toContain('from /work/repo');
     expect(container.textContent).toContain('Last checked');

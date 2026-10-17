@@ -1330,28 +1330,13 @@ summary > h2 {
   margin-right: 4px;
 }
 
-/* ---- Connectors ----------------------------------------------------------- */
+/* ---- Cards and groups -----------------------------------------------------
+ * The standard layout for a collection you scan: components/card.tsx renders
+ * these, and the webview-design skill says when to use them.
+ */
 
-.conn {
-  max-width: 1400px;
-}
-
-.conn .view-header {
-  align-items: center;
-}
-
-.conn-about {
-  margin: 4px 0 8px;
-  color: var(--ov-muted);
-}
-
-.conn-about > p {
-  max-width: 80ch;
-  margin: 4px 0 0 1em;
-}
-
-.conn-group > h2,
-.reg > h2 {
+.card-group > h2,
+.section-title {
   display: flex;
   gap: 6px;
   align-items: center;
@@ -1367,8 +1352,7 @@ summary > h2 {
   font-weight: 600;
 }
 
-.conn-grid,
-.reg-grid {
+.card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 8px;
@@ -1378,14 +1362,13 @@ summary > h2 {
 }
 
 /* Dense, so the cards after an open one fill the gap it leaves above. */
-.reg-grid {
+.card-grid-wide {
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   grid-auto-flow: dense;
   gap: 10px;
 }
 
-.conn-card,
-.reg-card {
+.card {
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -1396,34 +1379,108 @@ summary > h2 {
   background: var(--vscode-editorWidget-background, var(--ov-panel));
 }
 
-.reg-card:hover {
+.card-action:hover {
   border-color: var(--ov-focus);
 }
 
-.conn-card {
+.card-edge {
   border-left-width: 3px;
 }
 
-.conn-good {
+.card-good {
   border-left-color: var(--ov-green);
 }
 
-.conn-warning {
+.card-warning {
   border-left-color: var(--ov-yellow);
 }
 
-.conn-critical {
+.card-critical {
   border-left-color: var(--ov-red);
 }
 
-.conn-head {
+.card-info {
+  border-left-color: var(--ov-blue);
+}
+
+.card-open {
+  grid-column: 1 / -1;
+  border-color: var(--ov-focus);
+}
+
+.card-head {
   display: flex;
   gap: 8px;
   align-items: center;
   min-width: 0;
 }
 
-.conn-dot {
+.card-titles {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.card-title,
+.card-sub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card-title {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+}
+
+.card-sub {
+  color: var(--ov-muted);
+  font-size: 0.85em;
+}
+
+.card-sub.mono {
+  font-size: 0.8em;
+}
+
+.card-text {
+  margin: 2px 0;
+  color: var(--ov-muted);
+  font-size: 0.92em;
+  line-height: 1.3;
+}
+
+/* Three lines of text keep the cards in a row the same height. */
+.card-clamp {
+  display: -webkit-box;
+  min-height: 3.9em;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.card-open .card-clamp {
+  display: block;
+  min-height: 0;
+}
+
+.card-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin-top: auto;
+  padding-top: 4px;
+}
+
+.card-foot .spacer,
+.list-bar .spacer,
+.form-actions .spacer {
+  flex: 1;
+}
+
+.status-dot {
   flex: none;
   width: 8px;
   height: 8px;
@@ -1431,93 +1488,69 @@ summary > h2 {
   background: var(--ov-muted);
 }
 
-.conn-good .conn-dot {
+.status-dot-good {
   background: var(--ov-green);
 }
 
-.conn-warning .conn-dot {
+.status-dot-warning {
   background: var(--ov-yellow);
 }
 
-.conn-critical .conn-dot {
+.status-dot-critical {
   background: var(--ov-red);
 }
 
-.conn-name {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  font-weight: 600;
-  text-overflow: ellipsis;
+.status-dot-info {
+  background: var(--ov-blue);
+}
+
+.avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 1.1em;
+  font-weight: 700;
+}
+
+.avatar-0 {
+  background: var(--ov-blue);
+}
+
+.avatar-1 {
+  background: var(--ov-green);
+}
+
+.avatar-2 {
+  background: var(--ov-purple);
+}
+
+.avatar-3 {
+  background: var(--ov-orange);
+}
+
+.avatar-4 {
+  background: var(--ov-red);
+}
+
+.avatar-5 {
+  background: var(--ov-yellow);
+}
+
+.chip {
+  padding: 0 6px;
+  border: 1px solid var(--ov-border);
+  border-radius: 8px;
+  color: var(--ov-muted);
+  font-size: 0.8em;
   white-space: nowrap;
 }
 
-.conn-kind {
-  padding-left: 16px;
-  color: var(--ov-muted);
-  font-size: 0.85em;
-}
-
-.conn-detail {
-  margin: 2px 0 0;
-  padding-left: 16px;
-  color: var(--ov-muted);
-  font-size: 0.9em;
-}
-
-.conn-actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: auto;
-  padding-top: 4px;
-}
-
-.conn-empty,
-.reg-empty {
-  padding: 16px 0;
-}
-
-/* ---- Connectors: the MCP registry ---- */
-
-.reg {
-  margin-top: 24px;
-  padding-top: 4px;
-  border-top: 1px solid var(--ov-border);
-}
-
-.reg-lede {
-  max-width: 90ch;
-}
-
-.reg-search {
-  display: flex;
-  gap: 6px;
-  max-width: 720px;
-  margin: 10px 0;
-}
-
-.reg-search input[type='search'] {
-  flex: 1;
-  min-width: 0;
-  padding: 4px 8px;
-}
-
-.reg-search button {
-  padding: 4px 12px;
-}
-
-.reg-bar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-  margin: 8px 0;
-}
-
-.reg-bar .spacer,
-.reg-foot .spacer,
-.reg-form-actions .spacer {
-  flex: 1;
+.chip-dashed {
+  border-style: dashed;
 }
 
 .segmented {
@@ -1543,7 +1576,7 @@ summary > h2 {
   background: var(--ov-button);
 }
 
-.reg-notice {
+.notice {
   margin: 8px 0;
   padding: 6px 10px;
   border: 1px solid var(--ov-border);
@@ -1551,132 +1584,121 @@ summary > h2 {
   border-radius: 4px;
 }
 
-.reg-notice-good {
+.notice-good {
   border-left-color: var(--ov-green);
 }
 
-.reg-notice-critical {
+.notice-critical {
   border-left-color: var(--ov-red);
 }
 
-.reg-open {
-  grid-column: 1 / -1;
-  border-color: var(--ov-focus);
-}
-
-.reg-head {
+.search-bar {
   display: flex;
-  gap: 10px;
-  align-items: center;
+  gap: 6px;
+  max-width: 720px;
+  margin: 10px 0;
+}
+
+.search-bar input[type='search'] {
+  flex: 1;
   min-width: 0;
+  padding: 4px 8px;
 }
 
-.reg-avatar {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
-  color: #fff;
-  font-size: 1.1em;
-  font-weight: 700;
+.search-bar button {
+  padding: 4px 12px;
 }
 
-.reg-avatar-0 {
-  background: var(--ov-blue);
-}
-
-.reg-avatar-1 {
-  background: var(--ov-green);
-}
-
-.reg-avatar-2 {
-  background: var(--ov-purple);
-}
-
-.reg-avatar-3 {
-  background: var(--ov-orange);
-}
-
-.reg-avatar-4 {
-  background: var(--ov-red);
-}
-
-.reg-avatar-5 {
-  background: var(--ov-yellow);
-}
-
-.reg-titles {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.reg-title,
-.reg-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.reg-title {
-  font-weight: 600;
-}
-
-.reg-name {
-  color: var(--ov-muted);
-  font-family: var(--ov-mono);
-  font-size: 0.8em;
-}
-
-/* Three lines of description keep the cards the same height. */
-.reg-desc {
-  display: -webkit-box;
-  min-height: 3.9em;
-  margin: 4px 0;
-  overflow: hidden;
-  color: var(--ov-muted);
-  font-size: 0.92em;
-  line-height: 1.3;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-}
-
-.reg-open .reg-desc {
-  display: block;
-  min-height: 0;
-}
-
-.reg-foot {
+.list-bar {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 8px;
   align-items: center;
-  margin-top: auto;
+  margin: 8px 0;
 }
 
-.reg-kind {
-  padding: 0 6px;
-  border: 1px solid var(--ov-border);
-  border-radius: 8px;
-  color: var(--ov-muted);
-  font-size: 0.8em;
-  white-space: nowrap;
+.load-more {
+  display: flex;
+  justify-content: center;
+  margin: 12px 0;
 }
 
-.reg-kind-none {
-  border-style: dashed;
+.empty-line {
+  padding: 16px 0;
 }
 
-.reg-form {
+/* A form inside an open card. */
+.card-form {
   margin-top: 8px;
   padding-top: 10px;
   border-top: 1px solid var(--ov-border);
 }
 
-.reg-form select {
+.card-form select {
   max-width: 100%;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 4px 16px;
+}
+
+.form-grid .field {
+  align-items: stretch;
+  margin-bottom: 2px;
+}
+
+.form-grid .field > input {
+  width: 100%;
+}
+
+.form-grid .hint {
+  margin: 0 0 6px;
+}
+
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin-top: 8px;
+}
+
+/* An explanation most people read once, folded away under the header. */
+.about {
+  margin: 4px 0 8px;
+  color: var(--ov-muted);
+}
+
+.about > p {
+  max-width: 80ch;
+  margin: 4px 0 0 1em;
+}
+
+/* ---- Connectors ----------------------------------------------------------- */
+
+.conn {
+  max-width: 1400px;
+}
+
+.conn .view-header {
+  align-items: center;
+}
+
+/* Lines the kind and detail up under the name, past the status dot. */
+.conn-indent {
+  padding-left: 16px;
+}
+
+.reg {
+  margin-top: 24px;
+  padding-top: 4px;
+  border-top: 1px solid var(--ov-border);
+}
+
+.reg-lede {
+  max-width: 90ch;
 }
 
 .reg-command {
@@ -1692,37 +1714,4 @@ summary > h2 {
   overflow-wrap: anywhere;
   border-radius: 3px;
   background: var(--vscode-textCodeBlock-background, var(--ov-hover));
-}
-
-.reg-fields {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 4px 16px;
-}
-
-.reg-field .field {
-  align-items: stretch;
-  margin-bottom: 2px;
-}
-
-.reg-field .field > input {
-  width: 100%;
-}
-
-.reg-field .hint {
-  margin: 0 0 6px;
-}
-
-.reg-form-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  align-items: center;
-  margin-top: 8px;
-}
-
-.reg-more {
-  display: flex;
-  justify-content: center;
-  margin: 12px 0;
 }

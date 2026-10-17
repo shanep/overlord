@@ -12,6 +12,8 @@ import type {
   RegistryState,
 } from '../../../src/shared/connectors.js';
 import { Badge } from '../components/badge.js';
+import type { SegmentedOption } from '../components/card.js';
+import { Avatar, Card, CardGrid, Notice, Segmented } from '../components/card.js';
 import { usePostAction } from '../vscode-context.js';
 
 const INSTALL_KIND_LABELS: Readonly<Record<InstallKind, string>> = {
@@ -26,16 +28,13 @@ const NAME_PATTERN = /^[\w-]{1,64}$/u;
 
 type KindFilter = 'all' | 'remote' | 'npm' | 'pypi' | 'docker';
 
-const KIND_FILTERS: readonly { readonly value: KindFilter; readonly label: string }[] = [
+const KIND_FILTERS: readonly SegmentedOption<KindFilter>[] = [
   { value: 'all', label: 'All' },
   { value: 'remote', label: 'Remote' },
   { value: 'npm', label: 'npm' },
   { value: 'pypi', label: 'PyPI' },
   { value: 'docker', label: 'Docker' },
 ];
-
-/** How many avatar colors theme.css defines. */
-const AVATAR_COLORS = 6;
 
 function matchesKind(server: RegistryServer, filter: KindFilter): boolean {
   if (filter === 'all') {
@@ -57,15 +56,6 @@ function headingOf(server: RegistryServer): string {
     : server.title;
 }
 
-/** The same color for the same server every time, so the grid is easy to scan. */
-function avatarClass(name: string): string {
-  let hash = 0;
-  for (const char of name) {
-    hash = (hash * 31 + (char.codePointAt(0) ?? 0)) % 9973;
-  }
-  return `reg-avatar reg-avatar-${String(hash % AVATAR_COLORS)}`;
-}
-
 function InputField(props: {
   readonly input: InstallInput;
   readonly value: string;
@@ -74,7 +64,7 @@ function InputField(props: {
   const { input } = props;
   const hintId = `hint-${input.id}`;
   return (
-    <div className="reg-field">
+    <div>
       <label className="field">
         <span>
           {input.label}
@@ -123,7 +113,7 @@ function InstallForm(props: {
     post({ type: 'installConnector', server: server.name, option: choice, name, values });
   };
   return (
-    <form className="reg-form" onSubmit={submit} aria-label={`Install ${server.title}`}>
+    <form className="card-form" onSubmit={submit} aria-label={`Install ${server.title}`}>
       {server.options.length > 1 ? (
         <label className="field">
           <span>Install as</span>
@@ -147,8 +137,8 @@ function InstallForm(props: {
         <span className="muted">{INSTALL_KIND_LABELS[option.kind]}</span>
         <code>{option.summary}</code>
       </p>
-      <div className="reg-fields">
-        <div className="reg-field">
+      <div className="form-grid">
+        <div>
           <label className="field">
             <span>Name in Claude Code</span>
             <input
@@ -176,7 +166,7 @@ function InstallForm(props: {
           />
         ))}
       </div>
-      <div className="reg-form-actions">
+      <div className="form-actions">
         {missing.length > 0 ? (
           <span className="muted">Fill in {missing.map((entry) => entry.label).join(', ')}.</span>
         ) : null}
@@ -209,34 +199,32 @@ function Result(props: {
   const { repository } = server;
   const heading = headingOf(server);
   return (
-    <li className={props.open ? 'reg-card reg-open' : 'reg-card'}>
-      <div className="reg-head">
-        <span className={avatarClass(server.name)} aria-hidden="true">
-          {heading.slice(0, 1).toUpperCase()}
-        </span>
-        <div className="reg-titles">
-          <span className="reg-title" title={heading}>
+    <Card action open={props.open}>
+      <div className="card-head">
+        <Avatar seed={server.name} text={heading} />
+        <div className="card-titles">
+          <span className="card-title" title={heading}>
             {heading}
           </span>
-          <span className="reg-name" title={server.name}>
+          <span className="card-sub mono" title={server.name}>
             {server.name}
             {server.version === '' ? '' : ` · ${server.version}`}
           </span>
         </div>
       </div>
       {server.description === '' ? null : (
-        <p className="reg-desc" title={server.description}>
+        <p className="card-text card-clamp" title={server.description}>
           {server.description}
         </p>
       )}
-      <div className="reg-foot">
+      <div className="card-foot">
         {kinds.map((kind) => (
-          <span key={kind} className="reg-kind">
+          <span key={kind} className="chip">
             {INSTALL_KIND_LABELS[kind]}
           </span>
         ))}
         {server.options.length === 0 ? (
-          <span className="reg-kind reg-kind-none">Not installable from here</span>
+          <span className="chip chip-dashed">Not installable from here</span>
         ) : null}
         <span className="spacer" />
         {repository === null ? null : (
@@ -260,29 +248,7 @@ function Result(props: {
       {props.open ? (
         <InstallForm server={server} installing={props.installing} onCancel={props.onToggle} />
       ) : null}
-    </li>
-  );
-}
-
-function KindFilters(props: {
-  readonly value: KindFilter;
-  readonly onChange: (value: KindFilter) => void;
-}): ReactElement {
-  return (
-    <div role="group" aria-label="Runs as" className="segmented">
-      {KIND_FILTERS.map((item) => (
-        <button
-          key={item.value}
-          type="button"
-          aria-pressed={props.value === item.value}
-          onClick={() => {
-            props.onChange(item.value);
-          }}
-        >
-          {item.label}
-        </button>
-      ))}
-    </div>
+    </Card>
   );
 }
 
@@ -299,7 +265,7 @@ function Results(props: { readonly registry: RegistryState }): ReactElement | nu
       return null;
     }
     return (
-      <p className="reg-empty muted">
+      <p className="empty-line muted">
         {registry.searching ? 'Searching…' : 'No servers match that name.'}
       </p>
     );
@@ -311,21 +277,21 @@ function Results(props: { readonly registry: RegistryState }): ReactElement | nu
       : `servers whose name has "${registry.query.trim()}"`;
   return (
     <>
-      <div className="reg-bar">
+      <div className="list-bar">
         <span className="muted">
           {String(registry.results.length)} {what}
           {registry.more ? ' so far' : ''}
           {kind === 'all' ? '' : `, ${String(shown.length)} shown`}
         </span>
         <span className="spacer" />
-        <KindFilters value={kind} onChange={setKind} />
+        <Segmented label="Runs as" options={KIND_FILTERS} value={kind} onChange={setKind} />
       </div>
       {shown.length === 0 ? (
-        <p className="reg-empty muted">
+        <p className="empty-line muted">
           None of these run that way. Show more or pick another filter.
         </p>
       ) : null}
-      <ul className="reg-grid" aria-label="Registry results">
+      <CardGrid wide label="Registry results">
         {shown.map((server) => (
           <Result
             key={server.name}
@@ -338,9 +304,9 @@ function Results(props: { readonly registry: RegistryState }): ReactElement | nu
             }}
           />
         ))}
-      </ul>
+      </CardGrid>
       {registry.more ? (
-        <div className="reg-more">
+        <div className="load-more">
           <button
             type="button"
             disabled={registry.loadingMore}
@@ -356,19 +322,16 @@ function Results(props: { readonly registry: RegistryState }): ReactElement | nu
   );
 }
 
-function Notice(props: { readonly registry: RegistryState }): ReactElement | null {
+function InstallNoticeLine(props: { readonly registry: RegistryState }): ReactElement | null {
   const { notice } = props.registry;
   if (notice === null) {
     return null;
   }
   return (
-    <p
-      className={notice.ok ? 'reg-notice reg-notice-good' : 'reg-notice reg-notice-critical'}
-      role={notice.ok ? 'status' : 'alert'}
-    >
+    <Notice ok={notice.ok}>
       <Badge label={notice.ok ? 'Added' : 'Not added'} tone={notice.ok ? 'good' : 'critical'} />{' '}
       {notice.text}
-    </p>
+    </Notice>
   );
 }
 
@@ -382,13 +345,15 @@ export function RegistrySection(props: { readonly registry: RegistryState }): Re
   };
   return (
     <section className="reg" aria-labelledby="registry-title">
-      <h2 id="registry-title">Discover MCP servers</h2>
+      <h2 id="registry-title" className="section-title">
+        Discover MCP servers
+      </h2>
       <p className="muted reg-lede">
         From the public MCP registry. Install adds a server for every project, the same as{' '}
         <code>claude mcp add --scope user</code>. Packages run on this machine with your
         permissions, so add only servers you trust.
       </p>
-      <form className="reg-search" role="search" onSubmit={search}>
+      <form className="search-bar" role="search" onSubmit={search}>
         <input
           type="search"
           aria-label="Server name"
@@ -412,7 +377,7 @@ export function RegistrySection(props: { readonly registry: RegistryState }): Re
           Browse all
         </button>
       </form>
-      <Notice registry={registry} />
+      <InstallNoticeLine registry={registry} />
       {registry.error === null ? null : (
         <p className="error-text" role="alert">
           {registry.error}
