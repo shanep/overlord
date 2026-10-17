@@ -236,7 +236,7 @@ describe('TailingWatcher with other agents', () => {
     expect(events).toHaveLength(before);
   });
 
-  it('finds Codex rollouts in dated folders and sends a call once when usage is written twice', async () => {
+  it('finds Codex rollout files in dated folders and sends a call once when usage is written twice', async () => {
     const id = '019a0000-6060-7000-8000-000000000001';
     const day = path.join(root, '2026', '10', '16');
     await mkdir(day, { recursive: true });
