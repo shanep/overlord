@@ -9,6 +9,7 @@ import { COPILOT } from '../../../shared/agents.js';
 import { findOnPath } from '../../find-on-path.js';
 import type { AgentAdapter, DetectInput, Detected } from '../types.js';
 
+import { copilotInstructions } from './instructions.js';
 import { COPILOT_DEFAULT_MODEL, copilotContextWindow } from './models.js';
 import { copilotObserverFacet } from './observer.js';
 
@@ -80,4 +81,5 @@ export const copilot: AgentAdapter = {
     defaultModel: COPILOT_DEFAULT_MODEL,
   },
   observer: copilotObserverFacet,
+  instructions: copilotInstructions,
 };

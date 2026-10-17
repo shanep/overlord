@@ -3,9 +3,13 @@ import path from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
+import { COPILOT } from '../../../shared/agents.js';
+import { resolveContext } from '../../context/resolve.js';
+import { CWD, resolveInput } from '../../context/test-helpers/fixtures.js';
 import { makeTemporaryDirectory, removeDir } from '../../transcripts/test-helpers/fixtures.js';
 import { agents } from '../index.js';
 
+import { copilotInstructions } from './instructions.js';
 import { formatVerified, nanoAiuToUsd } from './models.js';
 
 import { copilot } from './index.js';
@@ -117,5 +121,25 @@ describe('copilot', () => {
     expect(
       await copilot.detect({ env: {}, platform: 'linux', path: '/opt/copilot' }),
     ).toStrictEqual({ bin: '/opt/copilot', version: null });
+  });
+
+  it('gives the context resolver its own instruction policy', async () => {
+    expect(copilot.instructions).toBe(copilotInstructions);
+    const tree = {
+      files: {
+        [`${CWD}/.github/copilot-instructions.md`]: 'copilot',
+        [`${CWD}/AGENTS.md`]: 'agents',
+        [`${CWD}/CLAUDE.md`]: 'claude',
+      },
+    };
+    const result = await resolveContext(resolveInput(tree, { agentId: COPILOT }));
+    // Claude Code never reads .github/copilot-instructions.md, so only Copilot's policy lists it.
+    expect(result.expected.map((item) => item.path)).toStrictEqual(
+      expect.arrayContaining([
+        `${CWD}/.github/copilot-instructions.md`,
+        `${CWD}/AGENTS.md`,
+        `${CWD}/CLAUDE.md`,
+      ]),
+    );
   });
 });
