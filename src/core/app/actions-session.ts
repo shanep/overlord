@@ -14,7 +14,7 @@ import { buildHandoff } from '../surfaces/handoff.js';
 import type { LiveProcess } from '../surfaces/live.js';
 import { buildLiveProcessTable } from '../surfaces/live.js';
 
-import type { ActionContext, ActionHandlers } from './action-types.js';
+import type { ActionHandlers } from './action-types.js';
 import { openClaudeTab } from './claude-tabs.js';
 import { stopJob } from './idle-stop.js';
 import type { Runtime } from './runtime.js';
@@ -95,21 +95,21 @@ function running(live: LiveProcess | undefined): Running | null {
   return live === undefined || live.pid === null || !live.alive ? null : { ...live, pid: live.pid };
 }
 
-/** The live process behind a session once the user agrees to act on it. */
-async function agreed(
-  context: ActionContext,
-  sessionId: string,
-  verb: string,
-): Promise<Running | null> {
-  const { rt } = context;
+/** The live process behind a session, or null after saying it is not on this machine. */
+async function reachable(rt: Runtime, sessionId: string): Promise<Running | null> {
   const live = running(await liveProcess(rt, sessionId));
   if (live === null) {
     rt.host.showInfo(NOT_LOCAL);
-    return null;
   }
-  const question = `${verb} Claude session ${shortId(sessionId)} (pid ${String(live.pid)})?`;
-  return (await rt.host.confirm(question, verb)) ? live : null;
+  return live;
 }
+
+async function agreed(rt: Runtime, live: Running, verb: string): Promise<boolean> {
+  const question = `${verb} Claude session ${shortId(live.sessionId)} (pid ${String(live.pid)})?`;
+  return rt.host.confirm(question, verb);
+}
+
+export const INTERRUPT_IN_TAB = "Press Esc in the session's tab to interrupt it.";
 
 /**
  * Claude Code takes SIGTERM to a background job's process for a crash and
@@ -208,21 +208,27 @@ async function attachBackground(rt: Runtime, sessionId: string): Promise<void> {
   });
 }
 
+/**
+ * Go to the session where it runs: its VS Code tab, a new attach tab for a
+ * background session, and the agent view for anything else, since resuming a
+ * session open in another terminal would start a second copy.
+ */
+async function showSession(rt: Runtime, sessionId: string): Promise<void> {
+  await rt.places.refresh();
+  const processId = rt.places.terminalFor(sessionId);
+  if (await rt.host.showTerminal({ sessionId, processId })) {
+    return;
+  }
+  if (rt.places.value[sessionId] === 'background') {
+    await attachBackground(rt, sessionId);
+    return;
+  }
+  await openAgentPanel(rt, sessionId, sessionId);
+}
+
 export const sessionActions: ActionHandlers<SessionActions> = {
-  // Go to the session where it runs: its VS Code tab, a new attach tab for a
-  // background session, and the agent view for anything else, since resuming
-  // a session open in another terminal would start a second copy.
   openSession: async ({ rt }, { sessionId }) => {
-    await rt.places.refresh();
-    const processId = rt.places.terminalFor(sessionId);
-    if (await rt.host.showTerminal({ sessionId, processId })) {
-      return;
-    }
-    if (rt.places.value[sessionId] === 'background') {
-      await attachBackground(rt, sessionId);
-      return;
-    }
-    await openAgentPanel(rt, sessionId, sessionId);
+    await showSession(rt, sessionId);
   },
   openAgent: async ({ rt }, action) => {
     await openAgentPanel(rt, action.sessionId, action.agentId);
@@ -251,26 +257,35 @@ export const sessionActions: ActionHandlers<SessionActions> = {
     rt.host.openPanel(action.view, {});
     await Promise.resolve();
   },
-  interrupt: async (context, action) => {
-    const target = sdkTarget(context.rt, action.sessionId);
-    if (target === null) {
-      const live = await agreed(context, action.sessionId, 'Interrupt');
-      if (live !== null) {
-        context.rt.kill(live.pid, 'SIGINT');
-      }
+  interrupt: async ({ rt }, action) => {
+    const target = sdkTarget(rt, action.sessionId);
+    if (target !== null) {
+      await target.session.interrupt();
       return;
     }
-    await target.session.interrupt();
+    const live = await reachable(rt, action.sessionId);
+    if (live === null) {
+      return;
+    }
+    // SIGINT ends a background job rather than its turn, and leaves the
+    // turn's tools running, so Esc in its tab is the only clean interrupt.
+    if (live.kind === 'background') {
+      await showSession(rt, action.sessionId);
+      rt.host.showInfo(INTERRUPT_IN_TAB);
+      return;
+    }
+    if (await agreed(rt, live, 'Interrupt')) {
+      rt.kill(live.pid, 'SIGINT');
+    }
   },
-  stop: async (context, action) => {
-    const { rt } = context;
+  stop: async ({ rt }, action) => {
     const target = sdkTarget(rt, action.sessionId);
     if (target !== null) {
       rt.launcher.stopRun(target.run.id);
       return;
     }
-    const live = await agreed(context, action.sessionId, 'Stop');
-    if (live !== null && !(await terminate(rt, live))) {
+    const live = await reachable(rt, action.sessionId);
+    if (live !== null && (await agreed(rt, live, 'Stop')) && !(await terminate(rt, live))) {
       rt.host.showWarning(`Claude Code did not stop session ${shortId(action.sessionId)}.`);
     }
   },

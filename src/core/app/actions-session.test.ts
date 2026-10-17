@@ -10,6 +10,7 @@ import type { ExecResult } from '../sync/exec.js';
 import {
   canHandOff,
   IN_LAUNCHER,
+  INTERRUPT_IN_TAB,
   NOT_LOCAL,
   SDK_ONLY,
   sdkTarget,
@@ -255,6 +256,19 @@ describe('stopping a background job', () => {
     expect(stopCalls(test)).toStrictEqual([['stop', 'agent-7']]);
     expect(test.kills).toStrictEqual([]);
     expect(env.host.warnings).toStrictEqual([]);
+  });
+
+  it('opens its tab for Esc instead of sending SIGINT, which would end it', async () => {
+    const env = await makeEnv();
+    await registry(env, { pid: 123, sessionId: 'bg', cwd: '/bg', kind: 'bg' });
+    const test = jobApp(env);
+    await test.app.dispatch({ type: 'interrupt', sessionId: 'bg' }, {});
+    expect(env.host.terminals.map((terminal) => terminal.args)).toStrictEqual([
+      ['attach', 'agent-7'],
+    ]);
+    expect(env.host.infos).toStrictEqual([INTERRUPT_IN_TAB]);
+    expect(env.host.questions).toStrictEqual([]);
+    expect(test.kills).toStrictEqual([]);
   });
 
   it('warns when claude stop fails', async () => {
