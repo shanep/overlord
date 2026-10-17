@@ -10,7 +10,7 @@ import type { AgentAdapter, ShellEnv, SyncFacet } from '../agents/types.js';
 import type { Action } from './actions.js';
 import { readAgentManifest, type AgentManifest } from './agent-manifest.js';
 import { serverCore } from './agent-mcp.js';
-import { changedEntries, readSettings, entriesToSync } from './agent-settings.js';
+import { changedEntries, entriesToSync, readSettings, settableEntries } from './agent-settings.js';
 import { isDeniedAgentPath } from './denylist.js';
 import { readJsonOrUndefined, statOrNull } from './files.js';
 import { agentMachineSettingsPath, collapseHome, repoFile } from './layout.js';
@@ -116,11 +116,18 @@ async function planSettings(
       { kind: 'note', message: `${target.short}: ${spec.file} could not be read (${live.error})` },
     ];
   }
-  const entries = changedEntries(entriesToSync(generated, spec), live.value);
+  const changed = changedEntries(entriesToSync(generated, spec), live.value);
+  const { settable: entries, failed } = await settableEntries(file, spec.format, changed);
+  // A key the file cannot take would fail every sync, so it is left for the user.
+  const notes: Action[] = failed.map((why) => ({
+    kind: 'note',
+    message: `${target.short}: ${spec.file} cannot take ${why}. Set it by hand.`,
+  }));
   if (entries.length === 0) {
-    return [];
+    return notes;
   }
   return [
+    ...notes,
     ...tagBackups(await prepareTarget(file), target.agent),
     { kind: 'set-keys', agent: target.agent, target: file, format: spec.format, entries },
   ];
@@ -142,12 +149,29 @@ async function planMcp(
   }
   const wanted = await readMcpFile(repoFile(repoRoot, manifest.mcp));
   const servers = await spec.read(target.dir);
+  if (servers === null) {
+    // Without the live list every server would look missing and be added again.
+    return [
+      {
+        kind: 'note',
+        message: `${target.short}: ${spec.file} could not be read, so its MCP servers were skipped`,
+      },
+    ];
+  }
   const live = new Map(servers.map((server) => [server.name, server.config]));
   const { agent, short } = target;
   const actions: Action[] = [];
   for (const server of wanted) {
     const existing = live.get(server.name);
     const core = serverCore(server.config);
+    if (core === null) {
+      // Removing first would lose the live server when the add then fails.
+      actions.push({
+        kind: 'note',
+        message: `${short} ${server.name}: the repo config has neither a command nor a URL`,
+      });
+      continue;
+    }
     if (existing !== undefined && matchesTemplate(core, serverCore(existing))) {
       continue;
     }
@@ -158,7 +182,8 @@ async function planMcp(
   }
   // The agent rewrites this file for these, so keep a copy of it first.
   const file = agentPath(target, spec.file);
-  return actions.length > 0 ? [{ kind: 'backup', path: file, agent }, ...actions] : [];
+  const changes = actions.some((action) => action.kind !== 'note');
+  return changes ? [{ kind: 'backup', path: file, agent }, ...actions] : actions;
 }
 
 async function planAgent(

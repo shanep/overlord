@@ -176,7 +176,7 @@ async function adoptMcp(
   const spec = target.sync.mcp;
   const prefix = agentItemBase(target, 'mcp-server', '').id;
   const name = item.id.slice(prefix.length);
-  const live = spec === null ? [] : await spec.read(target.dir);
+  const live = spec === null ? [] : ((await spec.read(target.dir)) ?? []);
   const server = live.find((entry) => entry.name === name);
   if (server === undefined) {
     return unsupported(item);

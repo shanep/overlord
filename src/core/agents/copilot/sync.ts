@@ -21,9 +21,12 @@ const LOCAL_KEYS: ReadonlySet<string> = new Set([
   'firstLaunchAt',
 ]);
 
-async function readServers(dir: string): Promise<readonly SyncedMcpServer[]> {
+async function readServers(dir: string): Promise<readonly SyncedMcpServer[] | null> {
   const file = await readJsonFile(path.join(dir, 'mcp-config.json'), true);
-  const servers = 'error' in file || !isRecord(file.value) ? undefined : file.value['mcpServers'];
+  if ('error' in file) {
+    return null;
+  }
+  const servers = isRecord(file.value) ? file.value['mcpServers'] : undefined;
   if (!isRecord(servers)) {
     return [];
   }

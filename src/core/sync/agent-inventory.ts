@@ -152,7 +152,7 @@ async function mcpItems(target: AgentSyncTarget, repo: RepoView | null): Promise
   }
   const inRepo = await repoServerNames(repo);
   const file = agentPath(target, spec.file);
-  const servers = await spec.read(target.dir);
+  const servers = (await spec.read(target.dir)) ?? [];
   return servers.map((server) => {
     const status = mcpStatus(inRepo.has(server.name), server.config);
     return item(

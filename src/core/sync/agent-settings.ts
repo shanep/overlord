@@ -185,31 +185,86 @@ function editFor(entry: SettingEntry): TomlEdit | null {
   return fitsToml(entry.value) ? { op: 'set', path: entry.path, value: entry.value } : null;
 }
 
-async function setTomlKeys(file: string, entries: readonly SettingEntry[]): Promise<string[]> {
-  const target = await resolveLinkTarget(file);
-  let text = (await readOptional(target)) ?? '';
+interface TomlTry {
+  readonly edits: readonly TomlEdit[];
+  readonly settable: readonly SettingEntry[];
+  readonly failed: readonly string[];
+}
+
+/**
+ * Each key tried on its own in memory, so one key the editor refuses (say one
+ * inside an inline table) does not hold back the rest.
+ */
+function tryTomlEdits(start: string, entries: readonly SettingEntry[]): TomlTry {
+  let text = start;
   const edits: TomlEdit[] = [];
+  const settable: SettingEntry[] = [];
   const failed: string[] = [];
-  // Try each key on its own first, so one key the editor refuses (say one
-  // inside an inline table) does not hold back the rest.
   for (const entry of entries) {
     const edit = editFor(entry);
     const result = edit === null ? null : applyTomlEdit(text, edit);
     if (edit !== null && result?.ok === true) {
       text = result.text;
       edits.push(edit);
+      settable.push(entry);
     } else {
       const why = result?.ok === false ? result.error : 'the value cannot be written to TOML';
       failed.push(`${entry.path.join('.')}: ${why}`);
     }
   }
+  return { edits, settable, failed };
+}
+
+function tryJsonKeys(
+  start: Readonly<Record<string, unknown>>,
+  entries: readonly SettingEntry[],
+): {
+  readonly document: Readonly<Record<string, unknown>>;
+  readonly settable: readonly SettingEntry[];
+  readonly failed: readonly string[];
+} {
+  let document = start;
+  const settable: SettingEntry[] = [];
+  const failed: string[] = [];
+  for (const entry of entries) {
+    const updated = setKeyPath(document, entry.path, entry.value);
+    if (updated.ok) {
+      document = updated.value;
+      settable.push(entry);
+    } else {
+      failed.push(`${entry.path.join('.')}: ${updated.error}`);
+    }
+  }
+  return { document, settable, failed };
+}
+
+/**
+ * The keys the live file can take, and why the others cannot, so a plan
+ * leaves out a key that would fail on every sync.
+ */
+export async function settableEntries(
+  file: string,
+  format: SyncSettings['format'],
+  entries: readonly SettingEntry[],
+): Promise<{ readonly settable: readonly SettingEntry[]; readonly failed: readonly string[] }> {
+  const text = (await readOptional(await resolveLinkTarget(file))) ?? '';
+  if (format === 'toml') {
+    return tryTomlEdits(text, entries);
+  }
+  const read = parseSettings(text, 'json');
+  return read.ok ? tryJsonKeys(read.value, entries) : { settable: [], failed: [read.error] };
+}
+
+async function setTomlKeys(file: string, entries: readonly SettingEntry[]): Promise<string[]> {
+  const target = await resolveLinkTarget(file);
+  const { edits, failed } = tryTomlEdits((await readOptional(target)) ?? '', entries);
   if (edits.length > 0) {
     const written = await editTomlFile(target, edits);
     if (!written.ok) {
       return [written.error];
     }
   }
-  return failed;
+  return [...failed];
 }
 
 async function setJsonKeys(file: string, entries: readonly SettingEntry[]): Promise<string[]> {
@@ -219,21 +274,12 @@ async function setJsonKeys(file: string, entries: readonly SettingEntry[]): Prom
   if (!read.ok) {
     return [`${target} is not valid JSON (${read.error}), so it was left alone`];
   }
-  let document = read.value;
-  const failed: string[] = [];
-  for (const entry of entries) {
-    const updated = setKeyPath(document, entry.path, entry.value);
-    if (updated.ok) {
-      document = updated.value;
-    } else {
-      failed.push(`${entry.path.join('.')}: ${updated.error}`);
-    }
-  }
+  const { document, failed } = tryJsonKeys(read.value, entries);
   const content = `${leadingComments(existing ?? '')}${JSON.stringify(document, null, 2)}\n`;
   if (content !== existing) {
     await writeFileAtomic({ target, content, backup: null });
   }
-  return failed;
+  return [...failed];
 }
 
 /** Set each key in the live file, leaving every other key alone. Returns the keys that could not be set. */

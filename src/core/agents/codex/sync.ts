@@ -52,12 +52,19 @@ function asServerJson(table: Table): Table | null {
   return null;
 }
 
-async function readServers(dir: string): Promise<readonly SyncedMcpServer[]> {
+async function readServers(dir: string): Promise<readonly SyncedMcpServer[] | null> {
+  let text: string;
+  try {
+    text = await readFile(path.join(dir, 'config.toml'), 'utf8');
+  } catch (error: unknown) {
+    const missing = error instanceof Error && 'code' in error && error.code === 'ENOENT';
+    return missing ? [] : null;
+  }
   let parsed: unknown;
   try {
-    parsed = parse(await readFile(path.join(dir, 'config.toml'), 'utf8'));
+    parsed = parse(text);
   } catch {
-    return [];
+    return null;
   }
   const servers = isRecord(parsed) ? parsed['mcp_servers'] : undefined;
   if (!isRecord(servers)) {

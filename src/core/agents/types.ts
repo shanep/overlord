@@ -738,8 +738,11 @@ export interface SyncedMcpServer {
 interface SyncMcp {
   /** Relative to the agent's folder. It is backed up before servers are added. */
   readonly file: string;
-  /** The user servers. Never throws, and reads nothing but the server entries. */
-  read: (agentDir: string) => Promise<readonly SyncedMcpServer[]>;
+  /**
+   * The user servers, none when the file is missing, or null when it could
+   * not be read. Never throws, and reads nothing but the server entries.
+   */
+  read: (agentDir: string) => Promise<readonly SyncedMcpServer[] | null>;
 }
 
 /**

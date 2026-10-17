@@ -558,6 +558,55 @@ describe('Codex MCP', () => {
       'mcp     add web to Codex',
     ]);
   });
+
+  it('skips the servers when config.toml does not parse, and never removes for a bad repo config', async () => {
+    const home = await scratchDir();
+    const repo = await scratchDir();
+    await writeTree(repo, {
+      'agents/codex/overlord.json': JSON.stringify({ version: 1, mcp: 'agents/codex/mcp.json' }),
+      'agents/codex/mcp.json': JSON.stringify({ mcpServers: { docs: { args: ['x'] } } }),
+    });
+    await writeTree(home, { '.codex/config.toml': 'model = \n' });
+    const place = { paths: fakePaths(home), host: 'box', agents: [codexTarget(home)] };
+    const unreadable = await planAll(emptyManifest(), repo, place);
+    expect(unreadable.map((action) => describeAction(action, home))).toStrictEqual([
+      'note    Codex: config.toml could not be read, so its MCP servers were skipped',
+    ]);
+    await writeTree(home, { '.codex/config.toml': CODEX_TOML });
+    const bad = await planAll(emptyManifest(), repo, place);
+    expect(bad.map((action) => describeAction(action, home))).toStrictEqual([
+      'note    Codex docs: the repo config has neither a command nor a URL',
+    ]);
+  });
+});
+
+describe('a key the TOML editor refuses', () => {
+  it('is left out of the plan with a note, and the other keys still apply', async () => {
+    const home = await scratchDir();
+    const repo = await scratchDir();
+    await writeTree(repo, {
+      'agents/codex/overlord.json': JSON.stringify({
+        version: 1,
+        settings: 'agents/codex/config.json',
+      }),
+      'agents/codex/config.json': JSON.stringify({ model: 'o3', tui: { theme: 'light' } }),
+    });
+    await writeTree(home, { '.codex/config.toml': 'model = "gpt-5"\ntui = { theme = "dark" }\n' });
+    const place = { paths: fakePaths(home), host: 'box', agents: [codexTarget(home)] };
+    const actions = await planAll(emptyManifest(), repo, place);
+    const lines = actions.map((action) => describeAction(action, home));
+    expect(lines[0]).toMatch(
+      /^note {4}Codex: config\.toml cannot take tui\.theme: .+ Set it by hand\.$/u,
+    );
+    expect(lines.slice(1)).toStrictEqual([
+      'backup  ~/.codex/config.toml',
+      'set     model in ~/.codex/config.toml',
+    ]);
+    expect(await failureOf(actions, deps(home))).toBeNull();
+    expect(await readFile(path.join(home, '.codex', 'config.toml'), 'utf8')).toBe(
+      'model = "o3"\ntui = { theme = "dark" }\n',
+    );
+  });
 });
 
 describe('the denylist', () => {
