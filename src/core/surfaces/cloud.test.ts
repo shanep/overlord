@@ -13,7 +13,7 @@ import {
   readCloudSessions,
   readSignIn,
 } from './cloud.js';
-import type { CloudDeps, CloudSession } from './cloud.js';
+import type { CloudDeps } from './cloud.js';
 
 const NOW = Date.parse('2026-10-16T12:00:00Z');
 const TOKEN = 'sk-ant-oat-secret';
@@ -129,7 +129,10 @@ describe('cloud replies', () => {
   });
 
   it('offers Pull to local only when the repo has a checkout here', () => {
-    const [found, archived] = parseCloudReply(REPLY) as [CloudSession, CloudSession];
+    const [found, archived] = parseCloudReply(REPLY);
+    if (found === undefined || archived === undefined) {
+      throw new Error('the reply should hold two sessions');
+    }
     expect(cloudToSurface(found, '/w/wt-apps')).toStrictEqual({
       id: 'session_01Ubf9',
       agent: 'claude-code',

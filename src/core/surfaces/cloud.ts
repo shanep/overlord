@@ -237,7 +237,7 @@ function remoteUrls(config: string): string[] {
  * for its repository. The first folder found for a repo wins.
  */
 export async function checkoutsByRepo(
-  folders: Iterable<string>,
+  folders: readonly string[],
   readFile: FileSystem['readFile'],
 ): Promise<ReadonlyMap<string, string>> {
   const byRepo = new Map<string, string>();
