@@ -244,6 +244,7 @@ export class OverlordApp {
     );
     this.sources = new Sources({
       paths: this.paths,
+      env,
       host,
       bus,
       clock,

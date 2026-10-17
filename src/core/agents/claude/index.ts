@@ -10,6 +10,8 @@ import { DEFAULT_MODEL } from '../../app/prices.js';
 import { DEFAULT_PRICES, findPrice } from '../../transcripts/pricing.js';
 import type { AgentAdapter, DetectInput, Detected } from '../types.js';
 
+import { claudeObserverFacet } from './observer.js';
+
 const HANDOFFS: readonly HandoffKind[] = [
   'resume-local',
   'open-desktop',
@@ -75,4 +77,5 @@ export const claudeCode: AgentAdapter = {
     price: (model) => findPrice(model, DEFAULT_PRICES),
     defaultModel: DEFAULT_MODEL,
   },
+  observer: claudeObserverFacet,
 };

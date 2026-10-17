@@ -4,6 +4,7 @@
 import { CLAUDE_CODE } from '../../shared/agents.js';
 import type { Surface } from '../../shared/model.js';
 import type { SurfaceSession } from '../../shared/protocol.js';
+import { surfaceForEntrypoint } from '../agents/claude/surface.js';
 import type { ClaudePaths } from '../paths.js';
 
 import type { ClaudeAiConversation } from './claude-ai-export.js';
@@ -19,6 +20,7 @@ import type { AgentsOptions, LiveProcess } from './live.js';
 import type { ExecFunction, IsAlive } from './process.js';
 import { pickTitle } from './title.js';
 
+/** A list from outside the Claude surfaces here, such as each agent observer's sessions on disk. */
 export interface ExtraSource {
   /** Shows up in errors, for example "transcripts" or "cloud". */
   readonly name: string;
@@ -48,15 +50,7 @@ export interface SessionList {
 }
 
 /** Which surface a live process belongs to, from its registry entrypoint. */
-export function surfaceForEntrypoint(entrypoint: string | null): Surface {
-  if (entrypoint === null) {
-    return 'cli';
-  }
-  if (entrypoint.startsWith('sdk')) {
-    return 'sdk';
-  }
-  return entrypoint === 'claude-desktop' ? 'desktop-code' : 'cli';
-}
+export { surfaceForEntrypoint } from '../agents/claude/surface.js';
 
 export function liveToSurface(live: LiveProcess): SurfaceSession {
   const surface = surfaceForEntrypoint(live.entrypoint);

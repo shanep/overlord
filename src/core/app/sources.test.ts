@@ -2,6 +2,9 @@ import path from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
+import { claudeCode } from '../agents/claude/index.js';
+import { AgentRegistry } from '../agents/registry.js';
+import type { AgentAdapter } from '../agents/types.js';
 import { userPrompt } from '../transcripts/test-helpers/fixtures.js';
 
 import { Sources } from './sources.js';
@@ -15,6 +18,7 @@ describe('Sources', () => {
     const rt = app.runtime;
     const sources = new Sources({
       paths: rt.paths,
+      env: rt.env,
       host: rt.host,
       bus: rt.bus,
       clock: rt.clock,
@@ -42,5 +46,50 @@ describe('Sources', () => {
     await sources.stop();
     await sources.sync();
     await sources.refreshWatcher();
+  });
+});
+
+describe('Sources with several agents', () => {
+  it('watches only the agents that have an observer and asks each one in turn', async () => {
+    const env = await makeEnv();
+    const line = JSON.stringify({ ...userPrompt('u1', 0, 'hello'), sessionId: 'mine' });
+    await writeText(path.join(env.paths.projectsDir, '-w', 'mine.jsonl'), `${line}\n`);
+    const { app } = makeApp(env, { deps: { clock: () => Date.now() } });
+    const rt = app.runtime;
+    const { id, name, short, icon, detect, capabilities, modes, models } = claudeCode;
+    const blind: AgentAdapter = {
+      id: `${id}-blind`,
+      name,
+      short,
+      icon,
+      detect,
+      capabilities,
+      modes,
+      models,
+    };
+    const sources = new Sources({
+      paths: rt.paths,
+      env: rt.env,
+      agents: new AgentRegistry([blind, claudeCode]),
+      host: rt.host,
+      bus: rt.bus,
+      clock: rt.clock,
+      platform: rt.platform,
+      socketPath: shortSocketPath(),
+      watchFactory: null,
+      permissions: rt.permissions,
+      context: rt.context,
+      report: rt.report,
+      notify: rt.notify,
+      sessionContext: (): null => null,
+    });
+    expect(await sources.openTranscript('mine')).toBe(false);
+    await sources.startWatcher();
+    expect(sources.sessionBusy('mine')).toBe(true);
+    expect(await sources.openTranscript('mine')).toBe(true);
+    expect(await sources.openTranscript('nobody')).toBe(false);
+    await sources.dismissTranscript('mine');
+    expect(sources.sessionBusy('mine')).toBe(false);
+    await sources.stop();
   });
 });

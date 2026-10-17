@@ -11,11 +11,11 @@ import type {
   SessionRecap,
   SessionState,
   SessionSummary,
-  Surface,
   TokenUsage,
   ToolCall,
 } from '../../shared/model.js';
 import { contextWindow, promptTokens, ZERO_USAGE } from '../../shared/model.js';
+import { surfaceForEntrypoint } from '../agents/claude/surface.js';
 
 import { ContextTracker } from './context.js';
 import type { PriceTable } from './pricing.js';
@@ -62,14 +62,6 @@ function toPermissionMode(value: string | null | undefined): PermissionMode | nu
   return PERMISSION_MODES.find((mode) => mode === value) ?? null;
 }
 
-const SURFACES: ReadonlyMap<string, Surface> = new Map([
-  ['cli', 'cli'],
-  ['sdk-cli', 'sdk'],
-  ['sdk-ts', 'sdk'],
-  ['sdk-py', 'sdk'],
-  ['claude-desktop', 'desktop-code'],
-]);
-
 /** How full the main thread's context was on its latest request, 0 to 1. */
 function contextFill(requests: readonly ApiRequest[]): number | null {
   const latest = requests.at(-1);
@@ -80,9 +72,8 @@ function contextFill(requests: readonly ApiRequest[]): number | null {
   return tokens / contextWindow(latest.model, tokens);
 }
 
-export function surfaceFor(entrypoint: string | null): Surface {
-  return entrypoint === null ? 'cli' : (SURFACES.get(entrypoint) ?? 'cli');
-}
+/** The Claude adapter owns the entrypoint rules, shared with the live process table. */
+export { surfaceForEntrypoint as surfaceFor } from '../agents/claude/surface.js';
 
 interface SubagentInfo {
   meta: SubagentMeta | null;
@@ -247,7 +238,7 @@ export class SessionAccumulator {
     return {
       id: this.sessionId,
       agent: CLAUDE_CODE,
-      surface: surfaceFor(this.fields.entrypoint),
+      surface: surfaceForEntrypoint(this.fields.entrypoint),
       title: this.title(),
       cwd: this.fields.cwd ?? '',
       state: this.sessionState(now),

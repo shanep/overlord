@@ -62,6 +62,7 @@ export function createCaches(rt: CacheRuntime): Caches {
       load: async () =>
         loadSessions({
           paths: rt.paths,
+          env: rt.env,
           exec: rt.surfacesExec,
           isAlive: rt.isAlive,
           claudeBin: host.settings.claudePath,
@@ -70,6 +71,7 @@ export function createCaches(rt: CacheRuntime): Caches {
           importFile: storagePath(host.storageDir, 'claudeAi'),
           report: rt.report,
           peeks,
+          observers: agents.list().flatMap((adapter) => adapter.observer ?? []),
         }),
     }),
     config: new AsyncValue({

@@ -1,8 +1,13 @@
-// The live data sources: the transcript watcher always, the hook server when
-// hooks are installed, and the OTLP receiver when telemetry is on in user
-// settings. Every start and stop runs through one queue, so a settings change
+// The live data sources: a tailing watcher for every agent with an observer,
+// the hook server when hooks are installed, and the OTLP receiver when
+// telemetry is on in user settings. Every start and stop runs through one queue, so a settings change
 // and a dispose can never interleave.
 
+import { agents } from '../agents/index.js';
+import type { AgentRegistry } from '../agents/registry.js';
+import type { WatchFactory } from '../agents/shared/tailing-watcher.js';
+import { TailingWatcher } from '../agents/shared/tailing-watcher.js';
+import type { ObserverContext, ShellEnv } from '../agents/types.js';
 import type { EventBus } from '../bus.js';
 import { isInstalled } from '../hooks/install.js';
 import type { Adviser } from '../hooks/server.js';
@@ -10,8 +15,6 @@ import { HookServer } from '../hooks/server.js';
 import { TelemetryDecoder } from '../otel/decode.js';
 import { OtlpReceiver } from '../otel/receiver.js';
 import type { ClaudePaths } from '../paths.js';
-import type { WatchFactory } from '../transcripts/watcher.js';
-import { TranscriptWatcher } from '../transcripts/watcher.js';
 
 import { messageOf } from './errors.js';
 import type { HostPort } from './host-port.js';
@@ -21,12 +24,16 @@ import type { ContextViews } from './views/context.js';
 
 export interface SourcesDeps {
   readonly paths: ClaudePaths;
+  /** Where observers look for variables that move an agent's folders. */
+  readonly env: ShellEnv;
+  /** The agents to watch. Every one with an observer gets a watcher. */
+  readonly agents?: AgentRegistry;
   readonly host: HostPort;
   readonly bus: EventBus;
   readonly clock: () => number;
   readonly platform: NodeJS.Platform;
   readonly socketPath: string;
-  /** Null turns fs.watch off, leaving the watcher's poll. Undefined uses fs.watch. */
+  /** Null turns fs.watch off, leaving the watchers' poll. Undefined uses fs.watch. */
   readonly watchFactory: WatchFactory | null | undefined;
   readonly permissions: PermissionHub;
   readonly context: ContextViews;
@@ -44,8 +51,8 @@ const SOCKET_TAKEN = 'already listening';
 export class Sources {
   private readonly deps: SourcesDeps;
   private queue: Promise<void> = Promise.resolve();
-  private watcher: TranscriptWatcher | null = null;
-  /** Session ids to hold in the fleet, kept here too in case they arrive before the watcher. */
+  private watchers: TailingWatcher[] = [];
+  /** Session ids to hold in the fleet, kept here too in case they arrive before the watchers. */
   private kept: readonly string[] = [];
   private finished: readonly string[] = [];
   /** Sessions open in a terminal, held for as long as the window shows them. */
@@ -72,20 +79,27 @@ export class Sources {
     return this.receiver?.port ?? null;
   }
 
+  /** Starts one watcher per agent observer, in registry order. */
   async startWatcher(): Promise<void> {
     return this.enqueue(async () => {
       const { deps } = this;
-      const watcher = new TranscriptWatcher({
-        projectsDir: deps.paths.projectsDir,
-        bus: deps.bus,
-        activeWindowMs: deps.host.settings.activeWindowMinutes * 60_000,
-        idleWindowMs: deps.host.settings.idleMinutes * 60_000,
-        now: deps.clock,
-        ...(deps.watchFactory === undefined ? {} : { watchFactory: deps.watchFactory }),
-      });
-      this.watcher = watcher;
-      await watcher.start();
-      await watcher.keep(this.held(), this.finished);
+      const context: ObserverContext = { home: deps.paths.home, env: deps.env, claude: deps.paths };
+      for (const adapter of (deps.agents ?? agents).list()) {
+        if (adapter.observer === undefined) {
+          continue;
+        }
+        const watcher = new TailingWatcher({
+          observer: adapter.observer.create(context),
+          bus: deps.bus,
+          activeWindowMs: deps.host.settings.activeWindowMinutes * 60_000,
+          idleWindowMs: deps.host.settings.idleMinutes * 60_000,
+          now: deps.clock,
+          ...(deps.watchFactory === undefined ? {} : { watchFactory: deps.watchFactory }),
+        });
+        this.watchers.push(watcher);
+        await watcher.start();
+        await watcher.keep(this.held(), this.finished);
+      }
     });
   }
 
@@ -96,12 +110,14 @@ export class Sources {
   /** Holds the sessions the Launcher started however long they have been quiet, until removed by hand. */
   async keepLaunched(sessionIds: readonly string[]): Promise<void> {
     this.launched = sessionIds;
-    await this.watcher?.keep(this.held(), this.finished);
+    await this.keepAll();
   }
 
   /** Drops a session from the fleet until its transcript changes again. */
   async dismissTranscript(sessionId: string): Promise<void> {
-    await this.watcher?.dismiss(sessionId);
+    for (const watcher of this.watchers) {
+      await watcher.dismiss(sessionId);
+    }
   }
 
   /**
@@ -114,7 +130,7 @@ export class Sources {
   ): Promise<void> {
     this.kept = sessionIds;
     this.finished = finished;
-    await this.watcher?.keep(this.held(), finished);
+    await this.keepAll();
   }
 
   /**
@@ -123,21 +139,34 @@ export class Sources {
    */
   async keepViewed(sessionIds: readonly string[]): Promise<void> {
     this.viewed = sessionIds;
-    await this.watcher?.keep(this.held(), this.finished);
+    await this.keepAll();
+  }
+
+  private async keepAll(): Promise<void> {
+    for (const watcher of this.watchers) {
+      await watcher.keep(this.held(), this.finished);
+    }
   }
 
   async refreshWatcher(): Promise<void> {
-    await this.watcher?.refresh();
+    for (const watcher of this.watchers) {
+      await watcher.refresh();
+    }
   }
 
-  /** Loads one session's transcript, even one outside the active window. */
+  /** Loads one session's transcript, even one outside the active window. The first agent that has it wins. */
   async openTranscript(sessionId: string): Promise<boolean> {
-    return (await this.watcher?.open(sessionId)) ?? false;
+    for (const watcher of this.watchers) {
+      if (await watcher.open(sessionId)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /** True while the session's transcript has a turn open or a tool call without a result. */
   sessionBusy(sessionId: string): boolean {
-    return this.watcher?.session(sessionId)?.busy() ?? false;
+    return this.watchers.some((watcher) => watcher.busy(sessionId));
   }
 
   /** Starts or stops the hook server and the OTLP receiver to match the settings file. */
@@ -152,8 +181,10 @@ export class Sources {
   async stop(): Promise<void> {
     this.stopped = true;
     return this.enqueue(async () => {
-      this.watcher?.dispose();
-      this.watcher = null;
+      for (const watcher of this.watchers) {
+        watcher.dispose();
+      }
+      this.watchers = [];
       await this.stopHooks();
       await this.stopReceiver();
     }, true);
