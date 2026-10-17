@@ -48,6 +48,7 @@ const WORDS: AgentWords = {
   compactCommand: '/compact',
   clearCommand: '/clear',
   rewind: '/rewind',
+  settingsFile: 'settings.json',
 };
 
 /** Finds the binary on the login shell's PATH without running it, so the version stays unknown. */

@@ -47,6 +47,7 @@ const WORDS: AgentWords = {
   compactCommand: '/compact',
   clearCommand: '/new',
   rewind: null,
+  settingsFile: 'config.toml',
 };
 
 export const codex: AgentAdapter = {

@@ -1,7 +1,7 @@
 // Everything the views, actions and commands share. OverlordApp builds one
 // and hands it around, so each piece takes a single argument.
 
-import type { AgentInfo } from '../../shared/agents.js';
+import type { AgentId, AgentInfo } from '../../shared/agents.js';
 import type { LaunchProfile } from '../../shared/model.js';
 import type {
   ConfigState,
@@ -39,11 +39,12 @@ import type { RegistrySearch } from './registry-search.js';
 import type { Draft } from './storage.js';
 import type { ConnectorsData } from './views/connectors-data.js';
 import type { ContextViews } from './views/context.js';
-import type { KnobsData } from './views/knobs.js';
+import type { KnobsByAgent } from './views/knobs.js';
 import type { SessionsData } from './views/sessions.js';
 
 export interface Caches {
-  readonly knobs: AsyncValue<KnobsData>;
+  /** Every agent's knobs, by agent id. */
+  readonly knobs: AsyncValue<KnobsByAgent>;
   readonly profiles: AsyncValue<readonly LaunchProfile[]>;
   readonly drafts: AsyncValue<readonly Draft[]>;
   readonly sessions: AsyncValue<SessionsData>;
@@ -92,6 +93,8 @@ export interface Runtime {
   readonly jobs: BackgroundJobs;
   /** Each session's project, and the projects made by hand. */
   readonly projects: ProjectIndex;
+  /** The agent the Knobs view shows, picked in its header, until the window reloads. */
+  readonly knobsPick: { agent: AgentId };
   /** Folders picked with Browse in the Launcher, newest first, until the window reloads. */
   readonly browsedFolders: { readonly folder: string; readonly at: number }[];
   /** The sessions the Launcher started, held in the fleet until removed by hand. */

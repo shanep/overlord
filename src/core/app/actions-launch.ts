@@ -17,6 +17,7 @@ import type { Runtime } from './runtime.js';
 import { parseRule, storagePath } from './storage.js';
 import { plural } from './text.js';
 import { fleetFor } from './views/fleet.js';
+import { knobsOf } from './views/knobs.js';
 
 type LaunchActions =
   | 'resolvePermission'
@@ -35,7 +36,7 @@ export const CONFIRM_ABOVE_USD = 1;
 
 /** The model a run gets when its profile names none: the effective `model` setting, else the CLI default. */
 export function defaultModel(rt: Runtime): string {
-  const setting = rt.caches.knobs.peek().effective.find((item) => item.key === 'model');
+  const setting = knobsOf(rt.caches.knobs.peek()).effective.find((item) => item.key === 'model');
   return typeof setting?.value === 'string' && setting.value !== '' ? setting.value : DEFAULT_MODEL;
 }
 

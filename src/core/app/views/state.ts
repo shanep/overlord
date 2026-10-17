@@ -7,7 +7,9 @@ import type {
   LauncherState,
   ViewId,
 } from '../../../shared/protocol.js';
+import { agents } from '../../agents/index.js';
 import { launchFolder, launchFolders } from '../actions-launch.js';
+import { agentEnabled } from '../claude-bin.js';
 import type { PanelParams } from '../host-port.js';
 import type { Runtime } from '../runtime.js';
 
@@ -135,7 +137,13 @@ export function stateFor(rt: Runtime, view: ViewId, params: PanelParams): ViewSt
       };
     }
     case 'knobs': {
-      const state = buildKnobs(rt.caches.knobs.value, rt.caches.profiles.value);
+      const state = buildKnobs({
+        data: rt.caches.knobs.value,
+        profiles: rt.caches.profiles.value,
+        registry: agents,
+        enabled: (id) => agentEnabled(rt.host.settings, id),
+        picked: rt.knobsPick.agent,
+      });
       return { type: 'state', view, state };
     }
     case 'launcher': {

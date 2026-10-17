@@ -3,6 +3,8 @@ import path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { ApiRequest } from '../../../shared/model.js';
+import { codexKnobs } from '../../agents/codex/config.js';
+import { agents } from '../../agents/index.js';
 import { EventBus } from '../../bus.js';
 import { loadCatalog } from '../../knobs/catalog.js';
 import { OverlordStore } from '../../store/store.js';
@@ -31,7 +33,14 @@ import {
   windowSession,
   withPlanLimits,
 } from './fleet.js';
-import { buildKnobs, EMPTY_KNOBS, loadKnobs, loadProfiles } from './knobs.js';
+import {
+  buildKnobs,
+  EMPTY_KNOBS,
+  knobsOf,
+  loadAllKnobs,
+  loadKnobs,
+  loadProfiles,
+} from './knobs.js';
 import { loadUsage } from './usage.js';
 
 function noProjects(): ProjectView {
@@ -444,7 +453,18 @@ describe('knobs view', () => {
       },
     ];
     const files = [{ layer: 'user' as const, file: '/u.json', exists: true, keys: 2, error: null }];
-    const state = buildKnobs({ effective: [], files, featureFlags: { a: 1 } }, profiles);
+    const state = buildKnobs({
+      data: { 'claude-code': { effective: [], files, featureFlags: { a: 1 } } },
+      profiles,
+      registry: agents,
+      enabled: () => true,
+      picked: 'claude-code',
+    });
+    expect(state.agent).toBe('claude-code');
+    expect(state.knobAgents).toStrictEqual(['claude-code', 'codex', 'copilot']);
+    expect(state.writableLayers).toStrictEqual(['user', 'project', 'project-local']);
+    expect(state.envInSettings).toBe(true);
+    expect(state.settingsFile).toBe('settings.json');
     expect(state.catalog).toBe(loadCatalog());
     expect(state.catalog.length).toBeGreaterThan(100);
     expect(state.profiles).toBe(profiles);
@@ -452,6 +472,49 @@ describe('knobs view', () => {
     expect(state.effective).toStrictEqual([]);
     expect(state.files).toBe(files);
     expect(EMPTY_KNOBS).toStrictEqual({ effective: [], files: [], featureFlags: {} });
+  });
+
+  it('builds the picked agent from its own facet, and skips the disabled ones', () => {
+    const codex = { effective: [], files: [], featureFlags: {} };
+    const input = {
+      data: { codex },
+      profiles: [],
+      registry: agents,
+      enabled: (id: string): boolean => id !== 'copilot',
+      picked: 'codex',
+    };
+    const state = buildKnobs(input);
+    expect(state.agent).toBe('codex');
+    expect(state.knobAgents).toStrictEqual(['claude-code', 'codex']);
+    expect(state.writableLayers).toStrictEqual(['user', 'project']);
+    expect(state.envInSettings).toBe(false);
+    expect(state.settingsFile).toBe('config.toml');
+    expect(state.catalog).toBe(codexKnobs.catalog());
+    expect(buildKnobs({ ...input, picked: 'copilot' }).agent).toBe('claude-code');
+    const onlyCopilot = buildKnobs({ ...input, enabled: (id) => id === 'copilot', picked: 'x' });
+    expect(onlyCopilot.agent).toBe('copilot');
+    expect(onlyCopilot.knobAgents).toStrictEqual(['copilot']);
+    expect(onlyCopilot.effective).toStrictEqual([]);
+  });
+
+  it('loads every agent with knobs, with feature flags for Claude Code alone', async () => {
+    const env = await makeEnv();
+    await writeText(path.join(env.paths.home, '.codex', 'config.toml'), 'model = "o3"\n');
+    await writeText(path.join(env.paths.home, '.copilot', 'settings.json'), '// c\n{"model": "m"}');
+    await writeJson(env.paths.claudeJson, { cachedGrowthBookFeatures: { flag: true } });
+    const report = vi.fn<(source: string, message: string) => void>();
+    const all = await loadAllKnobs(agents, { paths: env.paths, env: {}, workspace: null, report });
+    expect(Object.keys(all).toSorted((left, right) => left.localeCompare(right))).toStrictEqual([
+      'claude-code',
+      'codex',
+      'copilot',
+    ]);
+    expect(knobsOf(all, 'codex').effective.find((item) => item.key === 'model')?.value).toBe('o3');
+    expect(knobsOf(all, 'copilot').effective.find((item) => item.key === 'model')?.value).toBe('m');
+    expect(knobsOf(all, 'codex').featureFlags).toStrictEqual({});
+    expect(knobsOf(all).featureFlags).toStrictEqual({ cachedGrowthBookFeatures: { flag: true } });
+    expect(knobsOf(all, 'nobody')).toBe(EMPTY_KNOBS);
+    expect(report).not.toHaveBeenCalled();
   });
 });
 

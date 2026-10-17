@@ -74,6 +74,7 @@ describe('claudeCode', () => {
       compactCommand: '/compact',
       clearCommand: '/clear',
       rewind: '/rewind (or press Esc twice)',
+      settingsFile: 'settings.json',
     });
     expect(claudeCode.tuning).toBeDefined();
     expect(claudeCode.observer?.userPrompts).toBeDefined();

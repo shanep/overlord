@@ -4,6 +4,7 @@
 
 import path from 'node:path';
 
+import { CLAUDE_CODE } from '../../shared/agents.js';
 import type { FleetState, HostToWebview, ViewId, WebviewAction } from '../../shared/protocol.js';
 import { sdkPlanUsage } from '../agents/claude/runtime.js';
 import { trackCustomAgents } from '../agents/custom.js';
@@ -203,6 +204,7 @@ export class OverlordApp {
       launcher,
       worktrees,
       sessionWorktrees: new Map(),
+      knobsPick: { agent: CLAUDE_CODE },
       browsedFolders: [],
       permissions,
       places,

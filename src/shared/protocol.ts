@@ -9,15 +9,14 @@ import type { BridgeUsage } from './bridge-usage.js';
 import type { CatalogKind, LibraryState } from './catalog.js';
 import type { ConnectorsState } from './connectors.js';
 import type { FleetHealth, SessionHealth } from './health.js';
+import type { EditableLayer, KnobsState } from './knobs.js';
 import type {
   AgentNode,
   ApiRequest,
   ConfigItem,
   ContextSnapshot,
   DailyUsage,
-  EffectiveValue,
   FeedItem,
-  KnobDefinition,
   KnobKind,
   LaunchProfile,
   LaunchSpec,
@@ -25,7 +24,6 @@ import type {
   PermissionRequest,
   SessionPlace,
   SessionSummary,
-  SettingsFileSummary,
   ToolCall,
 } from './model.js';
 import type { Plan } from './plans.js';
@@ -35,6 +33,7 @@ import type { AutoApproveRule } from './rules.js';
 import type { TuningState } from './tuning.js';
 import type { WorktreeSummary } from './worktrees.js';
 
+export type { EditableLayer, KnobsState } from './knobs.js';
 export type { WorktreeOverlap, WorktreeState, WorktreeSummary } from './worktrees.js';
 
 export const VIEW_IDS = [
@@ -150,16 +149,6 @@ export interface ContextState {
   readonly agent?: AgentId;
   readonly snapshot: ContextSnapshot | null;
   readonly sessions: readonly { readonly id: string; readonly title: string }[];
-}
-
-export interface KnobsState {
-  readonly catalog: readonly KnobDefinition[];
-  readonly effective: readonly EffectiveValue[];
-  readonly profiles: readonly LaunchProfile[];
-  /** The settings files behind the layers, highest precedence first. */
-  readonly files: readonly SettingsFileSummary[];
-  /** Cached server feature flags, read-only. */
-  readonly featureFlags: Readonly<Record<string, unknown>>;
 }
 
 export interface LaunchRun {
@@ -425,9 +414,19 @@ export type WebviewAction =
       readonly type: 'setKnob';
       readonly key: string;
       readonly value: unknown;
-      readonly layer: 'user' | 'project' | 'project-local';
+      readonly layer: EditableLayer;
+      /** The agent whose settings change. Unset means Claude Code. */
+      readonly agent?: AgentId;
     }
-  | { readonly type: 'openKnobDocs'; readonly key: string; readonly kind: KnobKind }
+  | {
+      readonly type: 'openKnobDocs';
+      readonly key: string;
+      readonly kind: KnobKind;
+      /** The agent whose catalog has the key. Unset means Claude Code. */
+      readonly agent?: AgentId;
+    }
+  /** Shows another agent's knobs in the Knobs view. */
+  | { readonly type: 'pickKnobsAgent'; readonly agent: AgentId }
   | { readonly type: 'handoff'; readonly sessionId: string; readonly kind: HandoffKind }
   | { readonly type: 'importClaudeAi' }
   | { readonly type: 'syncPush' }

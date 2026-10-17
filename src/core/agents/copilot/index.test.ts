@@ -110,6 +110,7 @@ describe('copilot', () => {
       compactCommand: '/compact',
       clearCommand: '/clear',
       rewind: '/rewind',
+      settingsFile: 'settings.json',
     });
     expect(nanoAiuToUsd(1e9)).toBeCloseTo(0.01, 12);
   });

@@ -45,6 +45,7 @@ const WORDS: AgentWords = {
   compactCommand: '/compact',
   clearCommand: '/clear',
   rewind: '/rewind (or press Esc twice)',
+  settingsFile: 'settings.json',
 };
 
 /** Finds the binary the way SDK runs do, without running it, so the version stays unknown. */

@@ -86,6 +86,8 @@ export interface AgentWords {
   readonly clearCommand: string | null;
   /** How to go back to an earlier turn, as advice says it, such as "/rewind (or press Esc twice)". */
   readonly rewind: string | null;
+  /** The settings file the Knobs view names, such as settings.json or config.toml. Left out, it says "settings file". */
+  readonly settingsFile?: string;
 }
 
 /** The binary to run outside a terminal tab, and the login shell's environment for it. */

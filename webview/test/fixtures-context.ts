@@ -207,6 +207,11 @@ export const knobDefinitions: readonly KnobDefinition[] = [
 ];
 
 export const knobsState: KnobsState = {
+  knobAgents: ['claude-code'],
+  writableLayers: ['user', 'project', 'project-local'],
+  envInSettings: true,
+  settingsFile: 'settings.json',
+  instructionsFile: 'CLAUDE.md',
   catalog: knobDefinitions,
   effective: [
     {

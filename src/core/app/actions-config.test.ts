@@ -17,6 +17,7 @@ import {
   writeJson,
   writeText,
 } from './test-helpers/fixtures.js';
+import { knobsOf } from './views/knobs.js';
 
 describe('settingsKeyPath', () => {
   it('maps catalog keys to where they live in settings', () => {
@@ -47,7 +48,7 @@ describe('setKnob', () => {
       model: 'opus',
       env: { BASH_MAX_OUTPUT_LENGTH: 5000 },
     });
-    const effective = app.runtime.caches.knobs.peek().effective;
+    const effective = knobsOf(app.runtime.caches.knobs.peek()).effective;
     expect(effective.find((item) => item.key === 'model')?.value).toBe('opus');
     expect(clear).toHaveBeenCalledTimes(2);
     await app.dispatch({ type: 'setKnob', key: 'model', value: null, layer: 'user' }, {});
@@ -121,6 +122,91 @@ describe('setKnob', () => {
   });
 });
 
+describe('setKnob for another agent', () => {
+  it('writes Copilot settings as JSONC and keeps the comments at the top', async () => {
+    const env = await makeEnv();
+    const { app } = makeApp(env);
+    const file = path.join(env.paths.home, '.copilot', 'settings.json');
+    await writeText(file, '// mine\n{ "theme": "dark" }\n');
+    await app.dispatch(
+      { type: 'setKnob', key: 'model', value: 'gpt-5', layer: 'user', agent: 'copilot' },
+      {},
+    );
+    expect(await readFile(file, 'utf8')).toBe(
+      '// mine\n{\n  "theme": "dark",\n  "model": "gpt-5"\n}\n',
+    );
+    await expect(readFile(`${file}.bak`, 'utf8')).resolves.toContain('"theme": "dark"');
+    expect(knobsOf(app.runtime.caches.knobs.peek(), 'copilot').effective).toContainEqual(
+      expect.objectContaining({ key: 'model', value: 'gpt-5', layer: 'user' }),
+    );
+    expect(knobsOf(app.runtime.caches.knobs.peek()).effective).toStrictEqual([]);
+    await expect(readFile(env.paths.userSettings, 'utf8')).rejects.toThrow(/ENOENT/u);
+    expect(env.host.errors).toStrictEqual([]);
+  });
+
+  it('edits only the one key in Codex config.toml and keeps a backup', async () => {
+    const env = await makeEnv();
+    const { app } = makeApp(env);
+    const file = path.join(env.paths.home, '.codex', 'config.toml');
+    const before = '# my settings\nmodel = "o3"  # pinned\n\n[tui]\nnotifications = true\n';
+    await writeText(file, before);
+    await app.dispatch(
+      { type: 'setKnob', key: 'model', value: 'gpt-5', layer: 'user', agent: 'codex' },
+      {},
+    );
+    expect(await readFile(file, 'utf8')).toBe(before.replace('"o3"', '"gpt-5"'));
+    expect(await readFile(`${file}.bak`, 'utf8')).toBe(before);
+    await app.dispatch(
+      { type: 'setKnob', key: 'model', value: null, layer: 'user', agent: 'codex' },
+      {},
+    );
+    expect(await readFile(file, 'utf8')).toBe('# my settings\n\n[tui]\nnotifications = true\n');
+    expect(env.host.errors).toStrictEqual([]);
+  });
+
+  it('refuses a Codex value the TOML editor cannot write and an agent with no knobs', async () => {
+    const env = await makeEnv();
+    const { app } = makeApp(env);
+    const file = path.join(env.paths.home, '.codex', 'config.toml');
+    await writeText(file, 'model = "o3"\n');
+    await app.dispatch(
+      { type: 'setKnob', key: 'model', value: { a: 1 }, layer: 'user', agent: 'codex' },
+      {},
+    );
+    await app.dispatch(
+      { type: 'setKnob', key: 'model', value: 'x', layer: 'project-local', agent: 'codex' },
+      {},
+    );
+    await app.dispatch(
+      { type: 'setKnob', key: 'model', value: 'x', layer: 'user', agent: 'nobody' },
+      {},
+    );
+    expect(await readFile(file, 'utf8')).toBe('model = "o3"\n');
+    expect(env.host.errors).toStrictEqual([
+      'model needs a string, number, true or false, or a list of those.',
+      'nobody has no settings Overlord can change.',
+    ]);
+    expect(env.host.infos).toStrictEqual(['Open a folder to change project settings.']);
+  });
+});
+
+describe('pickKnobsAgent', () => {
+  it('shows the picked agent and falls back to Claude Code for one it cannot show', async () => {
+    const env = await makeEnv();
+    const { app } = makeApp(env);
+    const shown = (): unknown => {
+      const message = app.stateFor('knobs', {});
+      return message.view === 'knobs' ? message.state.agent : null;
+    };
+    expect(shown()).toBe('claude-code');
+    await app.dispatch({ type: 'pickKnobsAgent', agent: 'codex' }, {});
+    expect(shown()).toBe('codex');
+    await app.dispatch({ type: 'pickKnobsAgent', agent: 'nobody' }, {});
+    expect(shown()).toBe('codex');
+    expect(env.host.infos).toStrictEqual(['nobody has no knobs to show.']);
+  });
+});
+
 describe('setKnob for keys outside the catalog', () => {
   it('writes and removes your own env var under env', async () => {
     const env = await makeEnv();
@@ -142,6 +228,15 @@ describe('openKnobDocs', () => {
     await app.dispatch({ type: 'openKnobDocs', key: 'model', kind: 'flag' }, {});
     expect(env.host.external).toHaveLength(1);
     expect(env.host.infos).toStrictEqual(['No docs page is known for model.']);
+  });
+
+  it('looks the key up in the agent the action names', async () => {
+    const env = await makeEnv();
+    const { app } = makeApp(env);
+    await app.dispatch({ type: 'openKnobDocs', key: 'model', kind: 'setting', agent: 'codex' }, {});
+    expect(env.host.external).toStrictEqual([
+      'https://learn.chatgpt.com/docs/config-file/config-reference',
+    ]);
   });
 });
 

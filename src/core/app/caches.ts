@@ -15,7 +15,7 @@ import { readDrafts, storagePath } from './storage.js';
 import { syncTargets } from './sync-targets.js';
 import { configRepoDir, emptyConfig, loadConfig } from './views/config.js';
 import { EMPTY_CONNECTORS, loadConnectors } from './views/connectors-data.js';
-import { EMPTY_KNOBS, loadKnobs, loadProfiles } from './views/knobs.js';
+import { loadAllKnobs, loadProfiles } from './views/knobs.js';
 import { EMPTY_SESSIONS, loadSessions, PeekCache } from './views/sessions.js';
 import { loadPlanLimits, loadUsage } from './views/usage.js';
 
@@ -36,9 +36,9 @@ export function createCaches(rt: CacheRuntime): Caches {
     knobs: new AsyncValue({
       ...common,
       name: 'knobs',
-      initial: EMPTY_KNOBS,
+      initial: {},
       load: async () =>
-        loadKnobs({
+        loadAllKnobs(agents, {
           paths: rt.paths,
           env: rt.env,
           workspace: host.workspaceFolder(),

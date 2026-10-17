@@ -3,7 +3,10 @@
 
 import { z } from 'zod';
 
+import type { AgentId } from '../../shared/agents.js';
+import { CLAUDE_CODE } from '../../shared/agents.js';
 import { claudeKnobs } from '../agents/claude/config.js';
+import { agents } from '../agents/index.js';
 import { findKnob } from '../knobs/catalog.js';
 import type { KnobsFacet, SettingsFormat } from '../knobs/facet.js';
 import type { JsonValue } from '../knobs/json.js';
@@ -20,11 +23,13 @@ import { NOT_CONNECTED, SyncCommands } from './sync-commands.js';
 import { syncTargets } from './sync-targets.js';
 import { plural } from './text.js';
 import { configRepoDir, connectedRoot } from './views/config.js';
+import { knobsFacet } from './views/knobs.js';
 import { trackAdviceTaken } from './views/tuning.js';
 
 type ConfigActions =
   | 'setKnob'
   | 'openKnobDocs'
+  | 'pickKnobsAgent'
   | 'importClaudeAi'
   | 'syncPush'
   | 'syncPull'
@@ -68,6 +73,12 @@ export function layerFile(
   const place = { paths: rt.paths, projectDir: rt.host.workspaceFolder(), env: rt.env };
   const file = source.file(place);
   return file === null ? null : { file, format: source.format };
+}
+
+/** The agent's name for a message, or its id when no adapter has it. */
+function agentName(agent: AgentId | undefined): string {
+  const id = agent ?? CLAUDE_CODE;
+  return agents.get(id)?.name ?? id;
 }
 
 /** Null means remove the key. Anything else must be plain JSON. */
@@ -119,8 +130,13 @@ async function adopt(rt: Runtime, itemId: string): Promise<void> {
 
 export const configActions: ActionHandlers<ConfigActions> = {
   setKnob: async ({ rt }, action) => {
-    const keyPath = settingsKeyPath(action.key);
-    const target = layerFile(rt, action.layer);
+    const knobs = knobsFacet(agents, action.agent);
+    if (knobs === null) {
+      rt.host.showError(`${agentName(action.agent)} has no settings Overlord can change.`);
+      return;
+    }
+    const keyPath = settingsKeyPath(action.key, knobs);
+    const target = layerFile(rt, action.layer, knobs);
     const json = toJson(action.value);
     if (keyPath === null) {
       rt.host.showInfo(`${action.key} is a CLI flag. Add it to a launch profile instead.`);
@@ -135,7 +151,8 @@ export const configActions: ActionHandlers<ConfigActions> = {
       await rt.caches.knobs.refresh();
       rt.context.clear();
       // An unset knob comes through as undefined, and clearing one is not taking advice.
-      if (json.value !== undefined) {
+      // Tuning's advice names Claude Code's keys, so another agent's key of the same name is not it.
+      if (json.value !== undefined && (action.agent ?? CLAUDE_CODE) === CLAUDE_CODE) {
         await trackAdviceTaken(rt, { kind: 'knob', key: action.key });
       }
     } else {
@@ -144,12 +161,25 @@ export const configActions: ActionHandlers<ConfigActions> = {
   },
   openKnobDocs: async ({ rt }, action) => {
     // Only catalog doc links open, so a webview can never send the browser anywhere else.
-    const knob = findKnob(claudeKnobs.catalog(), action.kind, action.key);
+    const knob = findKnob(
+      knobsFacet(agents, action.agent)?.catalog() ?? [],
+      action.kind,
+      action.key,
+    );
     if (knob === undefined) {
       rt.host.showInfo(`No docs page is known for ${action.key}.`);
       return;
     }
     await rt.host.openExternal(knob.docUrl);
+  },
+  pickKnobsAgent: async ({ rt }, action) => {
+    if (knobsFacet(agents, action.agent) === null) {
+      rt.host.showInfo(`${agentName(action.agent)} has no knobs to show.`);
+      return;
+    }
+    rt.knobsPick.agent = action.agent;
+    rt.notify();
+    await Promise.resolve();
   },
   importClaudeAi: async ({ rt }) => {
     const picked = await rt.host.pickFile({
