@@ -124,11 +124,25 @@ describe('customAgent', () => {
   it('can launch, approve and interrupt, and nothing else', () => {
     const adapter = customAgent(GEMINI);
     expect(adapter).toMatchObject({ id: 'gemini', name: 'Gemini CLI', short: 'Gemini CLI' });
-    const on = Object.entries(adapter.capabilities)
-      .filter(([, value]) => value === true)
-      .map(([key]) => key);
-    expect(on).toStrictEqual(['launch', 'interrupt', 'approvals']);
-    expect(adapter.capabilities.handoffs).toStrictEqual([]);
+    expect(adapter.capabilities).toStrictEqual({
+      launch: true,
+      terminal: false,
+      background: false,
+      resume: false,
+      fork: false,
+      interrupt: true,
+      liveModelChange: false,
+      livePermissionMode: false,
+      approvals: true,
+      subagents: false,
+      cacheReads: false,
+      cacheWrites: false,
+      costUsd: false,
+      contextInspector: false,
+      hooks: false,
+      messaging: false,
+      handoffs: [],
+    });
     expect(adapter.runtime?.permissionSource).toBe('runtime');
     expect(adapter.terminal).toBeUndefined();
     expect(adapter.observer).toBeUndefined();
@@ -164,6 +178,10 @@ describe('customAgent', () => {
     await expect(absolute.detect({ ...detect, env: {} })).resolves.toMatchObject({ bin });
     const missing = customAgent({ ...GEMINI, command: path.join(dir, 'missing') });
     await expect(missing.detect({ ...detect, env: {} })).resolves.toMatchObject({ bin: null });
+    const relative = customAgent({ ...GEMINI, command: './gemini' });
+    await expect(relative.detect({ ...detect, env: { PATH: dir } })).resolves.toMatchObject({
+      bin: null,
+    });
   });
 });
 

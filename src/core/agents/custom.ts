@@ -12,6 +12,8 @@
 // A bad entry is left out with a warning, and nothing here ever quotes an
 // env value, since those often hold keys.
 
+import path from 'node:path';
+
 import { z } from 'zod';
 
 import type { AgentCapabilities, AgentId, ModeOption } from '../../shared/agents.js';
@@ -123,10 +125,11 @@ export function parseCustomAgents(
   if (!Array.isArray(raw)) {
     return { agents: [], problems: [`${SETTING} should be a list of agents, so it was ignored.`] };
   }
+  const entries: readonly unknown[] = raw;
   const agents: CustomAgentSpec[] = [];
   const problems: string[] = [];
   const taken = new Set<AgentId>();
-  for (const [index, value] of raw.entries()) {
+  for (const [index, value] of entries.entries()) {
     const checked = checkEntry(value, reserved, taken);
     if ('problem' in checked) {
       const name = entryName(value, index);
@@ -159,11 +162,18 @@ const NO_CAPABILITIES: AgentCapabilities = {
   handoffs: [],
 };
 
-/** Finds the command on the login shell's PATH without running it, so the version stays unknown. */
+/**
+ * Finds the command on the login shell's PATH without running it, so the
+ * version stays unknown. A relative path such as ./agent counts as missing,
+ * since a run starts in its own folder and would not find it there.
+ */
 async function detectCommand(command: string, input: DetectInput): Promise<Detected> {
   await Promise.resolve();
-  if (command.includes('/') || command.includes('\\')) {
+  if (path.isAbsolute(command)) {
     return { bin: isExecutableFile(command) ? command : null, version: null };
+  }
+  if (command.includes('/') || command.includes('\\')) {
+    return { bin: null, version: null };
   }
   const bin = findOnPath({ name: command, pathValue: input.env['PATH'], platform: input.platform });
   return { bin, version: null };
