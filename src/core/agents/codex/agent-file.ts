@@ -173,14 +173,19 @@ function fromDraft(text: string): Record<string, unknown> | null {
   return out;
 }
 
+/** True when renderToml can write every value, so nothing is lost. */
+function plain(table: Readonly<Record<string, unknown>>): boolean {
+  return Object.values(table).every((value) => value === undefined || tomlValue(value) !== null);
+}
+
 /**
  * The file with its name set. Takes a TOML file, or a draft written as
- * Markdown with frontmatter, which becomes TOML. Anything else comes back as
- * it is.
+ * Markdown with frontmatter, which becomes TOML. A file with tables, like
+ * [mcp_servers], and anything else comes back as it is, so nothing is lost.
  */
 export function codexAgentWithName(text: string, name: string): string {
   const table = parseTable(text) ?? fromDraft(text);
-  return table === null ? text : renderToml({ ...table, name });
+  return table === null || !plain(table) ? text : renderToml({ ...table, name });
 }
 
 /** The name field of a TOML agent file, or null. */

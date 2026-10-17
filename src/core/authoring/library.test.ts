@@ -11,6 +11,7 @@ import type { LibraryPlace } from '../agents/types.js';
 import { createNodeFileSystem } from '../context/fs.js';
 import { resolveClaudePaths } from '../paths.js';
 
+import { agentFileIn, skillFileIn } from './folders.js';
 import type { LibraryReader } from './library.js';
 import { libraryReaders, mergeLibrary, readersOf, scanLibrary } from './library.js';
 
@@ -79,6 +80,15 @@ describe('skill and agent library', () => {
       // An adapter with no library facet is left out even when it is in play.
       const bare = { ...claudeCode, id: 'bare', config: { settingsFormat: 'json' as const } };
       expect(libraryReaders([bare], () => true)).toStrictEqual([]);
+    });
+  });
+
+  describe('folder files', () => {
+    it('refuses a name that would leave the folder', () => {
+      expect(skillFileIn('/s', 'tidy')).toBe(path.join('/s', 'tidy', 'SKILL.md'));
+      expect(agentFileIn('/a', 'helper', '.agent.md')).toBe(path.join('/a', 'helper.agent.md'));
+      expect(() => skillFileIn('/s', '../x')).toThrow('cannot be used as a file name');
+      expect(() => agentFileIn('/a', '..', '.toml')).toThrow('cannot be used as a file name');
     });
   });
 

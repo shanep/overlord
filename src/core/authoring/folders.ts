@@ -7,6 +7,8 @@ import path from 'node:path';
 import type { LibraryFolder, LibraryScope } from '../agents/types.js';
 import { isInside } from '../context/path-tools.js';
 
+import { assertSafeName } from './write.js';
+
 /** cwd and every folder above it up to the git root, cwd first. Only cwd outside git. */
 export function cwdToGitRoot(cwd: string, gitRoot: string | null): string[] {
   const out = [cwd];
@@ -41,13 +43,15 @@ export function projectFolders(
   return dirs.flatMap((dir) => relative.map((name) => folder(path.join(dir, name), 'project')));
 }
 
-/** The SKILL.md of a skill named name in a skills folder. */
+/** The SKILL.md of a skill named name in a skills folder. Throws when the name would leave the folder. */
 export function skillFileIn(dir: string, name: string): string {
+  assertSafeName(name);
   return path.join(dir, name, 'SKILL.md');
 }
 
-/** An agent file named name in an agents folder. */
+/** An agent file named name in an agents folder. Throws when the name would leave the folder. */
 export function agentFileIn(dir: string, name: string, suffix: string): string {
+  assertSafeName(name);
   return path.join(dir, `${name}${suffix}`);
 }
 

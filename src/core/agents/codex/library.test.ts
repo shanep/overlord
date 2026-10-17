@@ -104,6 +104,9 @@ describe('Codex CLI agent files', () => {
     });
     expect(codexAgentFiles.withName(text, 'again')).toContain('name = "again"');
     expect(codexAgentFiles.withName('neither', 'x')).toBe('neither');
+    // A table it cannot write back would be lost, so the file is left alone.
+    const withTable = 'name = "a"\n\n[mcp_servers.docs]\ncommand = "docs"\n';
+    expect(codexAgentFiles.withName(withTable, 'b')).toBe(withTable);
   });
 
   it('reports what Codex needs', () => {

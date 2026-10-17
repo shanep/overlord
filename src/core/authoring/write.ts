@@ -33,7 +33,7 @@ export type WriteResult =
   | { readonly ok: false; readonly path: string; readonly reason: 'exists' };
 
 /** The name becomes a file or directory name, so it must not escape its folder. */
-function assertSafeName(name: string): void {
+export function assertSafeName(name: string): void {
   const unsafe =
     name === '' ||
     name === '.' ||
