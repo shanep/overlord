@@ -236,6 +236,19 @@ describe('AgentThread', () => {
     expect(thread.outcome('t')).toStrictEqual({ at: 0, ok: true, async: false });
   });
 
+  it('drops terminal escapes from a tool result before cutting its preview', () => {
+    const thread = makeThread();
+    const result = thread.ingest(
+      record({
+        type: 'user',
+        message: {
+          content: [{ type: 'tool_result', tool_use_id: 't', content: '\u001B[34mDocs\u001B[0m' }],
+        },
+      }),
+    );
+    expect(result.feed).toMatchObject([{ kind: 'tool_result', text: 'Docs' }]);
+  });
+
   it('stays running while a tool waits for its result after the turn closes', () => {
     const thread = makeThread();
     thread.ingest(

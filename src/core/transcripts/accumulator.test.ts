@@ -417,6 +417,12 @@ describe('SessionAccumulator', () => {
     expect(accumulator.agents(T0)[0]?.description).toBe('Mine');
   });
 
+  it('drops terminal escapes from a title taken from a prompt', () => {
+    const accumulator = make();
+    accumulator.ingest(record(userPrompt('u1', 0, '\u001B[1mFix\u001B[22m the build')));
+    expect(accumulator.summary(T0).title).toBe('Fix the build');
+  });
+
   it("keeps Claude Code's newest recap without its /config hint, and the last prompt", () => {
     const accumulator = make();
     expect(accumulator.summary(T0)).toMatchObject({ recap: null, lastPrompt: null });

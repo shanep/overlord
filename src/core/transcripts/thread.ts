@@ -8,6 +8,7 @@ import type {
   ToolCall,
 } from '../../shared/model.js';
 import { ZERO_USAGE } from '../../shared/model.js';
+import { plainText } from '../../shared/plain-text.js';
 
 import { ContextTracker } from './context.js';
 import type { PriceTable } from './pricing.js';
@@ -245,7 +246,7 @@ export class AgentThread {
   ): void {
     const { block, at } = input;
     const ok = block.is_error !== true;
-    const text = resultText(block.content);
+    const text = plainText(resultText(block.content));
     this.openTools.delete(block.tool_use_id);
     this.outcomes.set(block.tool_use_id, { at, ok, async: input.asyncLaunch });
     const call = this.toolMap.get(block.tool_use_id);

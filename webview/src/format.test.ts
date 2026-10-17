@@ -17,7 +17,6 @@ import {
   formatRate,
   formatUsd,
   formatValue,
-  plainText,
   truncate,
 } from './format.js';
 
@@ -151,28 +150,6 @@ describe('truncate', () => {
     expect(truncate('short', 10)).toBe('short');
     expect(truncate('abcdefghij', 5)).toBe('abcd…');
     expect(truncate('abc', 0)).toBe('…');
-  });
-});
-
-describe('plainText', () => {
-  it('drops color, cursor and title escapes', () => {
-    expect(plainText('\u001B[34mdocs\u001B[39;49m\u001B[0m')).toBe('docs');
-    expect(plainText('\u001B[38;2;56;56;56mgrey\u001B[m \u001B[1B\u001B[12Gok')).toBe('grey ok');
-    expect(plainText('\u001B]0;title\u0007run \u001B]8;;https://x\u001B\\link')).toBe('run link');
-    expect(plainText('\u009B31mred')).toBe('red');
-  });
-
-  it('keeps tabs and newlines and lets a carriage return overwrite its line', () => {
-    expect(plainText('a\tb\r\nc')).toBe('a\tb\nc');
-    expect(plainText('10%\r50%\r100%\ndone')).toBe('100%\ndone');
-  });
-
-  it('drops other control characters', () => {
-    expect(plainText('a\u0000b\u0008c\u007Fd\u0085e')).toBe('abcde');
-  });
-
-  it('leaves plain text alone', () => {
-    expect(plainText('Café: 3 tests pass, 0 fail.')).toBe('Café: 3 tests pass, 0 fail.');
   });
 });
 

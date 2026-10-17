@@ -73,6 +73,11 @@ describe('oneLine and preview', () => {
     expect(preview(' two\nlines ')).toBe('two lines');
   });
 
+  it('drops terminal escapes before cutting', () => {
+    const exact = 'x'.repeat(PREVIEW_CHARS);
+    expect(preview(`\u001B[32m${exact}\u001B[0m`)).toBe(exact);
+  });
+
   it('drops the marks of a heading the text opens with', () => {
     expect(preview('## Report\nAll good')).toBe('Report All good');
     expect(preview('#hashtag and ## later')).toBe('#hashtag and ## later');

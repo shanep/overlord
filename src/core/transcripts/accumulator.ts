@@ -15,6 +15,7 @@ import type {
   ToolCall,
 } from '../../shared/model.js';
 import { contextWindow, promptTokens, ZERO_USAGE } from '../../shared/model.js';
+import { plainText } from '../../shared/plain-text.js';
 import { surfaceForEntrypoint } from '../agents/claude/surface.js';
 
 import { ContextTracker } from './context.js';
@@ -373,7 +374,7 @@ export class SessionAccumulator {
     const fields = this.fields;
     const fallback = this.thread(this.sessionId).firstPrompt ?? fields.lastPrompt ?? '';
     const title = fields.customTitle ?? fields.aiTitle ?? fallback;
-    return preview(title.replaceAll(/\s+/gu, ' ').trim(), TITLE_CHARS);
+    return preview(plainText(title).replaceAll(/\s+/gu, ' ').trim(), TITLE_CHARS);
   }
 
   private sessionState(now: number): SessionState {

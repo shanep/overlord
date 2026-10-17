@@ -4,6 +4,8 @@
 
 import { createHash } from 'node:crypto';
 
+import { plainText } from '../../shared/plain-text.js';
+
 export const PREVIEW_CHARS = 120;
 
 const DELIVERY_HEADER = /^(?:Another Claude session|The coordinator) sent a message[^\n]*\n/u;
@@ -46,7 +48,7 @@ const HEADING_MARKS = /^#{1,6} /u;
 
 /** One line of at most PREVIEW_CHARS characters, ending in an ellipsis when cut. */
 export function preview(text: string): string {
-  const line = oneLine(text).replace(HEADING_MARKS, '');
+  const line = oneLine(plainText(text)).replace(HEADING_MARKS, '');
   return line.length > PREVIEW_CHARS ? `${line.slice(0, PREVIEW_CHARS - 1)}…` : line;
 }
 
