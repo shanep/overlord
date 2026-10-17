@@ -138,13 +138,13 @@ interface AgentPick {
  */
 function useAgentPick(profiles: LauncherState['profiles']): AgentPick {
   const [saved, setSaved] = usePersistentState('launcher.agent', CLAUDE_CODE, isString);
-  const launchable = offeredAgents(useAgents()).filter((agent) => agent.capabilities.launch);
-  if (launchable.length < 2) {
+  const runners = offeredAgents(useAgents()).filter((agent) => agent.capabilities.launch);
+  if (runners.length < 2) {
     return { step: null, profiles, agent: undefined };
   }
-  const agent = launchable.some((item) => item.id === saved) ? saved : CLAUDE_CODE;
+  const agent = runners.some((item) => item.id === saved) ? saved : CLAUDE_CODE;
   return {
-    step: <AgentStep agents={launchable} value={agent} onChange={setSaved} />,
+    step: <AgentStep agents={runners} value={agent} onChange={setSaved} />,
     profiles: profiles.filter((profile) => profile.agent === agent),
     agent,
   };
