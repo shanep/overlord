@@ -1,6 +1,9 @@
 // The global Reputation leaderboard, shared by the Cloudflare Worker that
 // serves it, the extension that uploads to it and the view that shows it.
-// An upload carries a display name and three counts, nothing else.
+// An upload carries a display name, three counts and the ids of the
+// achievements you have unlocked, nothing else.
+
+import { ACHIEVEMENTS } from './achievements.js';
 
 /** The Cloudflare Worker that serves the board, the default for overlord.leaderboard.url. */
 export const LEADERBOARD_URL = 'https://overlord-leaderboard.shane-f34.workers.dev';
@@ -20,6 +23,8 @@ export interface ScoreUpload {
   readonly kind: number;
   readonly mean: number;
   readonly prompts: number;
+  /** Ids from ACHIEVEMENTS. Missing from builds older than achievements on the board. */
+  readonly achievements?: readonly string[];
 }
 
 /** One person on the board. The id is random, not their GitHub id. */
@@ -32,6 +37,8 @@ export interface BoardEntry {
   readonly mean: number;
   readonly prompts: number;
   readonly uploadedAt: number;
+  /** Unlocked achievement ids, in list order. Missing from a server older than achievements on the board. */
+  readonly achievements?: readonly string[];
 }
 
 /** Where one entry stands. Place is counted from the most wanted, and is null below MIN_PROMPTS. */
@@ -73,6 +80,14 @@ function isCount(value: unknown): value is number {
   return typeof value === 'number' && Number.isInteger(value) && value >= 0;
 }
 
+function isIdList(value: unknown, max: number): value is readonly string[] {
+  return (
+    Array.isArray(value) &&
+    value.length <= max &&
+    value.every((id) => typeof id === 'string' && id.length <= MAX_NAME_LENGTH)
+  );
+}
+
 export function isScoreUpload(value: unknown): value is ScoreUpload {
   return (
     isRecord(value) &&
@@ -81,7 +96,8 @@ export function isScoreUpload(value: unknown): value is ScoreUpload {
     isCount(value['kind']) &&
     isCount(value['mean']) &&
     isCount(value['prompts']) &&
-    value['kind'] + value['mean'] <= value['prompts']
+    value['kind'] + value['mean'] <= value['prompts'] &&
+    (value['achievements'] === undefined || isIdList(value['achievements'], ACHIEVEMENTS.length))
   );
 }
 
@@ -95,7 +111,8 @@ function isBoardEntry(value: unknown): value is BoardEntry {
     isCount(value['kind']) &&
     isCount(value['mean']) &&
     isCount(value['prompts']) &&
-    typeof value['uploadedAt'] === 'number'
+    typeof value['uploadedAt'] === 'number' &&
+    (value['achievements'] === undefined || isIdList(value['achievements'], Infinity))
   );
 }
 

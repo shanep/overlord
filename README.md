@@ -217,11 +217,13 @@ once you have one.
 
 Uploading is a button. It asks how you want to show up (your GitHub login, a name you pick, or
 Anonymous), then shows the exact JSON it will send and waits for you to confirm. That JSON is a
-name and three counts:
+name, three counts and the ids of the achievements you have unlocked:
 
 ```json
-{ "name": "shanep", "kind": 6, "mean": 21, "prompts": 1998 }
+{ "name": "shanep", "kind": 6, "mean": 21, "prompts": 1998, "achievements": ["manners", "regular"] }
 ```
+
+The board shows each person's achievements as a row of trophies next to their name.
 
 Never prompt text, matched words, session titles or folder names. The server works out the
 score and rank from the counts. To know who is uploading, it checks your GitHub sign-in once

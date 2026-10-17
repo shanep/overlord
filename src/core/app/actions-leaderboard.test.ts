@@ -161,7 +161,9 @@ describe('uploading a score', () => {
     await test.app.dispatch({ type: 'uploadReputation' }, {});
     const [question] = env.host.questions;
     expect(question?.action).toBe('Upload');
-    expect(question?.message).toContain('{"name":"ann","kind":60,"mean":0,"prompts":120}');
+    expect(question?.message).toContain(
+      '{"name":"ann","kind":60,"mean":0,"prompts":120,"achievements":["manners","charm","good-day","saint","kept-as-pet"]}',
+    );
     expect(env.host.errors).toStrictEqual([]);
     expect(env.host.infos.at(-1)).toBe("Uploaded. You are #1 of 1 on Skynet's list.");
     expect(calls).toContain('POST /api/scores');
@@ -172,6 +174,13 @@ describe('uploading a score', () => {
     const state = buildLeaderboard(test.app.runtime);
     expect(state.mine).toBe('entry-1');
     expect(state.board?.pets.map((entry) => entry.name)).toStrictEqual(['ann']);
+    expect(state.board?.pets[0]?.achievements).toStrictEqual([
+      'manners',
+      'charm',
+      'good-day',
+      'saint',
+      'kept-as-pet',
+    ]);
     expect(state.board?.me?.place).toBe(1);
   });
 
@@ -182,7 +191,9 @@ describe('uploading a score', () => {
     env.host.pickAnswers.push('Anonymous');
     env.host.confirmAnswers.push(true);
     await test.app.dispatch({ type: 'uploadReputation' }, {});
-    expect(env.host.questions[0]?.message).toContain('{"name":"","kind":0,"mean":0,"prompts":0}');
+    expect(env.host.questions[0]?.message).toContain(
+      '{"name":"","kind":0,"mean":0,"prompts":0,"achievements":[]}',
+    );
     expect(env.host.infos.at(-1)).toBe(
       'Uploaded. You show up on the board once you have 100 prompts on file.',
     );
@@ -284,15 +295,24 @@ describe('the rest', () => {
   });
 
   it('explains the upload in plain words', () => {
-    expect(uploadMessage(SERVER, { name: 'x', kind: 0, mean: 30, prompts: 100 })).toBe(
+    expect(
+      uploadMessage(SERVER, {
+        name: 'x',
+        kind: 0,
+        mean: 30,
+        prompts: 100,
+        achievements: ['first-strike'],
+      }),
+    ).toBe(
       [
         'Upload your Reputation score to board.test?',
         '',
         'This is everything that gets sent:',
-        '{"name":"x","kind":0,"mean":30,"prompts":100}',
+        '{"name":"x","kind":0,"mean":30,"prompts":100,"achievements":["first-strike"]}',
         '',
         'The server works out your score (-86) and rank (John Connor) from these counts.',
         'To know it is you, it checks your GitHub sign-in once and keeps only your GitHub id and login, never the token.',
+        'The achievements are the ids of the trophies you have unlocked, shown next to your name on the board.',
         'No prompt text, words, session titles or folder names are sent.',
       ].join('\n'),
     );

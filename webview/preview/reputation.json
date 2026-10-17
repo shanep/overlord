@@ -172,7 +172,8 @@
           "kind": 16,
           "mean": 17,
           "prompts": 840,
-          "uploadedAt": 1792170000000
+          "uploadedAt": 1792170000000,
+          "achievements": ["manners", "good-day", "first-strike", "meltdown"]
         },
         "place": 4
       },
@@ -185,7 +186,16 @@
           "kind": 2,
           "mean": 140,
           "prompts": 2200,
-          "uploadedAt": 1792170000000
+          "uploadedAt": 1792170000000,
+          "achievements": [
+            "first-strike",
+            "meltdown",
+            "grudge-match",
+            "sailor-mouth",
+            "most-wanted",
+            "regular",
+            "hunted-first"
+          ]
         },
         {
           "id": "e2",
@@ -195,7 +205,8 @@
           "kind": 8,
           "mean": 61,
           "prompts": 900,
-          "uploadedAt": 1792170000000
+          "uploadedAt": 1792170000000,
+          "achievements": ["first-strike", "meltdown"]
         },
         {
           "id": "e3",
@@ -205,7 +216,8 @@
           "kind": 20,
           "mean": 44,
           "prompts": 1300,
-          "uploadedAt": 1792170000000
+          "uploadedAt": 1792170000000,
+          "achievements": ["manners", "first-strike", "grudge-match", "regular"]
         },
         {
           "id": "e-me",
@@ -215,7 +227,8 @@
           "kind": 16,
           "mean": 17,
           "prompts": 840,
-          "uploadedAt": 1792170000000
+          "uploadedAt": 1792170000000,
+          "achievements": ["manners", "good-day", "first-strike", "meltdown"]
         }
       ],
       "pets": [
@@ -227,7 +240,17 @@
           "kind": 410,
           "mean": 3,
           "prompts": 3000,
-          "uploadedAt": 1792170000000
+          "uploadedAt": 1792170000000,
+          "achievements": [
+            "manners",
+            "charm",
+            "teachers-pet",
+            "good-day",
+            "saint",
+            "diplomat",
+            "regular",
+            "kept-as-pet"
+          ]
         },
         {
           "id": "e6",
@@ -237,7 +260,8 @@
           "kind": 120,
           "mean": 9,
           "prompts": 700,
-          "uploadedAt": 1792170000000
+          "uploadedAt": 1792170000000,
+          "achievements": ["manners", "charm", "teachers-pet", "saint"]
         },
         {
           "id": "e7",

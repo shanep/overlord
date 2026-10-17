@@ -2,6 +2,7 @@
 // D1 types here are the few calls this file makes, so the Worker needs no
 // Cloudflare type package.
 
+import { knownIds } from '../shared/achievements.js';
 import type { Board, BoardEntry, ScoreUpload, Standing } from '../shared/leaderboard.js';
 import { ANONYMOUS, BOARD_SIZE, MIN_PROMPTS, UPLOADS_PER_DAY } from '../shared/leaderboard.js';
 import { rankFor } from '../shared/reputation-ranks.js';
@@ -26,7 +27,7 @@ export interface Account {
   readonly login: string;
 }
 
-const COLUMNS = 'entry_id, name, kind, mean, prompts, score, uploaded_at';
+const COLUMNS = 'entry_id, name, kind, mean, prompts, score, uploaded_at, achievements';
 const LISTED = `prompts >= ${String(MIN_PROMPTS)}`;
 
 function text(row: Row, key: string): string {
@@ -57,6 +58,8 @@ function entryOf(row: Row): BoardEntry {
     mean: number_(row, 'mean'),
     prompts: number_(row, 'prompts'),
     uploadedAt: number_(row, 'uploaded_at'),
+    // Dropping unknown ids means a retired achievement just stops showing.
+    achievements: knownIds(text(row, 'achievements').split(',')),
   };
 }
 
@@ -156,12 +159,13 @@ export async function saveScore(database: D1Database, save: Save): Promise<SaveR
   const score = reputationScore(upload);
   await database
     .prepare(
-      `INSERT INTO scores (github_id, login, entry_id, name, kind, mean, prompts, score, uploaded_at, upload_day, uploads_today)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `INSERT INTO scores (github_id, login, entry_id, name, kind, mean, prompts, score, uploaded_at, upload_day, uploads_today, achievements)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT (github_id) DO UPDATE SET
          login = excluded.login, name = excluded.name, kind = excluded.kind, mean = excluded.mean,
          prompts = excluded.prompts, score = excluded.score, uploaded_at = excluded.uploaded_at,
-         upload_day = excluded.upload_day, uploads_today = excluded.uploads_today`,
+         upload_day = excluded.upload_day, uploads_today = excluded.uploads_today,
+         achievements = excluded.achievements`,
     )
     .bind(
       account.githubId,
@@ -175,6 +179,7 @@ export async function saveScore(database: D1Database, save: Save): Promise<SaveR
       now,
       day,
       uploadsToday + 1,
+      knownIds(upload.achievements ?? []).join(','),
     )
     .run();
   const row = await database

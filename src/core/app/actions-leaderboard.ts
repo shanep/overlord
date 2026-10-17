@@ -1,6 +1,7 @@
 // Actions for the global Reputation leaderboard. Uploading asks how you want
 // to show up, then shows exactly what it will send and waits for a yes.
 
+import { unlockedIds } from '../../shared/achievements.js';
 import type { ScoreUpload } from '../../shared/leaderboard.js';
 import { ANONYMOUS, MAX_NAME_LENGTH } from '../../shared/leaderboard.js';
 import { rankFor } from '../../shared/reputation-ranks.js';
@@ -113,6 +114,7 @@ export function uploadMessage(server: string, body: ScoreUpload): string {
     '',
     `The server works out your score (${String(Math.round(score * 100))}) and rank (${rankFor(score).name}) from these counts.`,
     'To know it is you, it checks your GitHub sign-in once and keeps only your GitHub id and login, never the token.',
+    'The achievements are the ids of the trophies you have unlocked, shown next to your name on the board.',
     'No prompt text, words, session titles or folder names are sent.',
   ].join('\n');
 }
@@ -140,6 +142,7 @@ async function upload(rt: Runtime): Promise<void> {
     kind: state.kind,
     mean: state.mean,
     prompts: state.prompts,
+    achievements: unlockedIds(state),
   };
   const server = rt.host.settings.leaderboardUrl;
   if (!(await rt.host.confirm(uploadMessage(server, body), 'Upload'))) {

@@ -1,6 +1,7 @@
 // The public leaderboard page, rendered on the server so it needs no script:
 // who the machines hunt first, and who they keep as pets.
 
+import { achievementsOf } from '../shared/achievements.js';
 import type { Board, BoardEntry } from '../shared/leaderboard.js';
 import { MIN_PROMPTS } from '../shared/leaderboard.js';
 
@@ -23,6 +24,18 @@ function count(value: number): string {
   return value.toLocaleString('en-US');
 }
 
+function trophies(ids: readonly string[]): string {
+  const earned = achievementsOf(ids);
+  if (earned.length === 0) {
+    return '';
+  }
+  const label = `Achievements: ${earned.map((rule) => rule.name).join(', ')}`;
+  const icons = earned.map(
+    (rule) => `<span title="${escapeHtml(rule.name)}">${escapeHtml(rule.icon)}</span>`,
+  );
+  return `<span class="trophies" role="img" aria-label="${escapeHtml(label)}">${icons.join('')}</span>`;
+}
+
 function rows(entries: readonly BoardEntry[], empty: string): string {
   if (entries.length === 0) {
     return `<p class="empty">${escapeHtml(empty)}</p>`;
@@ -34,6 +47,7 @@ function rows(entries: readonly BoardEntry[], empty: string): string {
         <span class="who">
           <strong>${escapeHtml(entry.name)}</strong>
           <span class="rank">${escapeHtml(entry.rank)}</span>
+          ${trophies(entry.achievements ?? [])}
         </span>
         <span class="counts">${count(entry.kind)} nice, ${count(entry.mean)} mean</span>
         <span class="score">${String(Math.round(entry.score * 100))}</span>
@@ -68,6 +82,7 @@ li:first-child { border-top: 0; }
 .place { color: var(--muted); font-weight: 700; text-align: right; }
 .who { min-width: 0; overflow-wrap: anywhere; }
 .rank { display: block; color: var(--muted); font-size: 0.85em; }
+.trophies { display: block; letter-spacing: 2px; cursor: default; }
 .counts { grid-column: 2; color: var(--muted); font-size: 0.85em; }
 .score { grid-row: 1 / span 2; grid-column: 3; font-weight: 700; font-variant-numeric: tabular-nums; }
 .wanted .score { color: var(--red); }
@@ -110,7 +125,7 @@ export function renderPage(board: Board, now: number): string {
   </div>
   <footer>
     <p>Scores run from -100 (only mean) to 100 (only kind). Anyone with fewer than ${count(MIN_PROMPTS)} prompts is left off.
-    Uploads come from the Reputation view in <a href="${REPO_URL}">Overlord</a>, the VS Code extension, and carry a name and three counts, never prompt text.
+    Uploads come from the Reputation view in <a href="${REPO_URL}">Overlord</a>, the VS Code extension, and carry a name, three counts and the achievements unlocked, never prompt text.
     It is all in fun, and scores are self reported.</p>
     <p>Updated ${escapeHtml(new Date(now).toUTCString())}.</p>
   </footer>

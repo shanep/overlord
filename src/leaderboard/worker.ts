@@ -75,13 +75,16 @@ async function upload(request: Request, env: Env, deps: Deps): Promise<Response>
     return fail(400, 'The upload is not JSON.');
   }
   if (!isScoreUpload(body)) {
-    return fail(400, 'The upload needs a short name and whole, non-negative counts.');
+    return fail(
+      400,
+      'The upload needs a short name, whole, non-negative counts and a short list of achievements.',
+    );
   }
-  // Only the four fields are kept, whatever else the body holds.
-  const { name, kind, mean, prompts } = body;
+  // Only these fields are kept, whatever else the body holds.
+  const { name, kind, mean, prompts, achievements = [] } = body;
   const saved = await saveScore(env.DB, {
     account,
-    upload: { name, kind, mean, prompts },
+    upload: { name, kind, mean, prompts, achievements },
     now: deps.now(),
     newId: deps.newId,
   });

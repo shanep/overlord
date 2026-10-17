@@ -1,16 +1,20 @@
-// D1 backed by an in-memory SQLite database with the real migration applied,
+// D1 backed by an in-memory SQLite database with the real migrations applied,
 // so tests run the Worker's actual SQL.
 
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 
 import type { D1Database, D1Statement, Row } from '../store.js';
 
-const MIGRATION = new URL('../../../leaderboard/migrations/0001_scores.sql', import.meta.url);
+const MIGRATIONS = new URL('../../../leaderboard/migrations/', import.meta.url);
 
 export function fakeD1(): D1Database {
   const database = new DatabaseSync(':memory:');
-  database.exec(readFileSync(MIGRATION, 'utf8'));
+  for (const file of readdirSync(MIGRATIONS)
+    .filter((name) => name.endsWith('.sql'))
+    .toSorted((a, b) => a.localeCompare(b))) {
+    database.exec(readFileSync(new URL(file, MIGRATIONS), 'utf8'));
+  }
   const statement = (sql: string, values: readonly (string | number)[]): D1Statement => ({
     bind: (...next) => statement(sql, next),
     first: async (): Promise<Row | null> => {

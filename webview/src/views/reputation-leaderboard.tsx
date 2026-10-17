@@ -4,10 +4,29 @@
 
 import type { ReactElement } from 'react';
 
+import { achievementsOf } from '../../../src/shared/achievements.js';
 import { MIN_PROMPTS } from '../../../src/shared/leaderboard.js';
 import type { BoardEntry, LeaderboardState } from '../../../src/shared/leaderboard.js';
 import { formatInteger } from '../format.js';
 import { usePostAction } from '../vscode-context.js';
+
+/** The trophies someone has unlocked, as a row of icons named for screen readers and on hover. */
+function Trophies(props: { readonly ids: readonly string[] }): ReactElement | null {
+  const earned = achievementsOf(props.ids);
+  if (earned.length === 0) {
+    return null;
+  }
+  const names = earned.map((rule) => rule.name).join(', ');
+  return (
+    <span className="rep-board-trophies" role="img" aria-label={`Achievements: ${names}`}>
+      {earned.map((rule) => (
+        <span key={rule.id} title={rule.name}>
+          {rule.icon}
+        </span>
+      ))}
+    </span>
+  );
+}
 
 function Side(props: {
   readonly id: string;
@@ -32,6 +51,7 @@ function Side(props: {
                     <strong>{entry.name}</strong>
                     {me ? <span className="rep-you"> (you)</span> : null}
                     <span className="rep-board-rank">{entry.rank}</span>
+                    <Trophies ids={entry.achievements ?? []} />
                   </span>
                   <span className="rep-board-score" title="Score from -100 to 100">
                     {formatInteger(Math.round(entry.score * 100))}
@@ -143,7 +163,8 @@ export function Leaderboard(props: { readonly state: LeaderboardState }): ReactE
           </button>
         </div>
         <p className="muted">
-          Uploading sends a name and three counts, and shows them to you first. Never prompt text.
+          Uploading sends a name, three counts and your unlocked achievements, and shows them to you
+          first. Never prompt text.
         </p>
         <div className="rep-board">
           <Side

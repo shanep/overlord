@@ -567,6 +567,12 @@
   font-size: 0.85em;
 }
 
+.rep-board-trophies {
+  display: block;
+  cursor: default;
+  letter-spacing: 2px;
+}
+
 .rep-board-score {
   font-variant-numeric: tabular-nums;
   font-weight: 700;

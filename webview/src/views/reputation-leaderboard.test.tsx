@@ -74,6 +74,18 @@ describe('Leaderboard', () => {
     await expectAccessible(container);
   });
 
+  it('shows the trophies each person has unlocked', async () => {
+    const withTrophies: Board = {
+      ...BOARD,
+      mostWanted: [{ ...ANN, achievements: ['first-strike', 'meltdown', 'retired'] }],
+    };
+    const { getByRole, container } = renderView(<Leaderboard state={on(withTrophies)} />);
+    const trophies = getByRole('img', { name: 'Achievements: First strike, Meltdown' });
+    expect(trophies.textContent).toBe('🥊🌋');
+    expect(container.querySelectorAll('.rep-board-trophies')).toHaveLength(1);
+    await expectAccessible(container);
+  });
+
   it('picks out your row and place once you upload', () => {
     const { getByRole, getByText, container, api } = renderView(
       <Leaderboard state={on({ ...BOARD, me: { entry: ANN, place: 1 } }, { mine: 'e-ann' })} />,

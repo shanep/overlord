@@ -120,14 +120,17 @@ describe('leaderboard worker', () => {
       { ...MEAN, mean: 1.5 },
       { ...MEAN, kind: 300, mean: 200 },
       { kind: 1, mean: 1, prompts: 200 },
+      { ...MEAN, achievements: 'manners' },
+      { ...MEAN, achievements: [1] },
+      { ...MEAN, achievements: Array.from({ length: 15 }, () => 'manners') },
     ];
     const statuses = await Promise.all(
       bad.map(async (body) => await w.status('POST', '/api/scores', 'token-ann', body)),
     );
-    expect(statuses).toStrictEqual([400, 400, 400, 400, 400, 400]);
+    expect(statuses).toStrictEqual(bad.map(() => 400));
   });
 
-  it('works out the score and rank itself and keeps only the four fields', async () => {
+  it('works out the score and rank itself and keeps only the upload fields', async () => {
     const w = world();
     const standing = await w.upload('token-ann', { ...MEAN, score: 1, rank: 'Theodore Twombly' });
     expect(standing).toStrictEqual({
@@ -140,9 +143,27 @@ describe('leaderboard worker', () => {
         mean: 30,
         prompts: 400,
         uploadedAt: START,
+        achievements: [],
       },
       place: 1,
     });
+  });
+
+  it('keeps known achievements once each, in list order, and drops the rest', async () => {
+    const w = world();
+    const standing = await w.upload('token-ann', {
+      ...MEAN,
+      achievements: ['meltdown', 'made-up', 'first-strike', 'meltdown'],
+    });
+    expect(standing.entry.achievements).toStrictEqual(['first-strike', 'meltdown']);
+    const board = await w.board();
+    expect(board.mostWanted[0]?.achievements).toStrictEqual(['first-strike', 'meltdown']);
+    const page = await w.call('GET', '/');
+    const html = await page.text();
+    expect(html).toContain('aria-label="Achievements: First strike, Meltdown"');
+    expect(html).toContain('<span title="Meltdown">🌋</span>');
+    const again = await w.upload('token-ann', MEAN);
+    expect(again.entry.achievements).toStrictEqual([]);
   });
 
   it('replaces an account’s last upload and keeps its id', async () => {
