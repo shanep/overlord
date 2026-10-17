@@ -12,13 +12,13 @@ import { formatValue } from '../format.js';
 import { usePostAction } from '../vscode-context.js';
 
 import { FlagEditor } from './knobs-flags.js';
+import { useKnobsTarget } from './knobs-target.js';
 import { ValueControl } from './knobs-value-control.js';
 import type { EditableLayer, ParseResult } from './knobs-values.js';
 import {
   APPLIES_LABELS,
   defaultLayer,
   displayValue,
-  EDITABLE_LAYERS,
   isEditableLayer,
   isRetired,
   parseKnobValue,
@@ -61,7 +61,8 @@ function KnobEditor(props: {
 }): ReactElement {
   const { definition, effective } = props;
   const post = usePostAction();
-  const [layer, setLayer] = useState<EditableLayer>(() => defaultLayer(effective));
+  const target = useKnobsTarget();
+  const [layer, setLayer] = useState<EditableLayer>(() => defaultLayer(effective, target.layers));
   const [text, setText] = useState(() => startTextAt(definition, effective, layer));
   const parsed = parseKnobValue(definition, text);
   if (definition.managedOnly) {
@@ -81,7 +82,7 @@ function KnobEditor(props: {
             }
           }}
         >
-          {EDITABLE_LAYERS.map((option) => (
+          {target.layers.map((option) => (
             <option key={option} value={option}>
               {option}
             </option>
@@ -92,7 +93,7 @@ function KnobEditor(props: {
       <SaveButton
         parsed={parsed}
         onSave={(value) => {
-          post({ type: 'setKnob', key: definition.key, value, layer });
+          post({ type: 'setKnob', key: definition.key, value, layer, agent: target.agent });
         }}
       />
     </div>
@@ -124,7 +125,8 @@ function RemoveButton(props: {
   readonly onRemove: (layer: EditableLayer) => void;
 }): ReactElement | null {
   const { layer } = props;
-  if (!isEditableLayer(layer)) {
+  const { layers } = useKnobsTarget();
+  if (!isEditableLayer(layer) || !layers.includes(layer)) {
     return null;
   }
   return (
@@ -146,6 +148,7 @@ function KnobChain(props: {
 }): ReactElement {
   const { definition } = props;
   const post = usePostAction();
+  const { agent } = useKnobsTarget();
   const chain = props.effective?.chain ?? [];
   if (chain.length === 0) {
     return <p className="muted">No layer sets this key. The default applies.</p>;
@@ -176,7 +179,7 @@ function KnobChain(props: {
                 keyName={definition.key}
                 layer={entry.layer}
                 onRemove={(layer) => {
-                  post({ type: 'setKnob', key: definition.key, value: null, layer });
+                  post({ type: 'setKnob', key: definition.key, value: null, layer, agent });
                 }}
               />
             </td>
@@ -189,6 +192,7 @@ function KnobChain(props: {
 
 function DocumentationButton(props: { readonly definition: KnobDefinition }): ReactElement | null {
   const post = usePostAction();
+  const { agent } = useKnobsTarget();
   const { definition } = props;
   if (definition.docUrl === '') {
     return null;
@@ -199,7 +203,7 @@ function DocumentationButton(props: { readonly definition: KnobDefinition }): Re
       className="link-button"
       aria-label={`Docs for ${definition.key}`}
       onClick={() => {
-        post({ type: 'openKnobDocs', key: definition.key, kind: definition.kind });
+        post({ type: 'openKnobDocs', key: definition.key, kind: definition.kind, agent });
       }}
     >
       Docs

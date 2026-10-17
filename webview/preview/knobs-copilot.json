@@ -1,0 +1,737 @@
+{
+  "agent": "copilot",
+  "knobAgents": ["claude-code", "codex", "copilot"],
+  "writableLayers": ["user", "project", "project-local"],
+  "envInSettings": false,
+  "settingsFile": "settings.json",
+  "instructionsFile": ".github/copilot-instructions.md",
+  "catalog": [
+    {
+      "key": "COPILOT_ALLOW_ALL",
+      "kind": "env",
+      "area": "permissions",
+      "valueType": "enum",
+      "defaultValue": null,
+      "allowed": ["true", "1", "yes", "on", "y"],
+      "description": "Allow all permissions automatically (equivalent to --allow-all). Accepts true, 1, yes, on, or y (case-insensitive, surrounding whitespace ignored) to turn it on; false, 0, no, off, n, or an empty value to turn it off. Setting it to exactly true also trusts the working directory without prompting, loading that directory's skills, plugins, MCP servers, and hooks (including hooks that run shell commands). The other truthy spellings only auto-approve tools.",
+      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#environment-variables",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "COPILOT_AUTO_UPDATE",
+      "kind": "env",
+      "area": "updates",
+      "valueType": "string",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Set to false to disable automatic updates of the CLI and first-party plugins.",
+      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#environment-variables",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "COPILOT_CACHE_HOME",
+      "kind": "env",
+      "area": "caching",
+      "valueType": "string",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Override the cache directory (used for marketplace caches, auto-update packages, and other ephemeral data). See GitHub Copilot CLI configuration directory for platform defaults.",
+      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#environment-variables",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "COPILOT_CHILD_OOM_SCORE_ADJ",
+      "kind": "env",
+      "area": "other",
+      "valueType": "number",
+      "defaultValue": "300",
+      "allowed": [],
+      "description": "Linux only. Overrides the oom_score_adj bias applied to shell command process trees spawned by the CLI, so the kernel's out-of-memory (OOM) killer reclaims a runaway child process tree (for example, a build) before the CLI itself. Default: 300. Range: -1000, 1000. Set to off to disable the bias.",
+      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#environment-variables",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "COPILOT_CUSTOM_INSTRUCTIONS_DIRS",
+      "kind": "env",
+      "area": "other",
+      "valueType": "string[]",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Comma-separated list of additional directories for custom instructions.",
+      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#environment-variables",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "COPILOT_EDITOR",
+      "kind": "env",
+      "area": "ui",
+      "valueType": "string",
+      "defaultValue": "vi",
+      "allowed": [],
+      "description": "Editor command for interactive editing (checked after $VISUAL and $EDITOR). Defaults to vi if none are set.",
+      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#environment-variables",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "COPILOT_ENABLE_HTTP2",
+      "kind": "env",
+      "area": "other",
+      "valueType": "boolean",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Set to 1 or true to opt into HTTP/2 transport. HTTP/1.1 is the default.",
+      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#environment-variables",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "COPILOT_ENABLE_INTERRUPTED_SESSION_RESTORE",
+      "kind": "env",
+      "area": "sessions",
+      "valueType": "boolean",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Set to 1 to enable restoring a session that was still open when the CLI process went away, for example due to a crash or a machine restart. This restore behavior is temporarily opt-in while its startup dialog is reworked. See Restoring an interrupted session.",
+      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#environment-variables",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "COPILOT_GITHUB_TOKEN",
+      "kind": "env",
+      "area": "auth",
+      "valueType": "string",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Authentication token. Takes precedence over GH_TOKEN and GITHUB_TOKEN.",
+      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#environment-variables",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "COPILOT_LARGE_OUTPUT_THRESHOLD_BYTES",
+      "kind": "env",
+      "area": "model",
+      "valueType": "number",
+      "defaultValue": "20480",
+      "allowed": [],
+      "description": "Maximum UTF-8 byte size for tool output returned directly to the model. Default: 20480 (20 KiB). See Managing context in GitHub Copilot CLI.",
+      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#environment-variables",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "COPILOT_MCP_TOOL_CACHE",
+      "kind": "env",
+      "area": "caching",
+      "valueType": "string",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Set to false to disable loading and persisting local MCP server tool snapshots for the entire process. See Tool snapshot caching.",
+      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#environment-variables",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "COPILOT_MODEL",
+      "kind": "env",
+      "area": "model",
+      "valueType": "string",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Set the AI model.",
+      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#environment-variables",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "COPILOT_OTEL_ENABLED",
+      "kind": "env",
+      "area": "telemetry",
+      "valueType": "string",
+      "defaultValue": "false",
+      "allowed": [],
+      "description": "Explicitly enable OTel. Not required if OTEL_EXPORTER_OTLP_ENDPOINT is set.",
+      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#otel-environment-variables",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "COPILOT_OTEL_EXPORTER_TYPE",
+      "kind": "env",
+      "area": "telemetry",
+      "valueType": "string",
+      "defaultValue": "otlp-http",
+      "allowed": [],
+      "description": "Exporter type: otlp-http or file. Auto-selects file when COPILOT_OTEL_FILE_EXPORTER_PATH is set.",
+      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#otel-environment-variables",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "COPILOT_OTEL_FILE_EXPORTER_PATH",
+      "kind": "env",
+      "area": "telemetry",
+      "valueType": "string",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Write all signals to this file as JSON-lines. Setting this automatically enables OTel.",
+      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#otel-environment-variables",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "COPILOT_PLAN_THEN_AUTOPILOT",
+      "kind": "env",
+      "area": "sessions",
+      "valueType": "boolean",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Set to 1, true, yes, or on to request plan-then-autopilot (equivalent to --plan --mode autopilot) for harnesses that can only inject environment variables. Ignored, with a warning, when an explicit --mode, --autopilot, or --plan option is passed. See Plan-then-autopilot.",
+      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#environment-variables",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "COPILOT_PROVIDERS_CONFIG",
+      "kind": "env",
+      "area": "auth",
+      "valueType": "string",
+      "defaultValue": "<COPILOT_HOME>/providers.json",
+      "allowed": [],
+      "description": "Path to a JSON file that defines a bring-your-own-key (BYOK) provider and model registry, as an object with providers and models keys. Default: /providers.json. When this file declares any provider or model, it takes precedence over the legacy COPILOT_PROVIDER_* environment variables. See providers.json.",
+      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#environment-variables",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "COPILOT_PROVIDER_API_KEY_COMMAND",
+      "kind": "env",
+      "area": "auth",
+      "valueType": "string",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Shell command that prints a fresh bring-your-own-key (BYOK) API key before each provider request. Takes precedence over the COPILOT_PROVIDER_API_KEY environment variable. Its output replaces the matching credential header even if a custom header set via COPILOT_PROVIDER_HEADERS would otherwise collide.",
+      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#environment-variables",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "COPILOT_SKILLS_DIRS",
+      "kind": "env",
+      "area": "plugins",
+      "valueType": "string[]",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Comma-separated list of additional directories for skills.",
+      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#environment-variables",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "COPILOT_STRIP_REASONING_ON_RESUME",
+      "kind": "env",
+      "area": "sessions",
+      "valueType": "string",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Set to 0 or false to keep BYOK reasoning tokens across a session resume instead of stripping them. Defaults to stripping them.",
+      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#environment-variables",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "COPILOT_SUBAGENT_MAX_CONCURRENT",
+      "kind": "env",
+      "area": "subagents",
+      "valueType": "number",
+      "defaultValue": "32",
+      "allowed": [],
+      "description": "Maximum concurrent subagents per session (default: 32, range: 1, 256).",
+      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#environment-variables",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "COPILOT_SUBAGENT_MAX_DEPTH",
+      "kind": "env",
+      "area": "subagents",
+      "valueType": "number",
+      "defaultValue": "4",
+      "allowed": [],
+      "description": "Maximum subagent nesting depth (default: 4, range: 1, 128).",
+      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#environment-variables",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "COPILOT_TASK_WAIT_TIMEOUT_SECONDS",
+      "kind": "env",
+      "area": "network",
+      "valueType": "number",
+      "defaultValue": "600",
+      "allowed": [],
+      "description": "Maximum seconds -p (and -p --autopilot) waits for pending background agents or shell commands to finish before exiting (default: 600; 0 exits immediately without waiting).",
+      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#environment-variables",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "GITHUB_COPILOT_PROMPT_MODE_EXTENSIONS",
+      "kind": "env",
+      "area": "tools",
+      "valueType": "boolean",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Set to true to load project extensions and allow extension management tools in prompt mode (-p). Disabled by default to prevent running repository-controlled extension code without interactive trust.",
+      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#environment-variables",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "GITHUB_COPILOT_PROMPT_MODE_REPO_HOOKS",
+      "kind": "env",
+      "area": "plugins",
+      "valueType": "boolean",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Set to true to load repository hooks in prompt mode (-p). Repository hooks also load automatically when the folder is already trusted or COPILOT_ALLOW_ALL is set.",
+      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#environment-variables",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "GITHUB_COPILOT_PROMPT_MODE_WORKSPACE_MCP",
+      "kind": "env",
+      "area": "mcp",
+      "valueType": "boolean",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Set to true to load workspace MCP sources in prompt mode (-p). Disabled by default to prevent starting repository-controlled MCP servers without interactive trust.",
+      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#environment-variables",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "PLUGINS_DASHBOARD",
+      "kind": "env",
+      "area": "plugins",
+      "valueType": "string",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Set to false to disable the plugins dashboard opened by bare /plugin, /mcp, and /skills, and to disable the non-interactive copilot plugin/copilot plugins commands.",
+      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#environment-variables",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "USE_BUILTIN_RIPGREP",
+      "kind": "env",
+      "area": "tools",
+      "valueType": "boolean",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Set to false to use the system ripgrep instead of the bundled version.",
+      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#environment-variables",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "USE_TGREP",
+      "kind": "env",
+      "area": "network",
+      "valueType": "boolean",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Set to true to always use tgrep, a trigram-indexed search engine, even outside a Git repository or on a virtualized or network filesystem (for example, a VFS for Git checkout, or an SMB/9p mount), or false to always use ripgrep. When forced outside a Git repository, tgrep indexes the working directory itself, so avoid forcing it somewhere large such as your home directory. Windows cloud-sync folders (for example, OneDrive) always use ripgrep, even when this is set to true. When unset, Copilot CLI automatically switches from ripgrep to tgrep only inside a Git repository, on a non-virtualized filesystem, and once it reaches the file-count threshold set by TGREP_FILE_COUNT_THRESHOLD. Setting USE_TGREP=true bypasses this threshold entirely. USE_TGREP=false still disables tgrep.",
+      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#environment-variables",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "--acp",
+      "kind": "flag",
+      "area": "subagents",
+      "valueType": "boolean",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Start as Agent Client Protocol server.",
+      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#command-line-options",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "--add-dir",
+      "kind": "flag",
+      "area": "tools",
+      "valueType": "string",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Allow file access to a directory and load its .github/skills and .github/agents as trusted configurations (can be used multiple times). A relative path resolves against the session working directory (the --resume, --worktree, or -C directory), regardless of option order. The path must be an existing directory, a missing path or a regular file fails startup immediately with a flag-specific error, the same way in every mode.",
+      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#command-line-options",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "--add-github-mcp-tool",
+      "kind": "flag",
+      "area": "mcp",
+      "valueType": "string",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Add a tool to enable for the GitHub MCP server, instead of the default CLI subset (can be used multiple times). Use * for all tools.",
+      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#command-line-options",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "--add-github-mcp-toolset",
+      "kind": "flag",
+      "area": "mcp",
+      "valueType": "string",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Add a toolset to enable for the GitHub MCP server, instead of the default CLI subset (can be used multiple times). Use all for all toolsets.",
+      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#command-line-options",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "--allow-all",
+      "kind": "flag",
+      "area": "permissions",
+      "valueType": "boolean",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Enable all permissions (equivalent to --allow-all-tools --allow-all-paths --allow-all-urls).",
+      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#command-line-options",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "--allow-tool",
+      "kind": "flag",
+      "area": "permissions",
+      "valueType": "string",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Tools the CLI has permission to use. Will not prompt for permission. For multiple tools, use a quoted, comma-separated list. See Allowing and denying tool use.",
+      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#command-line-options",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "--allow-url",
+      "kind": "flag",
+      "area": "network",
+      "valueType": "string",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Allow access to specific URLs or domains. For multiple URLs, use a quoted, comma-separated list.",
+      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#command-line-options",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "--bash-env",
+      "kind": "flag",
+      "area": "bash",
+      "valueType": "boolean",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Enable BASH_ENV support for bash shells.",
+      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#command-line-options",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "--context",
+      "kind": "flag",
+      "area": "context",
+      "valueType": "string",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Set the context window tier for tiered-pricing models (overrides the persisted setting and is honored in fresh interactive sessions). Choices: \"default\", \"long\\_context\".",
+      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#command-line-options",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "--deny-tool",
+      "kind": "flag",
+      "area": "permissions",
+      "valueType": "string",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Tools the CLI does not have permission to use. Will not prompt for permission. For multiple tools, use a quoted, comma-separated list.",
+      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#command-line-options",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "--effort",
+      "kind": "flag",
+      "area": "thinking",
+      "valueType": "enum",
+      "defaultValue": null,
+      "allowed": ["low", "medium", "high", "xhigh", "max"],
+      "description": "Set the reasoning effort level (low, medium, high, xhigh, max). max is the highest-depth tier for Anthropic models. (alias: --reasoning-effort)",
+      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#command-line-options",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "--enable-memory",
+      "kind": "flag",
+      "area": "memory",
+      "valueType": "boolean",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Enable memory in prompt mode (disabled by default).",
+      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#command-line-options",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "--model",
+      "kind": "flag",
+      "area": "model",
+      "valueType": "string",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Set the AI model you want to use. Pass auto as the value to let Copilot pick the best available model automatically. See About Copilot auto model selection.",
+      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#command-line-options",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "--no-auto-update",
+      "kind": "flag",
+      "area": "updates",
+      "valueType": "boolean",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Disable downloading CLI updates automatically.",
+      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#command-line-options",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "--no-bash-env",
+      "kind": "flag",
+      "area": "bash",
+      "valueType": "boolean",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Disable BASH_ENV support for bash shells.",
+      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#command-line-options",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "--no-color",
+      "kind": "flag",
+      "area": "ui",
+      "valueType": "boolean",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Disable all color output.",
+      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#command-line-options",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "--no-sandbox",
+      "kind": "flag",
+      "area": "bash",
+      "valueType": "boolean",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Disable local sandboxing for this session only, without changing your saved sandbox setting. This option is ignored if an enterprise-managed policy has been configured to enforce sandboxing.",
+      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#command-line-options",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "--screen-reader",
+      "kind": "flag",
+      "area": "ui",
+      "valueType": "boolean",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Enable screen reader optimizations.",
+      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#command-line-options",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "--version",
+      "kind": "flag",
+      "area": "updates",
+      "valueType": "boolean",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Show version information. (alias: -v)",
+      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#command-line-options",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "compactPaste",
+      "kind": "setting",
+      "area": "context",
+      "valueType": "boolean",
+      "defaultValue": "true",
+      "allowed": [],
+      "description": "Collapse large pastes (more than 10 lines) into compact tokens.",
+      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference#user-settings-copilotsettingsjson",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "contextTier",
+      "kind": "setting",
+      "area": "context",
+      "valueType": "enum",
+      "defaultValue": null,
+      "allowed": ["default", "long_context"],
+      "description": "Pin the default context tier.",
+      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference#repository-settings-githubcopilotsettingsjson",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "effortLevel",
+      "kind": "setting",
+      "area": "thinking",
+      "valueType": "string",
+      "defaultValue": "medium",
+      "allowed": [],
+      "description": "Reasoning effort level for extended thinking: \"low\", \"medium\", \"high\", or \"xhigh\". Higher levels use more compute.",
+      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference#user-settings-copilotsettingsjson",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "model",
+      "kind": "setting",
+      "area": "model",
+      "valueType": "string",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "AI model to use. Set to \"auto\" to let Copilot pick the best available model automatically. Managed by the /model slash command.",
+      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference#user-settings-copilotsettingsjson",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "theme",
+      "kind": "setting",
+      "area": "ui",
+      "valueType": "enum",
+      "defaultValue": "github",
+      "allowed": ["default", "github", "dim", "high-contrast", "colorblind"],
+      "description": "Color palette for terminal output. Managed by the /settings and /theme slash commands. colorMode is a deprecated alias for this setting.",
+      "docUrl": "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference#user-settings-copilotsettingsjson",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    }
+  ],
+  "effective": [
+    {
+      "key": "model",
+      "value": "gpt-5",
+      "layer": "user",
+      "chain": [
+        {
+          "layer": "user",
+          "value": "gpt-5",
+          "file": "/Users/alex/.copilot/settings.json"
+        }
+      ]
+    },
+    {
+      "key": "theme",
+      "value": "dark",
+      "layer": "project-local",
+      "chain": [
+        {
+          "layer": "project-local",
+          "value": "dark",
+          "file": "/Users/alex/code/storefront/.github/copilot/settings.local.json"
+        },
+        {
+          "layer": "user",
+          "value": "light",
+          "file": "/Users/alex/.copilot/settings.json"
+        }
+      ]
+    },
+    {
+      "key": "env.COPILOT_ALLOW_ALL",
+      "value": "false",
+      "layer": "env",
+      "chain": [
+        {
+          "layer": "env",
+          "value": "false",
+          "file": null
+        }
+      ]
+    }
+  ],
+  "profiles": [
+    {
+      "id": "p-opus",
+      "name": "Opus, high effort",
+      "agent": "claude-code",
+      "model": "opus",
+      "effort": "high",
+      "permissionMode": "acceptEdits",
+      "env": {},
+      "extraArgs": ["--effort", "high"]
+    },
+    {
+      "id": "p-sonnet",
+      "name": "Sonnet, quick",
+      "agent": "claude-code",
+      "model": "sonnet",
+      "effort": "low",
+      "permissionMode": null,
+      "env": {
+        "MAX_THINKING_TOKENS": "8000"
+      },
+      "extraArgs": []
+    }
+  ],
+  "files": [
+    {
+      "layer": "project-local",
+      "file": "/Users/alex/code/storefront/.github/copilot/settings.local.json",
+      "exists": true,
+      "keys": 1,
+      "error": null
+    },
+    {
+      "layer": "project",
+      "file": "/Users/alex/code/storefront/.github/copilot/settings.json",
+      "exists": false,
+      "keys": 0,
+      "error": null
+    },
+    {
+      "layer": "user",
+      "file": "/Users/alex/.copilot/settings.json",
+      "exists": true,
+      "keys": 2,
+      "error": "/Users/alex/.copilot/settings.json has comments or trailing commas below its first lines, so it was left alone to keep them."
+    }
+  ],
+  "featureFlags": {}
+}

@@ -34,7 +34,14 @@ const REQUIRED: Readonly<Record<ViewId, Readonly<Record<string, FieldKind>>>> = 
     compactions: 'array',
   },
   context: { snapshot: 'nullable-object', sessions: 'array' },
-  knobs: { catalog: 'array', effective: 'array', profiles: 'array', featureFlags: 'object' },
+  knobs: {
+    knobAgents: 'array',
+    writableLayers: 'array',
+    catalog: 'array',
+    effective: 'array',
+    profiles: 'array',
+    featureFlags: 'object',
+  },
   launcher: {
     runs: 'array',
     profiles: 'array',

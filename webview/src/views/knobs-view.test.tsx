@@ -165,7 +165,7 @@ describe('KnobsView', () => {
     await userEvent.click(within(chain).getByRole('button', { name: 'Remove model from user' }));
     expect(api.actions()).toStrictEqual([
       { type: 'openFile', path: '/repo/.claude/settings.json' },
-      { type: 'setKnob', key: 'model', value: null, layer: 'user' },
+      { type: 'setKnob', key: 'model', value: null, layer: 'user', agent: 'claude-code' },
     ]);
     await expand('model');
     expect(screen.queryByRole('table', { name: 'Layers that set this key' })).toBeNull();
@@ -197,7 +197,13 @@ describe('KnobsView', () => {
     await userEvent.type(input, 'claude-haiku-4-5');
     await userEvent.click(model.getByRole('button', { name: 'Save' }));
     expect(api.actions()).toStrictEqual([
-      { type: 'setKnob', key: 'model', value: 'claude-haiku-4-5', layer: 'project-local' },
+      {
+        type: 'setKnob',
+        key: 'model',
+        value: 'claude-haiku-4-5',
+        layer: 'project-local',
+        agent: 'claude-code',
+      },
     ]);
   });
 
@@ -211,7 +217,13 @@ describe('KnobsView', () => {
       within(region('Thinking and effort')).getByRole('button', { name: 'Save' }),
     );
     expect(api.actions()).toStrictEqual([
-      { type: 'setKnob', key: 'alwaysThinkingEnabled', value: true, layer: 'user' },
+      {
+        type: 'setKnob',
+        key: 'alwaysThinkingEnabled',
+        value: true,
+        layer: 'user',
+        agent: 'claude-code',
+      },
     ]);
   });
 
@@ -227,7 +239,13 @@ describe('KnobsView', () => {
     await userEvent.type(input, '1234');
     await userEvent.click(bash.getByRole('button', { name: 'Save' }));
     expect(api.actions()).toStrictEqual([
-      { type: 'setKnob', key: 'BASH_MAX_OUTPUT_LENGTH', value: '1234', layer: 'user' },
+      {
+        type: 'setKnob',
+        key: 'BASH_MAX_OUTPUT_LENGTH',
+        value: '1234',
+        layer: 'user',
+        agent: 'claude-code',
+      },
     ]);
   });
 
@@ -243,7 +261,13 @@ describe('KnobsView', () => {
     await userEvent.selectOptions(select, 'plan');
     await userEvent.click(within(region('Permissions')).getByRole('button', { name: 'Save' }));
     expect(api.actions()).toStrictEqual([
-      { type: 'setKnob', key: 'permissions.defaultMode', value: 'plan', layer: 'user' },
+      {
+        type: 'setKnob',
+        key: 'permissions.defaultMode',
+        value: 'plan',
+        layer: 'user',
+        agent: 'claude-code',
+      },
     ]);
   });
 
@@ -259,7 +283,7 @@ describe('KnobsView', () => {
     expect(screen.queryByRole('alert')).toBeNull();
     await userEvent.click(within(region('Model and output')).getByRole('button', { name: 'Save' }));
     expect(api.actions()).toStrictEqual([
-      { type: 'setKnob', key: 'env', value: { DEBUG: '1' }, layer: 'user' },
+      { type: 'setKnob', key: 'env', value: { DEBUG: '1' }, layer: 'user', agent: 'claude-code' },
     ]);
   });
 
@@ -284,7 +308,13 @@ describe('KnobsView', () => {
     await userEvent.type(input, '/tmp, /data');
     await userEvent.click(within(region('Permissions')).getByRole('button', { name: 'Save' }));
     expect(api.actions()).toStrictEqual([
-      { type: 'setKnob', key: 'additionalDirectories', value: ['/tmp', '/data'], layer: 'user' },
+      {
+        type: 'setKnob',
+        key: 'additionalDirectories',
+        value: ['/tmp', '/data'],
+        layer: 'user',
+        agent: 'claude-code',
+      },
     ]);
   });
 
@@ -292,7 +322,9 @@ describe('KnobsView', () => {
     const { api } = renderOpen();
     await expand('model');
     await userEvent.click(screen.getByRole('button', { name: 'Docs for model' }));
-    expect(api.actions()).toStrictEqual([{ type: 'openKnobDocs', key: 'model', kind: 'setting' }]);
+    expect(api.actions()).toStrictEqual([
+      { type: 'openKnobDocs', key: 'model', kind: 'setting', agent: 'claude-code' },
+    ]);
   });
 
   it('adds a bare CLI flag to a profile and removes it from another', async () => {
@@ -351,7 +383,7 @@ describe('KnobsView', () => {
     });
     await userEvent.click(unlisted.getByRole('button', { name: 'Add env var' }));
     expect(api.actions()).toStrictEqual([
-      { type: 'setKnob', key: 'env.NEW_VAR', value: 'on', layer: 'project' },
+      { type: 'setKnob', key: 'env.NEW_VAR', value: 'on', layer: 'project', agent: 'claude-code' },
     ]);
     expect(name).toHaveProperty('value', '');
   });
@@ -363,7 +395,7 @@ describe('KnobsView', () => {
     expect(unlisted.queryByRole('button', { name: 'Docs for env.MY_VAR' })).toBeNull();
     await userEvent.click(unlisted.getByRole('button', { name: 'Remove env.MY_VAR from user' }));
     expect(api.actions()).toStrictEqual([
-      { type: 'setKnob', key: 'env.MY_VAR', value: null, layer: 'user' },
+      { type: 'setKnob', key: 'env.MY_VAR', value: null, layer: 'user', agent: 'claude-code' },
     ]);
   });
 

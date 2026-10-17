@@ -34,12 +34,12 @@ Checked against `git log` on 2026-10-17.
   the Fleet, terminal tabs, Launcher runs over app-server, hooks in
   `hooks.json` (once the user trusts them in `/hooks`), its notes as
   `developer_instructions` and OTel as `-c otel.*` for the sessions Overlord
-  starts, and its knobs catalog, library and sync part. The Knobs view still
-  shows Claude Code's knobs alone for both agents. Custom ACP agents (N4)
-  have not started.
+  starts, and its knobs catalog, library and sync part. The Knobs view has
+  an agent pick and saves through each agent's own writer. Custom ACP
+  agents (N4) have not started.
 - **Phase 3** (help, README, PLAN.md, package.json) is this round.
 
-Left: an agent pick in the Knobs view, Copilot's subagent hooks, and N4.
+Left: Copilot's subagent hooks, and N4.
 
 ## Connector check
 

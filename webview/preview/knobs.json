@@ -1,4 +1,9 @@
 {
+  "knobAgents": ["claude-code"],
+  "writableLayers": ["user", "project", "project-local"],
+  "envInSettings": true,
+  "settingsFile": "settings.json",
+  "instructionsFile": "CLAUDE.md",
   "catalog": [
     {
       "key": "CLAUDE_CODE_ALWAYS_ENABLE_EFFORT",

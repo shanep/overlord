@@ -1,0 +1,788 @@
+{
+  "agent": "codex",
+  "knobAgents": ["claude-code", "codex", "copilot"],
+  "writableLayers": ["user", "project"],
+  "envInSettings": false,
+  "settingsFile": "config.toml",
+  "instructionsFile": "AGENTS.md",
+  "catalog": [
+    {
+      "key": "model",
+      "kind": "setting",
+      "area": "model",
+      "valueType": "string",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Model to use (e.g., `gpt-6.1-sol`).",
+      "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "review_model",
+      "kind": "setting",
+      "area": "model",
+      "valueType": "string",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Optional model override used by `/review` (defaults to the current session model).",
+      "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "model_provider",
+      "kind": "setting",
+      "area": "model",
+      "valueType": "string",
+      "defaultValue": "openai",
+      "allowed": [],
+      "description": "Provider id from `model_providers` (default: `openai`).",
+      "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "openai_base_url",
+      "kind": "setting",
+      "area": "network",
+      "valueType": "string",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Base URL override for the built-in `openai` model provider.",
+      "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "model_context_window",
+      "kind": "setting",
+      "area": "context",
+      "valueType": "number",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Context window tokens available to the active model.",
+      "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "model_auto_compact_token_limit",
+      "kind": "setting",
+      "area": "context",
+      "valueType": "number",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Token threshold that triggers automatic history compaction (unset uses model defaults).",
+      "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "model_auto_compact_token_limit_scope",
+      "kind": "setting",
+      "area": "context",
+      "valueType": "enum",
+      "defaultValue": null,
+      "allowed": ["total", "body_after_prefix"],
+      "description": "Controls whether the auto-compaction threshold counts the full active context (`total`, the default) or only growth after the carried compaction-window prefix (`body_after_prefix`).",
+      "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "model_catalog_json",
+      "kind": "setting",
+      "area": "model",
+      "valueType": "string",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Optional path to a JSON model catalog loaded on startup. A selected `$CODEX_HOME/profile-name.config.toml` profile file can override this per profile.",
+      "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "oss_provider",
+      "kind": "setting",
+      "area": "auth",
+      "valueType": "enum",
+      "defaultValue": null,
+      "allowed": ["lmstudio", "ollama"],
+      "description": "Default local provider used when running with `--oss` (defaults to prompting if unset).",
+      "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "approval_policy",
+      "kind": "setting",
+      "area": "permissions",
+      "valueType": "json",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Controls when Codex pauses for approval before executing commands. You can also use `approval_policy = { granular = { ... } }` to allow or auto-reject specific prompt categories while keeping other prompts interactive. `untrusted` is unsupported, and `on-failure` is deprecated; use `on-request` for interactive runs or `never` for non-interactive runs.",
+      "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "approval_policy.granular.sandbox_approval",
+      "kind": "setting",
+      "area": "permissions",
+      "valueType": "boolean",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "When `true`, sandbox escalation approval prompts are allowed to surface.",
+      "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "approval_policy.granular.rules",
+      "kind": "setting",
+      "area": "permissions",
+      "valueType": "boolean",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "When `true`, approvals triggered by execpolicy `prompt` rules are allowed to surface.",
+      "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "approval_policy.granular.mcp_elicitations",
+      "kind": "setting",
+      "area": "permissions",
+      "valueType": "boolean",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "When `true`, MCP elicitation prompts are allowed to surface instead of being auto-rejected.",
+      "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "allow_login_shell",
+      "kind": "setting",
+      "area": "bash",
+      "valueType": "boolean",
+      "defaultValue": "true",
+      "allowed": [],
+      "description": "Allow shell-based tools to use login-shell semantics. Defaults to `true`; when `false`, `login = true` requests are rejected and omitted `login` defaults to non-login shells.",
+      "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "sandbox_mode",
+      "kind": "setting",
+      "area": "bash",
+      "valueType": "enum",
+      "defaultValue": null,
+      "allowed": ["read-only", "workspace-write", "danger-full-access"],
+      "description": "Sandbox policy for filesystem and network access during command execution.",
+      "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "sandbox_workspace_write.writable_roots",
+      "kind": "setting",
+      "area": "bash",
+      "valueType": "string[]",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Additional writable roots when `sandbox_mode = \"workspace-write\"`.",
+      "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "sandbox_workspace_write.network_access",
+      "kind": "setting",
+      "area": "bash",
+      "valueType": "boolean",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Allow outbound network access inside the workspace-write sandbox.",
+      "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "browser_use.allow_history_access",
+      "kind": "setting",
+      "area": "sessions",
+      "valueType": "boolean",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Set to `false` to restrict browser-history access. Managed requirements can enforce this restriction.",
+      "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "browser_use.default_origin_policy",
+      "kind": "setting",
+      "area": "policy",
+      "valueType": "json",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Fallback browser-origin restrictions. Supports `access`, `uploads`, `downloads`, and `full_cdp_access`, each set to `allow` or `deny`.",
+      "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "computer_use.default_app_access",
+      "kind": "setting",
+      "area": "tools",
+      "valueType": "enum",
+      "defaultValue": null,
+      "allowed": ["allow", "deny"],
+      "description": "Fallback native-app access policy for Computer Use. App-specific entries can supply a policy; local configuration cannot relax managed restrictions.",
+      "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "computer_use.macos.bundle_ids",
+      "kind": "setting",
+      "area": "tools",
+      "valueType": "json",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Native macOS app access keyed by bundle identifier.",
+      "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "computer_use.windows.aumids",
+      "kind": "setting",
+      "area": "tools",
+      "valueType": "json",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Packaged Windows app access keyed by Application User Model ID (AUMID).",
+      "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "notify",
+      "kind": "setting",
+      "area": "ui",
+      "valueType": "string[]",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Command invoked for notifications; receives a JSON payload from Codex.",
+      "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "check_for_update_on_startup",
+      "kind": "setting",
+      "area": "updates",
+      "valueType": "boolean",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Check for Codex updates on startup (set to false only when updates are centrally managed).",
+      "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "feedback.enabled",
+      "kind": "setting",
+      "area": "telemetry",
+      "valueType": "boolean",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Enable feedback submission via `/feedback` across local clients (default: true).",
+      "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "analytics.enabled",
+      "kind": "setting",
+      "area": "telemetry",
+      "valueType": "boolean",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Enable or disable analytics for this machine/profile. In Codex CLI, `false` also disables custom OTLP metrics exporters. When unset, the client default applies.",
+      "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "log_dir",
+      "kind": "setting",
+      "area": "telemetry",
+      "valueType": "string",
+      "defaultValue": "$CODEX_HOME/log",
+      "allowed": [],
+      "description": "Directory where Codex writes log files; defaults to `$CODEX_HOME/log`. Setting this explicitly also enables the opt-in plaintext TUI log, `codex-tui.log`, in that directory.",
+      "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "sqlite_home",
+      "kind": "setting",
+      "area": "subagents",
+      "valueType": "string",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Directory where Codex stores the SQLite-backed state DB used by agent jobs and other resumable runtime state.",
+      "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "service_tier",
+      "kind": "setting",
+      "area": "sessions",
+      "valueType": "string",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Preferred service tier for new turns. Use `fast` or another tier advertised by the active model; `fast` maps to the request value `priority`.",
+      "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "skills.config",
+      "kind": "setting",
+      "area": "plugins",
+      "valueType": "json",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Per-skill enablement overrides stored in config.toml.",
+      "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "apps._default.enabled",
+      "kind": "setting",
+      "area": "mcp",
+      "valueType": "boolean",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Default app enabled state for all apps unless overridden per app.",
+      "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "apps._default.destructive_enabled",
+      "kind": "setting",
+      "area": "mcp",
+      "valueType": "boolean",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Default allow/deny for app tools with `destructive_hint = true`.",
+      "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "apps._default.open_world_enabled",
+      "kind": "setting",
+      "area": "mcp",
+      "valueType": "boolean",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Default allow/deny for app tools with `open_world_hint = true`.",
+      "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "hooks",
+      "kind": "setting",
+      "area": "plugins",
+      "valueType": "json",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Lifecycle hooks configured inline in `config.toml`. Uses the same event schema as `hooks.json`; see the Hooks guide for examples and supported events.",
+      "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "agents",
+      "kind": "setting",
+      "area": "subagents",
+      "valueType": "json",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Multi-agent settings and custom role declarations. Scalar setting names are reserved and can't be used as custom role names.",
+      "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "agents.enabled",
+      "kind": "setting",
+      "area": "subagents",
+      "valueType": "boolean",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Enable or disable multi-agent tools (default: true).",
+      "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "agents.default_subagent_reasoning_effort",
+      "kind": "setting",
+      "area": "thinking",
+      "valueType": "string",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Default reasoning effort for spawned agents. An explicit spawn effort takes precedence.",
+      "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "memories.generate_memories",
+      "kind": "setting",
+      "area": "memory",
+      "valueType": "boolean",
+      "defaultValue": "true",
+      "allowed": [],
+      "description": "When `false`, newly created threads are not stored as memory-generation inputs. Defaults to `true`.",
+      "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "memories.use_memories",
+      "kind": "setting",
+      "area": "memory",
+      "valueType": "boolean",
+      "defaultValue": "true",
+      "allowed": [],
+      "description": "When `false`, Codex skips injecting existing memories into future sessions. Defaults to `true`.",
+      "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "memories.disable_on_external_context",
+      "kind": "setting",
+      "area": "memory",
+      "valueType": "boolean",
+      "defaultValue": "false",
+      "allowed": [],
+      "description": "When `true`, threads that use external context such as MCP tool calls, web search, or tool search are kept out of memory generation. Defaults to `false`. Legacy alias: `memories.no_memories_if_mcp_or_web_search`.",
+      "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "suppress_unstable_features_warning",
+      "kind": "setting",
+      "area": "other",
+      "valueType": "boolean",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Suppress the warning that appears when under-development feature flags are enabled.",
+      "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "model_reasoning_effort",
+      "kind": "setting",
+      "area": "thinking",
+      "valueType": "string",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Reasoning effort advertised by the selected model, such as `low`, `medium`, `high`, `xhigh`, `max`, or `ultra`. Available levels depend on the model and client.",
+      "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "plan_mode_reasoning_effort",
+      "kind": "setting",
+      "area": "thinking",
+      "valueType": "string",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Plan-mode-specific reasoning override using a level supported by the selected model. When unset, Plan mode uses its built-in preset default.",
+      "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "project_root_markers",
+      "kind": "setting",
+      "area": "other",
+      "valueType": "string[]",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "List of project root marker filenames; used when searching parent directories for the project root.",
+      "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "history.persistence",
+      "kind": "setting",
+      "area": "sessions",
+      "valueType": "enum",
+      "defaultValue": null,
+      "allowed": ["save-all", "none"],
+      "description": "Control whether Codex saves session transcripts to history.jsonl.",
+      "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "background_terminal_max_timeout",
+      "kind": "setting",
+      "area": "network",
+      "valueType": "number",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Maximum poll window in milliseconds for empty `write_stdin` polls (background terminal polling). Default: `300000` (5 minutes). Replaces the older `background_terminal_timeout` key.",
+      "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "file_opener",
+      "kind": "setting",
+      "area": "ui",
+      "valueType": "enum",
+      "defaultValue": "vscode",
+      "allowed": ["vscode", "vscode-insiders", "windsurf", "cursor", "none"],
+      "description": "URI scheme used to open citations from Codex output (default: `vscode`).",
+      "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "tui",
+      "kind": "setting",
+      "area": "ui",
+      "valueType": "json",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "TUI-specific options such as enabling inline desktop notifications.",
+      "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "windows_wsl_setup_acknowledged",
+      "kind": "setting",
+      "area": "other",
+      "valueType": "boolean",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Track Windows onboarding acknowledgement (Windows only).",
+      "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "chatgpt_base_url",
+      "kind": "setting",
+      "area": "network",
+      "valueType": "string",
+      "defaultValue": null,
+      "allowed": [],
+      "description": "Override the base URL used during the ChatGPT login flow.",
+      "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "cli_auth_credentials_store",
+      "kind": "setting",
+      "area": "auth",
+      "valueType": "enum",
+      "defaultValue": null,
+      "allowed": ["file", "keyring", "auto", "ephemeral"],
+      "description": "Control where the CLI stores cached credentials.",
+      "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "forced_login_method",
+      "kind": "setting",
+      "area": "auth",
+      "valueType": "enum",
+      "defaultValue": null,
+      "allowed": ["chatgpt", "api"],
+      "description": "Restrict Codex to a specific authentication method.",
+      "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "CODEX_NON_INTERACTIVE",
+      "kind": "env",
+      "area": "updates",
+      "valueType": "string",
+      "defaultValue": "false",
+      "allowed": [],
+      "description": "Set to `1`, `true`, or `yes` to skip installer prompts. Prompts use their default response, so use this for scripted installs and updates, not first-run setup.",
+      "docUrl": "https://learn.chatgpt.com/docs/config-file/environment-variables",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "CODEX_INSTALL_DIR",
+      "kind": "env",
+      "area": "updates",
+      "valueType": "string",
+      "defaultValue": "~/.local/bin on macOS/Linux; %LOCALAPPDATA%\\Programs\\OpenAI\\Codex\\bin on Windows",
+      "allowed": [],
+      "description": "Changes where the visible `codex` command is installed. The standalone package cache still lives under `CODEX_HOME/packages/standalone`.",
+      "docUrl": "https://learn.chatgpt.com/docs/config-file/environment-variables",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    },
+    {
+      "key": "--search",
+      "kind": "flag",
+      "area": "caching",
+      "valueType": "boolean",
+      "defaultValue": "false",
+      "allowed": [],
+      "description": "Enable live web search (sets `web_search = \"live\"` instead of the default `\"cached\"`).",
+      "docUrl": "https://learn.chatgpt.com/docs/developer-commands?surface=cli",
+      "appliesAt": "next-launch",
+      "managedOnly": false
+    }
+  ],
+  "effective": [
+    {
+      "key": "model",
+      "value": "gpt-5.1-codex",
+      "layer": "project",
+      "chain": [
+        {
+          "layer": "project",
+          "value": "gpt-5.1-codex",
+          "file": "/Users/alex/code/storefront/.codex/config.toml"
+        },
+        {
+          "layer": "user",
+          "value": "gpt-5",
+          "file": "/Users/alex/.codex/config.toml"
+        }
+      ]
+    },
+    {
+      "key": "model_reasoning_effort",
+      "value": "high",
+      "layer": "user",
+      "chain": [
+        {
+          "layer": "user",
+          "value": "high",
+          "file": "/Users/alex/.codex/config.toml"
+        }
+      ]
+    },
+    {
+      "key": "approval_policy",
+      "value": "on-request",
+      "layer": "user",
+      "chain": [
+        {
+          "layer": "user",
+          "value": "on-request",
+          "file": "/Users/alex/.codex/config.toml"
+        }
+      ]
+    },
+    {
+      "key": "sandbox_mode",
+      "value": "workspace-write",
+      "layer": "user",
+      "chain": [
+        {
+          "layer": "user",
+          "value": "workspace-write",
+          "file": "/Users/alex/.codex/config.toml"
+        }
+      ]
+    },
+    {
+      "key": "my_own_key",
+      "value": "x",
+      "layer": "user",
+      "chain": [
+        {
+          "layer": "user",
+          "value": "x",
+          "file": "/Users/alex/.codex/config.toml"
+        }
+      ]
+    }
+  ],
+  "profiles": [
+    {
+      "id": "p-opus",
+      "name": "Opus, high effort",
+      "agent": "claude-code",
+      "model": "opus",
+      "effort": "high",
+      "permissionMode": "acceptEdits",
+      "env": {},
+      "extraArgs": ["--effort", "high"]
+    },
+    {
+      "id": "p-sonnet",
+      "name": "Sonnet, quick",
+      "agent": "claude-code",
+      "model": "sonnet",
+      "effort": "low",
+      "permissionMode": null,
+      "env": {
+        "MAX_THINKING_TOKENS": "8000"
+      },
+      "extraArgs": []
+    },
+    {
+      "id": "codex-deep",
+      "name": "Codex, deep",
+      "agent": "codex",
+      "model": "gpt-5.1-codex",
+      "effort": "high",
+      "permissionMode": null,
+      "env": {},
+      "extraArgs": ["--search"]
+    }
+  ],
+  "files": [
+    {
+      "layer": "project",
+      "file": "/Users/alex/code/storefront/.codex/config.toml",
+      "exists": true,
+      "keys": 1,
+      "error": null
+    },
+    {
+      "layer": "user",
+      "file": "/Users/alex/.codex/config.toml",
+      "exists": true,
+      "keys": 4,
+      "error": null
+    }
+  ],
+  "featureFlags": {}
+}

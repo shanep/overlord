@@ -4,7 +4,7 @@
 import type { ReactElement } from 'react';
 import { useState } from 'react';
 
-import type { AgentInfo, ModeOption } from '../../../src/shared/agents.js';
+import type { AgentId, AgentInfo, ModeOption } from '../../../src/shared/agents.js';
 import { CLAUDE_CODE } from '../../../src/shared/agents.js';
 import type { LaunchProfile } from '../../../src/shared/model.js';
 import { findAgent, offeredAgents, useAgents } from '../agents.js';
@@ -58,11 +58,11 @@ export function fromDraft(
   };
 }
 
-export function blankProfile(id: string): LaunchProfile {
+export function blankProfile(id: string, agent: AgentId = CLAUDE_CODE): LaunchProfile {
   return {
     id,
     name: '',
-    agent: CLAUDE_CODE,
+    agent,
     model: null,
     effort: null,
     permissionMode: null,
@@ -211,6 +211,8 @@ function ProfileForm(props: {
 
 export function ProfilesEditor(props: {
   readonly profiles: readonly LaunchProfile[];
+  /** The agent a new profile starts with. Unset is Claude Code. */
+  readonly agent?: AgentId;
 }): ReactElement {
   const [added, setAdded] = useState<readonly LaunchProfile[]>([]);
   const known = new Set(props.profiles.map((profile) => profile.id));
@@ -223,7 +225,7 @@ export function ProfilesEditor(props: {
         <button
           type="button"
           onClick={() => {
-            setAdded([...added, blankProfile(`profile-${Date.now().toString(36)}`)]);
+            setAdded([...added, blankProfile(`profile-${Date.now().toString(36)}`, props.agent)]);
           }}
         >
           New profile

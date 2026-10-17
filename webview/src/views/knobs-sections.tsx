@@ -18,8 +18,9 @@ import { usePostAction } from '../vscode-context.js';
 
 import { KnobRow } from './knobs-editor.js';
 import { unlistedDefinition } from './knobs-match.js';
+import { useKnobsTarget } from './knobs-target.js';
 import type { AreaGroup, EditableLayer } from './knobs-values.js';
-import { EDITABLE_LAYERS, isEditableLayer } from './knobs-values.js';
+import { defaultLayer, isEditableLayer } from './knobs-values.js';
 
 function fileTone(file: SettingsFileSummary): Tone {
   if (file.error !== null) {
@@ -28,9 +29,21 @@ function fileTone(file: SettingsFileSummary): Tone {
   return file.exists ? 'good' : 'neutral';
 }
 
+/** The agent the view shows, in the words its text uses. */
+export interface KnobsWords {
+  /** The agent's full name, such as Codex CLI. */
+  readonly name: string;
+  /** Its short name, such as Codex. */
+  readonly short: string;
+  /** Its settings file, such as config.toml. */
+  readonly settingsFile: string;
+}
+
 export function SettingsFiles(props: {
   readonly files: readonly SettingsFileSummary[];
+  readonly words: KnobsWords;
 }): ReactElement {
+  const { words } = props;
   const post = usePostAction();
   return (
     <section className="section" aria-labelledby="files-heading">
@@ -38,10 +51,10 @@ export function SettingsFiles(props: {
         Settings files <span className="count">{String(props.files.length)}</span>
       </h2>
       <p className="muted">
-        Highest precedence first. Saving a key below writes the layer you pick and keeps the old
-        file as .bak.
+        Highest precedence first. Saving a key below changes only that key in the{' '}
+        {words.settingsFile} of the layer you pick and keeps the old file as .bak.
       </p>
-      <CardGrid label="Settings files Claude Code reads">
+      <CardGrid label={`Settings files ${words.name} reads`}>
         {props.files.map((file) => (
           <Card key={file.layer}>
             <div className="card-head">
@@ -136,9 +149,10 @@ const ENV_NAME = /^[A-Za-z_]\w*$/u;
 
 function AddEnvVariable(): ReactElement {
   const post = usePostAction();
+  const target = useKnobsTarget();
   const [name, setName] = useState('');
   const [value, setValue] = useState('');
-  const [layer, setLayer] = useState<EditableLayer>('user');
+  const [layer, setLayer] = useState<EditableLayer>(() => defaultLayer(undefined, target.layers));
   const trimmed = name.trim();
   const valid = ENV_NAME.test(trimmed);
   return (
@@ -175,7 +189,7 @@ function AddEnvVariable(): ReactElement {
             }
           }}
         >
-          {EDITABLE_LAYERS.map((option) => (
+          {target.layers.map((option) => (
             <option key={option} value={option}>
               {option}
             </option>
@@ -187,7 +201,7 @@ function AddEnvVariable(): ReactElement {
         className="primary"
         disabled={!valid}
         onClick={() => {
-          post({ type: 'setKnob', key: `env.${trimmed}`, value, layer });
+          post({ type: 'setKnob', key: `env.${trimmed}`, value, layer, agent: target.agent });
           setName('');
           setValue('');
         }}
@@ -206,8 +220,11 @@ function AddEnvVariable(): ReactElement {
 export function UnlistedSection(props: {
   readonly values: readonly EffectiveValue[];
   readonly rows: RowProps;
+  readonly words: KnobsWords;
+  /** False for an agent whose settings cannot set env vars, so there is no form to add one. */
+  readonly envInSettings: boolean;
 }): ReactElement {
-  const { values, rows } = props;
+  const { values, rows, words } = props;
   return (
     <section className="card knob-area" aria-labelledby="unlisted-heading">
       <div className="card-head">
@@ -216,11 +233,20 @@ export function UnlistedSection(props: {
         </h2>
         <span className="chip">{plural(values.length, 'key')}</span>
       </div>
-      <p className="card-text knob-summary">
-        Keys your settings set that the docs catalog does not list, such as your own env vars. Add
-        one here and every session gets it.
-      </p>
-      <AddEnvVariable />
+      {props.envInSettings ? (
+        <>
+          <p className="card-text knob-summary">
+            Keys your settings set that the docs catalog does not list, such as your own env vars.
+            Add one here and every session gets it.
+          </p>
+          <AddEnvVariable />
+        </>
+      ) : (
+        <p className="card-text knob-summary">
+          Keys your {words.settingsFile} sets that the docs catalog does not list. {words.short}{' '}
+          reads env vars only from the shell, so set your own there or in a launch profile.
+        </p>
+      )}
       {values.length === 0 ? null : (
         <ul className="knob-list">
           {values.map((value) => (

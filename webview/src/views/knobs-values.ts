@@ -1,7 +1,8 @@
 // Pure helpers for the knobs view: grouping, display text, and parsing what
 // the user typed into a value of the knob's type.
 
-import { isKnobArea, KNOB_AREA_INFO, KNOB_AREAS } from '../../../src/shared/knob-areas.js';
+import type { KnobAreaInfo } from '../../../src/shared/knob-areas.js';
+import { isKnobArea, KNOB_AREAS, knobAreaInfo } from '../../../src/shared/knob-areas.js';
 import type {
   AppliesAt,
   EffectiveValue,
@@ -9,10 +10,11 @@ import type {
   KnobKind,
   KnobValueType,
 } from '../../../src/shared/model.js';
+import type { EditableLayer } from '../../../src/shared/protocol.js';
 import { formatValue } from '../format.js';
 import { isStringArray } from '../guards.js';
 
-export type EditableLayer = 'user' | 'project' | 'project-local';
+export type { EditableLayer } from '../../../src/shared/protocol.js';
 
 export const EDITABLE_LAYERS: readonly EditableLayer[] = ['user', 'project', 'project-local'];
 
@@ -141,15 +143,24 @@ export function startTextAt(
   return startText(definition, { ...effective, value: link.value });
 }
 
-/** The layer the editor starts on: the one that sets the value now, when Overlord can write it. */
-export function defaultLayer(effective?: EffectiveValue): EditableLayer {
+/**
+ * The layer the editor starts on: the one that sets the value now, when
+ * Overlord can write it, else user, else the first layer the agent has.
+ */
+export function defaultLayer(
+  effective?: EffectiveValue,
+  layers: readonly EditableLayer[] = EDITABLE_LAYERS,
+): EditableLayer {
   const layer = effective?.layer;
-  return layer !== undefined && isEditableLayer(layer) ? layer : 'user';
+  if (layer !== undefined && isEditableLayer(layer) && layers.includes(layer)) {
+    return layer;
+  }
+  return layers.includes('user') ? 'user' : (layers[0] ?? 'user');
 }
 
 /**
  * The value to write for a knob. Env vars are always written as strings, since
- * Claude Code passes them to the process environment, but are still checked
+ * the agent passes them to the process environment, but are still checked
  * against their documented type.
  */
 export function parseKnobValue(definition: KnobDefinition, text: string): ParseResult {
@@ -221,18 +232,29 @@ export function isSet(entry: KnobEntry): boolean {
   return entry.effective !== undefined || entry.profiles.length > 0;
 }
 
-function areaInfo(area: string): { readonly title: string; readonly summary: string } {
-  return isKnobArea(area) ? KNOB_AREA_INFO[area] : { title: area, summary: '' };
+/** What the view calls each area: Claude Code's words, or another agent's. */
+export type AreaNames = (area: string) => KnobAreaInfo;
+
+/** The area names for an agent. Null means Claude Code; another agent passes its instruction file. */
+export function areaNames(instructionsFile: string | null): AreaNames {
+  return (area) =>
+    isKnobArea(area) ? knobAreaInfo(area, instructionsFile) : { title: area, summary: '' };
 }
 
+const CLAUDE_AREAS = areaNames(null);
+
 /** True when every word of `query` appears in the key, description or area, any case. */
-export function matchesQuery(definition: KnobDefinition, query: string): boolean {
+export function matchesQuery(
+  definition: KnobDefinition,
+  query: string,
+  names: AreaNames = CLAUDE_AREAS,
+): boolean {
   const words = query.trim().toLowerCase().split(/\s+/u);
   const haystack = [
     definition.key,
     definition.description,
     definition.area,
-    areaInfo(definition.area).title,
+    names(definition.area).title,
   ]
     .join(' ')
     .toLowerCase();
@@ -246,13 +268,13 @@ function compareEntries(left: KnobEntry, right: KnobEntry): number {
   return kind === 0 ? left.definition.key.localeCompare(right.definition.key) : kind;
 }
 
-function keep(entry: KnobEntry, filter: KnobFilter): boolean {
+function keep(entry: KnobEntry, filter: KnobFilter, names: AreaNames): boolean {
   const { definition } = entry;
   return (
     (filter.kind === 'all' || definition.kind === filter.kind) &&
     (filter.showRetired || !isRetired(definition) || isSet(entry)) &&
     (!filter.onlySet || isSet(entry)) &&
-    matchesQuery(definition, filter.query)
+    matchesQuery(definition, filter.query, names)
   );
 }
 
@@ -261,10 +283,14 @@ function areaRank(area: string): number {
 }
 
 /** Entries that pass the filter, grouped by area in the catalog's area order. */
-export function groupEntries(entries: readonly KnobEntry[], filter: KnobFilter): AreaGroup[] {
+export function groupEntries(
+  entries: readonly KnobEntry[],
+  filter: KnobFilter,
+  names: AreaNames = CLAUDE_AREAS,
+): AreaGroup[] {
   const groups = new Map<string, KnobEntry[]>();
   for (const entry of entries) {
-    if (keep(entry, filter)) {
+    if (keep(entry, filter, names)) {
       const list = groups.get(entry.definition.area) ?? [];
       list.push(entry);
       groups.set(entry.definition.area, list);
@@ -274,7 +300,7 @@ export function groupEntries(entries: readonly KnobEntry[], filter: KnobFilter):
     .toSorted(([left], [right]) => areaRank(left) - areaRank(right) || left.localeCompare(right))
     .map(([area, list]) => ({
       area,
-      ...areaInfo(area),
+      ...names(area),
       entries: list.toSorted(compareEntries),
       setCount: list.filter((entry) => isSet(entry)).length,
     }));

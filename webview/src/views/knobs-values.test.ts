@@ -6,6 +6,7 @@ import { knobDefinitions, knobsState } from '../../test/fixtures-context.js';
 import { knobEntries } from './knobs-match.js';
 import type { AreaGroup, KnobFilter } from './knobs-values.js';
 import {
+  areaNames,
   defaultLayer,
   displayValue,
   editorText,
@@ -245,6 +246,10 @@ describe('editing helpers', () => {
     expect(defaultLayer({ ...effective(1), layer: 'project-local' })).toBe('project-local');
     expect(defaultLayer({ ...effective(1), layer: 'managed' })).toBe('user');
     expect(defaultLayer({ ...effective(1), layer: 'env' })).toBe('user');
+    expect(defaultLayer({ ...effective(1), layer: 'project-local' }, ['user', 'project'])).toBe(
+      'user',
+    );
+    expect(defaultLayer(undefined, ['project'])).toBe('project');
   });
 
   it('writes env values as checked strings and settings as typed values', () => {
@@ -296,5 +301,20 @@ describe('guards', () => {
   it('knows editable layers', () => {
     expect(isEditableLayer('project-local')).toBe(true);
     expect(isEditableLayer('managed')).toBe(false);
+  });
+});
+
+describe('areaNames', () => {
+  it("keeps Claude Code's words and gives another agent its own", () => {
+    expect(areaNames(null)('memory').title).toBe('Memory and CLAUDE.md');
+    expect(areaNames(null)('auth').summary).toContain('Bedrock');
+    const copilot = areaNames('.github/copilot-instructions.md');
+    expect(copilot('memory')).toStrictEqual({
+      title: 'Memory and copilot-instructions.md',
+      summary: 'Memory and the copilot-instructions.md files it reads.',
+    });
+    expect(copilot('auth').summary).not.toContain('Bedrock');
+    expect(copilot('network')).toStrictEqual(areaNames(null)('network'));
+    expect(copilot('custom')).toStrictEqual({ title: 'custom', summary: '' });
   });
 });

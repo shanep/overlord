@@ -73,6 +73,40 @@ export const KNOB_AREA_INFO: Readonly<Record<KnobArea, KnobAreaInfo>> = {
   other: { title: 'Other', summary: 'Keys that fit nowhere else.' },
 };
 
+/**
+ * The summaries above name Claude Code's own keys (CLAUDE.md, Bedrock, print
+ * mode). Another agent's Knobs view uses these words instead, and names its
+ * own instruction file in the memory area.
+ */
+const OTHER_AGENT_AREA_INFO: Partial<Record<KnobArea, KnobAreaInfo>> = {
+  thinking: { title: 'Thinking and effort', summary: 'Reasoning effort and how much of it shows.' },
+  tools: {
+    title: 'Built-in tools',
+    summary: 'Web search, file edits and the other tools it runs.',
+  },
+  mcp: { title: 'MCP servers', summary: 'MCP servers, timeouts and tool approval.' },
+  subagents: { title: 'Subagents and worktrees', summary: 'Subagents and worktrees.' },
+  sessions: { title: 'Sessions and scripting', summary: 'Resume, history and scripted runs.' },
+  git: { title: 'Git and attribution', summary: 'Commit and pull request attribution.' },
+  auth: { title: 'Accounts and providers', summary: 'API keys, login and model providers.' },
+};
+
+/**
+ * An area's title and summary for one agent. Null instructions mean Claude
+ * Code, whose words the table above uses. Another agent passes its
+ * instruction file, such as AGENTS.md.
+ */
+export function knobAreaInfo(area: KnobArea, instructionsFile: string | null): KnobAreaInfo {
+  if (instructionsFile === null) {
+    return KNOB_AREA_INFO[area];
+  }
+  if (area === 'memory') {
+    const file = instructionsFile.split('/').at(-1) ?? instructionsFile;
+    return { title: `Memory and ${file}`, summary: `Memory and the ${file} files it reads.` };
+  }
+  return OTHER_AGENT_AREA_INFO[area] ?? KNOB_AREA_INFO[area];
+}
+
 export const KNOB_AREAS: readonly KnobArea[] = [
   'model',
   'thinking',

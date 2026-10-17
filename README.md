@@ -138,7 +138,9 @@ skipped with a warning.
   like Permissions, Built-in tools and Sessions, with the effective value and which layer set
   it. You can set or remove a key at the user, project or local layer, add your own env vars,
   put CLI flags on a launch profile, and open each key's docs page. Filters narrow it to one
-  kind or to only what is set.
+  kind or to only what is set. Copilot and Codex have their own catalogs, and a pick in the
+  header switches agents. Copilot keeps the comments at the top of its JSONC settings, and
+  Codex changes only the one key in `config.toml`, with a `.bak` copy.
 - **Launcher**: run many prompts at once, across profiles, each in its own git worktree, with one
   permission inbox and auto-approve rules. Claude Code runs through the Agent SDK and Copilot
   over ACP (`copilot --acp`), and each profile picks its agent. Always allow on a pending request writes the rule for
