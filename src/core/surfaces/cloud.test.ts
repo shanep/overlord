@@ -33,7 +33,7 @@ const REPLY = {
       updated_at: '2026-10-09T06:19:12.710550Z',
       session_context: {
         cwd: '/home/user/wt-apps',
-        sources: [{ type: 'git_repository', url: 'https://github.com/foundationcode/wt-apps' }],
+        sources: [{ type: 'git_repository', url: 'https://github.com/acme/wt-apps' }],
       },
     },
     {
@@ -82,7 +82,7 @@ function deps(overrides: Partial<CloudDeps> = {}): CloudDeps {
 
 describe('github repos', () => {
   it('reads owner and name from https and ssh URLs', () => {
-    expect(githubRepo('https://github.com/Foundationcode/wt-apps')).toBe('foundationcode/wt-apps');
+    expect(githubRepo('https://github.com/Acme/wt-apps')).toBe('acme/wt-apps');
     expect(githubRepo('https://github.com/shanep/overlord.git')).toBe('shanep/overlord');
     expect(githubRepo('git@github.com:shanep/overlord.git')).toBe('shanep/overlord');
     expect(githubRepo('https://gitlab.com/a/b')).toBeNull();
@@ -90,16 +90,15 @@ describe('github repos', () => {
 
   it('maps repos to the checkouts other sessions ran in, skipping worktrees', async () => {
     const read = files({
-      '/w/wt-apps/.git/config':
-        '[remote "origin"]\n\turl = https://github.com/foundationcode/wt-apps.git\n',
+      '/w/wt-apps/.git/config': '[remote "origin"]\n\turl = https://github.com/acme/wt-apps.git\n',
       '/w/other-wt-apps/.git/config':
-        '[remote "origin"]\n\turl = git@github.com:foundationcode/wt-apps.git\n',
+        '[remote "origin"]\n\turl = git@github.com:acme/wt-apps.git\n',
     });
     const map = await checkoutsByRepo(
       ['/w/wt-apps', '/w/wt-apps', '/w/tree', '/w/other-wt-apps'],
       read,
     );
-    expect([...map]).toStrictEqual([['foundationcode/wt-apps', '/w/wt-apps']]);
+    expect([...map]).toStrictEqual([['acme/wt-apps', '/w/wt-apps']]);
   });
 });
 
@@ -112,7 +111,7 @@ describe('cloud replies', () => {
         status: 'idle',
         createdAt: Date.parse('2026-10-09T05:00:00Z'),
         updatedAt: Date.parse('2026-10-09T06:19:12.710Z'),
-        repo: 'foundationcode/wt-apps',
+        repo: 'acme/wt-apps',
       },
       {
         id: 'session_01Nh5d',

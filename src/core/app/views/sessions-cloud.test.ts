@@ -26,7 +26,7 @@ const REPLY = {
       session_status: 'idle',
       updated_at: new Date(NOW).toISOString(),
       session_context: {
-        sources: [{ type: 'git_repository', url: 'https://github.com/foundationcode/wt-apps' }],
+        sources: [{ type: 'git_repository', url: 'https://github.com/acme/wt-apps' }],
       },
     },
     {
@@ -50,8 +50,7 @@ describe('cloud sessions in the sessions view', () => {
       [path.join(env.paths.configDir, '.credentials.json')]: JSON.stringify({
         claudeAiOauth: { accessToken: 'token', expiresAt: NOW + 60_000 },
       }),
-      '/w/wt-apps/.git/config':
-        '[remote "origin"]\n\turl = git@github.com:foundationcode/wt-apps.git\n',
+      '/w/wt-apps/.git/config': '[remote "origin"]\n\turl = git@github.com:acme/wt-apps.git\n',
     };
     let status = 200;
     const cloudDeps: CloudDeps = {
