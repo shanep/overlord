@@ -261,6 +261,8 @@ export class Launcher {
         ...settings,
         ...routed,
         agent: adapter.id,
+        // An agent shows it has a price table by pricing its own default model.
+        priced: adapter.models.price(adapter.models.defaultModel) !== null,
         cwd: lease?.path ?? spec.cwd,
         title: spec.label,
         executablePath: this.deps.executablePath?.(adapter.id, baseEnv) ?? null,

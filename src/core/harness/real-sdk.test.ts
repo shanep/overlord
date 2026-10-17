@@ -98,6 +98,7 @@ describe('real SDK against the fake Claude binary', () => {
       model: 'claude-fake-1',
       effort: null,
       permissionMode: null,
+      priced: true,
       env: mergeEnv(process.env, {
         FAKE_CLAUDE_SCENARIO: scenario(name),
         FAKE_CLAUDE_RECORD: path.join(dir, 'record.json'),

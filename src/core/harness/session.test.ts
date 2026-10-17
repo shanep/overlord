@@ -27,6 +27,7 @@ const CONFIG: SessionConfig = {
   model: 'opus',
   effort: 'high',
   permissionMode: 'manual',
+  priced: true,
   env: { PATH: '/bin' },
   extraArgs: { debug: null },
   maxBudgetUsd: 4,

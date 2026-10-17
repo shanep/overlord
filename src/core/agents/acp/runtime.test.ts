@@ -302,6 +302,7 @@ describe('acpRuntime with the recorded Copilot session', () => {
           model: null,
           effort: null,
           permissionMode: 'agent',
+          priced: false,
           env: {},
           extraArgs: {},
           maxBudgetUsd: null,

@@ -46,6 +46,7 @@ function makeMapper(): Harness {
     model: 'opus',
     effort: 'high',
     permissionMode: 'default',
+    priced: true,
     now: (): number => clock,
   });
   return {

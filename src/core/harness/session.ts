@@ -40,6 +40,8 @@ export interface SessionConfig {
   readonly model: string | null;
   readonly effort: string | null;
   readonly permissionMode: string | null;
+  /** False when the agent has no prices, so the cost starts unknown and not at $0. */
+  readonly priced: boolean;
   /** The full child environment (already merged onto process.env). */
   readonly env: Readonly<Record<string, string>>;
   readonly extraArgs: Readonly<Record<string, string | null>>;
@@ -227,6 +229,7 @@ export class AgentSession {
       model: this.config.model,
       effort: this.config.effort,
       permissionMode: this.config.permissionMode,
+      priced: this.config.priced,
       now: this.now,
     });
     this.reducer = reducer;

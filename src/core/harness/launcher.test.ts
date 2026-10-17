@@ -590,4 +590,29 @@ describe('Launcher agents', () => {
       result: 'late',
     });
   });
+
+  it('starts a session of an agent with no prices at an unknown cost', async () => {
+    const unpriced: AgentAdapter = {
+      ...lateAgent(),
+      models: { ...claudeCode.models, price: () => null },
+    };
+    const bus = new EventBus();
+    const costs: (number | null)[] = [];
+    bus.on('session.upserted', (summary) => costs.push(summary.costUsd));
+    const { launcher } = setup(1, { agents: new AgentRegistry([unpriced]), bus });
+    launcher.launch([spec('go', { profileId: 'late' })], [{ ...profile('late'), effort: null }]);
+    await launcher.idle();
+    expect(costs.length).toBeGreaterThan(0);
+    expect(costs.every((cost) => cost === null)).toBe(true);
+  });
+
+  it('starts a session of an agent with prices at $0', async () => {
+    const bus = new EventBus();
+    const costs: (number | null)[] = [];
+    bus.on('session.upserted', (summary) => costs.push(summary.costUsd));
+    const { launcher } = setup(1, { agents: new AgentRegistry([lateAgent()]), bus });
+    launcher.launch([spec('go', { profileId: 'late' })], [{ ...profile('late'), effort: null }]);
+    await launcher.idle();
+    expect(costs[0]).toBe(0);
+  });
 });

@@ -25,6 +25,8 @@ export interface MapperConfig {
   readonly model: string | null;
   readonly effort: string | null;
   readonly permissionMode: string | null;
+  /** False when the agent has no prices, so the cost stays unknown until the agent reports one. */
+  readonly priced: boolean;
   readonly now: () => number;
 }
 
@@ -49,7 +51,7 @@ export function initialSummary(config: MapperConfig, at: number): SessionSummary
     startedAt: at,
     updatedAt: at,
     usage: ZERO_USAGE,
-    costUsd: 0,
+    costUsd: config.priced ? 0 : null,
     model: config.model,
     effort: config.effort,
     permissionMode: config.permissionMode,
