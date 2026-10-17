@@ -10,7 +10,7 @@ import path from 'node:path';
 import { parse } from 'smol-toml';
 
 import { isRecord } from '../../connectors/mcp-files.js';
-import type { SyncedMcpServer, SyncFacet } from '../types.js';
+import type { SyncedMcpServer, SyncFacet } from '../sync-types.js';
 
 import { codexHome } from './mcp.js';
 

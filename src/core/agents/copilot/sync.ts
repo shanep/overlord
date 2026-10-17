@@ -6,7 +6,7 @@
 import path from 'node:path';
 
 import { isRecord, readJsonFile } from '../../connectors/mcp-files.js';
-import type { SyncedMcpServer, SyncFacet } from '../types.js';
+import type { SyncedMcpServer, SyncFacet } from '../sync-types.js';
 
 import { copilotHome } from './mcp.js';
 

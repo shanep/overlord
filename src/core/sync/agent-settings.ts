@@ -7,7 +7,7 @@
 
 import { parse } from 'smol-toml';
 
-import type { SyncSettings } from '../agents/types.js';
+import type { SyncSettings } from '../agents/sync-types.js';
 import { readOptional, resolveLinkTarget, writeFileAtomic } from '../knobs/atomic-file.js';
 import type { JsonValue } from '../knobs/json.js';
 import {

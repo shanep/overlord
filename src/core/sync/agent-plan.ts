@@ -5,7 +5,8 @@
 import path from 'node:path';
 
 import type { AgentId } from '../../shared/agents.js';
-import type { AgentAdapter, ShellEnv, SyncFacet } from '../agents/types.js';
+import type { SyncFacet } from '../agents/sync-types.js';
+import type { AgentAdapter, ShellEnv } from '../agents/types.js';
 
 import type { Action } from './actions.js';
 import { readAgentManifest, type AgentManifest } from './agent-manifest.js';
