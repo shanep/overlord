@@ -175,13 +175,6 @@ const CONVERTERS: Readonly<Record<string, Converter>> = {
         title: value.title ?? null,
       }),
     ),
-  preCompact: (payload, base) =>
-    parsed(z.looseObject({ trigger: z.string() }), payload, (value) => ({
-      ...base,
-      kind: 'compaction',
-      phase: 'before',
-      trigger: value.trigger,
-    })),
 };
 
 /** The event's name: the relay's --event flag, else the hookName a permissionRequest payload has. */

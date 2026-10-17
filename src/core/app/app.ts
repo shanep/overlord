@@ -252,11 +252,7 @@ export class OverlordApp {
     this.cleanups.push(store.onChange(notify), launcher.onChange(notify), launched.track(launcher));
     const coordinator = createCoordinator(this.rt);
     const launchCheck = createLaunchChecker(this.rt);
-    this.cleanups.push(
-      this.rt.worktrees.onHeld((entry) => {
-        launchCheck.prime(entry);
-      }),
-    );
+    this.cleanups.push(this.rt.worktrees.onHeld(launchCheck.prime.bind(launchCheck)));
     this.sources = new Sources({
       paths: this.paths,
       env,
@@ -286,6 +282,7 @@ export class OverlordApp {
       sync: async (): Promise<void> => this.sources.sync(),
       observerMode: (): boolean => this.sources.observerMode,
       errors: (): readonly AppError[] => this.errors.list(),
+      env,
     });
     this.sync = new SyncCommands(this.rt);
     this.configSync = new ConfigSync(this.rt);

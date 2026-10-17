@@ -32,7 +32,7 @@ export interface SetupDeps {
   readonly sync: () => Promise<void>;
   readonly observerMode: () => boolean;
   readonly errors: () => readonly AppError[];
-  /** Where to look for COPILOT_HOME. Left out, Copilot's folder is ~/.copilot. */
+  /** Where to look for COPILOT_HOME, the same env Sources reads. Left out, Copilot's folder is ~/.copilot. */
   readonly env?: ShellEnv;
 }
 
