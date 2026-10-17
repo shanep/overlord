@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+<defs><radialGradient id="iiris" cx="0.42" cy="0.38" r="0.7"><stop offset="0" stop-color="#FFE7B8"/><stop offset="0.35" stop-color="#F7A25E"/><stop offset="0.75" stop-color="#E0603A"/><stop offset="1" stop-color="#9E2E26"/></radialGradient>
+<radialGradient id="inode" cx="0.4" cy="0.35" r="0.75"><stop offset="0" stop-color="#FFFFFF"/><stop offset="0.45" stop-color="#C9D2FF"/><stop offset="1" stop-color="#7C86F2"/></radialGradient>
+<linearGradient id="iorbit" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#AAB3FF" stop-opacity="0.85"/><stop offset="1" stop-color="#6E78E6" stop-opacity="0.45"/></linearGradient>
+<filter id="iglow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="7"/></filter>
+<filter id="isoft" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="2.4"/></filter>
+<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#252A52"/><stop offset="1" stop-color="#0B0D1A"/></linearGradient>
+<linearGradient id="rim" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0.18"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0.02"/></linearGradient>
+<clipPath id="tile"><rect x="4" y="4" width="120" height="120" rx="27"/></clipPath>
+</defs>
+<rect x="4" y="4" width="120" height="120" rx="27" fill="url(#bg)"/>
+<g clip-path="url(#tile)"><circle cx="64" cy="64" r="30.74" fill="#FF7A3D" opacity="0.3" filter="url(#iglow)"/>
+<path d="M97.234 46.414A37.6 37.6 0 0 1 87.208 93.583M62.613 101.574A37.6 37.6 0 0 1 26.776 69.307M32.153 44.011A37.6 37.6 0 0 1 78.016 29.11" fill="none" stroke="url(#iorbit)" stroke-width="6" stroke-linecap="round"/>
+<circle cx="89.159" cy="36.058" r="11.7" fill="#8C96FF" opacity="0.55" filter="url(#isoft)"/><circle cx="89.159" cy="36.058" r="7.8" fill="url(#inode)"/><circle cx="75.619" cy="99.76" r="11.7" fill="#8C96FF" opacity="0.55" filter="url(#isoft)"/><circle cx="75.619" cy="99.76" r="7.8" fill="url(#inode)"/><circle cx="27.222" cy="56.183" r="11.7" fill="#8C96FF" opacity="0.55" filter="url(#isoft)"/><circle cx="27.222" cy="56.183" r="7.8" fill="url(#inode)"/>
+<circle cx="64" cy="64" r="21.2" fill="url(#iiris)"/>
+<circle cx="64" cy="64" r="20.2" fill="none" stroke="#5A1A1A" stroke-opacity="0.45" stroke-width="2"/>
+<path d="M64 49.2Q73.2 64 64 78.8Q54.8 64 64 49.2Z" fill="#0C0E1C"/>
+<ellipse cx="55.6" cy="54.4" rx="4.4" ry="2.8" transform="rotate(-35 55.6 54.4)" fill="#FFFFFF" opacity="0.7"/></g>
+<rect x="4.5" y="4.5" width="119" height="119" rx="26.5" fill="none" stroke="url(#rim)"/>
+</svg>

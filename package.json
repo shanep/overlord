@@ -6,6 +6,11 @@
   "publisher": "shanep",
   "license": "MIT",
   "author": "Shane Panter",
+  "icon": "media/icon.png",
+  "galleryBanner": {
+    "color": "#161A33",
+    "theme": "dark"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/shanep/overlord.git"

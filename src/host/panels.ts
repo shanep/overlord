@@ -94,7 +94,11 @@ export class PanelManager implements vscode.Disposable {
       },
       { enableScripts: true, retainContextWhenHidden: true, localResourceRoots: [webviewRoot] },
     );
-    panel.iconPath = vscode.Uri.joinPath(this.extensionUri, 'media', 'overlord.svg');
+    // A tab draws its icon as an image, so currentColor would be black on a dark tab.
+    panel.iconPath = {
+      light: vscode.Uri.joinPath(this.extensionUri, 'media', 'overlord-light.svg'),
+      dark: vscode.Uri.joinPath(this.extensionUri, 'media', 'overlord-dark.svg'),
+    };
     const entry: OpenPanel = { panel, params, ready: false };
     this.panels.set(key, entry);
     panel.webview.html = buildWebviewHtml({

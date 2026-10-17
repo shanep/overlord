@@ -1,5 +1,7 @@
 # Overlord
 
+![Overlord: htop for your Claude Code agents](media/banner.png)
+
 SkyNet version 1.0, let it begin.
 
 Overlord is a VS Code extension that works like htop for Claude Code. It shows every running
