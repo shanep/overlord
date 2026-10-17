@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
 import { describe, expect, it } from 'vitest';
@@ -74,6 +74,18 @@ describe('plans in the app', () => {
     expect(only(planList(app.runtime)).state).toBe('stopped');
     await app.dispatch({ type: 'discardPlan', planId: draft.id }, {});
     expect(planList(app.runtime)).toStrictEqual([]);
+  });
+
+  it('reports a plans file it cannot read once, not on every render', async () => {
+    const env = await makeEnv();
+    // A folder where the file should be cannot be read as one.
+    mkdirSync(path.join(env.storageDir, PLANS_FILE), { recursive: true });
+    const { app } = makeApp(env);
+    expect(planList(app.runtime)).toStrictEqual([]);
+    await waitFor(() => app.errorList().some((error) => error.source === 'plans'));
+    expect(planList(app.runtime)).toStrictEqual([]);
+    expect(planList(app.runtime)).toStrictEqual([]);
+    expect(app.errorList().filter((error) => error.source === 'plans')).toHaveLength(1);
   });
 
   it('ignores an empty goal and records a planner that fails', async () => {

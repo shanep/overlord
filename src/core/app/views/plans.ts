@@ -20,6 +20,8 @@ const LABEL_CHARS = 40;
 interface Entry {
   runner: PlanRunner | null;
   loading: Promise<PlanRunner> | null;
+  /** Set once loading failed, so a render does not try and report it again. An action still retries. */
+  failed: boolean;
 }
 
 const entries = new WeakMap<Runtime, Entry>();
@@ -27,7 +29,7 @@ const entries = new WeakMap<Runtime, Entry>();
 function entryFor(rt: Runtime): Entry {
   let entry = entries.get(rt);
   if (entry === undefined) {
-    entry = { runner: null, loading: null };
+    entry = { runner: null, loading: null, failed: false };
     entries.set(rt, entry);
   }
   return entry;
@@ -97,6 +99,7 @@ export async function planRunner(rt: Runtime): Promise<PlanRunner> {
     },
     (error: unknown) => {
       entry.loading = null;
+      entry.failed = true;
       throw error;
     },
   );
@@ -107,6 +110,9 @@ export async function planRunner(rt: Runtime): Promise<PlanRunner> {
 export function planList(rt: Runtime): readonly Plan[] {
   const entry = entryFor(rt);
   if (entry.runner === null) {
+    if (entry.failed) {
+      return [];
+    }
     planRunner(rt).catch((error: unknown) => {
       rt.report('plans', messageOf(error));
     });
