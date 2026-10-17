@@ -1,4 +1,4 @@
-// cspell:ignore KMBT
+// cspell:ignore KMBT mdocs mgrey mred
 import { assert, integer, property } from 'fast-check';
 import { describe, expect, it } from 'vitest';
 

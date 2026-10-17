@@ -1,4 +1,4 @@
-// Cell text is concatenated in assertions. cspell:ignore Readok Basherror Editrunning Costn
+// Cell text is concatenated in assertions. cspell:ignore Readok Basherror Editrunning Costn mcharts
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
