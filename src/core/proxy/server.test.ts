@@ -272,5 +272,22 @@ describe('BridgeServer', () => {
       started.push(clash);
       await expect(clash.start()).rejects.toThrow();
     });
+
+    it('takes any free port when asked to and the requested one is taken', async () => {
+      const { server } = await startServer({ routes: new Map() });
+      const port = server.port ?? 0;
+      const clash = new BridgeServer(options({ port, routes: new Map(), fallbackToAnyPort: true }));
+      started.push(clash);
+      const bound = await clash.start();
+      expect(bound).not.toBe(port);
+      expect(clash.port).toBe(bound);
+    });
+
+    it('still fails on a bad host with the fallback on', async () => {
+      const bad = new BridgeServer(
+        options({ host: '203.0.113.1', port: 1, routes: new Map(), fallbackToAnyPort: true }),
+      );
+      await expect(bad.start()).rejects.toThrow();
+    });
   });
 });

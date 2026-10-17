@@ -13,7 +13,7 @@ import { BOISESTATE_KEY_SECRET, BOISESTATE_PROFILE } from '../core/bridge/boises
 import { listProfiles, saveProfile } from '../core/knobs/profiles.js';
 import type { HostToWebview, ViewId, WebviewAction } from '../shared/protocol.js';
 
-import { BoisestateBridge } from './boisestate-bridge.js';
+import { BoisestateBridge, type SavedEndpoint } from './boisestate-bridge.js';
 import { CliTabs } from './cli-tabs.js';
 import { createVscodeHostPort } from './host-port.js';
 import { keepAwake } from './keep-awake.js';
@@ -54,6 +54,10 @@ const PALETTE_VIEWS: readonly ViewEntry[] = [
 
 const VIEW_COMMANDS = [...GLOBAL_VIEWS, ...FLEET_TITLE_VIEWS, ...PALETTE_VIEWS];
 
+/** Where the bridge sidecar's token (SecretStorage) and this window's port (workspace state) live. */
+const BRIDGE_TOKEN_SECRET = 'overlord.boisestate.bridgeToken';
+const BRIDGE_PORT_STATE = 'overlord.boisestate.bridgePort';
+
 class ViewListProvider implements vscode.TreeDataProvider<ViewEntry> {
   constructor(private readonly entries: readonly ViewEntry[]) {}
 
@@ -85,7 +89,18 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     onError: (message: string): void => {
       bridgeLog.error(message);
     },
+    // The token is shared by every window, and the port is this window's own.
+    loadEndpoint: async (): Promise<SavedEndpoint | null> => {
+      const token = await context.secrets.get(BRIDGE_TOKEN_SECRET);
+      const port = context.workspaceState.get<number>(BRIDGE_PORT_STATE);
+      return token === undefined ? null : { port: port ?? 0, token };
+    },
+    saveEndpoint: async ({ port, token }): Promise<void> => {
+      await context.secrets.store(BRIDGE_TOKEN_SECRET, token);
+      await context.workspaceState.update(BRIDGE_PORT_STATE, port);
+    },
   });
+  void bridge.warm();
   const host = createVscodeHostPort({
     context,
     resolveBridgeEnv: bridge.resolveEnv.bind(bridge),

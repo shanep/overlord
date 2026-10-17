@@ -41,6 +41,8 @@ async function main(): Promise<void> {
     bridgeToken: config.bridgeToken,
     routes,
     getRoutes,
+    // The extension asks for the port it used last, so chat tabs outlive a reload.
+    fallbackToAnyPort: true,
     onError: (message: string): void => {
       process.stderr.write(`boisestate bridge: ${message}\n`);
     },

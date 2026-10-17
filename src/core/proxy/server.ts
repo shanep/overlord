@@ -50,6 +50,8 @@ export interface BridgeServerOptions {
   readonly getRoutes?: ReadonlyMap<string, RouteHandler>;
   readonly maxBodyBytes?: number;
   readonly onError?: (message: string) => void;
+  /** Listen on any free port when the requested one is taken, instead of failing. */
+  readonly fallbackToAnyPort?: boolean;
 }
 
 type BodyResult =
@@ -72,6 +74,10 @@ async function readBody(request: http.IncomingMessage, max: number): Promise<Bod
       resolve({ ok: false, status: 400 });
     });
   });
+}
+
+function isAddressInUse(error: unknown): boolean {
+  return error instanceof Error && 'code' in error && error.code === 'EADDRINUSE';
 }
 
 /** The message in an `{ error: { message } }` body, or null for anything else. */
@@ -173,6 +179,7 @@ export class BridgeServer {
   private readonly getRoutes: ReadonlyMap<string, RouteHandler>;
   private readonly maxBodyBytes: number;
   private readonly onError: (message: string) => void;
+  private readonly fallbackToAnyPort: boolean;
   private boundPort: number | null = null;
 
   constructor(options: BridgeServerOptions) {
@@ -182,6 +189,7 @@ export class BridgeServer {
     this.routes = options.routes;
     this.getRoutes = options.getRoutes ?? new Map();
     this.maxBodyBytes = options.maxBodyBytes ?? DEFAULT_MAX_BODY_BYTES;
+    this.fallbackToAnyPort = options.fallbackToAnyPort ?? false;
     this.onError =
       options.onError ??
       ((): void => {
@@ -197,16 +205,27 @@ export class BridgeServer {
   }
 
   async start(): Promise<number> {
+    try {
+      await this.listen(this.requestedPort);
+    } catch (error: unknown) {
+      if (!this.fallbackToAnyPort || this.requestedPort === 0 || !isAddressInUse(error)) {
+        throw error;
+      }
+      await this.listen(0);
+    }
+    const { port } = addressSchema.parse(this.server.address());
+    this.boundPort = port;
+    return port;
+  }
+
+  private async listen(port: number): Promise<void> {
     await new Promise<void>((resolve, reject) => {
       this.server.once('error', reject);
-      this.server.listen(this.requestedPort, this.host, () => {
+      this.server.listen(port, this.host, () => {
         this.server.off('error', reject);
         resolve();
       });
     });
-    const { port } = addressSchema.parse(this.server.address());
-    this.boundPort = port;
-    return port;
   }
 
   async stop(): Promise<void> {
