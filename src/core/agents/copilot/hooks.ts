@@ -18,6 +18,7 @@ import { z } from 'zod';
 
 import { COPILOT } from '../../../shared/agents.js';
 import type { PermissionDecision } from '../../../shared/model.js';
+import { applyPatchPaths } from '../../hooks/apply-patch.js';
 import { EVENT_TIMEOUT_S, HOOK_MARKER } from '../../hooks/install.js';
 import type {
   EditTools,
@@ -58,13 +59,14 @@ const CONTEXT_EVENTS: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * Copilot's file tools and their path field. str_replace_editor is left out
- * because its view command reads, and apply_patch keeps its paths inside the
- * patch text, so neither has a field that names a written file.
+ * Copilot's file tools and their path field. apply_patch takes the same
+ * patch text as Codex, so its paths come from the file headers.
+ * str_replace_editor is left out because its view command only reads.
  */
 const EDIT_TOOLS: EditTools = {
   edit: ['path'],
   create: ['path'],
+  apply_patch: applyPatchPaths,
 };
 
 /** Copilot says new for a fresh session. startup is in the SDK types too. */

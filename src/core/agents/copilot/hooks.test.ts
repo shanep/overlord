@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
 import type { HookEventKind, NormalizedHookEvent } from '../../hooks/normalized.js';
-import { editedFile } from '../../hooks/normalized.js';
+import { editedFiles } from '../../hooks/normalized.js';
 import { makeTemporaryDirectory, removeDir } from '../../transcripts/test-helpers/fixtures.js';
 import type { AgentDirs } from '../types.js';
 
@@ -248,13 +248,18 @@ describe('copilot edit tools', () => {
         return { name: String(Reflect.get(data, 'toolName')), input };
       })
       .filter((call) => call !== null);
-    const files = calls.map((call) => editedFile(hooks.editTools, { ...call, useId: null }));
+    const files = calls.map((call) => editedFiles(hooks.editTools, { ...call, useId: null }));
     expect(calls.map((call) => call.name)).toStrictEqual(['view', 'edit']);
-    expect(files[0]).toBeNull();
-    expect(files[1]).toMatch(/calc\.py$/u);
+    expect(files[0]).toStrictEqual([]);
+    expect(files[1]).toHaveLength(1);
+    expect(files[1]?.[0]).toMatch(/calc\.py$/u);
+    const patch = '*** Begin Patch\n*** Update File: /w/a.ts\n@@\n-a\n+b\n*** End Patch\n';
     expect(
-      editedFile(hooks.editTools, { name: 'create', input: { path: '/w/new.ts' }, useId: null }),
-    ).toBe('/w/new.ts');
+      editedFiles(hooks.editTools, { name: 'apply_patch', input: patch, useId: null }),
+    ).toStrictEqual(['/w/a.ts']);
+    expect(
+      editedFiles(hooks.editTools, { name: 'create', input: { path: '/w/new.ts' }, useId: null }),
+    ).toStrictEqual(['/w/new.ts']);
   });
 });
 
