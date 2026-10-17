@@ -38,13 +38,17 @@ export function nothingLeft(job: AgentEntry, busy: boolean): boolean {
   );
 }
 
-/** True when some `claude attach` still shows the session, in VS Code or any other terminal. */
-async function stillAttached(
+/**
+ * True when some `claude attach` still shows the session, in VS Code or any
+ * other terminal. Looks up to `tries` times, for a tab that is still letting go.
+ */
+export async function stillAttached(
   rt: Runtime,
   background: BackgroundFacet,
   sessionId: string,
+  tries = DETACH_TRIES,
 ): Promise<boolean> {
-  for (let attempt = 0; attempt < DETACH_TRIES; attempt += 1) {
+  for (let attempt = 0; attempt < tries; attempt += 1) {
     if (attempt > 0) {
       await rt.delay(POLL_DELAY_MS);
     }

@@ -1,6 +1,7 @@
 // The background refreshes OverlordApp starts: each cache or poll on its own
 // interval. Returns the functions that stop them.
 
+import { FINISHED_CHECK_MS, FinishedWatch, stopFinished } from './finished-stop.js';
 import { JOBS_REFRESH_MS } from './jobs.js';
 import { PLACES_REFRESH_MS } from './places.js';
 import type { IntervalFunction } from './process.js';
@@ -19,6 +20,7 @@ export function startTimers(rt: Runtime, interval: IntervalFunction): (() => voi
       void work();
     }, ms);
   const watch = new ProgressWatch();
+  const finished = new FinishedWatch();
   return [
     every(SESSIONS_REFRESH_MS, async () => rt.caches.sessions.refresh()),
     every(PLACES_REFRESH_MS, async () => rt.places.refresh()),
@@ -33,5 +35,6 @@ export function startTimers(rt: Runtime, interval: IntervalFunction): (() => voi
       }
     }),
     every(PROGRESS_CHECK_MS, async () => checkProgress(rt, watch)),
+    every(FINISHED_CHECK_MS, async () => stopFinished(rt, finished)),
   ];
 }
