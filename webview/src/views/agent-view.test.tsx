@@ -194,6 +194,39 @@ describe('AgentView', () => {
     await expectAccessible(container);
   });
 
+  it('says why a failed agent failed', async () => {
+    const failed = { ...subagent, state: 'failed' as const };
+    const state: AgentDetailState = { ...agentState, agent: failed, failure: 'API Error: 529' };
+    const { container } = renderView(<AgentView state={state} />);
+    expect(screen.getByRole('alert').textContent).toBe('This agent failed. API Error: 529');
+    await expectAccessible(container);
+  });
+
+  it('says when a failed agent left no error text', () => {
+    const failed = { ...subagent, state: 'failed' as const };
+    renderView(<AgentView state={{ ...agentState, agent: failed }} />);
+    expect(screen.getByRole('alert').textContent).toBe(
+      'This agent failed. No error text came back from it.',
+    );
+  });
+
+  it('links straight to each failed subagent below it', async () => {
+    const user = userEvent.setup();
+    const deep = agent({ id: 'a9', sessionId: 's1', description: 'Check the schema' });
+    const failedAgents = [subagent, deep].map((node) => ({ ...node, state: 'failed' as const }));
+    const { api } = renderView(<AgentView state={{ ...agentState, failedAgents }} />);
+    expect(screen.getByRole('alert').textContent).toBe(
+      '2 subagents failed: Find parser tests, Check the schema',
+    );
+    await user.click(screen.getByRole('button', { name: 'Check the schema' }));
+    expect(api.actions()).toStrictEqual([{ type: 'openAgent', sessionId: 's1', agentId: 'a9' }]);
+  });
+
+  it('shows no failure notice when nothing failed', () => {
+    renderView(<AgentView state={agentState} />);
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
   it('shows an empty state with no agent', () => {
     renderView(<AgentView state={{ ...agentState, agent: null }} />);
     expect(screen.getByRole('status').textContent).toContain('No agent selected');

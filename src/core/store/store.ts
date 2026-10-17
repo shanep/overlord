@@ -69,12 +69,29 @@ export const defaultScheduler: Scheduler = (callback, delayMs) => {
   };
 };
 
-function toolKey(call: ToolCall): string {
+function toolKey(call: Pick<ToolCall, 'sessionId' | 'id'>): string {
   return JSON.stringify([call.sessionId, call.id]);
 }
 
 function byStart(left: AgentNode, right: AgentNode): number {
   return left.startedAt - right.startedAt;
+}
+
+/** Every agent below one agent in its session, at any depth. */
+function descendants(inSession: readonly AgentNode[], agentId: string): AgentNode[] {
+  const found: AgentNode[] = [];
+  const seen = new Set([agentId]);
+  const queue = [agentId];
+  for (let parent = queue.shift(); parent !== undefined; parent = queue.shift()) {
+    for (const node of inSession) {
+      if (node.parentAgentId === parent && !seen.has(node.id)) {
+        seen.add(node.id);
+        found.push(node);
+        queue.push(node.id);
+      }
+    }
+  }
+  return found;
 }
 
 interface ThreadActivity {
@@ -161,16 +178,33 @@ export class OverlordStore {
   }
 
   agentDetailState(sessionId: string, agentId: string): AgentDetailState {
+    const agent = this.agents.get(sessionId, agentId) ?? null;
+    const inSession = this.agents.inSession(sessionId);
     return {
-      agent: this.agents.get(sessionId, agentId) ?? null,
+      agent,
       session: this.sessions.get(sessionId) ?? null,
-      children: this.agents
-        .inSession(sessionId)
-        .filter((agent) => agent.parentAgentId === agentId)
+      children: inSession.filter((node) => node.parentAgentId === agentId).toSorted(byStart),
+      failedAgents: descendants(inSession, agentId)
+        .filter((node) => node.state === 'failed')
         .toSorted(byStart),
+      failure: this.failureOf(agent),
       feed: this.feeds.get(sessionId, agentId)?.toArray() ?? [],
       ...this.agentActivity(sessionId, agentId),
     };
+  }
+
+  /**
+   * The error result of the Agent call that started a failed agent. A
+   * background agent's call only reports the launch, so it has none.
+   */
+  private failureOf(agent: AgentNode | null): string | null {
+    if (agent?.state !== 'failed' || agent.parentToolUseId === null) {
+      return null;
+    }
+    const call = this.toolCalls.get(
+      toolKey({ sessionId: agent.sessionId, id: agent.parentToolUseId }),
+    );
+    return call?.ok === false ? call.resultPreview : null;
   }
 
   /** One agent's tool calls, requests and compactions, each oldest first. */

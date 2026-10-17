@@ -138,6 +138,8 @@
       }
     ],
     "compactions": [],
+    "failedAgents": [],
+    "failure": null,
     "feed": [
       {
         "at": 1790856000000,

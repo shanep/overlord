@@ -234,6 +234,8 @@ export const agentState: AgentDetailState = {
   agent: mainAgent ?? null,
   session: firstSession ?? null,
   children: fleetState.agents.filter((node) => node.parentAgentId === 's1'),
+  failedAgents: [],
+  failure: null,
   feed,
   toolCalls,
   requests,

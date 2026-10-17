@@ -121,6 +121,10 @@ export interface AgentDetailState {
   readonly agent: AgentNode | null;
   readonly session: SessionSummary | null;
   readonly children: readonly AgentNode[];
+  /** Subagents below this agent, at any depth, that ended with an error. */
+  readonly failedAgents: readonly AgentNode[];
+  /** What the parent got back from this agent's Agent call, when this agent failed. */
+  readonly failure: string | null;
   readonly feed: readonly FeedItem[];
   readonly toolCalls: readonly ToolCall[];
   readonly requests: readonly ApiRequest[];

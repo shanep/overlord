@@ -1,14 +1,15 @@
-// Agent detail: header and actions, charts, the subagents as cards, and the
-// live feed.
+// Agent detail: header and actions, why it failed and links to failed
+// subagents, charts, the subagents as cards, and the live feed.
 
 import type { ReactElement } from 'react';
+import { Fragment } from 'react';
 
 import type { AgentNode } from '../../../src/shared/model.js';
 import type { AgentDetailState } from '../../../src/shared/protocol.js';
 import { useAgent } from '../agents.js';
 import { useNow } from '../clock.js';
 import { StateBadge } from '../components/badge.js';
-import { Card, CardGrid } from '../components/card.js';
+import { Card, CardGrid, Notice } from '../components/card.js';
 import { EmptyState } from '../components/empty-state.js';
 import { formatDuration } from '../format.js';
 import { STATE_INFO } from '../labels.js';
@@ -64,8 +65,47 @@ function AgentChildren(props: { readonly agents: readonly AgentNode[] }): ReactE
   );
 }
 
+/** Links straight to every failed subagent below this agent, so none needs hunting for. */
+function FailedAgents(props: { readonly agents: readonly AgentNode[] }): ReactElement | null {
+  const post = usePostAction();
+  const count = props.agents.length;
+  if (count === 0) {
+    return null;
+  }
+  return (
+    <Notice ok={false}>
+      {count === 1 ? 'A subagent failed: ' : `${String(count)} subagents failed: `}
+      {props.agents.map((failed, index) => (
+        <Fragment key={failed.id}>
+          {index === 0 ? null : ', '}
+          <button
+            type="button"
+            className="link-button"
+            title={`Open ${failed.agentType}: ${failed.description}`}
+            onClick={() => {
+              post({ type: 'openAgent', sessionId: failed.sessionId, agentId: failed.id });
+            }}
+          >
+            {failed.description}
+          </button>
+        </Fragment>
+      ))}
+    </Notice>
+  );
+}
+
 export function AgentView(props: { readonly state: AgentDetailState }): ReactElement {
-  const { agent, session, children, feed, toolCalls, requests, compactions } = props.state;
+  const {
+    agent,
+    session,
+    children,
+    failedAgents,
+    failure,
+    feed,
+    toolCalls,
+    requests,
+    compactions,
+  } = props.state;
   const info = useAgent(session?.agent);
   if (agent === null) {
     return <EmptyState title="No agent selected" detail="Open an agent from the fleet view." />;
@@ -73,6 +113,12 @@ export function AgentView(props: { readonly state: AgentDetailState }): ReactEle
   return (
     <section aria-label="Agent">
       <AgentHeader agent={agent} session={session} requests={requests} info={info} />
+      {agent.state === 'failed' ? (
+        <Notice ok={false}>
+          This agent failed. {failure ?? 'No error text came back from it.'}
+        </Notice>
+      ) : null}
+      <FailedAgents agents={failedAgents} />
       {info.capabilities.subagents ? (
         <section className="section" aria-labelledby="agent-children">
           <h2 id="agent-children" className="section-title">

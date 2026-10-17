@@ -432,6 +432,8 @@ describe('OverlordStore agentDetailState', () => {
       agent: null,
       session: null,
       children: [],
+      failedAgents: [],
+      failure: null,
       feed: [],
       toolCalls: [],
       requests: [],
@@ -486,6 +488,37 @@ describe('OverlordStore agentDetailState', () => {
     bus.emit('tool.upserted', tool('t1', { sessionId: 's2', agentId: 's2' }));
     expect(store.agentDetailState('s1', 's1').toolCalls).toHaveLength(1);
     expect(store.agentDetailState('s2', 's2').toolCalls).toHaveLength(1);
+  });
+
+  it('lists failed agents at any depth below an agent, oldest first', () => {
+    const { bus, store } = setup();
+    bus.emit('agent.upserted', agent('s1', 's1'));
+    bus.emit('agent.upserted', agent('s1', 'ok', { state: 'done' }));
+    bus.emit('agent.upserted', agent('s1', 'late', { state: 'failed', startedAt: NOW + 2 }));
+    bus.emit('agent.upserted', agent('s1', 'deep', { parentAgentId: 'ok', state: 'failed' }));
+    bus.emit('agent.upserted', agent('s2', 'other', { state: 'failed' }));
+    expect(store.agentDetailState('s1', 's1').failedAgents.map((node) => node.id)).toStrictEqual([
+      'deep',
+      'late',
+    ]);
+    expect(store.agentDetailState('s1', 'ok').failedAgents.map((node) => node.id)).toStrictEqual([
+      'deep',
+    ]);
+  });
+
+  it('takes the error of a failed agent from the Agent call that started it', () => {
+    const { bus, store } = setup();
+    bus.emit('agent.upserted', agent('s1', 'sub', { state: 'failed', parentToolUseId: 't1' }));
+    bus.emit('tool.upserted', tool('t1', { name: 'Agent', ok: false, resultPreview: 'API Error' }));
+    expect(store.agentDetailState('s1', 'sub').failure).toBe('API Error');
+    expect(store.agentDetailState('s1', 's1').failure).toBeNull();
+  });
+
+  it('has no error for a failed background agent, whose call only reports the launch', () => {
+    const { bus, store } = setup();
+    bus.emit('agent.upserted', agent('s1', 'sub', { state: 'failed', parentToolUseId: 't1' }));
+    bus.emit('tool.upserted', tool('t1', { name: 'Agent', ok: true, resultPreview: 'Launched' }));
+    expect(store.agentDetailState('s1', 'sub').failure).toBeNull();
   });
 
   it('appends feed items per agent and keeps the newest past the limit', () => {
