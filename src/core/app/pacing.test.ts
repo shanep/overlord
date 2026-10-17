@@ -26,29 +26,33 @@ const clock = (ms: number): string => `t+${String(Math.round((ms - NOW) / 60_000
 
 describe('paceHold', () => {
   it('lets runs start without plan limits or with room to spare', () => {
-    expect(paceHold(null, clock)).toBeNull();
-    expect(paceHold(plan(), clock)).toBeNull();
-    expect(paceHold(plan(limit({ percent: 30 })), clock)).toBeNull();
+    expect(paceHold(null, NOW, clock)).toBeNull();
+    expect(paceHold(plan(), NOW, clock)).toBeNull();
+    expect(paceHold(plan(limit({ percent: 30 })), NOW, clock)).toBeNull();
   });
 
   it('holds once the session window is nearly used', () => {
-    expect(paceHold(plan(limit({ percent: 91.6 })), clock)).toBe(
+    expect(paceHold(plan(limit({ percent: 91.6 })), NOW, clock)).toBe(
       'The 5 hour session limit is 92% used, so queued runs wait until it resets at t+180m.',
     );
-    expect(paceHold(plan(limit({ percent: 95, resetsAt: null })), clock)).toBe(
+    expect(paceHold(plan(limit({ percent: 95, resetsAt: null })), NOW, clock)).toBe(
       'The 5 hour session limit is 95% used, so queued runs wait.',
     );
   });
 
   it('holds when the pace runs the window out well before the reset', () => {
     // 70% in two hours runs out in about 51 more minutes, over two hours early.
-    expect(paceHold(plan(limit({ percent: 70 })), clock)).toBe(
+    expect(paceHold(plan(limit({ percent: 70 })), NOW, clock)).toBe(
       'At this pace the 5 hour session limit runs out at t+51m, well before it resets, so queued runs wait until it resets at t+180m.',
     );
     // The same pace under 60% used is left alone.
-    expect(paceHold(plan(limit({ percent: 55 })), clock)).toBeNull();
+    expect(paceHold(plan(limit({ percent: 55 })), NOW, clock)).toBeNull();
     // 60% in four and a half hours runs out after the reset.
-    expect(paceHold(plan(limit({ percent: 60, resetsAt: NOW + HOUR / 2 })), clock)).toBeNull();
+    expect(paceHold(plan(limit({ percent: 60, resetsAt: NOW + HOUR / 2 })), NOW, clock)).toBeNull();
+  });
+
+  it('lets runs start once a held window has reset, even with an old read', () => {
+    expect(paceHold(plan(limit({ percent: 95, resetsAt: NOW - 1 })), NOW, clock)).toBeNull();
   });
 
   it('holds on a nearly used weekly limit first', () => {
@@ -58,7 +62,7 @@ describe('paceHold', () => {
       percent: 96,
       resetsAt: NOW + 24 * HOUR,
     });
-    expect(paceHold(plan(limit({ percent: 95 }), weekly), clock)).toBe(
+    expect(paceHold(plan(limit({ percent: 95 }), weekly), NOW, clock)).toBe(
       'The weekly usage limit is 96% used, so queued runs wait until it resets at t+1440m.',
     );
   });

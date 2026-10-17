@@ -8,12 +8,12 @@ import type { PlanLimit, PlanLimits } from '../../shared/protocol.js';
 import { runsOutAt, SESSION_WINDOW_MS } from '../tuning/limit.js';
 
 /** Hold once the 5 hour window is this full. */
-export const HOLD_AT_PERCENT = 90;
+const HOLD_AT_PERCENT = 90;
 /** Or once it is this full and the pace runs it out at least EARLY_MS before the reset. */
-export const HOLD_EARLY_FROM_PERCENT = 60;
-export const EARLY_MS = 30 * 60_000;
+const HOLD_EARLY_FROM_PERCENT = 60;
+const EARLY_MS = 30 * 60_000;
 /** Hold once the weekly window is this full. */
-export const WEEKLY_HOLD_AT_PERCENT = 95;
+const WEEKLY_HOLD_AT_PERCENT = 95;
 
 /** 3:40 PM, for saying when a window resets. */
 export function timeOfDay(epochMs: number): string {
@@ -32,15 +32,22 @@ function untilReset(limit: PlanLimit, clock: (ms: number) => string): string {
  * Why queued runs should wait, or null when they can start. `clock` writes a
  * time of day, such as 3:40 PM.
  */
-export function paceHold(plan: PlanLimits | null, clock: (ms: number) => string): string | null {
+export function paceHold(
+  plan: PlanLimits | null,
+  now: number,
+  clock: (ms: number) => string,
+): string | null {
   if (plan === null) {
     return null;
   }
-  const weekly = plan.limits.find((limit) => limit.kind === 'weekly_all');
+  // A window that has reset since the last read no longer holds anything back,
+  // even when reading the limits again keeps failing.
+  const current = (limit: PlanLimit): boolean => limit.resetsAt === null || limit.resetsAt > now;
+  const weekly = plan.limits.find((limit) => limit.kind === 'weekly_all' && current(limit));
   if (weekly !== undefined && weekly.percent >= WEEKLY_HOLD_AT_PERCENT) {
     return `The weekly usage limit is ${percentText(weekly)} used, so queued runs wait${untilReset(weekly, clock)}.`;
   }
-  const session = plan.limits.find((limit) => limit.kind === 'session');
+  const session = plan.limits.find((limit) => limit.kind === 'session' && current(limit));
   if (session === undefined) {
     return null;
   }

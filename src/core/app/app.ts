@@ -149,7 +149,9 @@ export class OverlordApp {
         now: clock,
         // The runtime exists by the time a queued run asks.
         canStart: (): string | null =>
-          host.settings.paceToUsageLimit ? paceHold(currentPlan(this.rt), timeOfDay) : null,
+          host.settings.paceToUsageLimit
+            ? paceHold(currentPlan(this.rt), clock(), timeOfDay)
+            : null,
       },
       concurrencyFrom(host.settings.maxConcurrency),
     );
