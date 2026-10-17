@@ -801,7 +801,8 @@ fieldset.chips {
 
 .rep-ticks {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-auto-columns: 1fr;
+  grid-auto-flow: column;
   margin: 6px 0 0;
   padding: 0;
   color: var(--ov-muted);
@@ -824,6 +825,12 @@ fieldset.chips {
 
 .rep-rank {
   margin: 12px 0 0;
+}
+
+.rep-outlook {
+  margin: 8px 0 0;
+  padding-left: 1.2em;
+  color: var(--ov-muted);
 }
 
 /* ---- Properties panel ---------------------------------------------------- */

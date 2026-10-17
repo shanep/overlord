@@ -1,16 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
+import { MEAN_WEIGHT, reputationScore, SCORE_DAMPING } from '../../shared/reputation.js';
+
 import type { HitEntry, ReputationIndex } from './store.js';
 import { emptyIndex } from './store.js';
-import {
-  dayOf,
-  MEAN_WEIGHT,
-  RECENT_HITS,
-  reputationScore,
-  SCORE_DAMPING,
-  summarize,
-  TOP_TERMS,
-} from './summarize.js';
+import { dayOf, RECENT_HITS, summarize, TOP_TERMS } from './summarize.js';
 
 // Noon UTC is the same calendar day in every time zone from UTC-11 to UTC+11.
 const DAY1 = Date.UTC(2026, 9, 1, 12);

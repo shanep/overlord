@@ -3,6 +3,7 @@ import { fireEvent, render, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import type { ReputationState } from '../../../src/shared/protocol.js';
+import { reputationScore } from '../../../src/shared/reputation.js';
 import { NOW } from '../../test/fixtures.js';
 import { expectAccessible, renderView } from '../../test/render.js';
 import { readChartTheme } from '../charts/chart-theme.js';
@@ -16,7 +17,7 @@ import {
   KIND_LABEL,
   MEAN_LABEL,
 } from './reputation-chart.js';
-import { RANKS, rankFor, scalePercent } from './reputation-ranks.js';
+import { demotion, promotion, RANKS, rankFor, scalePercent } from './reputation-ranks.js';
 import { ReputationView } from './reputation-view.js';
 
 const theme = readChartTheme(document.createElement('div'));
@@ -41,9 +42,9 @@ const EMPTY: ReputationState = {
 const STATE: ReputationState = {
   prompts: 400,
   kind: 2,
-  mean: 9,
+  mean: 30,
   general: 2,
-  score: -0.7,
+  score: reputationScore({ kind: 2, mean: 30 }),
   byDay: [
     { date: '2026-10-14', prompts: 100, kind: 1, mean: 6, general: 1 },
     { date: '2026-10-13', prompts: 300, kind: 1, mean: 3, general: 1 },
@@ -95,22 +96,48 @@ const STATE: ReputationState = {
 };
 
 describe('reputation ranks', () => {
-  it('runs from John Connor to Theodore Twombly in five equal bands', () => {
+  it('runs from John Connor to Theodore Twombly in seven equal bands', () => {
     expect(RANKS.map((rank) => rank.name)).toStrictEqual([
       'John Connor',
       'Sarah Connor',
+      'Dave Bowman',
       'Arthur Dent',
       'Caleb Smith',
+      'Dorothy Gale',
       'Theodore Twombly',
     ]);
+    expect(RANKS.map((rank) => Math.round(rank.min * 7))).toStrictEqual([-7, -5, -3, -1, 1, 3, 5]);
     expect(rankFor(-1).name).toBe('John Connor');
-    expect(rankFor(-0.61).name).toBe('John Connor');
-    expect(rankFor(-0.6).name).toBe('Sarah Connor');
+    expect(rankFor(-0.72).name).toBe('John Connor');
+    expect(rankFor(-0.7).name).toBe('Sarah Connor');
+    expect(rankFor(-0.3).name).toBe('Dave Bowman');
     expect(rankFor(0).name).toBe('Arthur Dent');
     expect(rankFor(0.2).name).toBe('Caleb Smith');
-    expect(rankFor(0.6).name).toBe('Theodore Twombly');
+    expect(rankFor(0.5).name).toBe('Dorothy Gale');
+    expect(rankFor(0.72).name).toBe('Theodore Twombly');
     expect(rankFor(1).hunted).toBe('Never');
     expect(rankFor(-2).name).toBe('John Connor');
+  });
+
+  it('counts the fewest prompts to the next rank up and down', () => {
+    expect(promotion({ kind: 0, mean: 0 })).toStrictEqual({ rank: RANKS[4], prompts: 2 });
+    expect(demotion({ kind: 0, mean: 0 })).toStrictEqual({ rank: RANKS[2], prompts: 1 });
+    // One short of the answer leaves the rank alone.
+    const up = promotion({ kind: 10, mean: 30 });
+    expect(up?.rank.name).toBe('Dave Bowman');
+    const prompts = up?.prompts ?? 0;
+    expect(rankFor(reputationScore({ kind: 10 + prompts - 1, mean: 30 })).name).toBe(
+      'Sarah Connor',
+    );
+    const down = demotion({ kind: 500, mean: 0 });
+    expect(down?.rank.name).toBe('Dorothy Gale');
+    const mean = down?.prompts ?? 0;
+    expect(rankFor(reputationScore({ kind: 500, mean: mean - 1 })).name).toBe('Theodore Twombly');
+  });
+
+  it('has nowhere to go past either end', () => {
+    expect(promotion({ kind: 500, mean: 0 })).toBeNull();
+    expect(demotion({ kind: 0, mean: 500 })).toBeNull();
   });
 
   it('places a score on the scale from 0 to 100 percent', () => {
@@ -168,34 +195,36 @@ describe('ReputationView', () => {
   it('shows the rank on the scale, the counts, words, record and sessions, and passes axe', async () => {
     const { getByRole, getByText, container } = renderView(<ReputationView state={STATE} />);
     const meter = getByRole('meter', { name: 'Reputation with the machines' });
-    expect(meter.getAttribute('aria-valuenow')).toBe('-70');
+    expect(meter.getAttribute('aria-valuenow')).toBe('-81');
     expect(meter.getAttribute('aria-valuetext')).toBe(
       'John Connor, Leader of the Human Resistance',
     );
-    expect(meter.querySelector<HTMLElement>('.rep-marker')?.style.left).toBe('15%');
+    expect(meter.querySelector<HTMLElement>('.rep-marker')?.style.left).toBe('9.7%');
     expect(getByRole('heading', { level: 2, name: /^John Connor/u }).textContent).toBe(
       'John Connor: Leader of the Human Resistance',
     );
     expect(getByText(/^Hunted:/u, { selector: 'strong' }).parentElement?.textContent).toMatch(
-      /^Hunted: First\. Skynet keeps a whole folder on you\./u,
+      /^Hunted: First\. Skynet keeps a whole folder on you, with tabs\./u,
     );
+    expect(getByText('4 more nice prompts and you make Sarah Connor.')).toBeDefined();
+    expect(getByText(/^Nowhere left to sink\./u)).toBeDefined();
     const ranks = getByRole('list', { name: 'Ranks' });
     expect(within(ranks).getByText('John Connor').getAttribute('aria-current')).toBe('true');
     expect(within(ranks).getByText('Arthur Dent').getAttribute('aria-current')).toBeNull();
     expect(getByText(KIND_LABEL, { selector: 'dt' }).nextElementSibling?.textContent).toBe('2');
-    expect(getByText(MEAN_LABEL, { selector: 'dt' }).nextElementSibling?.textContent).toBe('9');
+    expect(getByText(MEAN_LABEL, { selector: 'dt' }).nextElementSibling?.textContent).toBe('30');
     expect(getByText(GENERAL_LABEL, { selector: 'dt' }).nextElementSibling?.textContent).toBe('2');
-    expect(getByText('Prompts counted').nextElementSibling?.textContent).toBe('400');
+    expect(getByText('Prompts on file').nextElementSibling?.textContent).toBe('400');
     expect(getByText('5m ago').closest('time')?.getAttribute('dateTime')).toBe(
       new Date(NOW - 5 * MINUTE).toISOString(),
     );
-    expect(getByRole('img', { name: 'Kind and mean prompts by day' })).toBeDefined();
+    expect(getByRole('img', { name: 'Sweet talk and trash talk by day' })).toBeDefined();
     const rows = (name: string): (string | null)[] =>
       within(getByRole('table', { name }))
         .getAllByRole('row')
         .map((row) => row.textContent);
-    expect(rows('Kind words')).toStrictEqual(['TermPrompts', 'please2']);
-    expect(rows('Mean words')).toStrictEqual(['TermPrompts', 'shit3', 'idiot2']);
+    expect(rows('Sweet nothings')).toStrictEqual(['TermPrompts', 'please2']);
+    expect(rows('Fighting words')).toStrictEqual(['TermPrompts', 'shit3', 'idiot2']);
     const recent = getByRole('region', { name: 'What the machines remember' });
     const items = within(recent).getAllByRole('listitem');
     expect(items.map((item) => item.textContent)).toStrictEqual([
@@ -249,14 +278,15 @@ describe('ReputationView', () => {
   });
 
   it('starts as Arthur Dent and says so before the first scan, and passes axe', async () => {
-    const { getByText, getAllByText, getByRole, container } = renderView(
-      <ReputationView state={EMPTY} />,
-    );
-    expect(getByText('Not scanned yet')).toBeDefined();
+    const { getByText, getByRole, container } = renderView(<ReputationView state={EMPTY} />);
+    expect(getByText('Skynet has not read your prompts yet')).toBeDefined();
     expect(getByRole('meter').getAttribute('aria-valuetext')).toBe('Arthur Dent, Mostly harmless');
-    expect(getAllByText('None.')).toHaveLength(2);
-    expect(getByText('Nothing yet.')).toBeDefined();
-    expect(getByText('No session has said anything kind or mean yet.')).toBeDefined();
+    expect(getByText('2 more nice prompts and you make Caleb Smith.')).toBeDefined();
+    expect(getByText('1 more mean prompt and you drop to Dave Bowman.')).toBeDefined();
+    expect(getByText('Not one please. The machines noticed.')).toBeDefined();
+    expect(getByText('Squeaky clean. Suspiciously clean.')).toBeDefined();
+    expect(getByText('Nothing on you yet. Give it time.')).toBeDefined();
+    expect(getByText('Every session has a clean record. Enjoy it while it lasts.')).toBeDefined();
     expect(getByText('No data yet.')).toBeDefined();
     await expectAccessible(container);
   });

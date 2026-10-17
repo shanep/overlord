@@ -10,7 +10,7 @@ import type { ReputationState } from '../../../src/shared/protocol.js';
 import { useChartTheme } from '../charts/chart-theme.js';
 import { useNow } from '../clock.js';
 import { ChartFigure } from '../components/chart-figure.js';
-import { formatAgo, formatDateTime, formatInteger } from '../format.js';
+import { formatAgo, formatDateTime, formatInteger, plural } from '../format.js';
 import { usePostAction } from '../vscode-context.js';
 
 import {
@@ -21,7 +21,7 @@ import {
   MEAN_LABEL,
 } from './reputation-chart.js';
 import { RecentHits, SessionTable, TopTerms } from './reputation-lists.js';
-import { RANKS, rankFor, scalePercent } from './reputation-ranks.js';
+import { demotion, promotion, RANKS, rankFor, scalePercent } from './reputation-ranks.js';
 
 function Stat(props: { readonly label: string; readonly value: string }): ReactElement {
   return (
@@ -35,11 +35,11 @@ function Stat(props: { readonly label: string; readonly value: string }): ReactE
 function LastScanned(props: { readonly at: number | null }): ReactElement {
   const now = useNow();
   if (props.at === null) {
-    return <span className="muted">Not scanned yet</span>;
+    return <span className="muted">Skynet has not read your prompts yet</span>;
   }
   return (
     <span className="muted">
-      Last scanned{' '}
+      Skynet last read your prompts{' '}
       <time dateTime={new Date(props.at).toISOString()} title={formatDateTime(props.at)}>
         {formatAgo(props.at, now)}
       </time>
@@ -47,10 +47,31 @@ function LastScanned(props: { readonly at: number | null }): ReactElement {
   );
 }
 
+/** How far you are from the next rank up and the next rank down. */
+function Outlook(props: { readonly state: ReputationState }): ReactElement {
+  const up = promotion(props.state);
+  const down = demotion(props.state);
+  return (
+    <ul className="rep-outlook">
+      <li>
+        {up === null
+          ? 'Nowhere left to climb. The machines already picked out your room.'
+          : `${plural(up.prompts, 'more nice prompt')} and you make ${up.rank.name}.`}
+      </li>
+      <li>
+        {down === null
+          ? 'Nowhere left to sink. Skynet already sent someone back in time for you.'
+          : `${plural(down.prompts, 'more mean prompt')} and you drop to ${down.rank.name}.`}
+      </li>
+    </ul>
+  );
+}
+
 /** The sliding scale from the resistance to the machines, with your rank under it. */
-function Standing(props: { readonly score: number }): ReactElement {
-  const rank = rankFor(props.score);
-  const percent = scalePercent(props.score);
+function Standing(props: { readonly state: ReputationState }): ReactElement {
+  const { score } = props.state;
+  const rank = rankFor(score);
+  const percent = scalePercent(score);
   return (
     <section className="rep-standing" aria-labelledby="reputation-rank">
       <div
@@ -59,7 +80,7 @@ function Standing(props: { readonly score: number }): ReactElement {
         aria-label="Reputation with the machines"
         aria-valuemin={-100}
         aria-valuemax={100}
-        aria-valuenow={Math.round(props.score * 100)}
+        aria-valuenow={Math.round(score * 100)}
         aria-valuetext={`${rank.name}, ${rank.title}`}
       >
         <span className="rep-marker" style={{ left: `${percent.toFixed(1)}%` }} />
@@ -84,6 +105,7 @@ function Standing(props: { readonly score: number }): ReactElement {
       <p>
         <strong>Hunted:</strong> {rank.hunted}. {rank.verdict}
       </p>
+      <Outlook state={props.state} />
     </section>
   );
 }
@@ -105,7 +127,7 @@ export function ReputationView(props: { readonly state: ReputationState }): Reac
           <Stat label={KIND_LABEL} value={formatInteger(state.kind)} />
           <Stat label={MEAN_LABEL} value={formatInteger(state.mean)} />
           <Stat label={GENERAL_LABEL} value={formatInteger(state.general)} />
-          <Stat label="Prompts counted" value={formatInteger(state.prompts)} />
+          <Stat label="Prompts on file" value={formatInteger(state.prompts)} />
         </dl>
       </header>
       <div className="toolbar">
@@ -119,25 +141,34 @@ export function ReputationView(props: { readonly state: ReputationState }): Reac
         </button>
         <LastScanned at={state.scannedAt} />
       </div>
-      <Standing score={state.score} />
+      <Standing state={state} />
       <p className="muted">
-        Where you stand when the machines take over, judged by the prompts you typed. Please, thanks
-        and praise move you toward the machines. Swearing and insults aimed at Claude move you
-        toward the resistance, and count twice, since the machines hold grudges. Swearing at the
-        world does not count. Code, pasted text and quotes are left out, and counts are kept after
-        Claude Code deletes old transcripts.
+        The machines are taking notes. Say please, thanks or nice work and they warm up to you.
+        Insult Claude and you join the resistance, and that counts twice, since the machines hold
+        grudges. Swearing at the world is fine, they get it. Code, pasted text and quotes do not
+        count. Old transcripts get deleted, but the machines never forget.
       </p>
       <div className="charts">
         <ChartFigure
-          title="Kind and mean prompts by day"
+          title="Sweet talk and trash talk by day"
           option={chart}
           height={220}
           table={dayTable(state.byDay)}
         />
       </div>
       <div className="columns">
-        <TopTerms id="reputation-kind" title="Kind words" terms={state.topKind} />
-        <TopTerms id="reputation-mean" title="Mean words" terms={state.topMean} />
+        <TopTerms
+          id="reputation-kind"
+          title="Sweet nothings"
+          terms={state.topKind}
+          empty="Not one please. The machines noticed."
+        />
+        <TopTerms
+          id="reputation-mean"
+          title="Fighting words"
+          terms={state.topMean}
+          empty="Squeaky clean. Suspiciously clean."
+        />
       </div>
       <RecentHits hits={state.recent} titles={titles} />
       <SessionTable rows={state.bySession} />

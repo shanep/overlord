@@ -21,9 +21,9 @@ import { formatInteger } from '../format.js';
 
 type Day = ReputationState['byDay'][number];
 
-export const KIND_LABEL = 'Kind';
-export const MEAN_LABEL = 'Mean to Claude';
-export const GENERAL_LABEL = 'Swearing in general';
+export const KIND_LABEL = 'Sweet talk';
+export const MEAN_LABEL = 'Trash talk at Claude';
+export const GENERAL_LABEL = 'Yelling at the void';
 
 interface Series {
   readonly name: string;

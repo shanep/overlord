@@ -50,12 +50,13 @@ export function TopTerms(props: {
   readonly id: string;
   readonly title: string;
   readonly terms: TermCounts;
+  readonly empty: string;
 }): ReactElement {
   return (
     <section className="section" aria-labelledby={props.id}>
       <h2 id={props.id}>{props.title}</h2>
       {props.terms.length === 0 ? (
-        <p className="muted">None.</p>
+        <p className="muted">{props.empty}</p>
       ) : (
         <table className="grid">
           <caption className="visually-hidden">{props.title}</caption>
@@ -105,7 +106,7 @@ export function RecentHits(props: {
     <section className="section" aria-labelledby="reputation-recent">
       <h2 id="reputation-recent">What the machines remember</h2>
       {props.hits.length === 0 ? (
-        <p className="muted">Nothing yet.</p>
+        <p className="muted">Nothing on you yet. Give it time.</p>
       ) : (
         <ol className="feed">
           {props.hits.map((hit) => (
@@ -160,13 +161,13 @@ const SESSION_COLUMNS: readonly Column<SessionRow>[] = [
 export function SessionTable(props: { readonly rows: readonly SessionRow[] }): ReactElement {
   return (
     <section className="section" aria-labelledby="reputation-sessions">
-      <h2 id="reputation-sessions">By session</h2>
+      <h2 id="reputation-sessions">Rap sheet by session</h2>
       <DataTable
         caption="Where each session stands"
         columns={SESSION_COLUMNS}
         rows={props.rows}
         rowKey={(row) => row.sessionId}
-        empty="No session has said anything kind or mean yet."
+        empty="Every session has a clean record. Enjoy it while it lasts."
       />
     </section>
   );

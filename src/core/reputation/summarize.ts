@@ -1,16 +1,13 @@
 // Turns the index into the view state: totals, the score, a row per day, a
 // row per session, the most common kind and mean terms and the newest hits.
 
-import type { ReputationHit, ReputationState, ReputationTally } from '../../shared/protocol.js';
+import type { ReputationHit, ReputationState } from '../../shared/protocol.js';
+import { reputationScore } from '../../shared/reputation.js';
 
 import type { ReputationIndex } from './store.js';
 
 export const TOP_TERMS = 10;
 export const RECENT_HITS = 50;
-/** A mean prompt outweighs a kind one, since the machines hold grudges. */
-export const MEAN_WEIGHT = 2;
-/** Pulls a short history toward the middle, so one thank you is not a verdict. */
-export const SCORE_DAMPING = 10;
 
 type SessionRow = ReputationState['bySession'][number];
 
@@ -20,12 +17,6 @@ export function dayOf(at: number): string {
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${String(date.getFullYear())}-${month}-${day}`;
-}
-
-/** -1 for only mean prompts, 1 for only kind ones, near 0 for few of either. */
-export function reputationScore(tally: Pick<ReputationTally, 'kind' | 'mean'>): number {
-  const mean = tally.mean * MEAN_WEIGHT;
-  return (tally.kind - mean) / (tally.kind + mean + SCORE_DAMPING);
 }
 
 interface Tally {
