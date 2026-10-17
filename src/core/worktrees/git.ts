@@ -204,12 +204,28 @@ export class WorktreeGit {
   }
 
   async status(info: WorktreeInfo): Promise<WorktreeStatus> {
+    if (!(await this.exists(info))) {
+      return MISSING;
+    }
+    try {
+      return await this.read(info);
+    } catch (error) {
+      // A release can remove the worktree while the Fleet still reads it.
+      if (!(await this.exists(info))) {
+        return MISSING;
+      }
+      throw error;
+    }
+  }
+
+  private async exists(info: WorktreeInfo): Promise<boolean> {
     const probe = await this.exec('git', ['rev-parse', '--is-inside-work-tree'], {
       cwd: info.path,
     });
-    if (probe.code !== 0) {
-      return MISSING;
-    }
+    return probe.code === 0;
+  }
+
+  private async read(info: WorktreeInfo): Promise<WorktreeStatus> {
     const porcelain = await this.git(info.path, ['status', '--porcelain']);
     const upstream = await this.upstream(info);
     const since = upstream === null ? info.baseCommit : await this.mergeBase(info.path, upstream);

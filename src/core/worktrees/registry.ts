@@ -338,6 +338,11 @@ export class WorktreeRegistry {
     await this.lock.run(entry.repoRoot, async () => this.deps.git.update(entry));
   }
 
+  /** Settles once every setup started here has finished writing into its worktree. */
+  async setupsDone(): Promise<void> {
+    await Promise.all(this.settingUp.values());
+  }
+
   /** Lets go of a worktree and removes it when everything in it has landed. */
   async release(id: string): Promise<WorktreeState | null> {
     // Removing it while setup still writes into it would leave a mess behind.

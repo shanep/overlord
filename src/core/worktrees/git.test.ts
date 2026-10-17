@@ -298,6 +298,27 @@ describe('WorktreeGit', { timeout: 30_000 }, () => {
       expect(await manager.status(info)).toMatchObject({ ahead: 1, files: ['c.txt'] });
     });
 
+    it('reports a worktree removed while it is being read as gone', async () => {
+      const info = await manager.create(world.repo, 'w1');
+      const racing = new WorktreeGit(async (command, args, options) => {
+        if (args[0] === 'ls-files') {
+          await rm(info.path, { recursive: true, force: true });
+        }
+        return testExec(command, args, options);
+      }, path.dirname(info.path));
+      expect(await racing.status(info)).toMatchObject({ exists: false, files: [] });
+    });
+
+    it('still fails a read that fails on a worktree that is there', async () => {
+      const info = await manager.create(world.repo, 'w1');
+      const broken = new WorktreeGit(
+        async (command, args, options) =>
+          args[0] === 'ls-files' ? fail('index is locked') : testExec(command, args, options),
+        path.dirname(info.path),
+      );
+      await expect(broken.status(info)).rejects.toThrow('git ls-files failed: index is locked');
+    });
+
     it('reports a worktree whose folder is gone', async () => {
       const info = await manager.create(world.repo, 'w1');
       await rm(info.path, { recursive: true, force: true });

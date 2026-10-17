@@ -67,6 +67,9 @@ async function setup(
     }),
   });
   onTestFinished(async () => {
+    // A new session's setup goes on in the background and writes into its
+    // worktree, so the temp folders can only go once it is done.
+    await test.app.runtime.worktrees.setupsDone();
     await waitFor(() => !test.app.runtime.caches.worktrees.loading);
   });
   return test;
