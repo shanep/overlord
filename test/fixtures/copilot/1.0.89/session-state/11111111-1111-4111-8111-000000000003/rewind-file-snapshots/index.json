@@ -1,0 +1,43 @@
+{
+  "schema": 1,
+  "snapshots": [
+    {
+      "snapshotId": "91131aec-ab65-4148-a894-cb264087bc33",
+      "eventId": "8481fb2d-3737-4c81-a8dd-7dfc67c42998",
+      "userMessage": "In calc.py add the one-line docstring \"\"\"Add two numbers.\"\"\" to add(). Change nothing else.",
+      "timestamp": "2026-10-17T04:07:57.716Z",
+      "files": {
+        "b5fe97661fd86dbeba0df9851e1e172c": {
+          "path": "/work/repo/calc.py",
+          "preimage": {
+            "kind": "content",
+            "contentHash": "ba1a531f581d2e6094e978ed6f7aca7a8d92eeb62c6e7ad73ee692f7f18bc772",
+            "backupFile": "ba1a531f581d2e6094e978ed6f7aca7a8d92eeb62c6e7ad73ee692f7f18bc772",
+            "mode": 33188,
+            "size": 32,
+            "resolvedPath": "/work/repo/calc.py",
+            "encodedPath": {
+              "encoding": "unix-bytes",
+              "data": "2f776f726b2f7265706f2f63616c632e7079"
+            }
+          },
+          "postimage": {
+            "kind": "content",
+            "contentHash": "18c4bd58e485f329ac43825af4423332540003ca2b7a290a2f8c9a440356bbd5",
+            "resolvedPath": "/work/repo/calc.py",
+            "encodedPath": {
+              "encoding": "unix-bytes",
+              "data": "2f776f726b2f7265706f2f63616c632e7079"
+            }
+          },
+          "linesAdded": 1,
+          "linesRemoved": 0
+        }
+      },
+      "backupFiles": ["ba1a531f581d2e6094e978ed6f7aca7a8d92eeb62c6e7ad73ee692f7f18bc772"],
+      "fileCount": 1,
+      "linesAdded": 1,
+      "linesRemoved": 0
+    }
+  ]
+}

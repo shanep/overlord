@@ -1,0 +1,11 @@
+id: 11111111-1111-4111-8111-000000000003
+cwd: /work/repo
+git_root: /work/repo
+branch: master
+client_name: github/cli
+name: In calc.py add the one-line docstring """Add two numbers.""" to add(). Change nothing else.
+user_named: false
+summary_count: 0
+fork_count: 0
+created_at: 2026-10-17T04:07:45.949Z
+updated_at: 2026-10-17T04:07:47.150Z

@@ -1,0 +1,11 @@
+id: 314df6e1-afd1-4b9c-bdf3-7cf94861398e
+cwd: /work/repo
+git_root: /work/repo
+branch: master
+client_name: overlord-fixture-recorder
+name: Run the shell command `ls` and reply with how many files it listed.
+user_named: false
+summary_count: 0
+fork_count: 0
+created_at: 2026-10-17T04:09:59.214Z
+updated_at: 2026-10-17T04:09:59.828Z
