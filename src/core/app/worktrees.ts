@@ -7,6 +7,7 @@
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 
+import { bearerEnv, BRIDGE_ARGS, BRIDGE_BASE_URL } from '../bridge/boisestate.js';
 import type { WorktreeLease, WorktreeProvider } from '../harness/launcher.js';
 import type { ClaudePaths } from '../paths.js';
 import { daemonJobCwds } from '../surfaces/daemon.js';
@@ -121,9 +122,40 @@ export interface SessionStart {
   readonly prompt?: string;
   /** The session this one continues as a fork, which stays as it was. */
   readonly forkOf?: string;
+  /** Runs on Boise State's Opus 5.5 through this window's bridge sidecar. */
+  readonly bridge?: boolean;
 }
 
 const PLAIN_START: SessionStart = { name: 'Claude Code' };
+const BRIDGE_START: SessionStart = { name: 'Boise State', bridge: true };
+
+/** What a tab adds for where its session runs: nothing, or the bridge's env and args. */
+interface Backend {
+  readonly env?: Readonly<Record<string, string>>;
+  readonly args?: readonly string[];
+  readonly foreground?: boolean;
+}
+
+const CLAUDE: Backend = {};
+
+/**
+ * The bridge's env and args, or null after saying why it cannot start. Its
+ * sessions run in their tab, since the sidecar goes away with the window.
+ */
+async function bridgeBackend(rt: Runtime): Promise<Backend | null> {
+  const resolve = rt.host.resolveBridgeEnv;
+  if (resolve === undefined) {
+    rt.host.showInfo('The Boise State bridge is not available in this window.');
+    return null;
+  }
+  try {
+    const env = await resolve({ ANTHROPIC_BASE_URL: BRIDGE_BASE_URL });
+    return { env: bearerEnv(env), args: BRIDGE_ARGS, foreground: true };
+  } catch (error: unknown) {
+    rt.host.showWarning(messageOf(error));
+    return null;
+  }
+}
 
 /** The tab fields for a start: a new session, or a fork of forkOf. */
 function tabStart(start: SessionStart): Pick<ClaudeTab, 'name' | 'prompt' | 'resume' | 'fork'> {
@@ -131,11 +163,17 @@ function tabStart(start: SessionStart): Pick<ClaudeTab, 'name' | 'prompt' | 'res
   return forkOf === undefined ? { ...rest, resume: null } : { ...rest, resume: forkOf, fork: true };
 }
 
+/** What a new tab starts: the session, and where it runs. */
+interface Opening {
+  readonly start: SessionStart;
+  readonly backend: Backend;
+}
+
 async function openSession(
   rt: Runtime,
   lease: Lease,
   newId: string,
-  start: SessionStart,
+  { start, backend }: Opening,
 ): Promise<void> {
   // The tab opens while setup finishes, since the user still has to type a
   // prompt. A session given its first prompt starts at once, so it waits.
@@ -145,8 +183,9 @@ async function openSession(
   }
   const sessionId = await openClaudeTab(rt, {
     ...tabStart(start),
+    ...backend,
     cwd: lease.entry.path,
-    env: lease.env,
+    env: { ...lease.env, ...backend.env },
     newId,
   });
   if (sessionId !== null) {
@@ -165,6 +204,10 @@ export async function startSession(
   folder: string | null,
   start: SessionStart,
 ): Promise<void> {
+  const backend = start.bridge === true ? await bridgeBackend(rt) : CLAUDE;
+  if (backend === null) {
+    return;
+  }
   // The worktree takes this id, and so does the session when claude runs in the tab itself.
   const id = randomUUID();
   if (folder !== null) {
@@ -175,7 +218,7 @@ export async function startSession(
         kind: 'session',
         label: `Session in ${path.basename(folder)}`,
       });
-      await openSession(rt, lease, id, start);
+      await openSession(rt, lease, id, { start, backend });
       return;
     } catch (error: unknown) {
       if (!(error instanceof NotARepoError)) {
@@ -185,19 +228,30 @@ export async function startSession(
   }
   await openClaudeTab(rt, {
     ...tabStart(start),
+    ...backend,
     cwd: folder ?? rt.paths.home,
     newId: id,
   });
 }
 
-/** Starts a session in a new worktree of the folder's repository, or in home with no folder. */
-export async function newSession(rt: Runtime, folder: string | null): Promise<void> {
-  await startSession(rt, folder, PLAIN_START);
+/**
+ * Starts a session in a new worktree of the folder's repository, or in home
+ * with no folder, on Claude Code's usual account or on the bridge.
+ */
+export async function newSession(
+  rt: Runtime,
+  folder: string | null,
+  bridge = false,
+): Promise<void> {
+  await startSession(rt, folder, bridge ? BRIDGE_START : PLAIN_START);
 }
 
 /** Opens a new session in a worktree that is still around, to finish its work. */
 export async function openWorktree(rt: Runtime, id: string): Promise<void> {
-  await openSession(rt, await rt.worktrees.hold(id), randomUUID(), PLAIN_START);
+  await openSession(rt, await rt.worktrees.hold(id), randomUUID(), {
+    start: PLAIN_START,
+    backend: CLAUDE,
+  });
 }
 
 /**

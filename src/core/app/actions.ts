@@ -6,7 +6,6 @@ import type { WebviewAction } from '../../shared/protocol.js';
 
 import type { ActionContext, ActionHandlers, ActionMap, ActionType } from './action-types.js';
 import { authoringActions } from './actions-authoring.js';
-import { bridgeActions } from './actions-bridge.js';
 import { catalogActions } from './actions-catalog.js';
 import { configActions } from './actions-config.js';
 import { connectorActions } from './actions-connectors.js';
@@ -41,7 +40,6 @@ const HANDLERS: ActionHandlers<ActionType> = {
   ...combineActions,
   ...renameActions,
   ...openProjectActions,
-  ...bridgeActions,
 };
 
 function isActionType(value: string): value is ActionType {

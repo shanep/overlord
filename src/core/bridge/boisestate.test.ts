@@ -5,7 +5,7 @@ import {
   bearerEnv,
   BOISESTATE_PROFILE,
   BRIDGE_BASE_URL,
-  chatArgs,
+  BRIDGE_ARGS,
   needsBridge,
   parseReadyLine,
 } from './boisestate.js';
@@ -74,14 +74,8 @@ describe('bearerEnv', () => {
   });
 });
 
-describe('chatArgs', () => {
-  it('starts the session on the bridge model, with no MCP servers', () => {
-    expect(chatArgs('sid')).toStrictEqual([
-      '--session-id',
-      'sid',
-      '--model',
-      BOISESTATE_PROFILE.model,
-      '--strict-mcp-config',
-    ]);
+describe('BRIDGE_ARGS', () => {
+  it('start the session on the bridge model, with no MCP servers', () => {
+    expect(BRIDGE_ARGS).toStrictEqual(['--model', BOISESTATE_PROFILE.model, '--strict-mcp-config']);
   });
 });

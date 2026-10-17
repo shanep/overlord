@@ -35,6 +35,10 @@ export interface ClaudeTab {
   readonly newId?: string;
   /** The first message, which the session starts working on at once. */
   readonly prompt?: string;
+  /** CLI args that go before the session's own, such as the bridge's model. */
+  readonly args?: readonly string[];
+  /** Runs claude in the tab itself, for a session that cannot outlive the window. */
+  readonly foreground?: boolean;
 }
 
 function firstLine(text: string): string {
@@ -114,13 +118,22 @@ async function openAttached(rt: Runtime, tab: ClaudeTab): Promise<string | null 
 /** Args for a tab that runs claude itself. A fork takes sessionId as its new id. */
 function plainArgs(tab: ClaudeTab, sessionId: string): readonly string[] {
   const prompt = tab.prompt === undefined ? [] : [tab.prompt];
+  const before = tab.args ?? [];
   if (tab.resume === null) {
-    return ['--session-id', sessionId, ...prompt];
+    return [...before, '--session-id', sessionId, ...prompt];
   }
   if (tab.fork === true) {
-    return ['--resume', tab.resume, '--fork-session', '--session-id', sessionId, ...prompt];
+    return [
+      ...before,
+      '--resume',
+      tab.resume,
+      '--fork-session',
+      '--session-id',
+      sessionId,
+      ...prompt,
+    ];
   }
-  return ['--resume', sessionId, ...prompt];
+  return [...before, '--resume', sessionId, ...prompt];
 }
 
 /**
@@ -128,7 +141,7 @@ function plainArgs(tab: ClaudeTab, sessionId: string): readonly string[] {
  * background start fails. Resolves to the session id the tab runs, when known.
  */
 export async function openClaudeTab(rt: Runtime, tab: ClaudeTab): Promise<string | null> {
-  const attached = await openAttached(rt, tab);
+  const attached = tab.foreground === true ? undefined : await openAttached(rt, tab);
   if (attached !== undefined) {
     return attached;
   }

@@ -63,9 +63,7 @@ export function bearerEnv(env: Readonly<Record<string, string>>): Record<string,
  * CLI args for a bridge tab: the bridge's model, and no MCP servers, since the
  * bridge sends every tool's definition as text in each request.
  */
-export function chatArgs(sessionId: string): readonly string[] {
-  return ['--session-id', sessionId, '--model', BRIDGE_MODEL, '--strict-mcp-config'];
-}
+export const BRIDGE_ARGS: readonly string[] = ['--model', BRIDGE_MODEL, '--strict-mcp-config'];
 
 const readySchema = z.object({ ready: z.literal(true), port: z.number().int().positive() });
 

@@ -5,6 +5,7 @@ import path from 'node:path';
 import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 
 import { fakeQueries, resultMessage } from '../../../test/fake-claude/fake-query.js';
+import { BOISESTATE_PROFILE } from '../bridge/boisestate.js';
 import type { Exec } from '../sync/exec.js';
 import { SETUP_SCRIPT } from '../worktrees/setup.js';
 import {
@@ -15,7 +16,7 @@ import {
   testExec,
 } from '../worktrees/test-helpers/git-world.js';
 
-import { HERE_ID } from './actions-open-project.js';
+import { BACKEND_TITLE, BRIDGE_ID, CLAUDE_ID, HERE_ID } from './actions-open-project.js';
 import { AS_IS, UPDATE } from './resume.js';
 import {
   makeApp,
@@ -142,6 +143,21 @@ async function tidiedAway(test: TestApp): Promise<string> {
 async function landUpstream(): Promise<void> {
   await commitFile(world.other, 'b.txt', 'two\n');
   await git(world.other, 'push', '-q', 'origin', 'main');
+}
+
+/** An app where Boise State is set up, and its bridge answers with a loopback URL and token. */
+async function bridged(starts: (readonly string[])[] = []): Promise<TestApp> {
+  const test = await setup('repo', async (_command, args) => {
+    starts.push(args);
+    await Promise.resolve();
+    return { code: 1, stdout: '', stderr: 'claude does not run in tests' };
+  });
+  test.env.host.resolveBridgeEnv = async (env): Promise<Record<string, string>> => {
+    await Promise.resolve();
+    return { ...env, ANTHROPIC_BASE_URL: 'http://127.0.0.1:9', ANTHROPIC_API_KEY: 'tok' };
+  };
+  await test.app.dispatch({ type: 'saveProfile', profile: BOISESTATE_PROFILE }, {});
+  return test;
 }
 
 // Each test runs real git many times, which takes far longer than usual on a busy machine.
@@ -669,6 +685,83 @@ describe('worktrees in the app', { timeout: 30_000 }, () => {
       await continueOld(test, null);
       expect(test.env.host.asks).toStrictEqual([]);
       expect(lastTerminal(test)).toMatchObject({ cwd: plain, args: ['--resume', 'old'] });
+    });
+  });
+
+  describe('Boise State sessions', () => {
+    it('are a choice on the sparkle once Boise State is set up', async () => {
+      const starts: (readonly string[])[] = [];
+      const test = await bridged(starts);
+      test.env.host.pickAnswers.push(HERE_ID, BRIDGE_ID);
+      await test.app.dispatch({ type: 'newSession' }, {});
+      expect(test.env.host.picks.at(-1)?.placeholder).toBe(BACKEND_TITLE);
+      const terminal = lastTerminal(test);
+      expect(terminal).toMatchObject({
+        name: 'Boise State',
+        args: [
+          '--model',
+          'claude-opus-5-5',
+          '--strict-mcp-config',
+          '--session-id',
+          terminal.sessionId,
+        ],
+        env: {
+          OVERLORD_SLOT: '0',
+          ANTHROPIC_BASE_URL: 'http://127.0.0.1:9',
+          ANTHROPIC_AUTH_TOKEN: 'tok',
+        },
+      });
+      expect(terminal.env?.['ANTHROPIC_API_KEY']).toBeUndefined();
+      expect(terminal.cwd.startsWith(worktreeRoot(test.env.paths))).toBe(true);
+      // The sidecar goes away with the window, so claude runs in the tab, not in the background.
+      expect(starts).toStrictEqual([]);
+      await test.app.sessionClosed(terminal.sessionId ?? '');
+      expect(existsSync(terminal.cwd)).toBe(false);
+    });
+
+    it('leave the usual session as it was, and start nothing when the choice is cancelled', async () => {
+      const test = await bridged();
+      test.env.host.pickAnswers.push(HERE_ID, CLAUDE_ID);
+      await test.app.dispatch({ type: 'newSession' }, {});
+      expect(lastTerminal(test)).toMatchObject({ name: 'Claude Code' });
+      expect(lastTerminal(test).env?.['ANTHROPIC_BASE_URL']).toBeUndefined();
+      await test.app.sessionClosed(lastTerminal(test).sessionId ?? '');
+
+      const before = test.env.host.terminals.length;
+      test.env.host.pickAnswers.push(HERE_ID, null);
+      await test.app.dispatch({ type: 'newSession' }, {});
+      expect(test.env.host.terminals).toHaveLength(before);
+      expect(await summaries(test)).toStrictEqual([]);
+    });
+
+    it('are not offered before Boise State is set up', async () => {
+      const test = await setup();
+      test.env.host.resolveBridgeEnv = async (env): Promise<Record<string, string>> => {
+        await Promise.resolve();
+        return { ...env };
+      };
+      await newSession(test);
+      expect(test.env.host.picks.map((pick) => pick.placeholder)).not.toContain(BACKEND_TITLE);
+      await test.app.sessionClosed(lastTerminal(test).sessionId ?? '');
+    });
+
+    it('start from their own command, and make no worktree when the bridge cannot start', async () => {
+      const test = await bridged();
+      test.env.host.pickAnswers.push(HERE_ID);
+      await test.app.dispatch({ type: 'newBridgeChat' }, {});
+      expect(lastTerminal(test).name).toBe('Boise State');
+      await test.app.sessionClosed(lastTerminal(test).sessionId ?? '');
+
+      const before = test.env.host.terminals.length;
+      test.env.host.resolveBridgeEnv = async (): Promise<Record<string, string>> => {
+        await Promise.resolve();
+        throw new Error('No Boise State API key is set.');
+      };
+      test.env.host.pickAnswers.push(HERE_ID);
+      await test.app.dispatch({ type: 'newBridgeChat' }, {});
+      expect(test.env.host.warnings.at(-1)).toBe('No Boise State API key is set.');
+      expect(test.env.host.terminals).toHaveLength(before);
+      expect(await summaries(test)).toStrictEqual([]);
     });
   });
 });

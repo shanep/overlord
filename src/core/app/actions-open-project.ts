@@ -1,12 +1,14 @@
 // Open a project without a session in it first: pick any project Overlord
 // knows, or a folder, then start a session there, open it in its own
 // window, or add it to this one. The New Session command asks the same way,
-// with this window's folder first.
+// with this window's folder first, and then, once Boise State is set up,
+// whether the session runs on Claude Code's usual account or on the bridge.
 
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 
 import type { ProjectSummary } from '../../shared/protocol.js';
+import { needsBridge } from '../bridge/boisestate.js';
 import { addProject, assignFolder, resolveProject, setProjectFolder } from '../projects/book.js';
 
 import type { ActionHandlers } from './action-types.js';
@@ -16,13 +18,24 @@ import type { Runtime } from './runtime.js';
 import { fleetFor } from './views/fleet.js';
 import { newSession, STARTING } from './worktrees.js';
 
-type OpenActions = 'openProject' | 'newProjectSession' | 'newSession';
+type OpenActions = 'openProject' | 'newProjectSession' | 'newSession' | 'newBridgeChat';
 
 const BROWSE_ID = 'browse';
 export const PICK_TITLE = 'Open a project';
 export const NO_FOLDER = 'no folder yet';
 export const SESSION_TITLE = 'Start a Claude Code session in';
 export const HERE_ID = 'here';
+export const BACKEND_TITLE = 'Run the session on';
+export const CLAUDE_ID = 'claude';
+export const BRIDGE_ID = 'boisestate';
+const BACKENDS: readonly PickItem[] = [
+  { id: CLAUDE_ID, label: 'Claude Code', description: 'your usual account' },
+  {
+    id: BRIDGE_ID,
+    label: 'Boise State (Opus 5.5)',
+    description: 'through the boisestate.ai bridge',
+  },
+];
 const BROWSE_ITEM: PickItem = { id: BROWSE_ID, label: BROWSE_LABEL, description: '' };
 
 type Way = 'session' | 'window' | 'here';
@@ -141,12 +154,38 @@ async function pickSessionFolder(rt: Runtime): Promise<string | null | undefined
   return target?.folder;
 }
 
-async function startIn(rt: Runtime, folder: string | null): Promise<void> {
-  await rt.host.withProgress(STARTING, async () => newSession(rt, folder));
+/** True once Boise State is set up, which saving its key does by adding its profile. */
+async function bridgeReady(rt: Runtime): Promise<boolean> {
+  if (rt.host.resolveBridgeEnv === undefined) {
+    return false;
+  }
+  await rt.caches.profiles.refresh();
+  return rt.caches.profiles.peek().some((profile) => needsBridge(profile.env));
+}
+
+/** Whether the session runs on the bridge, asked only once Boise State is set up. Null when cancelled. */
+async function pickBridge(rt: Runtime): Promise<boolean | null> {
+  if (!(await bridgeReady(rt))) {
+    return false;
+  }
+  const picked = await rt.host.quickPick(BACKENDS, BACKEND_TITLE);
+  return picked === null ? null : picked === BRIDGE_ID;
+}
+
+async function startIn(rt: Runtime, folder: string | null, bridge = false): Promise<void> {
+  await rt.host.withProgress(STARTING, async () => newSession(rt, folder, bridge));
+}
+
+/** Starts a session in a folder, after asking where it runs. */
+async function askAndStart(rt: Runtime, folder: string | null): Promise<void> {
+  const bridge = await pickBridge(rt);
+  if (bridge !== null) {
+    await startIn(rt, folder, bridge);
+  }
 }
 
 const OPENERS: Readonly<Record<Way, (rt: Runtime, folder: string) => Promise<void>>> = {
-  session: startIn,
+  session: askAndStart,
   window: async (rt, folder) => rt.host.openWindow(folder),
   here: async (rt, folder) => rt.host.showFolder(folder),
 };
@@ -169,13 +208,20 @@ export const openProjectActions: ActionHandlers<OpenActions> = {
   newSession: async ({ rt }) => {
     const folder = await pickSessionFolder(rt);
     if (folder !== undefined) {
-      await startIn(rt, folder);
+      await askAndStart(rt, folder);
     }
   },
   newProjectSession: async ({ rt }, action) => {
     const folder = await folderOf(rt, action.projectId);
     if (folder !== null) {
-      await startIn(rt, folder);
+      await askAndStart(rt, folder);
+    }
+  },
+  // The New Boise State Session command already says where the session runs.
+  newBridgeChat: async ({ rt }) => {
+    const folder = await pickSessionFolder(rt);
+    if (folder !== undefined) {
+      await startIn(rt, folder, true);
     }
   },
 };
