@@ -94,14 +94,17 @@ export function mergeLoaded(
 
 /**
  * The servers the agent's MCP store has turned on for the folder, with no
- * instructions, for an agent whose transcript does not list them.
+ * instructions, for an agent whose transcript does not list them. An agent
+ * with the full context capture (Claude Code) lists the servers it loaded, so
+ * an empty list there means none, not unknown.
  */
-export async function storeServers(
+async function storeServers(
   deps: Pick<ResolveDeps, 'paths' | 'env'>,
   session: Pick<SessionSummary, 'agent' | 'cwd'>,
 ): Promise<ContextSnapshot['mcpServers']> {
-  const store = agents.get(session.agent)?.config?.mcp;
-  if (store === undefined) {
+  const adapter = agents.get(session.agent);
+  const store = adapter?.config?.mcp;
+  if (store === undefined || adapter?.capabilities.contextInspector === true) {
     return [];
   }
   const place = { home: deps.paths.home, env: deps.env, claude: deps.paths, cwd: session.cwd };

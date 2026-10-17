@@ -348,7 +348,7 @@ describe('write', () => {
       const result = await writeSetting({ file: target, keyPath: 'a', value: 1, format: 'jsonc' });
       expect(result).toStrictEqual({
         ok: false,
-        error: `${target} has comments below its first lines, so it was left alone to keep them.`,
+        error: `${target} has comments or trailing commas below its first lines, so it was left alone to keep them.`,
       });
       expect(await readFile(target, 'utf8')).toBe(text);
     });

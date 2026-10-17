@@ -126,7 +126,7 @@ function readBody(
       header,
       document: {
         ok: false,
-        error: `${file} has comments below its first lines, so it was left alone to keep them.`,
+        error: `${file} has comments or trailing commas below its first lines, so it was left alone to keep them.`,
       },
     };
   }

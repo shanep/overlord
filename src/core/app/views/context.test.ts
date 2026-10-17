@@ -149,6 +149,9 @@ describe('touchedFiles', () => {
 describe('resolveSnapshot', () => {
   it('fills loaded, skills and estimated weights from the disk', async () => {
     const { store, workspace, calls, paths } = await setup();
+    await writeJson(path.join(workspace, '.mcp.json'), {
+      mcpServers: { pending: { command: 'x' } },
+    });
     const summary = session('s1', { cwd: workspace });
     const merged = await resolveSnapshot(
       {
@@ -165,6 +168,8 @@ describe('resolveSnapshot', () => {
     expect(merged.skills.map((skill) => skill.name)).toContain('tidy');
     expect(merged.weights.map((weight) => weight.label)).toContain('System prompt');
     expect(merged.systemPrompt).toStrictEqual(['You are Claude Code.']);
+    // Claude's transcript lists the servers it loaded, so the files add none.
+    expect(merged.mcpServers).toStrictEqual([]);
     expect(calls).toStrictEqual([]);
   });
 

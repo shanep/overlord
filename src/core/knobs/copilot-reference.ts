@@ -119,7 +119,7 @@ function settingFromRow(row: readonly string[], anchor: string): KnobDefinition[
 }
 
 /** Settings from the user table, then repository-only keys from the repository table. */
-export function parseCopilotSettings(markdown: string): readonly KnobDefinition[] {
+function parseCopilotSettings(markdown: string): readonly KnobDefinition[] {
   const user = tablesUnder(markdown, /^User settings/u, 'Key').flatMap((table) =>
     table.rows.flatMap((row) => settingFromRow(row, '#user-settings-copilotsettingsjson')),
   );
@@ -155,7 +155,7 @@ function envFromRow(
 }
 
 /** Env vars from the Environment variables table and the OTel one, which has a Default column. */
-export function parseCopilotEnv(markdown: string): readonly KnobDefinition[] {
+function parseCopilotEnv(markdown: string): readonly KnobDefinition[] {
   const plain = tablesUnder(markdown, /^Environment variables$/u, 'Variable').flatMap((table) =>
     table.rows.flatMap((row) => envFromRow(row, '#environment-variables', false)),
   );
