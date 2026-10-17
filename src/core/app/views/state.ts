@@ -16,6 +16,7 @@ import { fleetFor } from './fleet.js';
 import { buildKnobs } from './knobs.js';
 import { buildLibrary } from './library.js';
 import { buildMessages } from './messages.js';
+import { planList } from './plans.js';
 import { buildProperties } from './properties.js';
 import { buildReputation } from './reputation.js';
 import { buildSessions } from './sessions.js';
@@ -33,6 +34,7 @@ function buildLauncher(rt: Runtime): LauncherState {
     runs: snapshot.runs,
     maxConcurrency: snapshot.maxConcurrency,
     held: snapshot.held,
+    plans: planList(rt),
     profiles: rt.caches.profiles.value,
     drafts: rt.caches.drafts.value,
     pendingPermissions: rt.permissions.list(),

@@ -14,6 +14,7 @@ import { launchActions } from './actions-launch.js';
 import { leaderboardActions } from './actions-leaderboard.js';
 import { messageActions } from './actions-messages.js';
 import { openProjectActions } from './actions-open-project.js';
+import { planActions } from './actions-plans.js';
 import { projectActions } from './actions-projects.js';
 import { renameActions } from './actions-rename.js';
 import { reputationActions } from './actions-reputation.js';
@@ -34,6 +35,7 @@ const HANDLERS: ActionHandlers<ActionType> = {
   ...leaderboardActions,
   ...messageActions,
   ...tuningActions,
+  ...planActions,
   ...connectorActions,
   ...catalogActions,
   ...worktreeActions,

@@ -2653,6 +2653,60 @@ fieldset.profile-card {
   overflow-wrap: anywhere;
 }
 
+.launch-held {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 6px 0;
+}
+
+/* Plans: a goal, its tasks in order, and how far each got. */
+.plan-form {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.plan-form textarea,
+.plan-form select {
+  width: 100%;
+  font: inherit;
+}
+
+.plan {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.plan h3 {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.plan-tasks {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 1.4em;
+}
+
+.plan-task-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  align-items: center;
+}
+
+.plan-task .card-text {
+  margin: 2px 0;
+}
+
+.plan-prompt {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .launch-draft select {
   max-width: 220px;
 }

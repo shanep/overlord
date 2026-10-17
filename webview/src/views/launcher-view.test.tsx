@@ -21,6 +21,7 @@ const empty: LauncherState = {
   rules: [],
   maxConcurrency: 2,
   held: null,
+  plans: [],
   defaultFolder: '/work',
   folders: [{ name: 'work', folder: '/work', source: 'window' }],
   browsed: null,
@@ -34,6 +35,7 @@ describe('LauncherView', () => {
     // A waiting request goes above the runs it holds up.
     expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toStrictEqual([
       'New run',
+      'Plans',
       'Permission inbox 1',
       'Runs',
       'Worktrees',
@@ -54,6 +56,7 @@ describe('LauncherView', () => {
     expect(screen.queryByRole('combobox', { name: 'Load draft' })).toBeNull();
     expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toStrictEqual([
       'New run',
+      'Plans',
       'Runs',
       'Worktrees',
       'Permission inbox 0',

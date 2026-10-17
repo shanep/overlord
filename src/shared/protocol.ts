@@ -28,6 +28,7 @@ import type {
   SettingsFileSummary,
   ToolCall,
 } from './model.js';
+import type { Plan } from './plans.js';
 import type { FleetProgress } from './progress.js';
 import type { ReputationState } from './reputation.js';
 import type { AutoApproveRule } from './rules.js';
@@ -195,6 +196,8 @@ export interface LauncherState {
   readonly maxConcurrency: number;
   /** Why queued runs are waiting, such as a nearly used usage limit, or null. */
   readonly held: string | null;
+  /** Goals split into tasks for separate sessions, newest first. */
+  readonly plans: readonly Plan[];
   readonly worktrees: readonly WorktreeSummary[];
   /** Where a run works when the form leaves Folder empty. */
   readonly defaultFolder: string;
@@ -450,6 +453,11 @@ export type WebviewAction =
   | { readonly type: 'installPick'; readonly pickId: string }
   | { readonly type: 'openPickLink'; readonly pickId: string }
   | { readonly type: 'trackTip'; readonly tipId: string; readonly on: boolean }
+  | { readonly type: 'draftPlan'; readonly goal: string; readonly cwd: string }
+  | { readonly type: 'approvePlan'; readonly planId: string }
+  | { readonly type: 'discardPlan'; readonly planId: string }
+  | { readonly type: 'stopPlan'; readonly planId: string }
+  | { readonly type: 'retryPlanTask'; readonly planId: string; readonly taskId: string }
   | { readonly type: 'recheckConnectors' }
   | { readonly type: 'fixConnector'; readonly connectorId: string }
   | { readonly type: 'searchRegistry'; readonly query: string }

@@ -8,6 +8,7 @@ import { soleAgent, useAgents } from '../agents.js';
 
 import { LaunchFormView } from './launcher-form.js';
 import { PermissionInbox } from './launcher-permissions.js';
+import { PlansSection } from './launcher-plans.js';
 import { RulesEditor } from './launcher-rules.js';
 import { RunsTable } from './launcher-runs.js';
 import { isActiveRun } from './launcher-values.js';
@@ -54,6 +55,11 @@ export function LauncherView(props: { readonly state: LauncherState }): ReactEle
         defaultFolder={state.defaultFolder}
         folders={state.folders}
         browsed={state.browsed}
+      />
+      <PlansSection
+        plans={state.plans}
+        folders={state.folders}
+        defaultFolder={state.defaultFolder}
       />
       {waiting ? inbox : null}
       <RunsTable

@@ -271,5 +271,102 @@
   "browsed": {
     "folder": "/Users/alex/scratch",
     "at": 1
-  }
+  },
+  "held": "The 5 hour session limit is 92% used, so queued runs wait until it resets at 3:40 PM.",
+  "plans": [
+    {
+      "id": "p1",
+      "goal": "Add a dark mode toggle to the course site",
+      "cwd": "/Users/shane/repos/shanep.github.io",
+      "createdAt": 1792210000000,
+      "state": "running",
+      "summary": "The color tokens go first since both the toggle and the pages read them. The toggle and the page fixes run in parallel after that.",
+      "error": null,
+      "tasks": [
+        {
+          "id": "tokens",
+          "title": "Color tokens for both themes",
+          "prompt": "Color tokens for both themes: change the code, add tests, land it.",
+          "dependsOn": [],
+          "files": ["assets/css/theme.scss"],
+          "state": "landed",
+          "runId": null,
+          "sessionId": null,
+          "landedSha": "3f9c2a1",
+          "note": null
+        },
+        {
+          "id": "toggle",
+          "title": "Toggle in the header that remembers the choice",
+          "prompt": "Toggle in the header that remembers the choice: change the code, add tests, land it.",
+          "dependsOn": ["tokens"],
+          "files": ["_includes/header.html", "assets/js/theme.js"],
+          "state": "running",
+          "runId": null,
+          "sessionId": "s-1",
+          "landedSha": null,
+          "note": null
+        },
+        {
+          "id": "pages",
+          "title": "Fix pages with hard-coded colors",
+          "prompt": "Fix pages with hard-coded colors: change the code, add tests, land it.",
+          "dependsOn": ["tokens"],
+          "files": [],
+          "state": "failed",
+          "runId": null,
+          "sessionId": null,
+          "landedSha": null,
+          "note": "The build needs Ruby 3.3 and this machine has 3.1."
+        },
+        {
+          "id": "docs",
+          "title": "Note the toggle in the README",
+          "prompt": "Note the toggle in the README: change the code, add tests, land it.",
+          "dependsOn": ["toggle"],
+          "files": [],
+          "state": "waiting",
+          "runId": null,
+          "sessionId": null,
+          "landedSha": null,
+          "note": null
+        }
+      ]
+    },
+    {
+      "id": "p2",
+      "goal": "Speed up the Tuning scan on large transcript folders",
+      "cwd": "/Users/shane/repos/overlord",
+      "createdAt": 1792200000000,
+      "state": "draft",
+      "summary": "Measure first, then cache the parsed lines.",
+      "error": null,
+      "tasks": [
+        {
+          "id": "measure",
+          "title": "Time each scan step",
+          "prompt": "Time each scan step: change the code, add tests, land it.",
+          "dependsOn": [],
+          "files": [],
+          "state": "waiting",
+          "runId": null,
+          "sessionId": null,
+          "landedSha": null,
+          "note": null
+        },
+        {
+          "id": "cache",
+          "title": "Cache parsed transcript lines by file stamp",
+          "prompt": "Cache parsed transcript lines by file stamp: change the code, add tests, land it.",
+          "dependsOn": ["measure"],
+          "files": [],
+          "state": "waiting",
+          "runId": null,
+          "sessionId": null,
+          "landedSha": null,
+          "note": null
+        }
+      ]
+    }
+  ]
 }
