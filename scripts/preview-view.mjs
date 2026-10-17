@@ -14,7 +14,8 @@
 // alone.
 // Each --click presses the first button with that text, in order, so a
 // screenshot can show an open form or a menu. --narrow sets the narrow width,
-// such as 320 for a view that lives in the sidebar.
+// such as 320 for a view that lives in the sidebar, and --layout sidebar lays
+// the view out the way the sidebar does.
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
@@ -99,7 +100,7 @@ function themeCss() {
     .join('\n');
 }
 
-function page(view, clicks, agents) {
+function page(view, clicks, agents, layout) {
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -135,7 +136,7 @@ const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 </script>
 <script type="module" src="./main.js"></script>
 </head>
-<body><div id="root" data-view="${view}"></div></body>
+<body><div id="root" data-view="${view}" data-layout="${layout}"></div></body>
 </html>
 `;
 }
@@ -202,6 +203,7 @@ async function main() {
       out: { type: 'string', default: path.join(root, '.cache', 'preview') },
       height: { type: 'string', default: '1600' },
       narrow: { type: 'string', default: '700' },
+      layout: { type: 'string', default: 'panel' },
     },
   });
   const [view] = positionals;
@@ -236,7 +238,7 @@ async function main() {
       'warn',
     ]);
     const agents = values.agents === undefined ? '[]' : readFileSync(values.agents, 'utf8').trim();
-    writeFileSync(path.join(site, 'index.html'), page(view, values.click, agents));
+    writeFileSync(path.join(site, 'index.html'), page(view, values.click, agents, values.layout));
     writeFileSync(path.join(site, 'state.json'), readFileSync(stateFile));
     mkdirSync(values.out, { recursive: true });
     const server = await serve(site);

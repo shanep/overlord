@@ -1,7 +1,7 @@
-/* The Fleet in the narrow sidebar. It reads like a VS Code tree: no column
-   headers, a state glyph, the title, elapsed and cost, with the row actions
-   laid over the right end of the hovered or focused row. The full Fleet
-   panel shows more columns the wider it is. */
+/* The Fleet in the narrow sidebar. It reads like a VS Code tree with column
+   headers: a state glyph, the title, health, elapsed and cost, with the row
+   actions laid over the right end of the hovered or focused row. The full
+   Fleet panel shows more columns the wider it is. */
 
 :root:has(#root[data-layout='sidebar']) {
   --ov-bg: var(--vscode-sideBar-background, var(--vscode-editor-background, #ffffff));
@@ -12,7 +12,6 @@
 }
 
 #root[data-layout='sidebar'] .fleet-header h1,
-#root[data-layout='sidebar'] .tree-table thead,
 #root[data-layout='sidebar'] .tree-table .row-detail {
   display: none;
 }
@@ -61,7 +60,7 @@
   white-space: nowrap;
 }
 
-#root[data-layout='sidebar'] .tree-table td {
+#root[data-layout='sidebar'] .tree-table :is(th, td) {
   padding: 2px 4px;
 }
 
@@ -93,4 +92,24 @@
 
 #root[data-layout='sidebar'] .banner {
   padding: 6px;
+}
+
+/* Health is the bar alone here, with its percent in the tooltip, so the title keeps its room. */
+#root[data-layout='sidebar'] .health-bar {
+  padding: 0 2px;
+}
+
+#root[data-layout='sidebar'] .health-bar .meter {
+  width: 32px;
+}
+
+#root[data-layout='sidebar'] .health-bar .meter-text {
+  display: none;
+}
+
+/* A narrow sidebar gives Elapsed's room to the title. */
+@container fleet (width < 380px) {
+  #root[data-layout='sidebar'] .tree-table .col-elapsed {
+    display: none;
+  }
 }
