@@ -12,6 +12,8 @@ import type {
 } from '../../shared/model.js';
 import { ZERO_USAGE } from '../../shared/model.js';
 import { EventBus } from '../bus.js';
+import { toAgentNode } from '../hooks/mapping.js';
+import type { SubagentStartPayload, SubagentStopPayload } from '../hooks/payloads.js';
 
 import {
   DEFAULT_LIMITS,
@@ -248,6 +250,156 @@ describe('OverlordStore fleetState', () => {
     expect(store.agentDetailState('s1', 's1').requests).toStrictEqual([
       request('m', { costUsd: 3 }),
     ]);
+  });
+});
+
+describe('OverlordStore requests from the transcript and telemetry', () => {
+  // The transcript names a call by its message id and also carries the
+  // request id. Telemetry only knows the request id and puts it in messageId.
+  const fromTranscript = request('msg_01A', {
+    requestId: 'req_01A',
+    agentId: 'sub',
+    timestamp: NOW - 1000,
+    usage: { input: 100, output: 40, cacheRead: 2000, cacheCreation: 0, thinking: 12 },
+    costUsd: 5,
+  });
+  const fromTelemetry = request('req_01A', {
+    requestId: 'req_01A',
+    usage: { input: 100, output: 42, cacheRead: 2000, cacheCreation: 0, thinking: 0 },
+    ttftMs: 350,
+    durationMs: 900,
+    costUsd: 6,
+  });
+  const merged = request('msg_01A', {
+    requestId: 'req_01A',
+    agentId: 'sub',
+    timestamp: NOW - 1000,
+    usage: { input: 100, output: 42, cacheRead: 2000, cacheCreation: 0, thinking: 12 },
+    ttftMs: 350,
+    durationMs: 900,
+    costUsd: 6,
+  });
+
+  it('counts one call once when the transcript reports it first', () => {
+    const { bus, store } = setup();
+    bus.emit('request.recorded', fromTranscript);
+    bus.emit('request.recorded', fromTelemetry);
+    expect(store.fleetState(NOW).spendPerHourUsd).toBe(6);
+    expect(store.agentDetailState('s1', 'sub').requests).toStrictEqual([merged]);
+    expect(store.agentDetailState('s1', 's1').requests).toStrictEqual([]);
+  });
+
+  it('counts one call once when telemetry reports it first', () => {
+    const { bus, store } = setup();
+    bus.emit('request.recorded', fromTelemetry);
+    bus.emit('request.recorded', fromTranscript);
+    expect(store.fleetState(NOW).spendPerHourUsd).toBe(6);
+    expect(store.agentDetailState('s1', 'sub').requests).toStrictEqual([merged]);
+  });
+
+  it('keeps telemetry timings and cost when a newer transcript copy arrives', () => {
+    const { bus, store } = setup({ sparklineMinutes: 1 });
+    bus.emit('session.upserted', session('s1'));
+    bus.emit('request.recorded', fromTranscript);
+    bus.emit('request.recorded', fromTelemetry);
+    bus.emit('request.recorded', {
+      ...fromTranscript,
+      usage: { ...fromTranscript.usage, output: 50 },
+    });
+    const usage = { ...merged.usage, output: 50 };
+    expect(store.agentDetailState('s1', 'sub').requests).toStrictEqual([{ ...merged, usage }]);
+    expect(store.sparklineState(NOW)).toStrictEqual({
+      s1: { tokensPerMinute: [2150], toolCallsPerMinute: [0], costPerMinute: [6] },
+    });
+  });
+
+  it('joins a copy that learns its request id after telemetry reported the call', () => {
+    const { bus, store } = setup();
+    bus.emit('request.recorded', { ...fromTranscript, requestId: null });
+    bus.emit('request.recorded', fromTelemetry);
+    bus.emit('request.recorded', fromTranscript);
+    expect(store.fleetState(NOW).spendPerHourUsd).toBe(6);
+    expect(store.agentDetailState('s1', 'sub').requests).toStrictEqual([merged]);
+  });
+
+  it('treats the same message id in two sessions as two calls', () => {
+    const { bus, store } = setup();
+    bus.emit('request.recorded', request('m', { costUsd: 1 }));
+    bus.emit('request.recorded', request('m', { sessionId: 's2', agentId: 's2', costUsd: 2 }));
+    expect(store.fleetState(NOW).spendPerHourUsd).toBe(3);
+  });
+});
+
+describe('OverlordStore agents reported by the transcript and hooks', () => {
+  const usage = { input: 900, output: 300, cacheRead: 40_000, cacheCreation: 1200, thinking: 50 };
+  // A nested subagent as the transcript tailer sees it: it knows the spawning
+  // tool use, the real parent, the depth, the usage and the model.
+  const fromTranscript = agent('s1', 'a2', {
+    parentAgentId: 'a1',
+    parentToolUseId: 'toolu_01',
+    agentType: 'Explore',
+    description: 'Find the event bus',
+    spawnDepth: 2,
+    background: true,
+    startedAt: NOW - 5000,
+    transcriptPath: '/t/s1/subagents/agent-a2.jsonl',
+    usage,
+    toolCallCount: 7,
+    currentTool: 'Grep',
+    model: 'claude-haiku-4-5',
+  });
+  const start: SubagentStartPayload = {
+    session_id: 's1',
+    hook_event_name: 'SubagentStart',
+    agent_id: 'a2',
+    agent_type: 'Explore',
+  };
+  const stop: SubagentStopPayload = {
+    session_id: 's1',
+    hook_event_name: 'SubagentStop',
+    agent_id: 'a2',
+    agent_type: 'Explore',
+  };
+
+  it('keeps what the transcript knows when a SubagentStop hook node arrives later', () => {
+    const { bus, store } = setup();
+    bus.emit('agent.upserted', fromTranscript);
+    bus.emit('agent.upserted', toAgentNode(stop, { startedAt: NOW - 4000, endedAt: NOW }));
+    expect(store.agentDetailState('s1', 'a2').agent).toStrictEqual({
+      ...fromTranscript,
+      state: 'done',
+      endedAt: NOW,
+      currentTool: null,
+    });
+  });
+
+  it('lets the transcript fill in a node a SubagentStart hook made first', () => {
+    const { bus, store } = setup();
+    bus.emit('agent.upserted', toAgentNode(start, { startedAt: NOW - 4000, endedAt: null }));
+    bus.emit('agent.upserted', fromTranscript);
+    expect(store.agentDetailState('s1', 'a2').agent).toStrictEqual(fromTranscript);
+  });
+
+  it('still applies real updates after a hook node', () => {
+    const { bus, store } = setup();
+    bus.emit('agent.upserted', fromTranscript);
+    bus.emit('agent.upserted', toAgentNode(stop, { startedAt: NOW - 4000, endedAt: NOW }));
+    bus.emit('agent.upserted', toAgentNode(start, { startedAt: NOW - 4000, endedAt: null }));
+    const more = { ...usage, output: 500 };
+    bus.emit('agent.upserted', { ...fromTranscript, usage: more, toolCallCount: 9 });
+    expect(store.agentDetailState('s1', 'a2').agent).toStrictEqual({
+      ...fromTranscript,
+      usage: more,
+      toolCallCount: 9,
+    });
+  });
+
+  it('moves an agent when the transcript learns its real parent', () => {
+    const { bus, store } = setup();
+    const early = { ...fromTranscript, parentAgentId: 's1', spawnDepth: 1 };
+    bus.emit('agent.upserted', early);
+    bus.emit('agent.upserted', fromTranscript);
+    expect(store.agentDetailState('s1', 'a2').agent).toStrictEqual(fromTranscript);
   });
 });
 

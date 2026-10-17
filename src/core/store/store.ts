@@ -20,6 +20,8 @@ import type {
 } from '../../shared/protocol.js';
 import type { EventBus } from '../bus.js';
 
+import { isTelemetry, mergeAgent, mergeCall, requestKey } from './merge.js';
+import type { CallRecord } from './merge.js';
 import { BoundedMap, RingBuffer } from './ring.js';
 import { SessionScoped } from './scoped.js';
 import { SparklineTracker } from './sparkline.js';
@@ -85,7 +87,9 @@ export class OverlordStore {
   private readonly sessions = new Map<string, SessionSummary>();
   private readonly agents = new SessionScoped<AgentNode>();
   private readonly toolCalls: BoundedMap<string, ToolCall>;
-  private readonly requests: BoundedMap<string, ApiRequest>;
+  private readonly requests: BoundedMap<string, CallRecord>;
+  /** Every message id and request id seen, to the key of the call it names. */
+  private readonly requestAliases: BoundedMap<string, string>;
   private readonly feeds = new SessionScoped<RingBuffer<FeedItem>>();
   private readonly compactions = new SessionScoped<RingBuffer<number>>();
   private readonly snapshots = new SessionScoped<ContextSnapshot>();
@@ -103,6 +107,7 @@ export class OverlordStore {
     this.limits = { ...DEFAULT_LIMITS, ...options.limits };
     this.toolCalls = new BoundedMap(this.limits.toolCalls);
     this.requests = new BoundedMap(this.limits.requests);
+    this.requestAliases = new BoundedMap(this.limits.requests * 2);
     this.scheduler = options.scheduler ?? defaultScheduler;
     this.notifyDelayMs = options.notifyDelayMs ?? DEFAULT_NOTIFY_DELAY_MS;
     this.sparklines = new SparklineTracker({
@@ -193,7 +198,7 @@ export class OverlordStore {
         entry(call.sessionId).toolCalls.push(call);
       }
     }
-    for (const request of this.requests.values()) {
+    for (const { merged: request } of this.requests.values()) {
       if (request.agentId === request.sessionId) {
         entry(request.sessionId).requests.push(request);
       }
@@ -214,6 +219,7 @@ export class OverlordStore {
         .toSorted((left, right) => left.startedAt - right.startedAt),
       requests: this.requests
         .values()
+        .map((call) => call.merged)
         .filter((item) => mine(item))
         .toSorted((left, right) => left.timestamp - right.timestamp),
       compactions: (this.compactions.get(sessionId, agentId)?.toArray() ?? []).toSorted(
@@ -257,7 +263,7 @@ export class OverlordStore {
 
   private spendSince(start: number, end: number): number {
     let total = 0;
-    for (const request of this.requests.values()) {
+    for (const { merged: request } of this.requests.values()) {
       if (request.timestamp > start && request.timestamp <= end) {
         total += request.costUsd ?? 0;
       }
@@ -288,7 +294,8 @@ export class OverlordStore {
         this.changed();
       }),
       bus.on('agent.upserted', (agent) => {
-        this.agents.set(agent.sessionId, agent.id, agent);
+        const known = this.agents.get(agent.sessionId, agent.id);
+        this.agents.set(agent.sessionId, agent.id, mergeAgent(known, agent));
         this.changed();
       }),
       bus.on('tool.upserted', (call) => {
@@ -347,14 +354,52 @@ export class OverlordStore {
     this.toolCalls.set(key, call);
   }
 
-  /** One API call shows up on several transcript lines. The newest copy wins. */
+  /**
+   * One API call shows up on several transcript lines and once more in
+   * telemetry. The newest copy from each source wins, and the two sources
+   * meet on the request id, which transcript lines carry beside the message
+   * id. A copy that learns its request id late can join two calls into one.
+   */
   private recordRequest(request: ApiRequest): void {
-    const previous = this.requests.get(request.messageId);
-    if (previous !== undefined) {
-      this.sparklines.forgetRequest(previous);
+    const callId = request.requestId ?? request.messageId;
+    const ids = [callId, request.messageId];
+    const calls = this.callsNamed(request.sessionId, ids);
+    const [first] = calls.keys();
+    const callKey = first ?? requestKey(request.sessionId, callId);
+    let message: ApiRequest | null = null;
+    let telemetry: ApiRequest | null = null;
+    for (const [key, call] of calls) {
+      this.sparklines.forgetRequest(call.merged);
+      if (key !== callKey) {
+        this.requests.delete(key);
+      }
+      message ??= call.message;
+      telemetry ??= call.telemetry;
     }
-    this.sparklines.recordRequest(request);
-    this.requests.set(request.messageId, request);
+    if (isTelemetry(request)) {
+      telemetry = request;
+    } else {
+      message = request;
+    }
+    const merged = mergeCall(message ?? request, telemetry ?? request);
+    this.requests.set(callKey, { key: callKey, message, telemetry, merged });
+    for (const id of ids) {
+      this.requestAliases.set(requestKey(request.sessionId, id), callKey);
+    }
+    this.sparklines.recordRequest(merged);
+  }
+
+  /** The calls these ids already name, by call key. Two when a copy joins them. */
+  private callsNamed(sessionId: string, ids: readonly string[]): Map<string, CallRecord> {
+    const calls = new Map<string, CallRecord>();
+    for (const id of ids) {
+      const key = this.requestAliases.get(requestKey(sessionId, id));
+      const call = key === undefined ? undefined : this.requests.get(key);
+      if (call !== undefined) {
+        calls.set(call.key, call);
+      }
+    }
+    return calls;
   }
 
   /**

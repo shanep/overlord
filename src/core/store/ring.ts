@@ -58,6 +58,10 @@ export class BoundedMap<K, V> {
     }
   }
 
+  delete(key: K): void {
+    this.map.delete(key);
+  }
+
   /** Oldest first. */
   values(): V[] {
     return [...this.map.values()];
