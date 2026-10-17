@@ -166,8 +166,23 @@ export class WorktreeRegistry {
   /** Setup still running, by worktree id. */
   private readonly settingUp = new Map<string, Promise<readonly string[]>>();
   private repos: Readonly<Record<string, string>> = {};
+  private readonly heldListeners = new Set<(entry: WorktreeEntry) => void>();
 
   constructor(private readonly deps: RegistryDeps) {}
+
+  /** Calls listener each time a worktree is handed to a new session. Returns an unsubscribe. */
+  onHeld(listener: (entry: WorktreeEntry) => void): () => void {
+    this.heldListeners.add(listener);
+    return () => {
+      this.heldListeners.delete(listener);
+    };
+  }
+
+  private announce(entry: WorktreeEntry): void {
+    for (const listener of this.heldListeners) {
+      listener(entry);
+    }
+  }
 
   /** Loads the repository map that projectFor reads. */
   async load(): Promise<void> {
@@ -231,6 +246,7 @@ export class WorktreeRegistry {
     };
     await this.save(entry);
     await this.rememberRepo(info.repoRoot);
+    this.announce(entry);
     const env = worktreeEnv(entry);
     const ready = setUpWorktree(this.deps.exec, info, env);
     this.settingUp.set(entry.id, ready);
@@ -246,6 +262,7 @@ export class WorktreeRegistry {
     const slot = freeSlot(others.map((entry) => entry.slot));
     const entry: WorktreeEntry = { ...current, slot, holderPid: this.deps.pid };
     await this.save(entry);
+    this.announce(entry);
     return { entry, env: worktreeEnv(entry), ready: Promise.resolve([]) };
   }
 

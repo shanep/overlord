@@ -14,7 +14,7 @@ export function buildConnectors(rt: Runtime): ConnectorsState {
   return { ...connectors.value, checking: connectors.loading };
 }
 
-function clockTime(at: number): string {
+export function clockTime(at: number): string {
   return new Date(at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 }
 

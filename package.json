@@ -357,6 +357,11 @@
           "default": true,
           "description": "Help sessions working in the same repository avoid each other. Each session hears which other sessions are working there and what files they are changing, its first edit to a file another session is changing is paused with the reason, and it is told when new commits on the default branch touch files it changed. Needs Overlord's hooks installed."
         },
+        "overlord.worktrees.launchCheck": {
+          "type": "boolean",
+          "default": true,
+          "description": "Check the repository each time a session starts in one of Overlord's worktrees: whether the instructions agree on how work lands, what git hooks and branch protection check a push, whether heavy commands take turns, whether the app's ports clash between sessions, and what memory and stray worktrees come along. The session hears the result and raises any warning first."
+        },
         "overlord.telemetry.port": {
           "type": "number",
           "default": 47318,

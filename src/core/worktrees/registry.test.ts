@@ -220,12 +220,16 @@ describe('registry with git', { timeout: 30_000 }, () => {
 
     it('holds a kept worktree again for a new session', async () => {
       const reg = registry();
+      const heard: string[] = [];
+      const stop = reg.onHeld((held) => heard.push(held.id));
       const { entry } = await reg.acquire({ cwd: world.repo, id: 'w1', kind: 'run', label: 'A' });
       await writeFile(path.join(entry.path, 'a.txt'), 'edited\n');
       await reg.release('w1');
       await reg.acquire({ cwd: world.repo, id: 'w2', kind: 'run', label: 'B' });
       const lease = await reg.hold('w1');
       expect(lease.entry).toMatchObject({ id: 'w1', holderPid: ME, slot: 1 });
+      expect(heard).toStrictEqual(['w1', 'w2', 'w1']);
+      stop();
       expect(await lease.ready).toStrictEqual([]);
       const held = await reg.summaries();
       expect(held.find((item) => item.id === 'w1')?.state).toBe('active');

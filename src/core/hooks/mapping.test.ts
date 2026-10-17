@@ -10,6 +10,7 @@ import {
   toAgentNode,
   toInstructionLoaded,
   toPermissionRequest,
+  withContext,
 } from './mapping.js';
 import type {
   InstructionsLoadedPayload,
@@ -208,6 +209,41 @@ describe('preToolUseDenyOutput', () => {
         hookEventName: 'PreToolUse',
         permissionDecision: 'deny',
         permissionDecisionReason: 'no messages to other sessions',
+      },
+    });
+  });
+});
+
+describe('withContext', () => {
+  it('leaves the output alone without text', () => {
+    expect(withContext(null, 'SessionStart', null)).toBeNull();
+    const deny = preToolUseDenyOutput('no');
+    expect(withContext(deny, 'PreToolUse', null)).toBe(deny);
+  });
+
+  it('makes an output for the event when there was none', () => {
+    expect(withContext(null, 'UserPromptSubmit', 'note')).toStrictEqual({
+      hookSpecificOutput: { hookEventName: 'UserPromptSubmit', additionalContext: 'note' },
+    });
+    expect(withContext({ continue: true }, 'PostToolUse', 'note')).toStrictEqual({
+      continue: true,
+      hookSpecificOutput: { hookEventName: 'PostToolUse', additionalContext: 'note' },
+    });
+  });
+
+  it('adds to the context already there, keeping the other fields', () => {
+    const before = {
+      hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: 'peers' },
+    };
+    expect(withContext(before, 'SessionStart', 'check')).toStrictEqual({
+      hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: 'peers\n\ncheck' },
+    });
+    expect(withContext(preToolUseDenyOutput('no'), 'PreToolUse', 'check')).toStrictEqual({
+      hookSpecificOutput: {
+        hookEventName: 'PreToolUse',
+        permissionDecision: 'deny',
+        permissionDecisionReason: 'no',
+        additionalContext: 'check',
       },
     });
   });

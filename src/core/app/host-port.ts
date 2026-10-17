@@ -61,6 +61,8 @@ export interface OverlordSettings {
   readonly configSyncIntervalMinutes: number;
   /** Tell each new session which connectors work and to check the ones it needs first. */
   readonly briefSessions: boolean;
+  /** Tell each new session in an Overlord worktree what its repository's setup means for it. */
+  readonly launchCheck: boolean;
 }
 
 /** A GitHub sign-in from the editor's own account list. */

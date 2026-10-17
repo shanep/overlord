@@ -149,6 +149,26 @@ about the others so it can steer clear:
 
 Turn this off with `overlord.coordination.enabled`.
 
+### Launch check
+
+Every time Overlord hands a worktree to a session, it checks the repo in the background (about
+half a second) and the session starts with the result. Warnings go to you at the top of the
+session's first reply. The check looks for:
+
+- Instructions that disagree on how work lands, such as `~/.claude/CLAUDE.md` saying no pull
+  requests while the repo's `CLAUDE.md` says to open one. Both lines are quoted.
+- Branch protection on the default branch, and required checks an admin's direct push skips.
+- Git hooks on commit and push, or a hook manager that is set up but not installed.
+- Build tools with no shim in `~/.claude/shims`, so their heavy commands do not take turns.
+- Fixed ports in launch settings, Vite, compose or `.env` files when nothing reads
+  `OVERLORD_PORT_BASE`.
+- Memory or instructions that tell a session to make its own worktree.
+- How much auto memory the session shares with the main checkout, and worktrees made outside
+  Overlord that may hold unlanded work.
+
+A result stays fresh for 10 minutes. A session that starts while the check is still running gets
+it with its first prompt or tool call instead. Turn this off with `overlord.worktrees.launchCheck`.
+
 ## New machine
 
 1. Install the extension.

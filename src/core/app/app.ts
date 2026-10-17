@@ -10,6 +10,7 @@ import { callStdioTool } from '../connectors/stdio-mcp.js';
 import { Launcher } from '../harness/launcher.js';
 import { mergeEnv } from '../harness/options.js';
 import { sdkPlanUsage, sdkQuery } from '../harness/sdk-types.js';
+import { withContext } from '../hooks/mapping.js';
 import type { HookOutput } from '../hooks/protocol.js';
 import { socketPath } from '../hooks/socket-path.js';
 import type { ClaudePaths } from '../paths.js';
@@ -29,6 +30,7 @@ import type { AppError } from './errors.js';
 import { ErrorLog } from './errors.js';
 import type { PanelParams } from './host-port.js';
 import { BackgroundJobs } from './jobs.js';
+import { createLaunchChecker } from './launch-check.js';
 import { PermissionHub } from './permissions.js';
 import type { ActiveTerminal } from './places.js';
 import { SessionPlaces } from './places.js';
@@ -205,6 +207,12 @@ export class OverlordApp {
     this.rt = { ...base, caches: createCaches(base), context, activity };
     this.cleanups.push(store.onChange(notify), launcher.onChange(notify));
     const coordinator = createCoordinator(this.rt);
+    const launchCheck = createLaunchChecker(this.rt);
+    this.cleanups.push(
+      this.rt.worktrees.onHeld((entry) => {
+        launchCheck.prime(entry);
+      }),
+    );
     this.sources = new Sources({
       paths: this.paths,
       host,
@@ -215,7 +223,12 @@ export class OverlordApp {
       watchFactory: deps.watchFactory,
       permissions,
       context,
-      advise: (payload): HookOutput | null => coordinator.handle(payload),
+      advise: (payload): HookOutput | null =>
+        withContext(
+          coordinator.handle(payload),
+          payload.hook_event_name,
+          launchCheck.noteFor(payload),
+        ),
       report,
       notify,
       sessionContext: (): string | null =>

@@ -60,6 +60,7 @@ function readSettings(): OverlordSettings {
     configSyncAuto: config.get<boolean>('configSync.auto', true),
     configSyncIntervalMinutes: config.get<number>('configSync.intervalMinutes', 5),
     briefSessions: config.get<boolean>('connectors.briefSessions', true),
+    launchCheck: config.get<boolean>('worktrees.launchCheck', true),
   };
 }
 

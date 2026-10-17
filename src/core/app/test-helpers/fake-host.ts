@@ -21,6 +21,7 @@ const DEFAULT_SETTINGS: OverlordSettings = {
   maxConcurrency: 4,
   holdTimeoutSeconds: 600,
   coordinateSessions: true,
+  launchCheck: false,
   telemetryPort: 0,
   claudePath: 'claude',
   configRepoUrl: '',

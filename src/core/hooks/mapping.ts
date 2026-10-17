@@ -173,3 +173,29 @@ export function additionalContextOf(output: HookOutput | null): string | null {
   const text: unknown = Reflect.get(specific, 'additionalContext');
   return typeof text === 'string' && text !== '' ? text : null;
 }
+
+/**
+ * Adds text to the additionalContext an output carries, or makes an output
+ * for event that carries just the text. Null text leaves output as it is.
+ */
+export function withContext(
+  output: HookOutput | null,
+  event: string,
+  text: string | null,
+): HookOutput | null {
+  if (text === null) {
+    return output;
+  }
+  const specific = output?.['hookSpecificOutput'];
+  if (output === null || typeof specific !== 'object' || specific === null) {
+    return { ...output, hookSpecificOutput: { hookEventName: event, additionalContext: text } };
+  }
+  const before = additionalContextOf(output);
+  return {
+    ...output,
+    hookSpecificOutput: {
+      ...specific,
+      additionalContext: before === null ? text : `${before}\n\n${text}`,
+    },
+  };
+}
