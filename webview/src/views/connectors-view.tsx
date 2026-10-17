@@ -123,7 +123,7 @@ export function ConnectorsView(props: { readonly state: ConnectorsState }): Reac
   return (
     <section aria-labelledby="connectors-title">
       <header className="view-header">
-        <h1 id="connectors-title">Connectors</h1>
+        <h1 id="connectors-title">Connectors (MCP)</h1>
         <dl className="stats">
           <div className="stat">
             <dt>Ready</dt>

@@ -64,7 +64,7 @@ describe('ConnectorsView', () => {
     expect(cell(rows[0], 0)?.firstElementChild?.hasAttribute('title')).toBe(false);
     expect(cell(rows[2], 1)?.textContent).toBe('claude.ai connector');
     expect(cell(rows[1], 2)?.textContent).toBe('Needs sign in');
-    expect(getByRole('heading', { level: 1 }).textContent).toBe('Connectors');
+    expect(getByRole('heading', { level: 1 }).textContent).toBe('Connectors (MCP)');
     expect(container.textContent).toContain('from /work/repo');
     expect(container.textContent).toContain('Last checked');
     fireEvent.click(getByRole('button', { name: 'Open Chrome' }));
