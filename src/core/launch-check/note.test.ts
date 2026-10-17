@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { NOT_SET_UP_RULE, WARNING_RULE, compatNote } from './note.js';
+import { NOT_SET_UP_RULE, SET_UP_RULE, WARNING_RULE, compatNote } from './note.js';
 
 const at = (time: number): string => `t${String(time)}`;
 
@@ -47,13 +47,26 @@ describe('compatNote', () => {
     );
   });
 
-  it('leaves out the rule when there is nothing to raise', () => {
+  it('still asks to confirm the check when there is nothing to raise', () => {
     const note = compatNote(
       { folder: '/r', checkedAt: 1, findings: [{ level: 'info', text: 'Fine.' }] },
       at,
     );
     expect(note).toBe(
-      'Overlord compatibility check for r at t1. This project is set up for Overlord.\nNotes:\n- Fine.',
+      [
+        'Overlord compatibility check for r at t1. This project is set up for Overlord.',
+        'Notes:',
+        '- Fine.',
+        SET_UP_RULE,
+      ].join('\n'),
     );
+  });
+
+  it('has every rule open with the check confirmation', () => {
+    for (const rule of [SET_UP_RULE, WARNING_RULE, NOT_SET_UP_RULE]) {
+      expect(rule).toMatch(
+        /^Start your first reply with one line saying you checked this project for Overlord compatibility/,
+      );
+    }
   });
 });
