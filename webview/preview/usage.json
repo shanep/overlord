@@ -1,0 +1,439 @@
+{
+  "days": [
+    {
+      "date": "2026-09-17",
+      "messages": 127,
+      "sessions": 14,
+      "toolCalls": 481,
+      "tokensByModel": {
+        "claude-opus-5-5": 1361188,
+        "claude-sonnet-5-5": 504815,
+        "claude-haiku-5-5": 277827
+      }
+    },
+    {
+      "date": "2026-09-18",
+      "messages": 237,
+      "sessions": 7,
+      "toolCalls": 312,
+      "tokensByModel": {
+        "claude-opus-5-5": 869622,
+        "claude-sonnet-5-5": 882435,
+        "claude-haiku-5-5": 63123
+      }
+    },
+    {
+      "date": "2026-09-19",
+      "messages": 64,
+      "sessions": 5,
+      "toolCalls": 328,
+      "tokensByModel": {
+        "claude-opus-5-5": 591707,
+        "claude-sonnet-5-5": 437474,
+        "claude-haiku-5-5": 32665
+      }
+    },
+    {
+      "date": "2026-09-20",
+      "messages": 47,
+      "sessions": 6,
+      "toolCalls": 169,
+      "tokensByModel": {
+        "claude-opus-5-5": 733423,
+        "claude-sonnet-5-5": 291695,
+        "claude-haiku-5-5": 137091
+      }
+    },
+    {
+      "date": "2026-09-21",
+      "messages": 388,
+      "sessions": 8,
+      "toolCalls": 727,
+      "tokensByModel": {
+        "claude-opus-5-5": 1173229,
+        "claude-sonnet-5-5": 551927,
+        "claude-haiku-5-5": 157968
+      }
+    },
+    {
+      "date": "2026-09-22",
+      "messages": 151,
+      "sessions": 6,
+      "toolCalls": 454,
+      "tokensByModel": {
+        "claude-opus-5-5": 2398600,
+        "claude-sonnet-5-5": 866981,
+        "claude-haiku-5-5": 241710
+      }
+    },
+    {
+      "date": "2026-09-23",
+      "messages": 337,
+      "sessions": 13,
+      "toolCalls": 547,
+      "tokensByModel": {
+        "claude-opus-5-5": 2583989,
+        "claude-sonnet-5-5": 963110,
+        "claude-haiku-5-5": 159951
+      }
+    },
+    {
+      "date": "2026-09-24",
+      "messages": 344,
+      "sessions": 14,
+      "toolCalls": 1056,
+      "tokensByModel": {
+        "claude-opus-5-5": 2961625,
+        "claude-sonnet-5-5": 1331753,
+        "claude-haiku-5-5": 135433
+      }
+    },
+    {
+      "date": "2026-09-25",
+      "messages": 187,
+      "sessions": 12,
+      "toolCalls": 986,
+      "tokensByModel": {
+        "claude-opus-5-5": 2885735,
+        "claude-sonnet-5-5": 848560,
+        "claude-haiku-5-5": 393061
+      }
+    },
+    {
+      "date": "2026-09-26",
+      "messages": 140,
+      "sessions": 6,
+      "toolCalls": 297,
+      "tokensByModel": {
+        "claude-opus-5-5": 491322,
+        "claude-sonnet-5-5": 399150,
+        "claude-haiku-5-5": 22302
+      }
+    },
+    {
+      "date": "2026-09-27",
+      "messages": 134,
+      "sessions": 5,
+      "toolCalls": 268,
+      "tokensByModel": {
+        "claude-opus-5-5": 1216500,
+        "claude-sonnet-5-5": 327843,
+        "claude-haiku-5-5": 102673
+      }
+    },
+    {
+      "date": "2026-09-28",
+      "messages": 424,
+      "sessions": 6,
+      "toolCalls": 1025,
+      "tokensByModel": {
+        "claude-opus-5-5": 3475406,
+        "claude-sonnet-5-5": 1847553,
+        "claude-haiku-5-5": 215934
+      }
+    },
+    {
+      "date": "2026-09-29",
+      "messages": 279,
+      "sessions": 12,
+      "toolCalls": 1021,
+      "tokensByModel": {
+        "claude-opus-5-5": 3001972,
+        "claude-sonnet-5-5": 1970058,
+        "claude-haiku-5-5": 337673
+      }
+    },
+    {
+      "date": "2026-09-30",
+      "messages": 216,
+      "sessions": 6,
+      "toolCalls": 1151,
+      "tokensByModel": {
+        "claude-opus-5-5": 1178873,
+        "claude-sonnet-5-5": 1238309,
+        "claude-haiku-5-5": 108816
+      }
+    },
+    {
+      "date": "2026-10-01",
+      "messages": 551,
+      "sessions": 7,
+      "toolCalls": 849,
+      "tokensByModel": {
+        "claude-opus-5-5": 1545481,
+        "claude-sonnet-5-5": 946374,
+        "claude-haiku-5-5": 186832
+      }
+    },
+    {
+      "date": "2026-10-02",
+      "messages": 562,
+      "sessions": 10,
+      "toolCalls": 835,
+      "tokensByModel": {
+        "claude-opus-5-5": 2937822,
+        "claude-sonnet-5-5": 1963078,
+        "claude-haiku-5-5": 336747
+      }
+    },
+    {
+      "date": "2026-10-03",
+      "messages": 87,
+      "sessions": 3,
+      "toolCalls": 229,
+      "tokensByModel": {
+        "claude-opus-5-5": 834380,
+        "claude-sonnet-5-5": 705147,
+        "claude-haiku-5-5": 134822
+      }
+    },
+    {
+      "date": "2026-10-04",
+      "messages": 107,
+      "sessions": 2,
+      "toolCalls": 308,
+      "tokensByModel": {
+        "claude-opus-5-5": 706740,
+        "claude-sonnet-5-5": 493618,
+        "claude-haiku-5-5": 89667
+      }
+    },
+    {
+      "date": "2026-10-05",
+      "messages": 522,
+      "sessions": 14,
+      "toolCalls": 1133,
+      "tokensByModel": {
+        "claude-opus-5-5": 2539463,
+        "claude-sonnet-5-5": 1581453,
+        "claude-haiku-5-5": 383584
+      }
+    },
+    {
+      "date": "2026-10-06",
+      "messages": 579,
+      "sessions": 19,
+      "toolCalls": 1373,
+      "tokensByModel": {
+        "claude-opus-5-5": 3688819,
+        "claude-sonnet-5-5": 737867,
+        "claude-haiku-5-5": 364836
+      }
+    },
+    {
+      "date": "2026-10-07",
+      "messages": 518,
+      "sessions": 6,
+      "toolCalls": 521,
+      "tokensByModel": {
+        "claude-opus-5-5": 2744335,
+        "claude-sonnet-5-5": 1362202,
+        "claude-haiku-5-5": 86237
+      }
+    },
+    {
+      "date": "2026-10-08",
+      "messages": 202,
+      "sessions": 8,
+      "toolCalls": 575,
+      "tokensByModel": {
+        "claude-opus-5-5": 2125033,
+        "claude-sonnet-5-5": 967145,
+        "claude-haiku-5-5": 169018,
+        "claude-fable-5-1": 236802
+      }
+    },
+    {
+      "date": "2026-10-09",
+      "messages": 285,
+      "sessions": 10,
+      "toolCalls": 899,
+      "tokensByModel": {
+        "claude-opus-5-5": 2759899,
+        "claude-sonnet-5-5": 736921,
+        "claude-haiku-5-5": 356016,
+        "claude-fable-5-1": 629848
+      }
+    },
+    {
+      "date": "2026-10-10",
+      "messages": 162,
+      "sessions": 4,
+      "toolCalls": 203,
+      "tokensByModel": {
+        "claude-opus-5-5": 987715,
+        "claude-sonnet-5-5": 327580,
+        "claude-haiku-5-5": 121494,
+        "claude-fable-5-1": 313310
+      }
+    },
+    {
+      "date": "2026-10-11",
+      "messages": 106,
+      "sessions": 2,
+      "toolCalls": 607,
+      "tokensByModel": {
+        "claude-opus-5-5": 645632,
+        "claude-sonnet-5-5": 482251,
+        "claude-haiku-5-5": 49932,
+        "claude-fable-5-1": 273069
+      }
+    },
+    {
+      "date": "2026-10-12",
+      "messages": 518,
+      "sessions": 21,
+      "toolCalls": 1653,
+      "tokensByModel": {
+        "claude-opus-5-5": 3605480,
+        "claude-sonnet-5-5": 1022340,
+        "claude-haiku-5-5": 240110,
+        "claude-fable-5-1": 218929
+      }
+    },
+    {
+      "date": "2026-10-13",
+      "messages": 668,
+      "sessions": 14,
+      "toolCalls": 1571,
+      "tokensByModel": {
+        "claude-opus-5-5": 4371811,
+        "claude-sonnet-5-5": 1272230,
+        "claude-haiku-5-5": 178344,
+        "claude-fable-5-1": 316929
+      }
+    },
+    {
+      "date": "2026-10-14",
+      "messages": 729,
+      "sessions": 18,
+      "toolCalls": 1657,
+      "tokensByModel": {
+        "claude-opus-5-5": 2917065,
+        "claude-sonnet-5-5": 1220005,
+        "claude-haiku-5-5": 334028,
+        "claude-fable-5-1": 889448
+      }
+    },
+    {
+      "date": "2026-10-15",
+      "messages": 251,
+      "sessions": 6,
+      "toolCalls": 919,
+      "tokensByModel": {
+        "claude-opus-5-5": 4734055,
+        "claude-sonnet-5-5": 1251618,
+        "claude-haiku-5-5": 231173,
+        "claude-fable-5-1": 448893
+      }
+    },
+    {
+      "date": "2026-10-16",
+      "messages": 809,
+      "sessions": 21,
+      "toolCalls": 1921,
+      "tokensByModel": {
+        "claude-opus-5-5": 2723239,
+        "claude-sonnet-5-5": 2263146,
+        "claude-haiku-5-5": 384780,
+        "claude-fable-5-1": 513059
+      }
+    }
+  ],
+  "hourCounts": {
+    "0": 3,
+    "1": 3,
+    "2": 3,
+    "3": 3,
+    "4": 3,
+    "5": 4,
+    "6": 69,
+    "7": 68,
+    "8": 257,
+    "9": 318,
+    "10": 380,
+    "11": 316,
+    "12": 63,
+    "13": 279,
+    "14": 300,
+    "15": 330,
+    "16": 267,
+    "17": 209,
+    "18": 66,
+    "19": 111,
+    "20": 134,
+    "21": 142,
+    "22": 115,
+    "23": 57
+  },
+  "totalSessions": 412,
+  "totalMessages": 11873,
+  "climate": {
+    "energyKwh": 41.7,
+    "co2eKg": 15.9,
+    "waterLiters": 75.1,
+    "drivingMiles": 40.2,
+    "homeDays": 1.4,
+    "unpricedTokens": 182000,
+    "models": [
+      {
+        "model": "claude-opus-5-5",
+        "tokens": 81200000,
+        "energyKwh": 31.2,
+        "co2eKg": 11.9
+      },
+      {
+        "model": "claude-sonnet-5-5",
+        "tokens": 39400000,
+        "energyKwh": 8.9,
+        "co2eKg": 3.4
+      },
+      {
+        "model": "claude-fable-5-1",
+        "tokens": 4300000,
+        "energyKwh": 1.2,
+        "co2eKg": 0.46
+      },
+      {
+        "model": "claude-haiku-5-5",
+        "tokens": 5100000,
+        "energyKwh": 0.4,
+        "co2eKg": 0.15
+      }
+    ],
+    "assumptions": {
+      "whPerListDollar": 32,
+      "kgCo2ePerKwh": 0.38,
+      "litersPerKwh": 1.8,
+      "kgCo2ePerMile": 0.395,
+      "kwhPerHomeDay": 29
+    }
+  },
+  "plan": {
+    "subscription": "max",
+    "fetchedAt": 1792206480000,
+    "limits": [
+      {
+        "kind": "session",
+        "label": "Current session",
+        "percent": 38,
+        "resetsAt": 1792214640000,
+        "severity": "normal"
+      },
+      {
+        "kind": "weekly_all",
+        "label": "This week, all models",
+        "percent": 71,
+        "resetsAt": 1792465800000,
+        "severity": "warning"
+      },
+      {
+        "kind": "weekly_scoped",
+        "label": "This week, Opus",
+        "percent": 92,
+        "resetsAt": 1792465800000,
+        "severity": "critical"
+      }
+    ]
+  }
+}

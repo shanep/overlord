@@ -1,0 +1,259 @@
+{
+  "sessions": 412,
+  "totalUsd": 128.4,
+  "cacheReadUsd": 71.9,
+  "averageContext": 96000,
+  "largestContext": 412000,
+  "tips": [
+    {
+      "id": "compact-early",
+      "severity": "high",
+      "title": "Compact before the context passes 150K",
+      "finding": "In 23 sessions the context grew past 150K tokens, and every request after that sent it again. Those requests cost $41.20, a third of the month.",
+      "advice": [
+        "Run /compact when a session finishes one task and starts another.",
+        "Start a new session for unrelated work instead of carrying the old context along."
+      ],
+      "sessions": [
+        {
+          "sessionId": "s-release",
+          "title": "Release prep for 0.4",
+          "detail": "Peak 412K tokens, $9.80"
+        },
+        {
+          "sessionId": "s-paper",
+          "title": "Tighten the related work section",
+          "detail": "Peak 288K tokens, $6.10"
+        }
+      ],
+      "fixes": ["test-loop-guard"],
+      "pros": [
+        "Cheaper requests for the rest of the session.",
+        "Claude keeps its attention on the current task."
+      ],
+      "cons": [
+        "The summary can drop a detail you needed later.",
+        "Compacting takes a minute on a large context."
+      ],
+      "skipWhen": "the session is about to end, or every earlier step matters for the next one.",
+      "impact": {
+        "trackedSince": 1790997000000,
+        "verdict": "better",
+        "summary": "",
+        "sessionsBefore": 61,
+        "sessionsAfter": 27,
+        "metrics": [
+          {
+            "id": "peak",
+            "label": "Peak context",
+            "role": "target",
+            "why": "",
+            "format": "tokens",
+            "before": 212000,
+            "after": 138000,
+            "change": -0.35,
+            "direction": "better"
+          },
+          {
+            "id": "cost",
+            "label": "Cost per session",
+            "role": "cost",
+            "why": "",
+            "format": "usd",
+            "before": 3.4,
+            "after": 2.6,
+            "change": -0.24,
+            "direction": "better"
+          },
+          {
+            "id": "prompts",
+            "label": "Prompts per 100 requests",
+            "role": "side-effect",
+            "why": "more prompts would mean the summary lost something",
+            "format": "per100",
+            "before": 14.2,
+            "after": 15.1,
+            "change": 0.06,
+            "direction": "same"
+          }
+        ],
+        "weeks": [
+          {
+            "start": 1790997000000,
+            "sessions": 12,
+            "values": [151000, 2.9, 14.8]
+          },
+          {
+            "start": 1791601800000,
+            "sessions": 15,
+            "values": [126000, 2.3, 15.3]
+          }
+        ]
+      }
+    },
+    {
+      "id": "big-reads",
+      "severity": "medium",
+      "title": "Read parts of large files, not the whole file",
+      "finding": "Whole file reads of files over 2,000 lines added 4.1M tokens across 38 sessions. Most of them only needed a function or two.",
+      "advice": [
+        "Ask Claude to grep for the symbol first and read only the lines around it.",
+        "Keep generated files out of the search path."
+      ],
+      "sessions": [
+        {
+          "sessionId": "s-docs",
+          "title": "Docs pass on the README",
+          "detail": "Read catalog.generated.json 3 times"
+        }
+      ],
+      "fixes": [],
+      "pros": ["Smaller context from the first prompt on."],
+      "cons": ["Claude can miss code outside the lines it read."],
+      "skipWhen": "you are reviewing the whole file on purpose.",
+      "impact": null
+    },
+    {
+      "id": "retry-loops",
+      "severity": "low",
+      "title": "Stop a failing test loop sooner",
+      "finding": "In 6 sessions the same test failed more than 8 times in a row before anything changed.",
+      "advice": ["Tell Claude to stop and explain after 3 failed runs."],
+      "sessions": [],
+      "fixes": ["test-loop-guard"],
+      "pros": ["Less spend on runs that teach nothing new."],
+      "cons": ["Some flaky tests do pass on the fourth try."],
+      "skipWhen": "the test is known to be flaky and you only want it green.",
+      "impact": {
+        "trackedSince": 1792033800000,
+        "verdict": "early",
+        "summary": "Tracking started 2 days ago. Give it a week of sessions before the comparison means anything.",
+        "sessionsBefore": 44,
+        "sessionsAfter": 3,
+        "metrics": [],
+        "weeks": []
+      }
+    }
+  ],
+  "suggestions": [
+    {
+      "id": "test-loop-guard",
+      "kind": "skill",
+      "name": "test-loop-guard",
+      "summary": "Stops after three failed test runs in a row and explains what it tried.",
+      "pros": ["Catches loops early."],
+      "cons": ["Adds a short pause to long test runs."],
+      "reason": "6 sessions ran the same failing test more than 8 times.",
+      "installed": false
+    },
+    {
+      "id": "release-notes",
+      "kind": "agent",
+      "name": "release-notes",
+      "summary": "Writes release notes from the commits since the last tag.",
+      "pros": ["Notes in the same style every time."],
+      "cons": ["Needs a review before it goes out."],
+      "reason": null,
+      "installed": true
+    }
+  ],
+  "rows": [
+    {
+      "sessionId": "s-3",
+      "title": "Download grades from Canvas",
+      "updatedAt": 1792131000000,
+      "prompts": 10,
+      "requests": 579,
+      "peakContext": 133007,
+      "averageContext": 143720,
+      "costUsd": 11.84,
+      "cacheReadShare": 0.5,
+      "tips": []
+    },
+    {
+      "sessionId": "s-2",
+      "title": "Docs pass on the README",
+      "updatedAt": 1792156200000,
+      "prompts": 39,
+      "requests": 174,
+      "peakContext": 71218,
+      "averageContext": 33733,
+      "costUsd": 9.67,
+      "cacheReadShare": 0.78,
+      "tips": ["compact-early"]
+    },
+    {
+      "sessionId": "s-1",
+      "title": "Tighten the related work section",
+      "updatedAt": 1792181400000,
+      "prompts": 33,
+      "requests": 189,
+      "peakContext": 380640,
+      "averageContext": 154349,
+      "costUsd": 8.02,
+      "cacheReadShare": 0.58,
+      "tips": []
+    },
+    {
+      "sessionId": "s-7",
+      "title": "Profile the hook server",
+      "updatedAt": 1792030200000,
+      "prompts": 36,
+      "requests": 173,
+      "peakContext": 338829,
+      "averageContext": 69802,
+      "costUsd": 6.47,
+      "cacheReadShare": 0.41,
+      "tips": []
+    },
+    {
+      "sessionId": "s-6",
+      "title": "Write the CS 321 project 3 rubric",
+      "updatedAt": 1792055400000,
+      "prompts": 51,
+      "requests": 402,
+      "peakContext": 300208,
+      "averageContext": 165465,
+      "costUsd": 5.28,
+      "cacheReadShare": 0.88,
+      "tips": ["compact-early"]
+    },
+    {
+      "sessionId": "s-5",
+      "title": "Add Skills and Agents views",
+      "updatedAt": 1792080600000,
+      "prompts": 52,
+      "requests": 373,
+      "peakContext": 195981,
+      "averageContext": 172698,
+      "costUsd": 5.26,
+      "cacheReadShare": 0.47,
+      "tips": []
+    },
+    {
+      "sessionId": "s-4",
+      "title": "Fix the fleet sort order",
+      "updatedAt": 1792105800000,
+      "prompts": 59,
+      "requests": 256,
+      "peakContext": 74676,
+      "averageContext": 96016,
+      "costUsd": 2.87,
+      "cacheReadShare": 0.66,
+      "tips": ["compact-early"]
+    },
+    {
+      "sessionId": "s-0",
+      "title": "Release prep for 0.4",
+      "updatedAt": 1792206600000,
+      "prompts": 9,
+      "requests": 202,
+      "peakContext": 149130,
+      "averageContext": 63302,
+      "costUsd": 0.72,
+      "cacheReadShare": 0.71,
+      "tips": ["compact-early"]
+    }
+  ],
+  "scannedAt": 1792205100000
+}

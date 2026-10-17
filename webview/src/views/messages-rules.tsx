@@ -115,7 +115,9 @@ function BlockForm(): ReactElement {
 export function BlockRules(props: { readonly rules: readonly AutoApproveRule[] }): ReactElement {
   return (
     <section className="section" aria-labelledby="block-rules-heading">
-      <h2 id="block-rules-heading">Block rules for SendMessage</h2>
+      <h2 id="block-rules-heading" className="section-title">
+        Block rules for SendMessage
+      </h2>
       <p className="muted">
         SendMessage never asks permission, so Overlord blocks it from the PreToolUse hook. The
         pattern matches the recipient: an agent name or id, main, a session name, or a uds: address.

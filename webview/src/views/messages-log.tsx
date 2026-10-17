@@ -143,7 +143,7 @@ function Group(props: { readonly group: SessionGroup; readonly open: boolean }):
   const { group } = props;
   const newest = group.messages[0]?.at ?? 0;
   return (
-    <details open={props.open} className="section">
+    <details open={props.open} className="message-group">
       <summary>
         <strong>{group.title}</strong>{' '}
         <span className="muted">{`${count(group.messages.length, 'message')}, last ${time(newest)}`}</span>
@@ -183,7 +183,9 @@ export function MessageLog(props: { readonly messages: readonly AgentMessage[] }
   const filtering = filter.text.trim() !== '' || filter.kind !== 'all' || filter.blockedOnly;
   return (
     <section className="section" aria-labelledby="message-log-heading">
-      <h2 id="message-log-heading">Messages by session</h2>
+      <h2 id="message-log-heading" className="section-title">
+        Messages by session
+      </h2>
       <div className="toolbar">
         <label>
           Filter

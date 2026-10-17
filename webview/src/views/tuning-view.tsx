@@ -50,7 +50,7 @@ export function TuningView(props: { readonly state: TuningState }): ReactElement
   const titles = useMemo(() => new Map(state.tips.map((tip) => [tip.id, tip.title])), [state.tips]);
   const reread = state.totalUsd === 0 ? null : state.cacheReadUsd / state.totalUsd;
   return (
-    <section aria-labelledby="tuning-title">
+    <section className="tuning" aria-labelledby="tuning-title">
       <header className="view-header">
         <h1 id="tuning-title">Tuning</h1>
         <dl className="stats">
@@ -60,8 +60,8 @@ export function TuningView(props: { readonly state: TuningState }): ReactElement
           <Stat label="Average context" value={formatCompact(state.averageContext)} />
           <Stat label="Largest context" value={formatCompact(state.largestContext)} />
         </dl>
-      </header>
-      <div className="toolbar">
+        <span className="spacer" />
+        <LastScanned at={state.scannedAt} />
         <button
           type="button"
           onClick={() => {
@@ -70,13 +70,21 @@ export function TuningView(props: { readonly state: TuningState }): ReactElement
         >
           Rescan
         </button>
-        <LastScanned at={state.scannedAt} />
-      </div>
-      <p className="muted">
-        Advice from measuring every session transcript on this machine: how large the context got,
-        what the spend went to, and habits that waste tokens. Costs are estimates at list price.
-        Context counts are tokens sent with each request.
-      </p>
+      </header>
+      <details className="about">
+        <summary>How this works</summary>
+        <p>
+          Advice from measuring every session transcript on this machine: how large the context got,
+          what the spend went to, and habits that waste tokens. Costs are estimates at list price.
+          Context counts are tokens sent with each request.
+        </p>
+        <p>
+          Track a tip when you start following it, and its card compares the sessions you start
+          after that with the 30 days before. Lower is better for every measure, and a move under
+          10% counts as no change, since the work and the model change too. Setting a knob or
+          creating a skill or agent a tip names starts tracking on its own.
+        </p>
+      </details>
       <TipList tips={state.tips} names={names} />
       <SuggestionList suggestions={state.suggestions} />
       <TuningSessionTable rows={state.rows} titles={titles} />

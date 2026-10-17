@@ -142,23 +142,54 @@ export function Notice(props: {
   );
 }
 
-export interface StatTile {
-  readonly label: string;
-  readonly value: string;
-  /** A hover note, such as the exact number behind a rounded one. */
-  readonly title?: string;
+/**
+ * The classes a Card uses, for an element that has to be something other than
+ * a list item, such as an article with its own heading.
+ */
+export function cardClassName(options: {
+  readonly tone?: Tone | undefined;
+  readonly action?: boolean;
+  readonly extra?: string;
+}): string {
+  const classes = ['card'];
+  if (options.tone !== undefined) {
+    classes.push('card-edge', `card-${options.tone}`);
+  }
+  if (options.action === true) {
+    classes.push('card-action');
+  }
+  if (options.extra !== undefined) {
+    classes.push(options.extra);
+  }
+  return classes.join(' ');
 }
 
-/** The few numbers that matter on a page, as small tiles with the label over the value. */
-export function StatTiles(props: { readonly tiles: readonly StatTile[] }): ReactElement {
+/** A row of stat tiles: the few numbers a section is about, each big enough to read at a glance. */
+export function StatTiles(props: {
+  readonly label: string;
+  readonly children: ReactNode;
+}): ReactElement {
   return (
-    <dl className="stat-tiles">
-      {props.tiles.map((tile) => (
-        <div key={tile.label} className="stat-tile" title={tile.title}>
-          <dt>{tile.label}</dt>
-          <dd>{tile.value}</dd>
-        </div>
-      ))}
+    <dl className="tile-grid" aria-label={props.label}>
+      {props.children}
     </dl>
+  );
+}
+
+/** One stat tile: a label, a large value under it, and an optional line of detail. */
+export function StatTile(props: {
+  readonly label: string;
+  readonly value: ReactNode;
+  readonly detail?: ReactNode;
+  readonly tone?: Tone | undefined;
+  /** A hover note, such as the exact number behind a rounded one. */
+  readonly title?: string | undefined;
+}): ReactElement {
+  return (
+    <div className={cardClassName({ tone: props.tone, extra: 'tile' })} title={props.title}>
+      <dt className="tile-label">{props.label}</dt>
+      <dd className="tile-value">{props.value}</dd>
+      {props.detail === undefined ? null : <dd className="tile-detail">{props.detail}</dd>}
+    </div>
   );
 }

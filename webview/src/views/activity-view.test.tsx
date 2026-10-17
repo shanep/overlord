@@ -178,13 +178,13 @@ describe('ActivityView', () => {
     expect(container.textContent).toContain('1 GB of 4 GB');
     expect(container.textContent).toContain('Network use counts TCP traffic only.');
     expect(container.textContent).toContain('last at');
-    const problems = screen.getByRole('region', { name: 'Problems' });
+    const problems = screen.getByRole('region', { name: /^Problems/u });
     expect(within(problems).getByText('Critical')).not.toBeNull();
     expect(problems.textContent).toContain('Load is 12.5 on 10 cores.');
     const machine = screen.getByRole('region', { name: 'Machine' });
     expect(machine.textContent).toContain('warning');
     expect(machine.textContent).toContain('CPU 12.3%, memory n/a, disk 40.0%');
-    expect(machine.textContent).toContain('70% (slowed for heat or power)');
+    expect(machine.textContent).toContain('70%Slowed for heat or power');
     expect(machine.textContent).toContain('12.50, 9.00, 8.00');
     expect(within(machine).getByText('Not responding')).not.toBeNull();
     expect(

@@ -5,6 +5,7 @@ import type { ReactElement } from 'react';
 
 import type { Suggestion, Tip, TipSeverity, TuningSessionRow } from '../../../src/shared/tuning.js';
 import { Badge } from '../components/badge.js';
+import { Avatar, cardClassName, Notice, StatusDot } from '../components/card.js';
 import type { Column } from '../components/data-table.js';
 import { DataTable } from '../components/data-table.js';
 import {
@@ -84,8 +85,12 @@ function TipCard(props: {
     return name === undefined ? [] : [name];
   });
   return (
-    <article className="tip" aria-labelledby={headingId}>
+    <article
+      className={cardClassName({ tone: severity.tone, extra: 'tip' })}
+      aria-labelledby={headingId}
+    >
       <header className="tip-header">
+        <StatusDot tone={severity.tone} />
         <h3 id={headingId}>{tip.title}</h3>
         <Badge label={severity.label} tone={severity.tone} />
         {tip.impact === null ? null : (
@@ -142,18 +147,17 @@ export function TipList(props: {
   readonly names: ReadonlyMap<string, string>;
 }): ReactElement {
   return (
-    <section className="section" aria-labelledby="tips-advice">
-      <h2 id="tips-advice">Advice</h2>
-      <p className="hint">
-        Track a tip when you start following it, and its card compares the sessions you start after
-        that with the 30 days before. Lower is better for every measure, and a move under 10% counts
-        as no change, since the work and the model change too. Setting a knob or creating a skill or
-        agent a tip names starts tracking on its own.
-      </p>
+    <section className="card-group" aria-labelledby="tips-advice">
+      <h2 id="tips-advice">
+        Advice{' '}
+        {props.tips.length === 0 ? null : (
+          <span className="count">{String(props.tips.length)}</span>
+        )}
+      </h2>
       {props.tips.length === 0 ? (
-        <p className="muted">Nothing stands out. Your sessions look lean.</p>
+        <Notice ok>Nothing stands out. Your sessions look lean.</Notice>
       ) : (
-        <div className="tips">
+        <div className="card-grid card-grid-wide tips">
           {props.tips.map((tip) => (
             <TipCard key={tip.id} tip={tip} names={props.names} />
           ))}
@@ -168,8 +172,9 @@ function SuggestionCard(props: { readonly suggestion: Suggestion }): ReactElemen
   const post = usePostAction();
   const headingId = `suggestion-${suggestion.id}`;
   return (
-    <article className="tip" aria-labelledby={headingId}>
+    <article className={cardClassName({ extra: 'tip' })} aria-labelledby={headingId}>
       <header className="tip-header">
+        <Avatar seed={suggestion.name} text={suggestion.name} />
         <h3 id={headingId}>
           <code>{suggestion.name}</code>
         </h3>
@@ -182,9 +187,11 @@ function SuggestionCard(props: { readonly suggestion: Suggestion }): ReactElemen
         <summary>Pros and cons</summary>
         <Tradeoffs id={headingId} pros={suggestion.pros} cons={suggestion.cons} />
       </details>
-      <div className="actions">
+      <div className="card-foot">
+        <span className="spacer" />
         <button
           type="button"
+          className={suggestion.installed ? undefined : 'primary'}
           title={`Write the ${suggestion.kind} file, then open it to review`}
           onClick={() => {
             post({ type: 'createSuggestion', suggestionId: suggestion.id });
@@ -201,13 +208,13 @@ export function SuggestionList(props: {
   readonly suggestions: readonly Suggestion[];
 }): ReactElement {
   return (
-    <section className="section" aria-labelledby="tuning-suggestions">
+    <section className="card-group" aria-labelledby="tuning-suggestions">
       <h2 id="tuning-suggestions">Skills and agents to add</h2>
       <p className="muted">
         Each one takes over work your sessions keep doing by hand. Create asks where to save it and
         opens the file so you can review it.
       </p>
-      <div className="tips">
+      <div className="card-grid card-grid-wide tips">
         {props.suggestions.map((suggestion) => (
           <SuggestionCard key={suggestion.id} suggestion={suggestion} />
         ))}

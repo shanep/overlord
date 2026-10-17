@@ -35,42 +35,55 @@ export function InboundPolicy(props: {
   const options = [...choices, UNSET];
   return (
     <section className="section" aria-labelledby="inbound-heading">
-      <h2 id="inbound-heading">Messages from your other sessions</h2>
-      <p>
+      <h2 id="inbound-heading" className="section-title">
+        Messages from your other sessions
+      </h2>
+      <p className="muted">
         In effect now: <span className="mono">{policy ?? 'not set'}</span>. Saving writes{' '}
         <span className="mono">crossSessionInbound</span> to your user settings. A managed value,
         the --settings flag, or a stricter project value still wins.
       </p>
-      <fieldset>
-        <legend>crossSessionInbound</legend>
-        {options.map((value) => (
-          <div key={value} className="field">
-            <label>
-              <input
-                type="radio"
-                name="inbound-policy"
-                value={value}
-                checked={picked === value}
-                onChange={() => {
-                  setPicked(value);
-                }}
-              />
-              <span className="mono">{value === UNSET ? 'not set' : value}</span>
-            </label>
-            <p className="muted">{value === UNSET ? UNSET_HELP : inboundHelp(value)}</p>
-          </div>
-        ))}
+      <fieldset className="choice-grid">
+        <legend className="visually-hidden">crossSessionInbound</legend>
+        {options.map((value) => {
+          const helpId = `inbound-help-${value === UNSET ? 'unset' : value}`;
+          return (
+            <div key={value} className="choice">
+              <label>
+                <input
+                  type="radio"
+                  name="inbound-policy"
+                  value={value}
+                  checked={picked === value}
+                  aria-describedby={helpId}
+                  onChange={() => {
+                    setPicked(value);
+                  }}
+                />
+                <span className="mono">{value === UNSET ? 'not set' : value}</span>
+              </label>
+              <p id={helpId}>{value === UNSET ? UNSET_HELP : inboundHelp(value)}</p>
+            </div>
+          );
+        })}
       </fieldset>
-      <button
-        type="button"
-        className="primary"
-        disabled={picked === current}
-        onClick={() => {
-          post({ type: 'setInboundPolicy', value: picked === UNSET ? null : picked });
-        }}
-      >
-        Save
-      </button>
+      <div className="form-actions">
+        <button
+          type="button"
+          className="primary"
+          disabled={picked === current}
+          onClick={() => {
+            post({ type: 'setInboundPolicy', value: picked === UNSET ? null : picked });
+          }}
+        >
+          Save
+        </button>
+        {picked === current ? null : (
+          <span className="muted">
+            Changes to <span className="mono">{picked === UNSET ? 'not set' : picked}</span>
+          </span>
+        )}
+      </div>
     </section>
   );
 }

@@ -377,42 +377,42 @@ kbd {
   font-variant-numeric: tabular-nums;
 }
 
-/* ---- Plan limits ------------------------------------------------------- */
+/* ---- Usage: plan limits ------------------------------------------------ */
+
+.usage {
+  max-width: 1400px;
+}
 
 .plan-limits {
-  margin: 6px 0 12px;
+  margin: 8px 0 16px;
 }
 
 .plan-limits h2 {
-  margin: 0 0 6px;
-}
-
-.plan-limits dl {
-  display: grid;
-  gap: 6px;
-  margin: 0 0 4px;
-}
-
-.plan-limit dt {
-  color: var(--ov-muted);
-}
-
-.plan-limit dd {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 12px;
-  align-items: center;
   margin: 0;
 }
 
-.plan-limit .meter-wrap {
-  flex: 1 1 160px;
-  max-width: 360px;
+/* A plan limit's meter runs the width of its card. */
+.plan-limits .meter-wrap {
+  display: flex;
+  margin: 4px 0 0 16px;
 }
 
-.plan-limit .meter {
+.plan-limits .meter {
   flex: 1;
-  width: auto;
+  height: 8px;
+}
+
+.plan-limits .meter-text {
+  font-weight: 600;
+  text-align: right;
+}
+
+.plan-limits .card-sub {
+  padding-left: 16px;
+}
+
+.usage .climate {
+  margin-top: 16px;
 }
 
 /* ---- Header stats and banners ----------------------------------------- */
@@ -1347,34 +1347,39 @@ fieldset.chips {
 
 /* ---- Tuning --------------------------------------------------------------- */
 
-.tips {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 12px;
+.tuning {
+  max-width: 1400px;
 }
 
-.tip {
-  min-width: 0;
-  padding: 8px 10px;
-  border: 1px solid var(--ov-border);
-  border-radius: 2px;
+/* Tips sit in a card grid; the cards start at the top so a short one does not stretch. */
+.tips {
+  align-items: start;
 }
 
 .tip > p {
-  margin: 6px 0;
+  margin: 4px 0;
 }
 
 .tip-header {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 6px 8px;
   align-items: center;
 }
 
 .tip-header h3 {
+  flex: 1;
+  min-width: 0;
   margin: 0;
-  margin-right: auto;
   font-size: 1em;
+}
+
+.tip-header h3 code {
+  font-weight: 600;
+}
+
+.tip .card-foot {
+  padding-top: 6px;
 }
 
 .tip-advice {
@@ -1411,7 +1416,7 @@ fieldset.chips {
 }
 
 .tip details {
-  margin: 4px 0;
+  margin: 2px 0;
 }
 
 .tip details > :not(summary) {
@@ -1419,7 +1424,7 @@ fieldset.chips {
 }
 
 .tip-impact {
-  margin: 6px 0;
+  margin: 6px 0 2px;
 }
 
 .impact-caption {
@@ -1488,8 +1493,27 @@ summary > h2 {
 
 /* ---- Activity ---------------------------------------------------------- */
 
-.activity-alerts li {
-  margin-bottom: 4px;
+.activity {
+  max-width: 1400px;
+}
+
+/* Lines a problem's message up under its subject, past the status dot. */
+.activity-indent-card {
+  padding-left: 16px;
+}
+
+.activity h3 {
+  margin: 12px 0 6px;
+  color: var(--ov-muted);
+  font-size: 0.9em;
+}
+
+.activity .card .meter-wrap {
+  display: flex;
+}
+
+.activity .card .meter {
+  flex: 1;
 }
 
 /* Process rows sit under their session, past the twisty. */
@@ -1850,36 +1874,6 @@ summary > h2 {
   margin: 4px 0 0 1em;
 }
 
-/* The few numbers that matter on a page, as tiles with the label over the value. */
-.stat-tiles {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 8px 0;
-}
-
-.stat-tile {
-  flex: none;
-  min-width: 96px;
-  padding: 6px 10px;
-  border: 1px solid var(--ov-border);
-  border-radius: 6px;
-  background: var(--vscode-editorWidget-background, var(--ov-panel));
-}
-
-.stat-tile dt {
-  color: var(--ov-muted);
-  font-size: 0.8em;
-}
-
-.stat-tile dd {
-  margin: 0;
-  font-size: 1.15em;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
 /* A table or list in a bordered box, so it sits with the cards around it. */
 .panel {
   margin: 8px 0;
@@ -1989,6 +1983,89 @@ details.panel[open] > summary,
 .pill-check:has(input:checked) {
   border-color: var(--ov-focus);
   background: var(--ov-inactive-selected);
+}
+
+.about > ul {
+  max-width: 80ch;
+  margin: 4px 0 0 1em;
+  padding-left: 1.2em;
+}
+
+/* Stat tiles: the few numbers a section is about. components/card.tsx renders them. */
+.tile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+  margin: 0 0 8px;
+}
+
+.tile {
+  gap: 2px;
+}
+
+.tile-label {
+  color: var(--ov-muted);
+  font-size: 0.85em;
+}
+
+.tile-value {
+  margin: 0;
+  font-size: 1.5em;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.tile-detail {
+  margin: 0;
+  color: var(--ov-muted);
+  font-size: 0.85em;
+}
+
+/* Radio choices as cards, so each one has room for its explanation. */
+.choice-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 8px;
+  margin: 0 0 8px;
+  padding: 0;
+  border: 0;
+}
+
+.choice {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border: 1px solid var(--ov-border);
+  border-radius: 6px;
+  background: var(--vscode-editorWidget-background, var(--ov-panel));
+  cursor: pointer;
+}
+
+.choice:hover {
+  border-color: var(--ov-focus);
+}
+
+.choice:has(input:checked) {
+  border-color: var(--ov-focus);
+  box-shadow: inset 0 0 0 1px var(--ov-focus);
+}
+
+.choice > label {
+  font-weight: 600;
+}
+
+.choice > p {
+  margin: 0;
+  color: var(--ov-muted);
+  font-size: 0.9em;
+}
+
+/* A chart in a card, for views that lay charts out with the other cards. */
+.chart-card .figure {
+  height: 100%;
+  border-radius: 6px;
+  background: var(--vscode-editorWidget-background, var(--ov-panel));
 }
 
 /* ---- Sessions --------------------------------------------------------------- */
@@ -2442,6 +2519,27 @@ fieldset.profile-card {
 }
 
 /* ---- Agent messages ------------------------------------------------------ */
+
+.messages-view {
+  max-width: 1400px;
+}
+
+/* Each session's messages sit in a card, with its title as the summary. */
+.message-group {
+  margin: 8px 0;
+  padding: 6px 12px 8px;
+  border: 1px solid var(--ov-border);
+  border-radius: 6px;
+  background: var(--vscode-editorWidget-background, var(--ov-panel));
+}
+
+.message-group > summary {
+  padding: 2px 0;
+}
+
+.message-group[open] > summary {
+  margin-bottom: 6px;
+}
 
 /* Every session's table lines up, and the message column gets what is left. */
 table.message-log {

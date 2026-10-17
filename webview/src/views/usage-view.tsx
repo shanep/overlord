@@ -20,6 +20,7 @@ import {
   OTHER,
 } from '../charts/usage-charts.js';
 import { useNow } from '../clock.js';
+import { Card, CardGrid, StatTile, StatTiles, StatusDot } from '../components/card.js';
 import type { FigureTable } from '../components/chart-figure.js';
 import { ChartFigure } from '../components/chart-figure.js';
 import { Meter } from '../components/meter.js';
@@ -96,28 +97,31 @@ function PlanSection(props: { readonly plan: PlanLimits | null }): ReactElement 
   const subscription = plan.subscription === null ? '' : ` (${plan.subscription})`;
   return (
     <section className="plan-limits" aria-labelledby="plan-title">
-      <h2 id="plan-title">{`Plan limits${subscription}`}</h2>
-      <dl>
-        {plan.limits.map((limit) => (
-          <div key={`${limit.kind}:${limit.label}`} className="plan-limit">
-            <dt>{limit.label}</dt>
-            <dd>
-              <Meter
-                label={`${limit.label} used`}
-                ratio={limit.percent / 100}
-                tone={severityTone(limit.severity)}
-              />
+      <div className="list-bar">
+        <h2 id="plan-title">{`Plan limits${subscription}`}</h2>
+        <span className="spacer" />
+        <span className="muted">{`Updated ${formatAgo(plan.fetchedAt, now)}`}</span>
+      </div>
+      <CardGrid labelledBy="plan-title">
+        {plan.limits.map((limit) => {
+          const tone = severityTone(limit.severity);
+          return (
+            <Card key={`${limit.kind}:${limit.label}`} tone={tone}>
+              <div className="card-head">
+                <StatusDot tone={tone} />
+                <span className="card-title">{limit.label}</span>
+              </div>
+              <Meter label={`${limit.label} used`} ratio={limit.percent / 100} tone={tone} />
               <span
-                className="muted"
+                className="card-sub"
                 title={limit.resetsAt === null ? undefined : formatDateTime(limit.resetsAt)}
               >
                 {resetText(limit, now)}
               </span>
-            </dd>
-          </div>
-        ))}
-      </dl>
-      <p className="muted">{`Updated ${formatAgo(plan.fetchedAt, now)}`}</p>
+            </Card>
+          );
+        })}
+      </CardGrid>
     </section>
   );
 }
@@ -144,22 +148,27 @@ function ClimateSection(props: { readonly climate: ClimateEstimate }): ReactElem
   const { assumptions } = climate;
   return (
     <section className="section climate" aria-labelledby="climate-title">
-      <h2 id="climate-title">Climate impact (estimate)</h2>
-      <dl className="stats">
-        <Stat label="Energy" value={`${formatAmount(climate.energyKwh)} kWh`} />
-        <Stat label="CO2e" value={`${formatAmount(climate.co2eKg)} kg`} />
-        <Stat label="Cooling water" value={`${formatAmount(climate.waterLiters)} L`} />
-        <Stat label="Same as driving" value={`${formatAmount(climate.drivingMiles)} miles`} />
-        <Stat label="Same as a US home for" value={`${formatAmount(climate.homeDays)} days`} />
-      </dl>
-      <p className="muted">
-        {`Anthropic does not publish energy per token, so this prices every token at list price and assumes ${formatAmount(assumptions.whPerListDollar)} Wh per dollar, ${formatAmount(assumptions.kgCo2ePerKwh)} kg CO2e per kWh and ${formatAmount(assumptions.litersPerKwh)} L of cooling water per kWh. It could be off by 3 times either way.`}
-      </p>
-      {climate.unpricedTokens > 0 ? (
-        <p className="muted">
-          {`${formatCompact(climate.unpricedTokens)} tokens from models with no list price are left out.`}
+      <h2 id="climate-title" className="section-title">
+        Climate impact (estimate)
+      </h2>
+      <StatTiles label="Climate impact">
+        <StatTile label="Energy" value={`${formatAmount(climate.energyKwh)} kWh`} />
+        <StatTile label="CO2e" value={`${formatAmount(climate.co2eKg)} kg`} />
+        <StatTile label="Cooling water" value={`${formatAmount(climate.waterLiters)} L`} />
+        <StatTile label="Same as driving" value={`${formatAmount(climate.drivingMiles)} miles`} />
+        <StatTile label="Same as a US home for" value={`${formatAmount(climate.homeDays)} days`} />
+      </StatTiles>
+      <details className="about">
+        <summary>How this is worked out</summary>
+        <p>
+          {`Anthropic does not publish energy per token, so this prices every token at list price and assumes ${formatAmount(assumptions.whPerListDollar)} Wh per dollar, ${formatAmount(assumptions.kgCo2ePerKwh)} kg CO2e per kWh and ${formatAmount(assumptions.litersPerKwh)} L of cooling water per kWh. It could be off by 3 times either way.`}
         </p>
-      ) : null}
+        {climate.unpricedTokens > 0 ? (
+          <p>
+            {`${formatCompact(climate.unpricedTokens)} tokens from models with no list price are left out.`}
+          </p>
+        ) : null}
+      </details>
       {climate.models.length > 0 ? (
         <table className="grid">
           <caption className="visually-hidden">Climate impact by model</caption>
@@ -203,7 +212,7 @@ export function UsageView(props: { readonly state: UsageState }): ReactElement {
   );
   const toolCalls = state.days.reduce((sum, day) => sum + day.toolCalls, 0);
   return (
-    <section aria-labelledby="usage-title">
+    <section className="usage" aria-labelledby="usage-title">
       <header className="view-header">
         <h1 id="usage-title">Usage</h1>
         <dl className="stats">
@@ -215,7 +224,7 @@ export function UsageView(props: { readonly state: UsageState }): ReactElement {
         </dl>
       </header>
       <PlanSection plan={state.plan} />
-      <div className="charts">
+      <div className="charts chart-card">
         <ChartFigure
           title="Daily tokens by model"
           option={daily}

@@ -10,6 +10,7 @@ import {
   CardGroup,
   Notice,
   Segmented,
+  StatTile,
   StatTiles,
   StatusDot,
 } from './card.js';
@@ -115,15 +116,18 @@ describe('Notice', () => {
 describe('StatTiles', () => {
   it('puts each label over its value, with a hover note when given', async () => {
     const { container } = render(
-      <StatTiles
-        tiles={[
-          { label: 'Tokens', value: '1.5M', title: '1,512,000' },
-          { label: 'Cost', value: '$4.82' },
-        ]}
-      />,
+      <StatTiles label="Numbers">
+        <StatTile label="Tokens" value="1.5M" title="1,512,000" />
+        <StatTile label="Cost" value="$4.82" detail="estimated" tone="warning" />
+      </StatTiles>,
     );
-    const tiles = [...container.querySelectorAll('.stat-tile')];
-    expect(tiles.map((tile) => tile.textContent)).toStrictEqual(['Tokens1.5M', 'Cost$4.82']);
+    expect(container.querySelector('dl')?.className).toBe('tile-grid');
+    const tiles = [...container.querySelectorAll('.tile')];
+    expect(tiles.map((tile) => tile.textContent)).toStrictEqual([
+      'Tokens1.5M',
+      'Cost$4.82estimated',
+    ]);
+    expect(tiles[1]?.className).toBe('card card-edge card-warning tile');
     expect(tiles[0]?.getAttribute('title')).toBe('1,512,000');
     expect(tiles[1]?.hasAttribute('title')).toBe(false);
     await expectAccessible(container);

@@ -5,7 +5,7 @@
 import type { ReactElement, ReactNode } from 'react';
 
 import type { ContextState } from '../../../src/shared/protocol.js';
-import { StatTiles } from '../components/card.js';
+import { StatTile, StatTiles } from '../components/card.js';
 import { EmptyState } from '../components/empty-state.js';
 import { Fold } from '../components/fold.js';
 import { formatCompact, formatDateTime } from '../format.js';
@@ -80,20 +80,16 @@ export function ContextView(props: { readonly state: ContextState }): ReactEleme
         <EmptyState title="No context yet" detail="Pick a session to see what drives it." />
       ) : (
         <>
-          <StatTiles
-            tiles={[
-              {
-                label: 'Tokens',
-                value: formatCompact(
-                  snapshot.weights.reduce((sum, entry) => sum + entry.tokens, 0),
-                ),
-              },
-              { label: 'Memory files', value: String(snapshot.loaded.length) },
-              { label: 'Did not load', value: String(snapshot.skipped.length) },
-              { label: 'Skills', value: String(snapshot.skills.length) },
-              { label: 'MCP servers', value: String(snapshot.mcpServers.length) },
-            ]}
-          />
+          <StatTiles label="Context numbers">
+            <StatTile
+              label="Tokens"
+              value={formatCompact(snapshot.weights.reduce((sum, entry) => sum + entry.tokens, 0))}
+            />
+            <StatTile label="Memory files" value={String(snapshot.loaded.length)} />
+            <StatTile label="Did not load" value={String(snapshot.skipped.length)} />
+            <StatTile label="Skills" value={String(snapshot.skills.length)} />
+            <StatTile label="MCP servers" value={String(snapshot.mcpServers.length)} />
+          </StatTiles>
           <Section id="ctx-weights" title="Where the tokens go">
             <WeightTreemap weights={snapshot.weights} />
           </Section>

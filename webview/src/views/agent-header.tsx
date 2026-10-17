@@ -7,7 +7,7 @@ import { useState } from 'react';
 import type { AgentNode, ApiRequest, SessionSummary } from '../../../src/shared/model.js';
 import { useNow } from '../clock.js';
 import { StateBadge } from '../components/badge.js';
-import { StatTiles } from '../components/card.js';
+import { StatTile, StatTiles } from '../components/card.js';
 import { ConfirmBar } from '../components/confirm-bar.js';
 import { formatCompact, formatCost, formatDuration } from '../format.js';
 import { LOCAL_SURFACES } from '../labels.js';
@@ -62,15 +62,16 @@ export function AgentHeader(props: {
           <span className="mono">{session.cwd}</span>
         </p>
       )}
-      <StatTiles
-        tiles={[
-          { label: 'Model', value: agent.model ?? 'unknown' },
-          { label: 'Elapsed', value: formatDuration((agent.endedAt ?? now) - agent.startedAt) },
-          { label: 'Tokens', value: formatCompact(totalTokens(agent.usage)) },
-          { label: 'Cost', value: formatCost(agentCost(agent, session, requests)) },
-          { label: 'Tool calls', value: String(agent.toolCallCount) },
-        ]}
-      />
+      <StatTiles label="Agent numbers">
+        <StatTile label="Model" value={agent.model ?? 'unknown'} />
+        <StatTile
+          label="Elapsed"
+          value={formatDuration((agent.endedAt ?? now) - agent.startedAt)}
+        />
+        <StatTile label="Tokens" value={formatCompact(totalTokens(agent.usage))} />
+        <StatTile label="Cost" value={formatCost(agentCost(agent, session, requests))} />
+        <StatTile label="Tool calls" value={String(agent.toolCallCount)} />
+      </StatTiles>
       <div className="toolbar agent-actions">
         <button
           type="button"

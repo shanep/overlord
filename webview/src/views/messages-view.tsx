@@ -57,7 +57,7 @@ export function MessagesView(props: { readonly state: MessagesState }): ReactEle
   const sessions = new Set(state.messages.map((message) => message.sessionId)).size;
   const between = state.routes.reduce((sum, route) => sum + route.count, 0);
   return (
-    <section aria-labelledby="messages-title">
+    <section className="messages-view" aria-labelledby="messages-title">
       <header className="view-header">
         <h1 id="messages-title">Agent messages</h1>
         <dl className="stats">
@@ -78,7 +78,7 @@ export function MessagesView(props: { readonly state: MessagesState }): ReactEle
         </p>
       </details>
       {state.routes.length === 0 ? null : (
-        <div className="charts">
+        <div className="charts chart-card">
           <ChartFigure
             title={graphTitle(state.routes)}
             option={graph}
