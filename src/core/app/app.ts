@@ -4,7 +4,6 @@
 
 import path from 'node:path';
 
-import { CLAUDE_CODE } from '../../shared/agents.js';
 import type { FleetState, HostToWebview, ViewId, WebviewAction } from '../../shared/protocol.js';
 import { sdkPlanUsage } from '../agents/claude/runtime.js';
 import { trackCustomAgents } from '../agents/custom.js';
@@ -31,7 +30,7 @@ import type { CacheRuntime } from './caches.js';
 import { createCaches } from './caches.js';
 import { CatalogBrowser } from './catalog-browser.js';
 import { ChangeHub } from './changes.js';
-import { agentPath, cliLoader, executableFor } from './claude-bin.js';
+import { cliLoader, executableFor, launchBinary } from './claude-bin.js';
 import { ConfigSync } from './config-sync.js';
 import { createCoordinator } from './coordination.js';
 import type { AppError } from './errors.js';
@@ -144,16 +143,8 @@ export class OverlordApp {
           void this.rt.caches.worktrees.refresh();
         }),
         baseEnv: launchEnv,
-        // Other agents take their overlord.agents path, or their command on PATH.
         executablePath: (agent, runEnv): string | null =>
-          agent === CLAUDE_CODE
-            ? executableFor(host.settings.claudePath, runEnv, platform)
-            : executableFor(
-                agentPath(host.settings, agent),
-                runEnv,
-                platform,
-                runners.get(agent)?.terminal?.command ?? agent,
-              ),
+          launchBinary(host.settings, runners.get(agent), runEnv, platform),
         ...(host.backendEndpoint === undefined ? {} : { backendEndpoint: host.backendEndpoint }),
         now: clock,
         // The runtime exists by the time a queued run asks.

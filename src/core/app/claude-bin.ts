@@ -6,7 +6,7 @@ import { z } from 'zod';
 
 import type { AgentId } from '../../shared/agents.js';
 import { CLAUDE_CODE } from '../../shared/agents.js';
-import type { AgentCli } from '../agents/types.js';
+import type { AgentAdapter, AgentCli } from '../agents/types.js';
 import { findOnPath } from '../find-on-path.js';
 import { mergeEnv } from '../harness/options.js';
 
@@ -73,6 +73,23 @@ type AgentSettings = Pick<OverlordSettings, 'claudePath' | 'agents'>;
 /** The binary the user set for an agent, or "" for its default name. */
 export function agentPath(settings: AgentSettings, id: AgentId): string {
   return id === CLAUDE_CODE ? settings.claudePath : (settings.agents[id]?.path ?? '');
+}
+
+/**
+ * The binary a Launcher run starts: the agent's path setting (claudePath for
+ * Claude Code), else its command on PATH. Null keeps the runtime's default.
+ */
+export function launchBinary(
+  settings: AgentSettings,
+  adapter: AgentAdapter | null,
+  env: Readonly<Record<string, string | undefined>>,
+  platform: NodeJS.Platform,
+): string | null {
+  if (adapter === null) {
+    return null;
+  }
+  const command = adapter.terminal?.command ?? adapter.id;
+  return executableFor(agentPath(settings, adapter.id), env, platform, command);
 }
 
 /** False when overlord.agents turns the agent off. */

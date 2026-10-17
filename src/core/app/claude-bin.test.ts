@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
+import { codex } from '../agents/codex/index.js';
+
 import {
   agentEnabled,
   agentPath,
   claudePathSetting,
   executableFor,
+  launchBinary,
   parseAgentSettings,
 } from './claude-bin.js';
 
@@ -66,5 +69,16 @@ describe('executableFor', () => {
     expect(executableFor('', { PATH: '' }, 'linux')).toBeNull();
     expect(executableFor('', { PATH: '' }, 'linux', 'copilot')).toBeNull();
     expect(executableFor('/opt/copilot', { PATH: '' }, 'linux', 'copilot')).toBe('/opt/copilot');
+  });
+});
+
+describe('launchBinary', () => {
+  it('takes the path setting, else the command on PATH, else null', () => {
+    const settings = { claudePath: '', agents: { codex: { path: '/opt/codex', enabled: true } } };
+    expect(launchBinary(settings, codex, {}, 'linux')).toBe('/opt/codex');
+    expect(
+      launchBinary({ claudePath: '', agents: {} }, codex, { PATH: '/nowhere' }, 'linux'),
+    ).toBeNull();
+    expect(launchBinary(settings, null, {}, 'linux')).toBeNull();
   });
 });
