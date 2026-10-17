@@ -9,6 +9,7 @@
 
 import { spawn, type ChildProcess } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
+import { once } from 'node:events';
 import process from 'node:process';
 
 import type { BridgeEndpoint } from '../core/bridge/boisestate.js';
@@ -89,6 +90,28 @@ export class BoisestateBridge {
     if (saved === null || saved.port === 0 || (await this.getKey()) === undefined) {
       return;
     }
+    try {
+      await this.ensure();
+    } catch (error: unknown) {
+      this.onError(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  /**
+   * Restart a running sidecar so it picks up a new api key. It waits for the
+   * old one to exit so the new one gets the same port, and open tabs reconnect.
+   */
+  async restart(): Promise<void> {
+    const child = this.child;
+    if (child === null) {
+      return;
+    }
+    const exited =
+      child.exitCode === null && child.signalCode === null
+        ? once(child, 'exit')
+        : Promise.resolve();
+    this.dispose();
+    await exited;
     try {
       await this.ensure();
     } catch (error: unknown) {

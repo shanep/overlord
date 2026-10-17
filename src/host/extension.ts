@@ -268,6 +268,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         return;
       }
       await context.secrets.store(BOISESTATE_KEY_SECRET, key.trim());
+      // A running sidecar holds the old key in its env until it restarts.
+      await bridge.restart();
       const profilesFile = storagePath(host.storageDir, 'profiles');
       const { profiles } = await listProfiles(profilesFile);
       if (!profiles.some((profile) => profile.id === BOISESTATE_PROFILE.id)) {
