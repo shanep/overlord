@@ -22,6 +22,7 @@ import type { RowHistory } from './fleet-history.js';
 import type { FleetRow, VisibleRow } from './fleet-rows.js';
 import { elapsedMs, rowCallsPerMinute } from './fleet-rows.js';
 import { TitleCell } from './fleet-title-cell.js';
+import { isLaunched } from './launched.js';
 
 const COLUMNS: readonly { readonly id: string; readonly label: string }[] = [
   { id: 'state', label: 'State' },
@@ -257,6 +258,7 @@ function FleetTableRow(props: FleetTableRowProps): ReactElement {
       data-kind={row.kind}
       data-state={row.state}
       data-needs-project={row.needsProject ? 'true' : undefined}
+      data-launched={isLaunched(row) ? 'true' : undefined}
       tabIndex={selected ? 0 : -1}
       onClick={(event) => {
         if (event.target instanceof Element && event.target.closest('button') !== null) {

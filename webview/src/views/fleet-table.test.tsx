@@ -61,6 +61,18 @@ describe('FleetTable', () => {
     expect(windowless[0]?.closest('tr')?.textContent).toContain('Old run');
   });
 
+  it('marks the sessions the Launcher started', () => {
+    const grid = renderTable(fleetState);
+    const launched = screen.getAllByRole('img', { name: 'Launched' });
+    expect(launched).toHaveLength(1);
+    expect(launched[0]?.className).toBe('place place-launched');
+    expect(launched[0]?.dataset['tip']).toMatch(/^Launched: Started from the Launcher/);
+    const row = launched[0]?.closest('tr');
+    expect(row?.textContent).toContain('Old run');
+    expect(row?.dataset['launched']).toBe('true');
+    expect(grid.querySelectorAll('tr[data-launched="true"]')).toHaveLength(1);
+  });
+
   it('shows what a session is working on under its title', () => {
     const recap = { text: 'Split the parser in two.', at: NOW - 60_000 };
     const grid = renderTable({

@@ -53,6 +53,13 @@ export const PLACE_INFO: Readonly<Record<SessionPlace, PlaceInfo>> = {
   },
 };
 
+/** The marker on a session started from the Launcher. */
+export const LAUNCHED_INFO = {
+  label: 'Launched',
+  description:
+    'Started from the Launcher, so Overlord runs it with the prompt and profile you gave it',
+} as const;
+
 /** The marker on a quiet session no terminal shows, which the fleet lets go in time. */
 export const WINDOWLESS_INFO = {
   label: 'No window',

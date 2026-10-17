@@ -50,6 +50,13 @@ const SHAPES = {
   ),
   /** Stacked layers: running in the background. */
   layers: <path d="M2 6.5 8 3.5l6 3-6 3zM2 9.5l6 3 6-3" />,
+  /** A rocket: started from the Launcher. */
+  launched: (
+    <>
+      <path d="M8 1.5c2.5 1.5 3.5 4 3.5 6.5v3h-7V8c0-2.5 1-5 3.5-6.5zM4.5 9 2.5 11v2l2-1M11.5 9l2 2v2l-2-1M6.5 13.5 8 15l1.5-1.5" />
+      <circle cx="8" cy="6.5" r="1" />
+    </>
+  ),
   /** An hourglass: quiet with no window, so it leaves the fleet in time. */
   hourglass: (
     <path d="M4 2.5h8M4 13.5h8M5 2.5c0 3.5 6 3 6 5.5s-6 2-6 5.5M11 2.5c0 3.5-6 3-6 5.5s6 2 6 5.5" />

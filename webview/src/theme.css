@@ -773,6 +773,15 @@ fieldset.chips {
   color: var(--ov-green);
 }
 
+.place-launched {
+  color: var(--ov-purple);
+}
+
+/* A session the Launcher started gets a stripe down its left edge. */
+.tree-table tr[data-launched='true'] > td:first-child {
+  box-shadow: inset 3px 0 0 var(--ov-purple);
+}
+
 /* ---- Reputation ---------------------------------------------------------- */
 
 .rep-standing {

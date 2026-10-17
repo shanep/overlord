@@ -4,11 +4,12 @@
 import type { ReactElement } from 'react';
 
 import type { HealthLevel } from '../../../src/shared/health.js';
-import { Badge, PlaceMarker, WindowlessMarker } from '../components/badge.js';
+import { Badge, LaunchedMarker, PlaceMarker, WindowlessMarker } from '../components/badge.js';
 import type { Tone } from '../labels.js';
 
 import type { RowEvent } from './fleet-actions.js';
 import type { FleetRow, VisibleRow } from './fleet-rows.js';
+import { isLaunched } from './launched.js';
 import { isWindowless } from './windowless.js';
 
 function Twisty(props: {
@@ -83,6 +84,7 @@ export function TitleCell(props: {
     <td role="gridcell" className="col-title" data-tip={row.detail}>
       <span style={{ paddingLeft: `${(visible.depth * 1.2).toString()}em` }}>
         <Twisty visible={visible} onToggle={props.onToggle} />
+        {isLaunched(row) ? <LaunchedMarker /> : null}
         {row.place === null ? null : <PlaceMarker place={row.place} />}
         {isWindowless(row) ? <WindowlessMarker /> : null}
         <span className="row-title">{row.title}</span>

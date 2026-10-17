@@ -2,7 +2,13 @@ import type { ReactElement } from 'react';
 
 import type { SessionPlace, SessionState, Surface } from '../../../src/shared/model.js';
 import type { Tone } from '../labels.js';
-import { PLACE_INFO, STATE_INFO, SURFACE_LABELS, WINDOWLESS_INFO } from '../labels.js';
+import {
+  LAUNCHED_INFO,
+  PLACE_INFO,
+  STATE_INFO,
+  SURFACE_LABELS,
+  WINDOWLESS_INFO,
+} from '../labels.js';
 
 import { Icon } from './icon.js';
 
@@ -60,6 +66,20 @@ export function WindowlessMarker(): ReactElement {
       data-tip={`${WINDOWLESS_INFO.label}: ${WINDOWLESS_INFO.description}`}
     >
       <Icon name="hourglass" />
+    </span>
+  );
+}
+
+/** A session started from the Launcher, which Overlord runs itself. */
+export function LaunchedMarker(): ReactElement {
+  return (
+    <span
+      className="place place-launched"
+      role="img"
+      aria-label={LAUNCHED_INFO.label}
+      data-tip={`${LAUNCHED_INFO.label}: ${LAUNCHED_INFO.description}`}
+    >
+      <Icon name="launched" />
     </span>
   );
 }
