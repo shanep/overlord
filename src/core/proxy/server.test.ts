@@ -92,7 +92,7 @@ describe('BridgeServer', () => {
     });
 
     it("answers Claude Code's /api/hello check without logging an error", async () => {
-      const onError = vi.fn();
+      const onError = vi.fn<(message: string) => void>();
       const { url } = await startServer({ routes: new Map(), onError });
       const hello = await fetch(`${url}/api/hello`);
       expect(hello.status).toBe(200);
@@ -178,7 +178,7 @@ describe('BridgeServer', () => {
     });
 
     it('turns a handler throw into a 500 and reports it to onError', async () => {
-      const onError = vi.fn();
+      const onError = vi.fn<(message: string) => void>();
       const { url } = await startServer({ routes: new Map([['/x', boom]]), onError });
       const response = await fetch(`${url}/x`, { method: 'POST', body: '{}' });
       expect(response.status).toBe(500);
@@ -187,7 +187,7 @@ describe('BridgeServer', () => {
     });
 
     it('reports every error response with its path, status and message', async () => {
-      const onError = vi.fn();
+      const onError = vi.fn<(message: string) => void>();
       const { url } = await startServer({
         routes: new Map([
           ['/echo', echo],
@@ -209,7 +209,7 @@ describe('BridgeServer', () => {
     });
 
     it('reports a handler throw after the stream began', async () => {
-      const onError = vi.fn();
+      const onError = vi.fn<(message: string) => void>();
       const { url } = await startServer({ routes: new Map([['/late', late]]), onError });
       const response = await fetch(`${url}/late`, { method: 'POST', body: '{}' });
       await response.text();
@@ -240,7 +240,7 @@ describe('BridgeServer', () => {
     });
 
     it('reports stream error events and nothing else', async () => {
-      const onError = vi.fn();
+      const onError = vi.fn<(message: string) => void>();
       const { url } = await startServer({ routes: new Map([['/s', failing]]), onError });
       const response = await fetch(`${url}/s`, { method: 'POST', body: '{}' });
       const text = await response.text();

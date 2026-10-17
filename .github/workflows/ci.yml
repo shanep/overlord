@@ -20,6 +20,10 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
+    env:
+      # The macOS runner has 7 GB, so Node's default heap is about 2 GB, and
+      # type-aware lint over the whole repo needs more than that.
+      NODE_OPTIONS: --max-old-space-size=4096
     steps:
       - uses: actions/checkout@v4
         with:
