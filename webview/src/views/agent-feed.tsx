@@ -6,7 +6,7 @@ import type { ReactElement } from 'react';
 import type { FeedItem } from '../../../src/shared/model.js';
 import { Badge } from '../components/badge.js';
 import { JsonView } from '../components/json-view.js';
-import { formatClock } from '../format.js';
+import { formatClock, plainText } from '../format.js';
 
 function FeedBody(props: { readonly item: FeedItem }): ReactElement {
   const { item } = props;
@@ -15,7 +15,7 @@ function FeedBody(props: { readonly item: FeedItem }): ReactElement {
       return (
         <details>
           <summary>Show thinking</summary>
-          <p className="feed-text">{item.text}</p>
+          <p className="feed-text">{plainText(item.text)}</p>
         </details>
       );
     }
@@ -33,14 +33,14 @@ function FeedBody(props: { readonly item: FeedItem }): ReactElement {
       return (
         <>
           <Badge label={item.ok ? 'ok' : 'error'} tone={item.ok ? 'good' : 'critical'} />
-          <p className="feed-text">{item.text}</p>
+          <p className="feed-text">{plainText(item.text)}</p>
         </>
       );
     }
     case 'user':
     case 'text':
     case 'system': {
-      return <p className="feed-text">{item.text}</p>;
+      return <p className="feed-text">{plainText(item.text)}</p>;
     }
   }
 }

@@ -141,6 +141,22 @@ describe('AgentView', () => {
     expect(items[2]?.className).toBe('feed-text');
   });
 
+  it('shows colored tool output without its terminal escapes', () => {
+    const feed: AgentDetailState['feed'] = [
+      {
+        kind: 'tool_result',
+        id: 'r1',
+        at: 1,
+        toolUseId: 't1',
+        ok: true,
+        text: '\u001B[34mcharts\u001B[39;49m\u001B[0m\n10%\r100%',
+      },
+    ];
+    renderView(<AgentView state={{ ...agentState, feed }} />);
+    const item = within(screen.getByRole('list', { name: 'Feed' })).getByRole('listitem');
+    expect(item.querySelector('.feed-text')?.textContent).toBe('charts\n100%');
+  });
+
   it('opens a child agent from the subagent list', async () => {
     const user = userEvent.setup();
     const { api } = renderView(<AgentView state={agentState} />);
