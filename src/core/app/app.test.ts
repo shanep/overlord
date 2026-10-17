@@ -11,7 +11,7 @@ import { EventBus } from '../bus.js';
 import { installHooks } from '../hooks/install.js';
 import { encodeMessage } from '../hooks/protocol.js';
 import type { ExecResult } from '../sync/exec.js';
-import { userPrompt } from '../transcripts/test-helpers/fixtures.js';
+import { assistant, text, userPrompt } from '../transcripts/test-helpers/fixtures.js';
 
 import { concurrencyFrom, OverlordApp, SESSIONS_REFRESH_MS } from './app.js';
 import { cliLoader, executableFor } from './claude-bin.js';
@@ -64,6 +64,16 @@ async function busyPort(): Promise<{ port: number; close: () => Promise<void> }>
 async function waitForPort(app: OverlordApp): Promise<number> {
   await waitFor(() => app.telemetryPort !== null);
   return app.telemetryPort ?? 0;
+}
+
+/** A transcript whose one turn finished, so the active window lets it go. */
+function answered(sessionId: string): string {
+  return [
+    userPrompt('u1', 0, 'hello'),
+    assistant({ uuid: 'a1', at: 1, messageId: 'm1', content: [text('hi')] }),
+  ]
+    .map((record) => `${JSON.stringify({ ...record, sessionId })}\n`)
+    .join('');
 }
 
 describe('helpers', () => {
@@ -215,8 +225,7 @@ describe('OverlordApp', () => {
 
   it('drops a session from the fleet once it leaves the active window', async () => {
     const env = await makeEnv();
-    const line = JSON.stringify({ ...userPrompt('u1', 0, 'hello'), sessionId: 'abc' });
-    await writeText(path.join(env.paths.projectsDir, '-work', 'abc.jsonl'), `${line}\n`);
+    await writeText(path.join(env.paths.projectsDir, '-work', 'abc.jsonl'), answered('abc'));
     let now = Date.now();
     const { app } = makeApp(env, { deps: { clock: () => now } });
     await app.start();
@@ -252,8 +261,7 @@ describe('OverlordApp', () => {
 
   it('keeps a quiet session while a terminal shows it and lets it go once the terminal closes', async () => {
     const env = await makeEnv();
-    const line = JSON.stringify({ ...userPrompt('u1', 0, 'hello'), sessionId: 'abc' });
-    await writeText(path.join(env.paths.projectsDir, '-work', 'abc.jsonl'), `${line}\n`);
+    await writeText(path.join(env.paths.projectsDir, '-work', 'abc.jsonl'), answered('abc'));
     await writeJson(path.join(env.paths.sessionsDir, '123.json'), {
       pid: 123,
       sessionId: 'abc',
@@ -279,8 +287,7 @@ describe('OverlordApp', () => {
 
   it('keeps a waiting background job until Claude Code forgets it and a finished one through the active window', async () => {
     const env = await makeEnv();
-    const line = JSON.stringify({ ...userPrompt('u1', 0, 'hello'), sessionId: 'abc' });
-    await writeText(path.join(env.paths.projectsDir, '-work', 'abc.jsonl'), `${line}\n`);
+    await writeText(path.join(env.paths.projectsDir, '-work', 'abc.jsonl'), answered('abc'));
     const { activeWindowMinutes, idleMinutes } = env.host.settings;
     let now = Date.now() + (idleMinutes + 1) * 60_000;
     // A stopped job that never got a prompt has no transcript and no row.

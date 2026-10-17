@@ -313,6 +313,23 @@ describe('FleetView', () => {
     expect(api.actions()).toStrictEqual([{ type: 'removeSession', sessionId: id }]);
   });
 
+  it('offers to remove an unfinished session, which stays until you do', async () => {
+    const user = userEvent.setup();
+    const state: FleetState = {
+      ...fleetState,
+      sessions: fleetState.sessions.map((item) =>
+        item.title === 'Write docs' ? { ...item, state: 'unfinished' } : item,
+      ),
+    };
+    const { api } = setup(state);
+    await user.click(screen.getByRole('button', { name: 'Remove from fleet Write docs' }));
+    const bar = screen.getByRole('group', { name: 'Confirm' });
+    expect(within(bar).getByText('Remove "Write docs" from the fleet?')).toBeDefined();
+    await user.click(within(bar).getByRole('button', { name: 'Remove' }));
+    const id = state.sessions.find((item) => item.title === 'Write docs')?.id;
+    expect(api.actions()).toStrictEqual([{ type: 'removeSession', sessionId: id }]);
+  });
+
   it('moves, expands, collapses, opens and interrupts from the keyboard', async () => {
     const user = userEvent.setup();
     const { api } = setup();

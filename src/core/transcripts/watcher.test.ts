@@ -293,7 +293,13 @@ describe('TranscriptWatcher', () => {
   });
 
   it('ignores inactive sessions and drops sessions that go quiet', async () => {
-    await writeFile(layout.transcriptPath, jsonl([userPrompt('u1', 0, 'old')]));
+    await writeFile(
+      layout.transcriptPath,
+      jsonl([
+        userPrompt('u1', 0, 'old'),
+        assistant({ uuid: 'a1', at: 1, messageId: 'm1', content: [text('done')] }),
+      ]),
+    );
     const old = new Date(Date.now() - 2 * YEAR);
     await utimes(layout.transcriptPath, old, old);
     const watcher = make({ activeWindowMs: YEAR });
@@ -435,6 +441,24 @@ describe('TranscriptWatcher', () => {
     await watcher.refresh();
     expect(watcher.sessionIds()).toStrictEqual([SESSION]);
     expect(names(events)).not.toContain('session.removed');
+  });
+
+  it('keeps a session that stopped mid-turn past the active window until it is dismissed', async () => {
+    await writeFile(layout.transcriptPath, jsonl([userPrompt('u1', 0, 'working')]));
+    clock = Date.now();
+    const watcher = make({ activeWindowMs: 30 * 60_000, idleWindowMs: 10 * 60_000 });
+    await watcher.refresh();
+    expect(watcher.sessionIds()).toStrictEqual([SESSION]);
+    const old = new Date(Date.now() - 60 * 60_000);
+    await utimes(layout.transcriptPath, old, old);
+    await watcher.refresh();
+    expect(watcher.sessionIds()).toStrictEqual([SESSION]);
+    expect(watcher.session(SESSION)?.summary(clock).state).toBe('unfinished');
+
+    await watcher.dismiss(SESSION);
+    expect(watcher.sessionIds()).toStrictEqual([]);
+    await watcher.refresh();
+    expect(watcher.sessionIds()).toStrictEqual([]);
   });
 
   it('removes a session whose transcript is deleted, and publishes it again if it comes back', async () => {
@@ -595,7 +619,13 @@ describe('TranscriptWatcher', () => {
     expect(DEFAULT_POLL_INTERVAL_MS).toBe(2000);
     expect(DEFAULT_ACTIVE_WINDOW_MS).toBe(30 * 60 * 1000);
     expect(DEFAULT_IDLE_WINDOW_MS).toBe(10 * 60 * 1000);
-    await writeFile(layout.transcriptPath, jsonl([userPrompt('u1', 0, 'x')]));
+    await writeFile(
+      layout.transcriptPath,
+      jsonl([
+        userPrompt('u1', 0, 'x'),
+        assistant({ uuid: 'a1', at: 1, messageId: 'm1', content: [text('done')] }),
+      ]),
+    );
     const watcher = new TranscriptWatcher({
       projectsDir: layout.projectsDir,
       bus,

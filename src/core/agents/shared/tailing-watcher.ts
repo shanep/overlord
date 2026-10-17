@@ -333,7 +333,7 @@ export class TailingWatcher<A extends RecordAccumulator = RecordAccumulator> {
       this.settled.set(info.sessionId, info.mtimeMs);
       return false;
     }
-    if (now - info.mtimeMs > this.activeWindowMs) {
+    if (now - info.mtimeMs > this.activeWindowMs && !this.isUnfinished(info.sessionId, now)) {
       return false;
     }
     if (this.finished.has(info.sessionId)) {
@@ -350,6 +350,11 @@ export class TailingWatcher<A extends RecordAccumulator = RecordAccumulator> {
       return false;
     }
     return true;
+  }
+
+  /** Stopped partway through a turn, so it stays until dismissed instead of leaving with the active window. */
+  private isUnfinished(sessionId: string, now: number): boolean {
+    return this.tracked.get(sessionId)?.accumulator.summary(now).state === 'unfinished';
   }
 
   /** Idle past the idle window, with nothing mid-turn that could still finish. */

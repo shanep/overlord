@@ -25,7 +25,7 @@ describe('isWindowless', () => {
   it('marks a quiet session no terminal shows, since the fleet lets it go', () => {
     expect(isWindowless(sessionRow('idle', 'background'))).toBe(true);
     expect(isWindowless(sessionRow('done', null))).toBe(true);
-    expect(isWindowless(sessionRow('unfinished', null))).toBe(true);
+    expect(isWindowless(sessionRow('unfinished', null))).toBe(false);
     expect(isWindowless(sessionRow('idle', 'vscode'))).toBe(false);
     expect(isWindowless(sessionRow('done', 'terminal'))).toBe(false);
     expect(isWindowless(sessionRow('running', null))).toBe(false);

@@ -9,9 +9,13 @@ export function isLaunched(row: FleetRow): boolean {
 }
 
 /**
- * A session row Remove takes out of the fleet: one the Launcher started, or
- * a failed background job, which stays until it is deleted.
+ * A session row Remove takes out of the fleet: one the Launcher started, a
+ * failed background job, which stays until it is deleted, or an unfinished
+ * session, which stays until you look at it.
  */
 export function isRemovable(row: FleetRow): boolean {
-  return isLaunched(row) || (row.kind === 'session' && row.state === 'failed');
+  return (
+    isLaunched(row) ||
+    (row.kind === 'session' && (row.state === 'failed' || row.state === 'unfinished'))
+  );
 }

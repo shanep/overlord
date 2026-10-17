@@ -100,7 +100,7 @@ export const STATE_INFO: Readonly<Record<SessionState, StateInfo>> = {
     icon: '◐',
     tone: 'warning',
     description:
-      'Stopped partway: the transcript ends in the middle of a turn or a tool call and nothing is running it, so the work may not be done.',
+      'Stopped partway: the transcript ends in the middle of a turn or a tool call and nothing is running it, so the work may not be done. It stays in the fleet until you remove it.',
   },
   done: {
     label: 'done',
