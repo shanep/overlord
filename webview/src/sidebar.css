@@ -1,7 +1,7 @@
 /* The Fleet in the narrow sidebar. It reads like a VS Code tree: no column
    headers, a state glyph, the title, elapsed and cost, with the row actions
    laid over the right end of the hovered or focused row. The full Fleet
-   panel shows every column. */
+   panel shows more columns the wider it is. */
 
 :root:has(#root[data-layout='sidebar']) {
   --ov-bg: var(--vscode-sideBar-background, var(--vscode-editor-background, #ffffff));
@@ -73,21 +73,9 @@
   color: var(--ov-muted);
 }
 
-#root[data-layout='sidebar'] .tree-table tbody tr {
-  position: relative;
-}
-
+/* The row actions lie over the row's right end, as in the panel (fleet.css), with less padding. */
 #root[data-layout='sidebar'] .tree-table td.col-actions {
-  display: flex;
-  position: absolute;
-  inset: 0 0 0 auto;
-  align-items: center;
   padding: 0 2px 0 8px;
-  background: linear-gradient(var(--row-bg), var(--row-bg)), var(--ov-bg);
-}
-
-#root[data-layout='sidebar'] .tree-table tbody tr:not(:hover, :focus-within) td.col-actions {
-  display: none;
 }
 
 #root[data-layout='sidebar'] .stat-tiles {

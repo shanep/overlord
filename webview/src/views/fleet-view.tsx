@@ -11,7 +11,6 @@ import { useChartTheme } from '../charts/chart-theme.js';
 import { useNow } from '../clock.js';
 import { ConfirmBar } from '../components/confirm-bar.js';
 import type { SortState } from '../components/data-table.js';
-import { EmptyState } from '../components/empty-state.js';
 import { Icon } from '../components/icon.js';
 import { isBoolean, isString, isStringArray } from '../guards.js';
 import { usePersistentState, usePostAction } from '../vscode-context.js';
@@ -73,6 +72,38 @@ const PROJECT_ACTIONS = {
   rename: 'renameProject',
   delete: 'deleteProject',
 } as const satisfies Record<ProjectAction, string>;
+
+/**
+ * What the fleet shows with no rows: why, and the way out. A filter that hides
+ * everything gets a button to clear it, and an empty fleet points at the
+ * Launcher.
+ */
+function FleetEmpty(props: {
+  readonly filtering: boolean;
+  readonly onClear: () => void;
+  readonly onLaunch: () => void;
+}): ReactElement {
+  if (props.filtering) {
+    return (
+      <div className="empty fleet-empty" role="status">
+        <p className="empty-title">No sessions match</p>
+        <p className="muted">The filter or Hide done leaves nothing to show.</p>
+        <button type="button" onClick={props.onClear}>
+          Clear filter
+        </button>
+      </div>
+    );
+  }
+  return (
+    <div className="empty fleet-empty" role="status">
+      <p className="empty-title">No sessions yet</p>
+      <p className="muted">Start a run from the Launcher, or open a project and start one there.</p>
+      <button type="button" className="primary" onClick={props.onLaunch}>
+        Open Launcher
+      </button>
+    </div>
+  );
+}
 
 function useFleetPreferences(): {
   readonly sort: SortState;
@@ -356,7 +387,18 @@ export function FleetView(props: { readonly state: FleetState }): ReactElement {
         />
       )}
       {rows.length === 0 ? (
-        <EmptyState title="No sessions" detail="Nothing matches, or nothing is running." />
+        <FleetEmpty
+          filtering={
+            preferences.filter !== '' || (preferences.hideDone && state.sessions.length > 0)
+          }
+          onClear={() => {
+            preferences.setFilter('');
+            preferences.setHideDone(false);
+          }}
+          onLaunch={() => {
+            post({ type: 'openView', view: 'launcher' });
+          }}
+        />
       ) : (
         <FleetTable
           rows={rows}

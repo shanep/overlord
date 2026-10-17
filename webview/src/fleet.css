@@ -1,7 +1,15 @@
 /*
  * The Fleet: summary tiles, the permission banner and the session tree.
  * Loaded after theme.css, and sidebar.css narrows it for the docked view.
+ * The tiles and the banner follow the card look in theme.css (Cards and
+ * groups): a quiet panel, with a colored left edge for anything that needs
+ * attention.
  */
+
+/* The panel drops columns as it narrows, so the title always has room. */
+.fleet {
+  container: fleet / inline-size;
+}
 
 /* ---- Summary tiles ------------------------------------------------------ */
 
@@ -23,9 +31,10 @@
   gap: 2px;
   align-items: stretch;
   min-width: 0;
-  padding: 5px 8px;
+  padding: 6px 10px;
   border: 1px solid var(--ov-border);
-  border-radius: 4px;
+  border-radius: 6px;
+  background: var(--vscode-editorWidget-background, var(--ov-panel));
 }
 
 .stat-tiles dt {
@@ -38,14 +47,13 @@
 
 .stat-tiles dd {
   margin: 0;
-  font-size: 1.1em;
+  font-size: 1.15em;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
 .stat-tiles .stat-warning {
-  border-color: var(--ov-warning-border);
-  background: var(--ov-warning-bg);
+  border-left: 3px solid var(--ov-yellow);
 }
 
 .stat-tiles .meter-wrap {
@@ -64,22 +72,74 @@
 
 /* ---- Pending permissions ------------------------------------------------ */
 
+/* A card with a yellow edge: each request names its session on the first
+   line, shows what it wants to run on the second, and wraps its buttons
+   under both when the view is narrow. */
+.fleet .banner {
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--ov-border);
+  border-left: 3px solid var(--ov-yellow);
+  border-radius: 6px;
+  background: var(--vscode-editorWidget-background, var(--ov-panel));
+}
+
+.fleet .banner li {
+  display: grid;
+  grid-template-areas:
+    'tool title buttons'
+    'input input input';
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 4px 8px;
+  align-items: center;
+  padding: 6px 0 0;
+}
+
+.fleet .banner li + li {
+  margin-top: 6px;
+  border-top: 1px solid var(--ov-border);
+}
+
 .banner .permission-title {
+  grid-area: title;
+  min-width: 0;
+  overflow: hidden;
   font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .banner .permission-input {
-  flex: 1 1 12em;
+  grid-area: input;
   min-width: 0;
+  padding: 2px 6px;
   overflow: hidden;
+  border-radius: 3px;
+  background: var(--vscode-textCodeBlock-background, var(--ov-hover));
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .banner .permission-buttons {
   display: inline-flex;
+  grid-area: buttons;
+  flex-wrap: wrap;
   gap: 4px;
-  margin-left: auto;
+  justify-content: flex-end;
+}
+
+@container fleet (width < 520px) {
+  .fleet .banner li {
+    grid-template-areas:
+      'tool title'
+      'input input'
+      'buttons buttons';
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .banner .permission-buttons {
+    justify-content: flex-start;
+  }
 }
 
 /* ---- Toolbar ------------------------------------------------------------ */
@@ -91,6 +151,7 @@
 
 .fleet .toolbar .filter input {
   width: 100%;
+  padding: 3px 8px;
 }
 
 /* The buttons stay on the filter's line, so the View menu always opens
@@ -221,10 +282,34 @@
   color: var(--ov-muted);
 }
 
-/* Row actions show for the row under the pointer, the selected row and the
-   row holding focus, which keeps the grid quiet. */
-.tree-table tbody tr:not(:hover, :focus-within, [aria-selected='true']) .col-actions .actions {
-  visibility: hidden;
+/* Row actions lie over the right end of the row under the pointer or
+   holding focus, the way VS Code's own trees do, so they never take a
+   column's width from the title. The header cell stays for screen readers. */
+.tree-table tbody tr {
+  position: relative;
+}
+
+.tree-table th.col-actions {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.tree-table td.col-actions {
+  display: flex;
+  position: absolute;
+  inset: 0 0 0 auto;
+  align-items: center;
+  padding: 0 4px 0 12px;
+  background: linear-gradient(var(--row-bg), var(--row-bg)), var(--ov-bg);
+}
+
+.tree-table tbody tr:not(:hover, :focus-within) td.col-actions {
+  display: none;
 }
 
 .actions .icon-button {
@@ -257,8 +342,13 @@
 
 /* ---- Project rows -------------------------------------------------------- */
 
+/* A light band, so each project reads as the heading of the sessions under it. */
 .tree-table tbody tr[data-kind='project'] {
   border-top: 1px solid var(--ov-border);
+}
+
+.tree-table tbody tr[data-kind='project']:not(:hover, [aria-selected='true']) {
+  --row-bg: color-mix(in srgb, var(--ov-fg) 5%, transparent);
 }
 
 .tree-table tbody tr[data-kind='project'] .row-title {
@@ -270,4 +360,37 @@
   tbody
   tr[data-kind='project'][data-needs-project='true']:not(:hover, [aria-selected='true']) {
   --row-bg: var(--ov-warning-bg);
+}
+
+/* ---- Narrower panels ---------------------------------------------------- */
+
+/* Columns go least useful first, so the title keeps room for its text. */
+@container fleet (width < 1400px) {
+  .tree-table :is(.col-trend, .col-calls) {
+    display: none;
+  }
+}
+
+@container fleet (width < 1150px) {
+  .tree-table :is(.col-cache, .col-effort, .col-surface) {
+    display: none;
+  }
+}
+
+@container fleet (width < 900px) {
+  .tree-table :is(.col-tool, .col-tokens) {
+    display: none;
+  }
+}
+
+@container fleet (width < 700px) {
+  .tree-table :is(.col-model, .col-context) {
+    display: none;
+  }
+}
+
+/* ---- No sessions ---------------------------------------------------------- */
+
+.fleet-empty button {
+  margin-top: 8px;
 }

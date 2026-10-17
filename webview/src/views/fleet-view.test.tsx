@@ -360,8 +360,11 @@ describe('FleetView', () => {
     expect(bodyRowTitles()).toStrictEqual(['Write docs', 'Refactor parser', 'Explore']);
     await user.type(screen.getByRole('searchbox', { name: 'Filter' }), 'nothing matches');
     expect(screen.queryByRole('treegrid')).toBeNull();
-    expect(screen.getByText('No sessions')).toBeDefined();
+    expect(screen.getByText('No sessions match')).toBeDefined();
     expect(api.saved).toMatchObject({ 'fleet.hideDone': true, 'fleet.filter': 'nothing matches' });
+    await user.click(screen.getByRole('button', { name: 'Clear filter' }));
+    expect(screen.getByRole('searchbox', { name: 'Filter' })).toHaveProperty('value', '');
+    expect(bodyRowTitles()).toContain('Old run');
   });
 
   it('restores saved sort, filter and collapsed rows', () => {
