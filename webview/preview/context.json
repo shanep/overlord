@@ -1,0 +1,182 @@
+{
+  "sessions": [
+    {
+      "id": "s1",
+      "title": "Add the MCP registry search to the Connectors view"
+    },
+    {
+      "id": "s2",
+      "title": "Fix the flaky date parser test"
+    },
+    {
+      "id": "s6",
+      "title": "Refactor"
+    }
+  ],
+  "snapshot": {
+    "sessionId": "s1",
+    "agentId": "s1",
+    "at": 1792207764971,
+    "model": "claude-opus-5-5",
+    "systemPrompt": [
+      "You are Claude Code, Anthropic's official CLI for Claude.\nYou are an agent working with the user toward their goals.",
+      "# Harness\n - Text you output outside of tool use is displayed to the user.",
+      "# Environment\n - Primary working directory: /Users/shane/repos/overlord"
+    ],
+    "loaded": [
+      {
+        "path": "/Users/shane/.claude/CLAUDE.md",
+        "tier": "User",
+        "reason": "session_start",
+        "triggerPath": null,
+        "parentPath": null,
+        "globs": [],
+        "bytes": 6120,
+        "differsFromDisk": false,
+        "loadedAt": 1792205604971
+      },
+      {
+        "path": "/Users/shane/repos/overlord/CLAUDE.md",
+        "tier": "Project",
+        "reason": "session_start",
+        "triggerPath": null,
+        "parentPath": null,
+        "globs": [],
+        "bytes": 1840,
+        "differsFromDisk": true,
+        "loadedAt": 1792205604971
+      },
+      {
+        "path": "/Users/shane/repos/overlord/webview/CLAUDE.md",
+        "tier": "Project",
+        "reason": "nested_traversal",
+        "triggerPath": "/Users/shane/repos/overlord/webview/src/views/connectors-view.tsx",
+        "parentPath": null,
+        "globs": [],
+        "bytes": 920,
+        "differsFromDisk": null,
+        "loadedAt": 1792207164971
+      },
+      {
+        "path": "/Users/shane/.claude/projects/overlord/memory/MEMORY.md",
+        "tier": "AutoMem",
+        "reason": "session_start",
+        "triggerPath": null,
+        "parentPath": null,
+        "globs": [],
+        "bytes": 410,
+        "differsFromDisk": false,
+        "loadedAt": 1792205604971
+      }
+    ],
+    "skipped": [
+      {
+        "path": "/Users/shane/repos/overlord/CLAUDE.local.md",
+        "tier": "Local",
+        "exists": false,
+        "code": "missing",
+        "detail": "No file at this path."
+      },
+      {
+        "path": "/Users/shane/repos/overlord/src/core/CLAUDE.md",
+        "tier": "Project",
+        "exists": true,
+        "code": "lazy-not-touched",
+        "detail": "Loads when the session reads a file under src/core, and it has not yet."
+      }
+    ],
+    "skills": [
+      {
+        "name": "install-overlord",
+        "source": "project",
+        "path": ".claude/skills/install-overlord/SKILL.md",
+        "listed": true,
+        "invoked": true,
+        "descriptionChars": 312
+      },
+      {
+        "name": "webview-design",
+        "source": "project",
+        "path": ".claude/skills/webview-design/SKILL.md",
+        "listed": true,
+        "invoked": false,
+        "descriptionChars": 402
+      },
+      {
+        "name": "writing-voice",
+        "source": "user",
+        "path": "~/.claude/skills/writing-voice/SKILL.md",
+        "listed": true,
+        "invoked": true,
+        "descriptionChars": 688
+      },
+      {
+        "name": "pdf",
+        "source": "plugin",
+        "path": null,
+        "listed": false,
+        "invoked": false,
+        "descriptionChars": 540
+      }
+    ],
+    "agentTypes": ["general-purpose", "Explore", "Plan", "scout", "ci-watch", "statusline-setup"],
+    "mcpServers": [
+      {
+        "name": "claude-in-chrome",
+        "instructions": "Load every tool you expect to need in ONE ToolSearch call."
+      },
+      {
+        "name": "claude.ai Google Docs",
+        "instructions": "This is an MCP server which provides tools to interact with Google Docs."
+      }
+    ],
+    "deferredTools": [
+      "WebFetch",
+      "WebSearch",
+      "NotebookEdit",
+      "CronCreate",
+      "Monitor",
+      "TaskCreate",
+      "TaskUpdate"
+    ],
+    "environment": {
+      "Platform": "darwin",
+      "Shell": "zsh",
+      "OS Version": "Darwin 25.6.0",
+      "Working directory": "/Users/shane/repos/overlord",
+      "Is git repo": "true"
+    },
+    "weights": [
+      {
+        "label": "System prompt",
+        "tokens": 3100,
+        "estimated": false
+      },
+      {
+        "label": "Tools",
+        "tokens": 14800,
+        "estimated": false
+      },
+      {
+        "label": "Memory files",
+        "tokens": 2300,
+        "estimated": true
+      },
+      {
+        "label": "Skills",
+        "tokens": 1900,
+        "estimated": true
+      },
+      {
+        "label": "MCP instructions",
+        "tokens": 600,
+        "estimated": true
+      },
+      {
+        "label": "Messages",
+        "tokens": 18400,
+        "estimated": false
+      }
+    ]
+  }
+}

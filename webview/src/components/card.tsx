@@ -141,3 +141,24 @@ export function Notice(props: {
     </p>
   );
 }
+
+export interface StatTile {
+  readonly label: string;
+  readonly value: string;
+  /** A hover note, such as the exact number behind a rounded one. */
+  readonly title?: string;
+}
+
+/** The few numbers that matter on a page, as small tiles with the label over the value. */
+export function StatTiles(props: { readonly tiles: readonly StatTile[] }): ReactElement {
+  return (
+    <dl className="stat-tiles">
+      {props.tiles.map((tile) => (
+        <div key={tile.label} className="stat-tile" title={tile.title}>
+          <dt>{tile.label}</dt>
+          <dd>{tile.value}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}

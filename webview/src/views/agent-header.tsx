@@ -7,6 +7,7 @@ import { useState } from 'react';
 import type { AgentNode, ApiRequest, SessionSummary } from '../../../src/shared/model.js';
 import { useNow } from '../clock.js';
 import { StateBadge } from '../components/badge.js';
+import { StatTiles } from '../components/card.js';
 import { ConfirmBar } from '../components/confirm-bar.js';
 import { formatCompact, formatCost, formatDuration } from '../format.js';
 import { LOCAL_SURFACES } from '../labels.js';
@@ -50,40 +51,27 @@ export function AgentHeader(props: {
   const parent = agent.parentAgentId;
   return (
     <header>
-      <div className="view-header">
-        <h1>
-          {agent.agentType}: {agent.description}
-        </h1>
+      <div className="agent-title">
+        <span className="chip">{agent.agentType}</span>
+        <h1 title={agent.description}>{agent.description}</h1>
         <StateBadge state={agent.state} />
       </div>
       {session === null ? null : (
-        <p className="muted">
-          {session.title} <span className="mono">{session.cwd}</span>
+        <p className="muted agent-where">
+          {session.title === agent.description ? null : <>{session.title} </>}
+          <span className="mono">{session.cwd}</span>
         </p>
       )}
-      <dl className="stats">
-        <div className="stat">
-          <dt>Model</dt>
-          <dd>{agent.model ?? 'unknown'}</dd>
-        </div>
-        <div className="stat">
-          <dt>Elapsed</dt>
-          <dd>{formatDuration((agent.endedAt ?? now) - agent.startedAt)}</dd>
-        </div>
-        <div className="stat">
-          <dt>Tokens</dt>
-          <dd>{formatCompact(totalTokens(agent.usage))}</dd>
-        </div>
-        <div className="stat">
-          <dt>Cost</dt>
-          <dd>{formatCost(agentCost(agent, session, requests))}</dd>
-        </div>
-        <div className="stat">
-          <dt>Tool calls</dt>
-          <dd>{agent.toolCallCount}</dd>
-        </div>
-      </dl>
-      <div className="toolbar">
+      <StatTiles
+        tiles={[
+          { label: 'Model', value: agent.model ?? 'unknown' },
+          { label: 'Elapsed', value: formatDuration((agent.endedAt ?? now) - agent.startedAt) },
+          { label: 'Tokens', value: formatCompact(totalTokens(agent.usage)) },
+          { label: 'Cost', value: formatCost(agentCost(agent, session, requests)) },
+          { label: 'Tool calls', value: String(agent.toolCallCount) },
+        ]}
+      />
+      <div className="toolbar agent-actions">
         <button
           type="button"
           onClick={() => {

@@ -1,0 +1,89 @@
+{
+  "sessions": [
+    {
+      "id": "s1",
+      "surface": "cli",
+      "title": "Add the MCP registry search to the Connectors view",
+      "cwd": "/Users/shane/repos/overlord",
+      "updatedAt": 1792207644971,
+      "archived": false,
+      "handoffs": ["resume-local"]
+    },
+    {
+      "id": "s2",
+      "surface": "overlord",
+      "title": "Fix the flaky date parser test",
+      "cwd": "/Users/shane/.overlord/worktrees/overlord-3093d58c/7a1b",
+      "updatedAt": 1792206564971,
+      "archived": false,
+      "handoffs": ["resume-local"]
+    },
+    {
+      "id": "s3",
+      "surface": "desktop-code",
+      "title": "Draft the CS 452 lab on page tables",
+      "cwd": "/Users/shane/teaching/cs452",
+      "updatedAt": 1792197084971,
+      "archived": false,
+      "handoffs": ["resume-local", "open-desktop"]
+    },
+    {
+      "id": "s4",
+      "surface": "cloud",
+      "title": "Bump dependencies and fix the build",
+      "cwd": "/Users/shane/repos/overlord",
+      "updatedAt": 1792189884971,
+      "archived": false,
+      "handoffs": ["teleport-local"]
+    },
+    {
+      "id": "s5",
+      "surface": "claude-ai",
+      "title": "Ideas for the ESEM paper related work",
+      "cwd": null,
+      "updatedAt": 1792114284971,
+      "archived": false,
+      "handoffs": []
+    },
+    {
+      "id": "s6",
+      "surface": "cli",
+      "title": "Refactor",
+      "cwd": "/Users/shane/research/tech-lag-abandonment",
+      "updatedAt": 1792035084971,
+      "archived": false,
+      "handoffs": ["resume-local"]
+    },
+    {
+      "id": "s7",
+      "surface": "cowork",
+      "title": "Plan the week",
+      "cwd": null,
+      "updatedAt": 1791948684971,
+      "archived": false,
+      "handoffs": ["remote-control"]
+    },
+    {
+      "id": "s8",
+      "surface": "cli",
+      "title": "Old experiment with the grading script",
+      "cwd": "/Users/shane/teaching/cs452",
+      "updatedAt": 1791430284971,
+      "archived": true,
+      "handoffs": ["resume-local"]
+    },
+    {
+      "id": "s9",
+      "surface": "sdk",
+      "title": "Nightly mutation run",
+      "cwd": "/Users/shane/repos/overlord",
+      "updatedAt": 1792099884971,
+      "archived": false,
+      "handoffs": []
+    }
+  ],
+  "claudeAiImportedAt": 1791689484971,
+  "projects": {
+    "/Users/shane/.overlord/worktrees/overlord-3093d58c/7a1b": "/Users/shane/repos/overlord"
+  }
+}

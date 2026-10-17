@@ -71,7 +71,7 @@ export function AgentFeed(props: { readonly feed: readonly FeedItem[] }): ReactE
   }
   const ordered = feed.toSorted((a, b) => a.at - b.at);
   return (
-    <ol className="feed" aria-label="Feed">
+    <ol className="feed agent-feed-list" aria-label="Feed">
       {ordered.map((item) => (
         <li key={item.id} className={feedClass(item)}>
           <div className="feed-meta">

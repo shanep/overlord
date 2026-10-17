@@ -1,5 +1,6 @@
 // One list of sessions across every surface, grouped by project folder, with
-// the handoffs each one supports right now.
+// the handoffs each one supports right now. Each group is a table in a panel,
+// with fixed columns so the groups line up.
 
 import type { ReactElement } from 'react';
 
@@ -101,7 +102,7 @@ function SessionTitle(props: { readonly entry: SurfaceSession }): ReactElement {
   const post = usePostAction();
   const { entry } = props;
   if (!LOCAL_SURFACES.has(entry.surface)) {
-    return <>{entry.title}</>;
+    return <span title={entry.title}>{entry.title}</span>;
   }
   return (
     <button
@@ -176,6 +177,81 @@ function columns(now: number): readonly Column<SurfaceSession>[] {
   ];
 }
 
+interface FilterControls {
+  readonly filter: SessionFilter;
+  readonly setText: (text: string) => void;
+  readonly setSurface: (surface: Surface | 'all') => void;
+  readonly setArchived: (archived: boolean) => void;
+}
+
+function Filters(props: {
+  readonly sessions: readonly SurfaceSession[];
+  readonly controls: FilterControls;
+}): ReactElement {
+  const { filter, setText, setSurface, setArchived } = props.controls;
+  const { text, surface, archived } = filter;
+  return (
+    <div className="list-bar" role="search">
+      <input
+        type="search"
+        className="sessions-filter"
+        aria-label="Filter"
+        placeholder="Filter by title or folder"
+        value={text}
+        onChange={(event) => {
+          setText(event.target.value);
+        }}
+      />
+      <label>
+        Surface
+        <select
+          value={surface}
+          onChange={(event) => {
+            const next = event.target.value;
+            setSurface(isSurfaceFilter(next) ? next : 'all');
+          }}
+        >
+          <option value="all">All</option>
+          {surfaceOptions(props.sessions, surface).map((entry) => (
+            <option key={entry} value={entry}>
+              {SURFACE_LABELS[entry]}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label>
+        <input
+          type="checkbox"
+          checked={archived}
+          onChange={(event) => {
+            setArchived(event.target.checked);
+          }}
+        />
+        Show archived
+      </label>
+    </div>
+  );
+}
+
+function GroupPanel(props: { readonly group: ProjectGroup; readonly now: number }): ReactElement {
+  const { group } = props;
+  return (
+    <details open className="panel session-group">
+      <summary>
+        <span className="group-name">{group.name}</span>
+        <span className="count">{group.sessions.length.toString()}</span>
+        {group.cwd === null ? null : <span className="muted mono">{group.cwd}</span>}
+      </summary>
+      <DataTable
+        caption={`Sessions in ${group.cwd ?? 'no folder'}`}
+        columns={columns(props.now)}
+        rows={group.sessions}
+        rowKey={(entry) => `${entry.surface}:${entry.id}`}
+      />
+    </details>
+  );
+}
+
 export function SessionsView(props: { readonly state: SessionsState }): ReactElement {
   const { state } = props;
   const now = useNow();
@@ -183,7 +259,8 @@ export function SessionsView(props: { readonly state: SessionsState }): ReactEle
   const [text, setText] = usePersistentState('sessions.text', '', isString);
   const [surface, setSurface] = usePersistentState('sessions.surface', 'all', isSurfaceFilter);
   const [archived, setArchived] = usePersistentState('sessions.archived', false, isBoolean);
-  const rows = filterSessions(state.sessions, { text, surface, archived });
+  const filter = { text, surface, archived };
+  const rows = filterSessions(state.sessions, filter);
   const groups = groupByProject(rows, state.projects);
   return (
     <section aria-labelledby="sessions-title">
@@ -206,60 +283,10 @@ export function SessionsView(props: { readonly state: SessionsState }): ReactEle
           Import claude.ai export
         </button>
       </header>
-      <div className="toolbar" role="search">
-        <label>
-          Filter
-          <input
-            type="search"
-            value={text}
-            onChange={(event) => {
-              setText(event.target.value);
-            }}
-          />
-        </label>
-        <label>
-          Surface
-          <select
-            value={surface}
-            onChange={(event) => {
-              const next = event.target.value;
-              setSurface(isSurfaceFilter(next) ? next : 'all');
-            }}
-          >
-            <option value="all">All</option>
-            {surfaceOptions(state.sessions, surface).map((entry) => (
-              <option key={entry} value={entry}>
-                {SURFACE_LABELS[entry]}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          <input
-            type="checkbox"
-            checked={archived}
-            onChange={(event) => {
-              setArchived(event.target.checked);
-            }}
-          />
-          Show archived
-        </label>
-      </div>
-      {groups.length === 0 ? <p className="muted">No sessions match.</p> : null}
+      <Filters sessions={state.sessions} controls={{ filter, setText, setSurface, setArchived }} />
+      {groups.length === 0 ? <p className="empty-line muted">No sessions match.</p> : null}
       {groups.map((group) => (
-        <details key={group.cwd ?? ''} open className="section">
-          <summary>
-            <strong>{group.name}</strong>{' '}
-            {group.cwd === null ? null : <span className="muted mono">{group.cwd}</span>} (
-            {group.sessions.length.toString()})
-          </summary>
-          <DataTable
-            caption={`Sessions in ${group.cwd ?? 'no folder'}`}
-            columns={columns(now)}
-            rows={group.sessions}
-            rowKey={(entry) => `${entry.surface}:${entry.id}`}
-          />
-        </details>
+        <GroupPanel key={group.cwd ?? ''} group={group} now={now} />
       ))}
     </section>
   );

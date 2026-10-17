@@ -30,7 +30,7 @@ describe('AgentView', () => {
 
   it('shows the header numbers for the main thread', () => {
     renderView(<AgentView state={agentState} />);
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('main: Main thread');
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Main thread');
     const stats = screen.getByText('Model').closest('dl');
     expect(stats).not.toBeNull();
     const text = stats?.textContent ?? '';

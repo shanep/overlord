@@ -23,7 +23,7 @@ export function SystemPrompt(props: { readonly blocks: readonly string[] | null 
     return <p className="muted">Not captured for this session.</p>;
   }
   return (
-    <div>
+    <div className="panel prompt-blocks">
       {blocks.map((block, index) => (
         // Blocks have no ids, and their order is the prompt order.
         <details key={index}>
@@ -45,9 +45,9 @@ export function PlainList(props: {
     return <p className="muted">None.</p>;
   }
   return (
-    <ul className="chips" aria-label={props.label}>
+    <ul className="chip-list" aria-label={props.label}>
       {props.items.map((item) => (
-        <li key={item} className="badge">
+        <li key={item} className="chip">
           {item}
         </li>
       ))}
@@ -62,7 +62,7 @@ export function McpInstructions(props: {
     return <p className="muted">No MCP server instructions.</p>;
   }
   return (
-    <div>
+    <div className="panel prompt-blocks">
       {props.servers.map((server) => (
         <details key={server.name}>
           <summary>{server.name}</summary>

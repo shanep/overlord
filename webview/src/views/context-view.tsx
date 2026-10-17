@@ -1,11 +1,14 @@
 // Context inspector: everything that drove the model for one session, and
-// what did not load and why.
+// what did not load and why. What you act on stays open; the reference
+// sections fold away with a count.
 
 import type { ReactElement, ReactNode } from 'react';
 
 import type { ContextState } from '../../../src/shared/protocol.js';
+import { StatTiles } from '../components/card.js';
 import { EmptyState } from '../components/empty-state.js';
-import { formatDateTime } from '../format.js';
+import { Fold } from '../components/fold.js';
+import { formatCompact, formatDateTime } from '../format.js';
 import { usePostAction } from '../vscode-context.js';
 
 import { McpInstructions, PlainList, SystemPrompt, WeightTreemap } from './context-sections.js';
@@ -14,11 +17,15 @@ import { EnvironmentTable, LoadedTable, SkillsTable, SkippedTable } from './cont
 function Section(props: {
   readonly id: string;
   readonly title: string;
+  readonly count?: number;
   readonly children: ReactNode;
 }): ReactElement {
   return (
     <section className="section" aria-labelledby={props.id}>
-      <h2 id={props.id}>{props.title}</h2>
+      <h2 id={props.id} className="section-title">
+        {props.title}
+        {props.count === undefined ? null : <span className="count">{String(props.count)}</span>}
+      </h2>
       {props.children}
     </section>
   );
@@ -30,7 +37,7 @@ function SessionPicker(props: {
 }): ReactElement {
   const post = usePostAction();
   return (
-    <label>
+    <label className="context-picker">
       Session
       <select
         value={props.selected}
@@ -52,6 +59,10 @@ function SessionPicker(props: {
   );
 }
 
+function plural(count: number, one: string, many: string): string {
+  return `${String(count)} ${count === 1 ? one : many}`;
+}
+
 export function ContextView(props: { readonly state: ContextState }): ReactElement {
   const { snapshot, sessions } = props.state;
   return (
@@ -69,33 +80,79 @@ export function ContextView(props: { readonly state: ContextState }): ReactEleme
         <EmptyState title="No context yet" detail="Pick a session to see what drives it." />
       ) : (
         <>
-          <Section id="ctx-weights" title="Token weight">
+          <StatTiles
+            tiles={[
+              {
+                label: 'Tokens',
+                value: formatCompact(
+                  snapshot.weights.reduce((sum, entry) => sum + entry.tokens, 0),
+                ),
+              },
+              { label: 'Memory files', value: String(snapshot.loaded.length) },
+              { label: 'Did not load', value: String(snapshot.skipped.length) },
+              { label: 'Skills', value: String(snapshot.skills.length) },
+              { label: 'MCP servers', value: String(snapshot.mcpServers.length) },
+            ]}
+          />
+          <Section id="ctx-weights" title="Where the tokens go">
             <WeightTreemap weights={snapshot.weights} />
           </Section>
-          <Section id="ctx-prompt" title="System prompt">
+          <Section id="ctx-loaded" title="Memory files loaded" count={snapshot.loaded.length}>
+            <div className="panel">
+              <LoadedTable loaded={snapshot.loaded} />
+            </div>
+          </Section>
+          <Section id="ctx-skipped" title="Did not load" count={snapshot.skipped.length}>
+            <div className="panel">
+              <SkippedTable skipped={snapshot.skipped} />
+            </div>
+          </Section>
+          <Section id="ctx-skills" title="Skills" count={snapshot.skills.length}>
+            <div className="panel">
+              <SkillsTable skills={snapshot.skills} />
+            </div>
+          </Section>
+          <Fold
+            id="ctx-prompt"
+            title="System prompt"
+            note={
+              snapshot.systemPrompt === null
+                ? 'not captured'
+                : plural(snapshot.systemPrompt.length, 'block', 'blocks')
+            }
+          >
             <SystemPrompt blocks={snapshot.systemPrompt} />
-          </Section>
-          <Section id="ctx-loaded" title="Memory files loaded">
-            <LoadedTable loaded={snapshot.loaded} />
-          </Section>
-          <Section id="ctx-skipped" title="Did not load">
-            <SkippedTable skipped={snapshot.skipped} />
-          </Section>
-          <Section id="ctx-skills" title="Skills">
-            <SkillsTable skills={snapshot.skills} />
-          </Section>
-          <Section id="ctx-agents" title="Agent types">
-            <PlainList label="Agent types" items={snapshot.agentTypes} />
-          </Section>
-          <Section id="ctx-mcp" title="MCP instructions">
+          </Fold>
+          <Fold
+            id="ctx-mcp"
+            title="MCP instructions"
+            note={plural(snapshot.mcpServers.length, 'server', 'servers')}
+          >
             <McpInstructions servers={snapshot.mcpServers} />
-          </Section>
-          <Section id="ctx-deferred" title="Deferred tools">
+          </Fold>
+          <Fold
+            id="ctx-agents"
+            title="Agent types"
+            note={plural(snapshot.agentTypes.length, 'type', 'types')}
+          >
+            <PlainList label="Agent types" items={snapshot.agentTypes} />
+          </Fold>
+          <Fold
+            id="ctx-deferred"
+            title="Deferred tools"
+            note={plural(snapshot.deferredTools.length, 'tool', 'tools')}
+          >
             <PlainList label="Deferred tools" items={snapshot.deferredTools} />
-          </Section>
-          <Section id="ctx-env" title="Environment">
-            <EnvironmentTable environment={snapshot.environment} />
-          </Section>
+          </Fold>
+          <Fold
+            id="ctx-env"
+            title="Environment"
+            note={plural(Object.keys(snapshot.environment).length, 'value', 'values')}
+          >
+            <div className="panel">
+              <EnvironmentTable environment={snapshot.environment} />
+            </div>
+          </Fold>
         </>
       )}
     </section>

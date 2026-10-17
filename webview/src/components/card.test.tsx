@@ -3,7 +3,16 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { expectAccessible } from '../../test/render.js';
 
-import { Avatar, Card, CardGrid, CardGroup, Notice, Segmented, StatusDot } from './card.js';
+import {
+  Avatar,
+  Card,
+  CardGrid,
+  CardGroup,
+  Notice,
+  Segmented,
+  StatTiles,
+  StatusDot,
+} from './card.js';
 
 describe('Card', () => {
   it('adds an edge for a tone, a hover for actions and a full row when open', () => {
@@ -100,5 +109,23 @@ describe('Notice', () => {
     expect(good.getByRole('status').className).toBe('notice notice-good');
     const bad = render(<Notice ok={false}>Failed.</Notice>);
     expect(bad.getByRole('alert').className).toBe('notice notice-critical');
+  });
+});
+
+describe('StatTiles', () => {
+  it('puts each label over its value, with a hover note when given', async () => {
+    const { container } = render(
+      <StatTiles
+        tiles={[
+          { label: 'Tokens', value: '1.5M', title: '1,512,000' },
+          { label: 'Cost', value: '$4.82' },
+        ]}
+      />,
+    );
+    const tiles = [...container.querySelectorAll('.stat-tile')];
+    expect(tiles.map((tile) => tile.textContent)).toStrictEqual(['Tokens1.5M', 'Cost$4.82']);
+    expect(tiles[0]?.getAttribute('title')).toBe('1,512,000');
+    expect(tiles[1]?.hasAttribute('title')).toBe(false);
+    await expectAccessible(container);
   });
 });

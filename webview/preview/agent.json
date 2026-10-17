@@ -1,0 +1,549 @@
+{
+  "agent": {
+    "id": "s1",
+    "sessionId": "s1",
+    "parentAgentId": null,
+    "parentToolUseId": null,
+    "agentType": "main",
+    "description": "Add the MCP registry search to the Connectors view",
+    "spawnDepth": 0,
+    "background": false,
+    "state": "running",
+    "startedAt": 1792205604971,
+    "endedAt": null,
+    "transcriptPath": null,
+    "usage": {
+      "input": 41200,
+      "output": 18900,
+      "cacheRead": 1320000,
+      "cacheCreation": 96000,
+      "thinking": 0
+    },
+    "toolCallCount": 64,
+    "currentTool": "Bash",
+    "model": "claude-opus-5-5"
+  },
+  "session": {
+    "id": "s1",
+    "surface": "cli",
+    "title": "Add the MCP registry search to the Connectors view",
+    "cwd": "/Users/shane/repos/overlord",
+    "state": "running",
+    "startedAt": 1792205604971,
+    "updatedAt": 1792207824971,
+    "usage": {
+      "input": 41200,
+      "output": 18900,
+      "cacheRead": 1320000,
+      "cacheCreation": 96000,
+      "thinking": 0
+    },
+    "costUsd": 4.82,
+    "model": "claude-opus-5-5",
+    "effort": "high",
+    "permissionMode": "auto",
+    "pid": 4242,
+    "transcriptPath": null,
+    "gitBranch": "overlord/66af2afd",
+    "version": "2.3.1",
+    "agentCount": 3,
+    "contextFill": 0.41,
+    "recap": null,
+    "lastPrompt": "can you add a way to install existing mcp connectors?",
+    "lastPromptAt": 1792205604971
+  },
+  "children": [
+    {
+      "id": "a1",
+      "sessionId": "s1",
+      "parentAgentId": "s1",
+      "parentToolUseId": "t9",
+      "agentType": "Explore",
+      "description": "Find where connectors are checked and listed",
+      "spawnDepth": 1,
+      "background": false,
+      "state": "done",
+      "startedAt": 1792205784971,
+      "endedAt": 1792205904971,
+      "transcriptPath": null,
+      "usage": {
+        "input": 9000,
+        "output": 2100,
+        "cacheRead": 120000,
+        "cacheCreation": 8000,
+        "thinking": 0
+      },
+      "toolCallCount": 14,
+      "currentTool": null,
+      "model": "claude-haiku-5-5"
+    },
+    {
+      "id": "a2",
+      "sessionId": "s1",
+      "parentAgentId": "s1",
+      "parentToolUseId": "t20",
+      "agentType": "general-purpose",
+      "description": "Survey the MCP registry API shapes and the fields a server can list",
+      "spawnDepth": 1,
+      "background": true,
+      "state": "running",
+      "startedAt": 1792206804971,
+      "endedAt": null,
+      "transcriptPath": null,
+      "usage": {
+        "input": 12000,
+        "output": 4000,
+        "cacheRead": 80000,
+        "cacheCreation": 9000,
+        "thinking": 0
+      },
+      "toolCallCount": 9,
+      "currentTool": "WebFetch",
+      "model": "claude-sonnet-5-5"
+    },
+    {
+      "id": "a3",
+      "sessionId": "s1",
+      "parentAgentId": "s1",
+      "parentToolUseId": "t30",
+      "agentType": "scout",
+      "description": "Check spell list",
+      "spawnDepth": 1,
+      "background": false,
+      "state": "failed",
+      "startedAt": 1792207404971,
+      "endedAt": 1792207464971,
+      "transcriptPath": null,
+      "usage": {
+        "input": 2000,
+        "output": 300,
+        "cacheRead": 0,
+        "cacheCreation": 1000,
+        "thinking": 0
+      },
+      "toolCallCount": 2,
+      "currentTool": null,
+      "model": "claude-haiku-5-5"
+    }
+  ],
+  "feed": [
+    {
+      "kind": "user",
+      "id": "f1",
+      "at": 1792205604971,
+      "text": "can you add a way to install existing mcp connectors?"
+    },
+    {
+      "kind": "thinking",
+      "id": "f2",
+      "at": 1792205624971,
+      "text": "The user wants to install MCP servers, probably from the public registry. Look at how the Connectors view finds servers first."
+    },
+    {
+      "kind": "text",
+      "id": "f3",
+      "at": 1792205644971,
+      "text": "I'll look at how the Connectors view finds and checks connectors now, so I can work out what install should hook into."
+    },
+    {
+      "kind": "tool_use",
+      "id": "f4",
+      "at": 1792205664971,
+      "name": "Bash",
+      "input": {
+        "command": "git grep -n \"mcp add\" -- src",
+        "description": "Find existing MCP install code"
+      }
+    },
+    {
+      "kind": "tool_result",
+      "id": "f5",
+      "at": 1792205669971,
+      "toolUseId": "f4",
+      "ok": true,
+      "text": "src/core/connectors/check.ts:36:async function mcpServers(input: CheckInput)"
+    },
+    {
+      "kind": "tool_use",
+      "id": "f6",
+      "at": 1792205694971,
+      "name": "Read",
+      "input": {
+        "file_path": "/Users/shane/repos/overlord/src/core/connectors/registry.ts"
+      }
+    },
+    {
+      "kind": "tool_result",
+      "id": "f7",
+      "at": 1792205699971,
+      "toolUseId": "f6",
+      "ok": false,
+      "text": "File does not exist. Did you mean src/core/connectors/check.ts?"
+    },
+    {
+      "kind": "system",
+      "id": "f8",
+      "at": 1792206804971,
+      "text": "Context compacted: 182k tokens down to 41k."
+    },
+    {
+      "kind": "text",
+      "id": "f9",
+      "at": 1792207764971,
+      "text": "All 15 registry tests pass. Next is an app-level test that covers search and install end to end."
+    }
+  ],
+  "toolCalls": [
+    {
+      "id": "t0",
+      "sessionId": "s1",
+      "agentId": "s1",
+      "name": "Bash",
+      "input": {},
+      "startedAt": 1792205604971,
+      "endedAt": 1792205608971,
+      "ok": true,
+      "resultPreview": null
+    },
+    {
+      "id": "t1",
+      "sessionId": "s1",
+      "agentId": "s1",
+      "name": "Read",
+      "input": {},
+      "startedAt": 1792205639971,
+      "endedAt": 1792205640771,
+      "ok": true,
+      "resultPreview": null
+    },
+    {
+      "id": "t2",
+      "sessionId": "s1",
+      "agentId": "s1",
+      "name": "Grep",
+      "input": {},
+      "startedAt": 1792205674971,
+      "endedAt": 1792205676171,
+      "ok": true,
+      "resultPreview": null
+    },
+    {
+      "id": "t3",
+      "sessionId": "s1",
+      "agentId": "s1",
+      "name": "Edit",
+      "input": {},
+      "startedAt": 1792205709971,
+      "endedAt": 1792205710571,
+      "ok": true,
+      "resultPreview": null
+    },
+    {
+      "id": "t4",
+      "sessionId": "s1",
+      "agentId": "s1",
+      "name": "Bash",
+      "input": {},
+      "startedAt": 1792205744971,
+      "endedAt": 1792205786971,
+      "ok": true,
+      "resultPreview": null
+    },
+    {
+      "id": "t5",
+      "sessionId": "s1",
+      "agentId": "s1",
+      "name": "Write",
+      "input": {},
+      "startedAt": 1792205779971,
+      "endedAt": 1792205780471,
+      "ok": true,
+      "resultPreview": null
+    },
+    {
+      "id": "t6",
+      "sessionId": "s1",
+      "agentId": "s1",
+      "name": "Bash",
+      "input": {},
+      "startedAt": 1792205814971,
+      "endedAt": 1792205879971,
+      "ok": false,
+      "resultPreview": null
+    },
+    {
+      "id": "t7",
+      "sessionId": "s1",
+      "agentId": "s1",
+      "name": "Read",
+      "input": {},
+      "startedAt": 1792205849971,
+      "endedAt": 1792205850671,
+      "ok": true,
+      "resultPreview": null
+    },
+    {
+      "id": "t8",
+      "sessionId": "s1",
+      "agentId": "s1",
+      "name": "Agent",
+      "input": {},
+      "startedAt": 1792205884971,
+      "endedAt": 1792206004971,
+      "ok": true,
+      "resultPreview": null
+    },
+    {
+      "id": "t9",
+      "sessionId": "s1",
+      "agentId": "s1",
+      "name": "Bash",
+      "input": {},
+      "startedAt": 1792205919971,
+      "endedAt": 1792205928971,
+      "ok": true,
+      "resultPreview": null
+    },
+    {
+      "id": "t10",
+      "sessionId": "s1",
+      "agentId": "s1",
+      "name": "Edit",
+      "input": {},
+      "startedAt": 1792205954971,
+      "endedAt": 1792205955471,
+      "ok": true,
+      "resultPreview": null
+    },
+    {
+      "id": "t11",
+      "sessionId": "s1",
+      "agentId": "s1",
+      "name": "WebFetch",
+      "input": {},
+      "startedAt": 1792205989971,
+      "endedAt": 1792205992971,
+      "ok": true,
+      "resultPreview": null
+    }
+  ],
+  "requests": [
+    {
+      "messageId": "m0",
+      "requestId": null,
+      "sessionId": "s1",
+      "agentId": "s1",
+      "model": "claude-opus-5-5",
+      "timestamp": 1792205604971,
+      "usage": {
+        "input": 1200,
+        "output": 900,
+        "cacheRead": 20000,
+        "cacheCreation": 4000,
+        "thinking": 0
+      },
+      "ttftMs": 900,
+      "durationMs": 5000,
+      "costUsd": 0.2
+    },
+    {
+      "messageId": "m1",
+      "requestId": null,
+      "sessionId": "s1",
+      "agentId": "s1",
+      "model": "claude-opus-5-5",
+      "timestamp": 1792205784971,
+      "usage": {
+        "input": 1500,
+        "output": 940,
+        "cacheRead": 29000,
+        "cacheCreation": 300,
+        "thinking": 0
+      },
+      "ttftMs": 900,
+      "durationMs": 5000,
+      "costUsd": 0.23
+    },
+    {
+      "messageId": "m2",
+      "requestId": null,
+      "sessionId": "s1",
+      "agentId": "s1",
+      "model": "claude-opus-5-5",
+      "timestamp": 1792205964971,
+      "usage": {
+        "input": 1800,
+        "output": 980,
+        "cacheRead": 38000,
+        "cacheCreation": 300,
+        "thinking": 0
+      },
+      "ttftMs": 900,
+      "durationMs": 5000,
+      "costUsd": 0.26
+    },
+    {
+      "messageId": "m3",
+      "requestId": null,
+      "sessionId": "s1",
+      "agentId": "s1",
+      "model": "claude-opus-5-5",
+      "timestamp": 1792206144971,
+      "usage": {
+        "input": 2100,
+        "output": 1020,
+        "cacheRead": 47000,
+        "cacheCreation": 300,
+        "thinking": 0
+      },
+      "ttftMs": 900,
+      "durationMs": 5000,
+      "costUsd": 0.29
+    },
+    {
+      "messageId": "m4",
+      "requestId": null,
+      "sessionId": "s1",
+      "agentId": "s1",
+      "model": "claude-opus-5-5",
+      "timestamp": 1792206324971,
+      "usage": {
+        "input": 2400,
+        "output": 1060,
+        "cacheRead": 56000,
+        "cacheCreation": 4000,
+        "thinking": 0
+      },
+      "ttftMs": 900,
+      "durationMs": 5000,
+      "costUsd": 0.32
+    },
+    {
+      "messageId": "m5",
+      "requestId": null,
+      "sessionId": "s1",
+      "agentId": "s1",
+      "model": "claude-opus-5-5",
+      "timestamp": 1792206504971,
+      "usage": {
+        "input": 2700,
+        "output": 1100,
+        "cacheRead": 65000,
+        "cacheCreation": 300,
+        "thinking": 0
+      },
+      "ttftMs": 900,
+      "durationMs": 5000,
+      "costUsd": 0.35
+    },
+    {
+      "messageId": "m6",
+      "requestId": null,
+      "sessionId": "s1",
+      "agentId": "s1",
+      "model": "claude-opus-5-5",
+      "timestamp": 1792206684971,
+      "usage": {
+        "input": 3000,
+        "output": 1140,
+        "cacheRead": 74000,
+        "cacheCreation": 300,
+        "thinking": 0
+      },
+      "ttftMs": 900,
+      "durationMs": 5000,
+      "costUsd": 0.38
+    },
+    {
+      "messageId": "m7",
+      "requestId": null,
+      "sessionId": "s1",
+      "agentId": "s1",
+      "model": "claude-opus-5-5",
+      "timestamp": 1792206864971,
+      "usage": {
+        "input": 3300,
+        "output": 1180,
+        "cacheRead": 83000,
+        "cacheCreation": 300,
+        "thinking": 0
+      },
+      "ttftMs": 900,
+      "durationMs": 5000,
+      "costUsd": 0.41
+    },
+    {
+      "messageId": "m8",
+      "requestId": null,
+      "sessionId": "s1",
+      "agentId": "s1",
+      "model": "claude-opus-5-5",
+      "timestamp": 1792207044971,
+      "usage": {
+        "input": 3600,
+        "output": 1220,
+        "cacheRead": 92000,
+        "cacheCreation": 4000,
+        "thinking": 0
+      },
+      "ttftMs": 900,
+      "durationMs": 5000,
+      "costUsd": 0.44
+    },
+    {
+      "messageId": "m9",
+      "requestId": null,
+      "sessionId": "s1",
+      "agentId": "s1",
+      "model": "claude-opus-5-5",
+      "timestamp": 1792207224971,
+      "usage": {
+        "input": 3900,
+        "output": 1260,
+        "cacheRead": 101000,
+        "cacheCreation": 300,
+        "thinking": 0
+      },
+      "ttftMs": 900,
+      "durationMs": 5000,
+      "costUsd": 0.47
+    },
+    {
+      "messageId": "m10",
+      "requestId": null,
+      "sessionId": "s1",
+      "agentId": "s1",
+      "model": "claude-opus-5-5",
+      "timestamp": 1792207404971,
+      "usage": {
+        "input": 4200,
+        "output": 1300,
+        "cacheRead": 110000,
+        "cacheCreation": 300,
+        "thinking": 0
+      },
+      "ttftMs": 900,
+      "durationMs": 5000,
+      "costUsd": 0.5
+    },
+    {
+      "messageId": "m11",
+      "requestId": null,
+      "sessionId": "s1",
+      "agentId": "s1",
+      "model": "claude-opus-5-5",
+      "timestamp": 1792207584971,
+      "usage": {
+        "input": 4500,
+        "output": 1340,
+        "cacheRead": 119000,
+        "cacheCreation": 300,
+        "thinking": 0
+      },
+      "ttftMs": 900,
+      "durationMs": 5000,
+      "costUsd": 0.53
+    }
+  ],
+  "compactions": [1792206804971]
+}
