@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import type { WorktreeSummary } from '../../shared/protocol.js';
 import { claudeHooks } from '../agents/claude/hooks.js';
+import { applyPatchPaths } from '../hooks/apply-patch.js';
+import type { EditTools } from '../hooks/normalized.js';
 import type { KnownPayload } from '../hooks/payloads.js';
 import type { HookOutput } from '../hooks/protocol.js';
 
@@ -54,7 +56,10 @@ function claudeSide(coordinator: Coordinator): ClaudeSide {
   };
 }
 
-function setUp(worktrees: WorktreeSummary[]): { world: World; coordinator: ClaudeSide } {
+function setUp(
+  worktrees: WorktreeSummary[],
+  editTools: EditTools = claudeHooks.editTools,
+): { world: World; coordinator: ClaudeSide } {
   const world: World = { worktrees, enabled: true, now: 0, live: new Set(), refreshes: 0 };
   const deps: CoordinatorDeps = {
     enabled: () => world.enabled,
@@ -65,7 +70,7 @@ function setUp(worktrees: WorktreeSummary[]): { world: World; coordinator: Claud
       world.refreshes += 1;
     },
     now: () => world.now,
-    editTools: () => claudeHooks.editTools,
+    editTools: () => editTools,
   };
   return { world, coordinator: claudeSide(new Coordinator(deps)) };
 }
@@ -243,6 +248,22 @@ describe('Coordinator', () => {
         }),
       );
       expect(reason).toContain('nb.ipynb');
+    });
+
+    it('reads the files of a patch from its headers', () => {
+      const tools: EditTools = { ...claudeHooks.editTools, apply_patch: applyPatchPaths };
+      const { coordinator } = setUp([worktree({ id: 'a' }), worktree({ id: 'b' })], tools);
+      coordinator.handle(start('a', '/wt/a'));
+      coordinator.handle(start('b', '/wt/b'));
+      const patch = '*** Begin Patch\n*** Update File: src/x.ts\n@@\n-a\n+b\n*** End Patch';
+      coordinator.handle(edited('b', '/wt/b', { command: patch }, 'apply_patch'));
+      const both = {
+        ...edit('a', '/wt/a', ''),
+        tool_name: 'apply_patch',
+        tool_input: { command: `*** Begin Patch\n*** Add File: y.ts\n${patch}` },
+      };
+      expect(denyReason(coordinator.handle(both))).toContain('also changing src/x.ts');
+      expect(coordinator.handle(both)).toBeNull();
     });
 
     it('ignores other tools, unknown sessions and files outside the workspace', () => {

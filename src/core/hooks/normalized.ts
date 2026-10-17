@@ -191,19 +191,29 @@ export interface HookDialect {
   answer: (event: NormalizedHookEvent, answer: HookAnswer) => HookOutput;
 }
 
-/** Tool names that write files, each with the input fields that can hold the path, tried in order. */
-export type EditTools = Readonly<Record<string, readonly string[]>>;
+/** Reads every file a tool call writes from its whole input, such as the headers of a patch. */
+export type PathExtractor = (input: unknown) => readonly string[];
 
-/** The file an edit tool call writes, or null for any other tool. */
-export function editedFile(tools: EditTools, call: HookToolCall): string | null {
-  const fields = Object.hasOwn(tools, call.name) ? tools[call.name] : undefined;
-  for (const field of fields ?? []) {
+/**
+ * Tool names that write files. Each one has the input fields that can hold
+ * the path, tried in order, or a function that reads the paths from the
+ * input when they are not in a field of their own.
+ */
+export type EditTools = Readonly<Record<string, readonly string[] | PathExtractor>>;
+
+/** The files an edit tool call writes, or none for any other tool. */
+export function editedFiles(tools: EditTools, call: HookToolCall): readonly string[] {
+  const reader = Object.hasOwn(tools, call.name) ? tools[call.name] : undefined;
+  if (typeof reader === 'function') {
+    return reader(call.input).filter((file) => file !== '');
+  }
+  for (const field of reader ?? []) {
     const value = stringField(call.input, field);
     if (value !== null) {
-      return value === '' ? null : value;
+      return value === '' ? [] : [value];
     }
   }
-  return null;
+  return [];
 }
 
 function joined(before: string | undefined, text: string): string {

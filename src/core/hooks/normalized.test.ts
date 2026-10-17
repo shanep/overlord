@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { editedFile, withContextNote, withNotice } from './normalized.js';
+import { editedFiles, withContextNote, withNotice } from './normalized.js';
 
 describe('withContextNote', () => {
   it('leaves the answer alone without text', () => {
@@ -27,30 +27,40 @@ describe('withNotice', () => {
   });
 });
 
-describe('editedFile', () => {
-  const tools = { Edit: ['file_path', 'notebook_path'], apply_patch: [] };
+describe('editedFiles', () => {
+  const tools = {
+    Edit: ['file_path', 'notebook_path'],
+    apply_patch: (input: unknown): readonly string[] =>
+      typeof input === 'string' ? input.split(' ') : [],
+  };
 
   it('reads the first path field the tool has', () => {
-    expect(editedFile(tools, { name: 'Edit', input: { file_path: 'a.ts' }, useId: null })).toBe(
-      'a.ts',
-    );
     expect(
-      editedFile(tools, { name: 'Edit', input: { notebook_path: 'n.ipynb' }, useId: null }),
-    ).toBe('n.ipynb');
+      editedFiles(tools, { name: 'Edit', input: { file_path: 'a.ts' }, useId: null }),
+    ).toStrictEqual(['a.ts']);
+    expect(
+      editedFiles(tools, { name: 'Edit', input: { notebook_path: 'n.ipynb' }, useId: null }),
+    ).toStrictEqual(['n.ipynb']);
   });
 
-  it('is null for other tools, empty paths and tools with no path field', () => {
-    expect(editedFile(tools, { name: 'Read', input: { file_path: 'a' }, useId: null })).toBeNull();
+  it('reads every path a tool with a path reader writes, leaving out empty ones', () => {
     expect(
-      editedFile(tools, {
+      editedFiles(tools, { name: 'apply_patch', input: 'a.ts  b.ts', useId: null }),
+    ).toStrictEqual(['a.ts', 'b.ts']);
+    expect(editedFiles(tools, { name: 'apply_patch', input: {}, useId: null })).toStrictEqual([]);
+  });
+
+  it('is empty for other tools and empty paths', () => {
+    expect(
+      editedFiles(tools, { name: 'Read', input: { file_path: 'a' }, useId: null }),
+    ).toStrictEqual([]);
+    expect(
+      editedFiles(tools, {
         name: 'Edit',
         input: { file_path: '', notebook_path: 'n' },
         useId: null,
       }),
-    ).toBeNull();
-    expect(
-      editedFile(tools, { name: 'apply_patch', input: { command: 'patch' }, useId: null }),
-    ).toBeNull();
-    expect(editedFile(tools, { name: 'toString', input: {}, useId: null })).toBeNull();
+    ).toStrictEqual([]);
+    expect(editedFiles(tools, { name: 'toString', input: {}, useId: null })).toStrictEqual([]);
   });
 });

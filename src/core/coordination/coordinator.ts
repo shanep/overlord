@@ -19,7 +19,7 @@ import type {
   HookToolCall,
   NormalizedHookEvent,
 } from '../hooks/normalized.js';
-import { editedFile } from '../hooks/normalized.js';
+import { editedFiles } from '../hooks/normalized.js';
 import { stringField } from '../hooks/rules.js';
 
 import { editWarning, landingNotice, peerContext, topicOf } from './notes.js';
@@ -66,6 +66,12 @@ function fingerprint(peers: readonly Workspace[]): string {
     )
     .toSorted((a, b) => a.localeCompare(b))
     .join('\u0000');
+}
+
+/** A session's own workspace and every workspace in its repository. */
+interface Placed {
+  readonly self: Workspace;
+  readonly all: Workspace[];
 }
 
 export class Coordinator {
@@ -137,8 +143,7 @@ export class Coordinator {
 
   /** Remembers an edited file, and asks for fresh status after a push. */
   private toolDone(entry: Tracked, agent: AgentId, tool: HookToolCall): void {
-    const file = editedFile(this.deps.editTools(agent), tool);
-    if (file !== null) {
+    for (const file of editedFiles(this.deps.editTools(agent), tool)) {
       entry.edited.add(path.resolve(entry.cwd, file));
     }
     const command = tool.name === 'Bash' ? stringField(tool.input, 'command') : null;
@@ -180,7 +185,7 @@ export class Coordinator {
   }
 
   /** The session's workspace and every workspace in play, or null outside a known repository. */
-  private where(id: string): { readonly self: Workspace; readonly all: Workspace[] } | null {
+  private where(id: string): Placed | null {
     const entry = this.sessions.get(id);
     if (entry === undefined) {
       return null;
@@ -226,12 +231,24 @@ export class Coordinator {
   }
 
   private editGuard(id: string, agent: AgentId, tool: HookToolCall): HookAnswer | null {
-    const raw = editedFile(this.deps.editTools(agent), tool);
-    const found = raw === null ? null : this.where(id);
-    if (raw === null || found === null) {
+    const files = editedFiles(this.deps.editTools(agent), tool);
+    const found = files.length === 0 ? null : this.where(id);
+    if (found === null) {
       return null;
     }
-    const file = path.resolve(this.sessions.get(id)?.cwd ?? '', raw);
+    const cwd = this.sessions.get(id)?.cwd ?? '';
+    // A patch can write many files. It pauses on the first one a peer is changing.
+    for (const raw of files) {
+      const block = this.pauseFor(id, path.resolve(cwd, raw), found);
+      if (block !== null) {
+        return { block };
+      }
+    }
+    return null;
+  }
+
+  /** The warning for an edit to a file a peer is changing, the first time only, or null. */
+  private pauseFor(id: string, file: string, found: Placed): string | null {
     const home = workspaceOfFile(file, found.all) ?? found.self;
     const relative = path.relative(home.root, file);
     if (relative.startsWith('..')) {
@@ -246,6 +263,6 @@ export class Coordinator {
       return null;
     }
     this.paused.add(key);
-    return { block: editWarning(relative, peers) };
+    return editWarning(relative, peers);
   }
 }
