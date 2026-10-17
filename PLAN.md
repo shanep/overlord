@@ -5,9 +5,15 @@ every running session and subagent, what is in each one's context and why, and
 every knob we can turn. It also launches and drives agents itself, so VS Code
 becomes the harness for running many agents and prompts at once.
 
-This plan is based on Claude Code 2.1.301 on this Mac, the official docs at
-code.claude.com (read 2026-10-15), and what is actually on disk in `~/.claude`
-and `~/Library/Application Support/Claude`.
+Overlord is a meta harness. Each agent CLI (Claude Code, Codex CLI, Copilot
+CLI) plugs in as an adapter under `src/core/agents/`, and the views show only
+what that agent can do. Claude Code was the first adapter and is still the
+fullest. [META-HARNESS.md](META-HARNESS.md) has the adapter design and what
+has landed.
+
+The Claude parts of this plan are based on Claude Code 2.1.301 on this Mac,
+the official docs at code.claude.com (read 2026-10-15), and what is actually
+on disk in `~/.claude` and `~/Library/Application Support/Claude`.
 
 ## Goals
 
@@ -47,6 +53,25 @@ read-only, version-gated sources that can break on any update.
 | `~/Library/Application Support/Claude/claude-code-sessions/`            | Desktop Code tab sessions, each with a `cliSessionId` that maps to a transcript in `~/.claude/projects`                                                                                                                                                                                              | No                                               |
 | `~/Library/Application Support/Claude/local-agent-mode-sessions/`       | Cowork sessions: title, cwd, model, system prompt, MCP tools, `audit.jsonl`, outputs                                                                                                                                                                                                                 | No                                               |
 | claude.ai data export (`conversations.json`)                            | claude.ai chat history, imported by hand                                                                                                                                                                                                                                                             | Partly                                           |
+
+The table above is Claude Code's. The other agents have the same kinds of
+sources, and each adapter reads its own:
+
+| Source       | Claude Code                               | Codex CLI                                                    | Copilot CLI                                                  |
+| ------------ | ----------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| Transcripts  | `~/.claude/projects/<project>/<id>.jsonl` | `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl`, undocumented | `~/.copilot/session-state/<id>/events.jsonl`, schema shipped |
+| Live driver  | Agent SDK                                 | `codex app-server` (JSON-RPC)                                | `copilot --acp`, through the generic ACP runtime             |
+| Terminal     | `claude --bg`, `attach`, `agents`, `stop` | `codex`, `codex resume <id>`, `codex fork <id>`              | `copilot --session-id <id>`, `--resume=<id>`                 |
+| Hooks        | `~/.claude/settings.json`, 33 events      | `~/.codex/hooks.json`                                        | `~/.copilot/hooks/*.json`, `.github/hooks/*.json`            |
+| OTel         | env vars, `claude_code.*` metrics         | `[otel]` in `config.toml`                                    | `COPILOT_OTEL_ENABLED`, HTTP only                            |
+| Settings     | `settings.json` layers (JSON)             | `~/.codex/config.toml` (TOML, targeted edits only)           | `~/.copilot/settings.json` (JSONC)                           |
+| MCP          | `~/.claude.json`, `.mcp.json`             | `[mcp_servers.<id>]` in `config.toml`                        | `~/.copilot/mcp-config.json`                                 |
+| Instructions | `CLAUDE.md`, rules, auto memory           | `AGENTS.md`, root down to the folder                         | `AGENTS.md`, `.github/copilot-instructions.md`, `CLAUDE.md`  |
+
+Today Overlord reads the transcripts and MCP servers of all three, starts
+Codex and Copilot in terminal tabs, and runs Copilot from the Launcher over
+ACP. The rest is in use for Claude Code and lands for the others milestone by
+milestone, as META-HARNESS.md tracks.
 
 Every undocumented parser gets a version range it was tested against. Outside
 that range Overlord shows the data with a "format not verified" badge instead

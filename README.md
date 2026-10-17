@@ -4,11 +4,61 @@
 
 SkyNet version 1.0, let it begin.
 
-Overlord is a VS Code extension for running a fleet of coding agents. It launches a batch of
-prompts side by side, each in its own git worktree, and shows every running session and
-subagent, what is in each one's context and why, and every knob you can turn.
+Overlord is a VS Code extension for running a fleet of coding agents. It is a meta harness: each
+agent CLI plugs in as an adapter, and Claude Code is one of them. It launches a batch of prompts
+side by side, each in its own git worktree, and shows every running session and subagent, what
+is in each one's context and why, and every knob you can turn.
 
-See [PLAN.md](PLAN.md) for the full design and the decisions behind it.
+See [PLAN.md](PLAN.md) for the full design and the decisions behind it, and
+[META-HARNESS.md](META-HARNESS.md) for how the agent adapters are built.
+
+## Agents
+
+Overlord supports three agent CLIs today. Each one gets the parts of Overlord it supports, and
+the views leave out the rest, so a dash in the Fleet means that agent does not report the
+number. Claude Code has the most, since Overlord started as a tool for it.
+
+| Feature                          | Claude Code | Codex CLI | Copilot CLI |
+| -------------------------------- | ----------- | --------- | ----------- |
+| Sessions in the Fleet            | Yes         | Yes       | Yes         |
+| New session in a terminal tab    | Yes         | Yes       | Yes         |
+| Continue a session               | Yes         | Yes       | Yes         |
+| Fork a session                   | Yes         | Yes       | No          |
+| Background jobs                  | Yes         | No        | No          |
+| Launcher runs                    | Yes         | No        | Yes         |
+| Permission inbox and interrupt   | Yes         | No        | Yes         |
+| Subagents                        | Yes         | No        | Yes         |
+| Cache share                      | Yes         | Yes       | Yes         |
+| Cost                             | Yes         | No        | Yes         |
+| Context Inspector                | Yes         | No        | No          |
+| MCP servers in Connectors        | Yes         | Yes       | Yes         |
+| Hooks, coordination and messages | Yes         | No        | No          |
+| Desktop, cloud and claude.ai     | Yes         | No        | No          |
+
+Codex reports no cost because a ChatGPT plan bills by limits, not tokens. Copilot reports what
+each session cost itself. **Help** in the sidebar has the same table, built from what each
+installed adapter says it can do, so it is the one to trust when this one falls behind.
+
+### Turn an agent on
+
+1. Install the agent's CLI (`claude`, `codex` or `copilot`) so it is on your login shell's
+   `PATH`.
+2. Run it once in a terminal and sign in.
+3. Reload the VS Code window so Overlord finds it. Its sessions show up in the Fleet, and
+   **New session** above the Fleet offers it once more than one agent is installed.
+
+Sessions you start in a terminal show up in the Fleet whatever the settings say, since Overlord
+reads them from disk. The `overlord.agents` setting points Overlord at another binary or stops
+it from starting sessions of an agent:
+
+```json
+"overlord.agents": {
+  "codex": { "path": "/opt/homebrew/bin/codex" },
+  "copilot": { "enabled": false }
+}
+```
+
+`overlord.claudePath` still works and wins over `overlord.agents["claude-code"].path`.
 
 ## What it does
 
@@ -21,8 +71,13 @@ See [PLAN.md](PLAN.md) for the full design and the decisions behind it.
   background session, the tab runs `claude` itself, and with the official Claude Code extension
   installed it connects to VS Code on its own, so diffs open in the editor and Claude sees your
   selection.
-- **Fleet**: every session, subagent and background task with live state, tokens, cost, cache
-  hit ratio and the tool it is running right now. An icon shows where each session runs (a VS
+- **Other agents in a tab**: **New session** above the Fleet starts the agent you pick in a
+  terminal tab, in its own worktree, the same as the sparkle. Codex runs `codex` and Continue
+  runs `codex resume <id>`. Copilot runs `copilot --session-id <id>` and Continue runs
+  `copilot --resume=<id>`. These tabs run the CLI itself, so closing one ends its session.
+- **Fleet**: every session, subagent and background task from every agent, with live state,
+  tokens, cost, cache hit ratio and the tool it is running right now. Once the Fleet holds more
+  than one agent, each row names its agent and the View menu filters by agent. An icon shows where each session runs (a VS
   Code terminal, another terminal or the background). Click a session to jump to its terminal
   tab, or to attach a tab to a background session. Switch terminal tabs and the fleet highlights
   the session in the one you are on. Switch to another VS Code window and its fleet highlights
@@ -47,20 +102,21 @@ See [PLAN.md](PLAN.md) for the full design and the decisions behind it.
 - **Session health**: Session Properties flags a session that is wearing out (a large context,
   compactions, a run of failed tool calls, cache misses, hours of activity) and says what to do
   about each one.
-- **Context inspector**: the system prompt, every memory file that loaded (and why), and every
+- **Context inspector**: for Claude Code sessions, the system prompt, every memory file that loaded (and why), and every
   file that did not load (and why not).
-- **Knobs**: 700+ settings, env vars and CLI flags pulled from the docs, grouped into areas
+- **Knobs**: 700+ Claude Code settings, env vars and CLI flags pulled from its docs, grouped into areas
   like Permissions, Built-in tools and Sessions, with the effective value and which layer set
   it. You can set or remove a key at the user, project or local layer, add your own env vars,
   put CLI flags on a launch profile, and open each key's docs page. Filters narrow it to one
   kind or to only what is set.
 - **Launcher**: run many prompts at once, across profiles, each in its own git worktree, with one
-  permission inbox and auto-approve rules. Always allow on a pending request writes the rule for
+  permission inbox and auto-approve rules. Claude Code runs through the Agent SDK and Copilot
+  over ACP (`copilot --acp`), and each profile picks its agent. Always allow on a pending request writes the rule for
   you: the exact command for Bash, or the whole tool otherwise. Launched sessions get a rocket
   in the Fleet and never age out, even across a reload. They stay until you remove them with
   the cross on their row.
-- **All sessions**: CLI, Claude Desktop, Cowork, cloud sessions and claude.ai chats in one list,
-  with handoff between local and cloud.
+- **All sessions**: sessions from every agent CLI, plus Claude Desktop, Cowork, cloud sessions and
+  claude.ai chats, in one list with handoff between local and cloud.
 - **Config and sync**: every config item with a badge for versioned, local only, external repo
   and so on, synced through a separate git repo so a new machine matches this one.
 - **Skills** and **Agents**: every skill or agent installed in user, project and plugin scope,
@@ -94,9 +150,10 @@ See [PLAN.md](PLAN.md) for the full design and the decisions behind it.
   before, week by week, so you can see whether the advice made things better or worse. It
   checks the habit the tip is about, the cost per prompt, and the side effects its cons warn
   about. Setting a knob or creating a skill the tip names starts tracking on its own.
-- **Connectors (MCP)**: every MCP server and claude.ai connector (Google Docs, Drive, Gmail and the
-  rest) as `claude mcp list` sees them, plus Claude in Chrome and a Chrome that can run headless,
-  with whether each one works right now. Claude in Chrome is checked by asking its own server
+- **Connectors (MCP)**: every MCP server each agent has, read from its own config files
+  (`~/.claude.json` and `.mcp.json` for Claude Code, `config.toml` for Codex,
+  `~/.copilot/mcp-config.json` for Copilot), and every claude.ai connector (Google Docs, Drive,
+  Gmail and the rest), plus Claude in Chrome and a Chrome that can run headless, with whether each one works right now. Claude in Chrome is checked by asking its own server
   which browsers are attached, so a closed Chrome shows up before a session needs it. **Sign in**
   runs `claude mcp login` in a terminal and **Open Chrome** starts Chrome and checks again.
   Overlord rechecks every ten minutes, and its SessionStart hook hands each new session the last
@@ -106,8 +163,9 @@ See [PLAN.md](PLAN.md) for the full design and the decisions behind it.
   of the public registry at registry.modelcontextprotocol.io, pages through the rest on request
   or searches it by name, with
   filters for remote servers and npm, PyPI or Docker packages and a link to each server's
-  repository. It installs a server for every project
-  with `claude mcp add-json --scope user`. It asks for the API keys, headers and paths the
+  repository. It installs a server for every project through the agent's own CLI
+  (`claude mcp add-json --scope user`, `codex mcp add` or `copilot mcp add`), and asks which
+  agent when more than one can take it. It asks for the API keys, headers and paths the
   registry says the server needs, and runs npm packages with `npx`, PyPI packages with `uvx` and
   images with `docker run`.
 - **Keep awake**: while Overlord is open the computer does not sleep, so agents keep working and
@@ -125,17 +183,18 @@ code --install-extension overlord.vsix
 
 Every release also has `overlord-X.Y.Z.vsix` if you want a specific version.
 
-Then open the Overlord icon in the activity bar. Run **Overlord: Set Up Hooks and Telemetry**
-to get live permission requests, memory load events and per-request cost. Both are off until
-you turn them on, since they write to `~/.claude/settings.json`.
+Then open the Overlord icon in the activity bar. For Claude Code, run **Overlord: Set Up Hooks
+and Telemetry** to get live permission requests, memory load events and per-request cost. Both
+are off until you turn them on, since they write to `~/.claude/settings.json`. Other agents need
+no setup past [turning them on](#turn-an-agent-on).
 
 **Help** under Global in the sidebar explains every icon and badge and walks through a
 typical workflow.
 
 ## Worktrees
 
-Every Claude session Overlord starts, from **New Claude Code Session** or the launcher, gets its
-own git worktree, so many sessions can work in one repo without stepping on each other. Worktrees
+Every session Overlord starts, from **New Claude Code Session**, **New session** or the launcher,
+gets its own git worktree, so many sessions can work in one repo without stepping on each other. Worktrees
 live in `~/.overlord/worktrees`, outside the repo, in a folder named after the repo and the start
 of the session id (such as `overlord-9ddebe83`), on a branch `overlord/<id>` cut from a fresh fetch
 of the default branch.
@@ -334,11 +393,12 @@ lets only a third of the cores' worth of them run at once across the machine. Wi
 checking their work together, taking turns finishes each one sooner than running them all at
 once. Set `OVERLORD_CHECK_SLOTS` to change the limit.
 
-None of the tests call the Claude API. Sessions run against a fake Claude binary in
-`test/fake-claude/` that replays scripted conversations through the real Agent SDK.
-`test/unit-setup.ts` also blocks every test process from starting a real `claude`
-binary and points the API at a closed local port, so a broken mutant cannot
-reach Anthropic or write to your `~/.claude`.
+None of the tests call a model API. Sessions run against a fake Claude binary in
+`test/fake-claude/` that replays scripted conversations through the real Agent SDK, and the
+other agents have fakes under `test/fake-agents/`. `test/unit-setup.ts` also blocks every test
+process from starting a real `claude`, `codex` or `copilot`, points each agent's home at a
+temporary folder and points the API at a closed local port, so a broken mutant cannot reach a
+provider or write to your `~/.claude`.
 
 ## Regenerating the knobs catalog
 

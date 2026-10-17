@@ -11,6 +11,33 @@ The plan is split so many sessions can work on it at once. Phase 0 is small
 and lands first because it owns every shared type. After that each workstream
 owns its own files, and the new agents are written in their own directories.
 
+## Status
+
+Checked against `git log` on 2026-10-17.
+
+- **Phase 0** has landed: the contracts and Claude adapter shell (P0.1), the
+  store merge fixes (P0.2), and the test guards and golden snapshots (P0.3).
+- **Phase 1** has landed except E4 and E5, which are in progress: the
+  Launcher runs through the runtime facet (A), every `claude` argv sits
+  behind the terminal facet (B), transcripts are watched through observers
+  (C), hooks, telemetry and injection are facets (D), instructions resolve
+  from each agent's policy (E1), knobs keep one catalog per agent and Codex
+  gets the targeted TOML editor (E2), MCP servers are read from each agent's
+  files (E3), models, health, tuning and reputation go through the adapter
+  (F), the views hide what an agent cannot do (G), and the boisestate.ai
+  bridge is a `Backend` (H).
+- **Phase 2**: fixtures for Codex 0.163.0 and Copilot 1.0.89 (N0) and the
+  generic ACP runtime (N1) have landed. Copilot (N2) has milestones 1 to 3:
+  the Fleet, terminal tabs, and Launcher runs over ACP. Codex (N3) has
+  milestones 1 and 2, the Fleet and terminal tabs, and milestone 3 (the
+  app-server runtime) is in progress. Both agents also got their instruction
+  policy and MCP store from milestone 5 early. Custom ACP agents (N4) have
+  not started.
+- **Phase 3** (help, README, PLAN.md, package.json) is this round.
+
+Left: E4 and E5, Codex milestone 3, milestone 4 (hooks and OTel) and the rest
+of milestone 5 (context view, knobs and skills) for both agents, and N4.
+
 ## Connector check
 
 Checked 2026-10-16 at the start of planning. This plan is code work in this
@@ -20,8 +47,8 @@ covered under Workstream N0.
 
 ## Words used in this plan
 
-- **Agent**: a coding agent CLI that runs tools, such as Claude Code, Codex,
-  Copilot or Codex. Code calls this `AgentId`. We say agent, not provider, so
+- **Agent**: a coding agent CLI that runs tools, such as Claude Code, Codex
+  or Copilot. Code calls this `AgentId`. We say agent, not provider, so
   it does not get mixed up with the model backend.
 - **Backend**: the model endpoint behind an agent. Today that is the Anthropic
   API or the boisestate.ai bridge. boisestate.ai is a backend for Claude Code,
@@ -265,9 +292,11 @@ backend only work from the Launcher.
 - Keep `overlord.claudePath` so nobody's setup breaks.
 - Add `overlord.agents`: an object keyed by agent id with `path` and
   `enabled`. `claudePath` wins over `agents["claude-code"].path` when set.
-- Add `overlord.agents.custom`: a list of `{ id, name, command, args }` for
+- Add `overlord.customAgents`: a list of `{ id, name, command, args }` for
   any ACP agent the user wants to bring. This is what makes Overlord a meta
-  harness instead of a fixed list.
+  harness instead of a fixed list. It cannot be `overlord.agents.custom`,
+  since VS Code cannot hold a setting under a name that is already an object
+  setting.
 - Keep every command id (`overlord.newClaudeSession`,
   `overlord.importClaudeAi`) because people bind keys to them. Add
   `overlord.newSession`, which asks which agent when more than one is
@@ -315,7 +344,9 @@ lines.
 ## Rules for every worker
 
 1. Work in your own worktree, as always. Rebase on `origin/master` before
-   you start and before you push.
+   you start, and land with `npm run land` as the repo's CLAUDE.md says. It
+   reviews the change, takes the land lock, rebases and pushes, so do not
+   push by hand.
 2. **Phase 1 changes no behavior.** Claude sessions must look the same in
    every view before and after. The existing tests stay green with only type
    edits. Workstream P0.3 adds golden snapshots of the fleet, agent and
@@ -331,8 +362,8 @@ lines.
    `src/core/app/app.ts`, `src/core/app/actions.ts`,
    `src/core/agents/index.ts`, `cspell.json`, `README.md`. Phase 0 owns
    `src/shared/model.ts` and `src/shared/protocol.ts`. After Phase 0 lands,
-   type changes there need a note in the commit and a rebase right before
-   pushing.
+   type changes there need a note in the commit. `npm run land` rebases
+   right before it pushes.
 6. **Never let a test start a real agent.** Phase 0 extends the guard in
    `test/unit-setup.ts` to `codex`, `gemini`, `copilot` and their keys and
    homes. Every adapter gets a fake binary under `test/fake-agents/<id>/`
@@ -491,7 +522,7 @@ types. Each part plugs in as its Phase 1 seam lands.
 | N1  | Generic ACP runtime | `src/core/agents/acp/*`                                  | A for plug-in                    |
 | N2  | Copilot CLI         | `src/core/agents/copilot/*`, `test/fake-agents/copilot/` | N0, then A, B, C, D, E1, E3      |
 | N3  | Codex CLI           | `src/core/agents/codex/*`, `test/fake-agents/codex/`     | N0, then A, B, C, D, E1, E2, E3  |
-| N4  | Custom ACP agents   | `agents/custom.ts`, the `overlord.agents.custom` setting | N1, G                            |
+| N4  | Custom ACP agents   | `agents/custom.ts`, the `overlord.customAgents` setting  | N1, G                            |
 
 Each agent lands in milestones, and each milestone is a separate commit
 that ships on its own:
