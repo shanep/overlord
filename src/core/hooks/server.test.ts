@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { AgentNode, PermissionRequest } from '../../shared/model.js';
 import type { AutoApproveRule } from '../../shared/protocol.js';
+import { createCopilotHooks } from '../agents/copilot/hooks.js';
 import { EventBus } from '../bus.js';
 
 import type { AuditEntry } from './audit.js';
@@ -114,6 +115,21 @@ function sendEvent(to: unknown, toolName = 'SendMessage'): Readonly<Record<strin
     tool_name: toolName,
     tool_input: { to, message: 'synthetic text', summary: 'note' },
   };
+}
+
+const copilotSession = { sessionId: 'cs', cwd: '/w', timestamp: 1 };
+
+function copilotPermission(command: string): unknown {
+  return {
+    ...copilotSession,
+    hookName: 'permissionRequest',
+    toolName: 'bash',
+    toolInput: { command },
+  };
+}
+
+function copilotSend(opened: TestClient, id: string, hook: string, event: unknown): void {
+  opened.socket.write(`${JSON.stringify({ id, event, agent: 'copilot', hook })}\n`);
 }
 
 async function waitFor(check: () => boolean): Promise<void> {
@@ -339,6 +355,41 @@ describe('HookServer', () => {
     expect(await opened.next()).toStrictEqual({ id: 'm2', output: {} });
     expect(seen).toStrictEqual(['copilot']);
     expect(errors).toStrictEqual(['hook from claude-code, an agent with no hook support']);
+  });
+
+  describe('Copilot', () => {
+    it('answers a permission hook from the rules and never holds it', async () => {
+      const server = await startServer({
+        dialects: (agent) => (agent === 'copilot' ? createCopilotHooks() : null),
+        rules: [allowLs],
+      });
+      const asked: PermissionRequest[] = [];
+      bus.on('permission.requested', (request) => asked.push(request));
+      const opened = await client();
+      copilotSend(opened, 'm1', 'permissionRequest', copilotPermission('ls -la'));
+      expect(await opened.next()).toStrictEqual({ id: 'm1', output: { behavior: 'allow' } });
+      copilotSend(opened, 'm2', 'permissionRequest', copilotPermission('npm publish'));
+      expect(await opened.next()).toStrictEqual({ id: 'm2', output: {} });
+      expect(asked).toStrictEqual([]);
+      expect(server.pendingRequests()).toStrictEqual([]);
+    });
+
+    it('sends a note for the first prompt with the session start after it', async () => {
+      const copilot = createCopilotHooks();
+      await startServer({
+        dialects: (agent) => (agent === 'copilot' ? copilot : null),
+        sessionContext: () => 'check the connectors',
+        advise: (event) => (event.kind === 'prompt-submit' ? { context: 'peers' } : null),
+      });
+      const opened = await client();
+      copilotSend(opened, 'm1', 'userPromptSubmitted', { ...copilotSession, prompt: 'go' });
+      expect(await opened.next()).toStrictEqual({ id: 'm1', output: {} });
+      copilotSend(opened, 'm2', 'sessionStart', { ...copilotSession, source: 'new' });
+      expect(await opened.next()).toStrictEqual({
+        id: 'm2',
+        output: { additionalContext: 'peers\n\ncheck the connectors' },
+      });
+    });
   });
 
   describe('SessionStart', () => {

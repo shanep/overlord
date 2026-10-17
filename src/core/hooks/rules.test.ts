@@ -55,9 +55,26 @@ describe('ruleSubject', () => {
       value: 'type a',
     });
     expect(ruleSubject('bash', { command: 'x', path: '/a' })).toStrictEqual({
+      kind: 'command',
+      value: 'x',
+    });
+    expect(ruleSubject('execute', { command: 'x', path: '/a' })).toStrictEqual({
+      kind: 'command',
+      value: 'x',
+    });
+    expect(ruleSubject('shell', { command: 'x', path: '/a' })).toStrictEqual({
       kind: 'path',
       value: '/a',
     });
+  });
+
+  it("matches a Bash rule through other agents' names for the shell", () => {
+    const bash = rule({ id: 'b', tool: 'Bash', pattern: 'git status*' });
+    expect(ruleMatches(bash, 'bash', { command: 'git status' })).toBe(true);
+    expect(ruleMatches(bash, 'execute', { command: 'git status -s' })).toBe(true);
+    expect(ruleMatches(bash, 'execute', { command: 'git status && rm -rf ~' })).toBe(false);
+    expect(ruleMatches(rule({ id: 'e', tool: 'execute' }), 'execute', {})).toBe(true);
+    expect(ruleMatches(rule({ id: 'r', tool: 'Read' }), 'bash', {})).toBe(false);
   });
 
   it('uses file_path, then path, then notebook_path for file tools', () => {

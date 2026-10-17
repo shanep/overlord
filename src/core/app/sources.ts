@@ -3,6 +3,7 @@
 // telemetry is on in user settings. Every start and stop runs through one queue, so a settings change
 // and a dispose can never interleave.
 
+import { copilotDirs, copilotHooks } from '../agents/copilot/hooks.js';
 import { agents } from '../agents/index.js';
 import type { AgentRegistry } from '../agents/registry.js';
 import type { WatchFactory } from '../agents/shared/tailing-watcher.js';
@@ -10,6 +11,7 @@ import { TailingWatcher } from '../agents/shared/tailing-watcher.js';
 import type { ObserverContext, ShellEnv } from '../agents/types.js';
 import type { EventBus } from '../bus.js';
 import { isInstalled } from '../hooks/install.js';
+import type { HookDialect } from '../hooks/normalized.js';
 import type { Adviser } from '../hooks/server.js';
 import { HookServer } from '../hooks/server.js';
 import { TelemetryDecoder } from '../otel/decode.js';
@@ -205,7 +207,9 @@ export class Sources {
   private async syncHooks(): Promise<void> {
     let installed = false;
     try {
-      installed = await isInstalled({ settingsFile: this.deps.paths.userSettings });
+      installed =
+        (await isInstalled({ settingsFile: this.deps.paths.userSettings })) ||
+        (await copilotHooks.installed(copilotDirs(this.deps.paths.home, this.deps.env)));
     } catch (error) {
       this.deps.report('hooks', messageOf(error));
     }
@@ -229,6 +233,7 @@ export class Sources {
       platform: deps.platform,
       sessionContext: deps.sessionContext,
       advise: deps.advise ?? null,
+      dialects: (agent): HookDialect | null => (deps.agents ?? agents).get(agent)?.hooks ?? null,
     });
     try {
       await server.start();

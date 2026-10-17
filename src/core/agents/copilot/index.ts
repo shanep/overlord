@@ -1,8 +1,7 @@
-// GitHub Copilot CLI as an agent adapter. Milestones 1 to 3 of
+// GitHub Copilot CLI as an agent adapter. Milestones 1 to 4 of
 // META-HARNESS.md: Overlord finds the binary, watches the sessions Copilot
-// writes to disk, starts and resumes them in terminal tabs, and runs them
-// from the Launcher over ACP. Hooks come in a later milestone, so that
-// capability stays off until it works.
+// writes to disk, starts and resumes them in terminal tabs, runs them from
+// the Launcher over ACP, and hears from them through its hooks.
 // cspell:words xhigh
 
 import type { ModeOption } from '../../../shared/agents.js';
@@ -11,6 +10,8 @@ import { findOnPath } from '../../find-on-path.js';
 import type { AgentAdapter, AgentWords, DetectInput, Detected } from '../types.js';
 
 import { COPILOT_CAPABILITIES, COPILOT_SHORT } from './capabilities.js';
+import { copilotHooks } from './hooks.js';
+import { copilotInject } from './inject.js';
 import { copilotInstructions } from './instructions.js';
 import { copilotMcp } from './mcp.js';
 import { COPILOT_DEFAULT_MODEL, copilotContextWindow } from './models.js';
@@ -73,6 +74,8 @@ export const copilot: AgentAdapter = {
   runtime: copilotRuntime,
   terminal: copilotTerminal,
   observer: copilotObserverFacet,
+  hooks: copilotHooks,
+  inject: copilotInject,
   instructions: copilotInstructions,
   config: { settingsFormat: 'json', mcp: copilotMcp },
 };

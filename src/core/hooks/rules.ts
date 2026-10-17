@@ -1,6 +1,8 @@
 // Auto-approve rules for permission requests. Deny rules always win over
 // allow rules, and disabled rules are ignored. A SendMessage rule pattern
-// matches the message's recipient (the tool's `to` input).
+// matches the message's recipient (the tool's `to` input). A rule names
+// Claude's tools, and it also covers other agents' names for the shell, so a
+// Bash rule matches Copilot's bash hook tool and the ACP kind execute.
 
 import picomatch from 'picomatch';
 
@@ -25,6 +27,16 @@ const PATH_KEYS: readonly string[] = ['file_path', 'path', 'notebook_path'];
 // another. An allow rule never matches such a command, because "git status*"
 // should not approve "git status && rm -rf ~".
 const COMPOUND_COMMAND = /[;&|`<>\n\r]|\$\(/u;
+
+/** Claude's name for another agent's shell tool. */
+const CLAUDE_SHELLS: ReadonlyMap<string, string> = new Map([
+  ['bash', 'Bash'],
+  ['execute', 'Bash'],
+]);
+
+function isShell(toolName: string): boolean {
+  return toolName === 'Bash' || toolName === 'PowerShell' || CLAUDE_SHELLS.has(toolName);
+}
 
 const cache = new Map<string, Matcher>();
 
@@ -62,7 +74,7 @@ export function ruleSubject(toolName: string, input: unknown): RuleSubject | nul
     return to === null ? null : { kind: 'recipient', value: to };
   }
   const command = stringField(input, 'command');
-  if (command !== null && (toolName === 'Bash' || toolName === 'PowerShell')) {
+  if (command !== null && isShell(toolName)) {
     return { kind: 'command', value: command };
   }
   for (const key of PATH_KEYS) {
@@ -132,7 +144,9 @@ function patternMatches(rule: AutoApproveRule, subject: RuleSubject | null): boo
 
 /** True when a rule's tool pattern covers the tool, whether or not the rule is enabled. */
 export function toolPatternMatches(pattern: string, toolName: string): boolean {
-  return compile(pattern, false)(toolName);
+  const matcher = compile(pattern, false);
+  const claude = CLAUDE_SHELLS.get(toolName);
+  return matcher(toolName) || (claude !== undefined && matcher(claude));
 }
 
 export function ruleMatches(rule: AutoApproveRule, toolName: string, input: unknown): boolean {

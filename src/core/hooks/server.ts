@@ -285,8 +285,7 @@ export class HookServer {
     this.safely(() => {
       this.publish(hook);
     });
-    const answer = this.answerFor(hook);
-    this.reply(socket, message.id, answer === null ? {} : dialect.answer(hook, answer));
+    this.reply(socket, message.id, dialect.answer(hook, this.answerFor(hook) ?? {}));
   }
 
   /**
@@ -397,6 +396,10 @@ export class HookServer {
             };
       this.reply(socket, messageId, dialect.answer(event, { decision }));
       this.record(request, rule.id, rule.behavior);
+      return;
+    }
+    if (dialect.holdsPermissions === false) {
+      this.reply(socket, messageId, {});
       return;
     }
     const entry: Pending = {

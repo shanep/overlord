@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs';
-import { readFile } from 'node:fs/promises';
+import { mkdir, readFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import path from 'node:path';
 
@@ -82,6 +82,43 @@ describe('hooks setup', () => {
     expect(env.host.questions[3]?.message).toBe(
       'Remove the Overlord hooks from ~/.claude/settings.json?',
     );
+  });
+});
+
+describe('Copilot CLI hooks setup', () => {
+  it('asks only once Copilot has its folder, and starts the hook server for its hooks alone', async () => {
+    const env = await makeEnv();
+    const socket = shortSocketPath();
+    const { app } = makeApp(env, { deps: { hookSocketPath: socket } });
+    await app.start();
+    await app.setup.installHooks();
+    expect(env.host.questions).toHaveLength(1);
+    const folder = path.join(env.home, '.copilot');
+    await mkdir(folder, { recursive: true });
+    const file = path.join(folder, 'hooks', 'overlord.json');
+    env.host.confirmAnswers.push(false, true);
+    await app.setup.installHooks();
+    expect(env.host.questions[2]).toStrictEqual({
+      message:
+        'Overlord will add its own hook file, ~/.copilot/hooks/overlord.json, for Copilot CLI. Your own hook files stay. Continue?',
+      action: 'Install',
+    });
+    expect(existsSync(env.paths.userSettings)).toBe(false);
+    expect(await readFile(file, 'utf8')).toContain('--agent copilot --event sessionStart');
+    await waitFor(() => existsSync(socket));
+    env.host.confirmAnswers.push(false, true);
+    await app.setup.uninstallHooks();
+    expect(env.host.questions[4]?.message).toBe(
+      'Remove the Overlord hook file ~/.copilot/hooks/overlord.json?',
+    );
+    expect(existsSync(file)).toBe(false);
+    await waitFor(() => !existsSync(socket));
+    await app.setup.uninstallHooks();
+    expect(env.host.questions).toHaveLength(6);
+    expect(env.host.infos).toStrictEqual([
+      'Hooks installed. New Copilot CLI sessions report to Overlord.',
+      'Copilot CLI hooks removed.',
+    ]);
   });
 });
 

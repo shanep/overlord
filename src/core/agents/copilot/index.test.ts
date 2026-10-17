@@ -9,6 +9,8 @@ import { CWD, resolveInput } from '../../context/test-helpers/fixtures.js';
 import { makeTemporaryDirectory, removeDir } from '../../transcripts/test-helpers/fixtures.js';
 import { agents } from '../index.js';
 
+import { copilotHooks } from './hooks.js';
+import { copilotInject } from './inject.js';
 import { copilotInstructions } from './instructions.js';
 import { copilotMcp } from './mcp.js';
 import { formatVerified, nanoAiuToUsd } from './models.js';
@@ -40,7 +42,7 @@ describe('copilot', () => {
     expect(agents.get('copilot')).toBe(copilot);
   });
 
-  it('only claims what milestones 1 to 3 can show', () => {
+  it('only claims what milestones 1 to 4 can show', () => {
     expect(copilot.capabilities).toStrictEqual({
       launch: true,
       terminal: true,
@@ -56,13 +58,14 @@ describe('copilot', () => {
       cacheWrites: true,
       costUsd: true,
       contextInspector: false,
-      hooks: false,
+      hooks: true,
       messaging: false,
       handoffs: ['resume-local'],
     });
     expect(copilot.terminal).toBe(copilotTerminal);
     expect(copilot.config).toStrictEqual({ settingsFormat: 'json', mcp: copilotMcp });
-    expect(copilot.hooks).toBeUndefined();
+    expect(copilot.hooks).toBe(copilotHooks);
+    expect(copilot.inject).toBe(copilotInject);
   });
 
   it('lists the modes and effort levels Copilot takes', () => {

@@ -187,8 +187,18 @@ export interface HookAnswer {
 /** How one agent's hooks talk: its stdin read into an event, and an answer written in its JSON. */
 export interface HookDialect {
   normalize: (raw: RawHook) => HookNormalizeResult;
-  /** The JSON the hook prints. An empty answer gives {}. */
+  /**
+   * The JSON the hook prints. The server asks for every event, so an empty
+   * answer gives {} unless the dialect held a note back from an event whose
+   * output the agent drops.
+   */
   answer: (event: NormalizedHookEvent, answer: HookAnswer) => HookOutput;
+  /**
+   * False when the agent's permission hook also fires for calls it would
+   * allow by itself (Copilot), so the server answers it from Overlord's rules
+   * alone and never holds it for the inbox. Left out, it holds.
+   */
+  readonly holdsPermissions?: boolean;
 }
 
 /** Reads every file a tool call writes from its whole input, such as the headers of a patch. */
