@@ -185,12 +185,12 @@ describe('loaded marker', () => {
   });
 
   it('sits next to the hook socket', () => {
-    expect(loadedMarkerPath({ configDir: '/h/.claude' })).toBe('/h/.claude/overlord/loaded.json');
+    expect(loadedMarkerPath({ home: '/h' })).toBe('/h/.overlord/loaded.json');
   });
 
   it('writes the held marker next to it', async () => {
-    const file = heldMarkerPath({ configDir: root });
-    expect(file).toBe(path.join(root, 'overlord', 'held.json'));
+    const file = heldMarkerPath({ home: root });
+    expect(file).toBe(path.join(root, '.overlord', 'held.json'));
     await writeHeldMarker(file, { bundleMtimeMs: 7, runs: 2, pid: 42, at: 99 });
     expect(JSON.parse(readFileSync(file, 'utf8'))).toStrictEqual({
       bundleMtimeMs: 7,
@@ -201,7 +201,7 @@ describe('loaded marker', () => {
   });
 
   it('writes the marker as JSON, creating the directory', async () => {
-    const file = loadedMarkerPath({ configDir: root });
+    const file = loadedMarkerPath({ home: root });
     await writeLoadedMarker(file, { bundleMtimeMs: 12.5, pid: 42, at: 99 });
     expect(JSON.parse(readFileSync(file, 'utf8'))).toStrictEqual({
       bundleMtimeMs: 12.5,

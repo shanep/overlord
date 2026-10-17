@@ -5,25 +5,21 @@ import { describe, expect, it } from 'vitest';
 import { SOCKET_ENV, socketPath } from './socket-path.js';
 
 describe('socketPath', () => {
-  it('puts the socket under the config dir on macOS and Linux', () => {
-    expect(socketPath({ configDir: '/home/u/.claude' }, 'linux')).toBe(
-      '/home/u/.claude/overlord/hook.sock',
-    );
-    expect(socketPath({ configDir: '/Users/u/.claude' }, 'darwin')).toBe(
-      '/Users/u/.claude/overlord/hook.sock',
-    );
+  it('puts the socket in ~/.overlord on macOS and Linux', () => {
+    expect(socketPath({ home: '/home/u' }, 'linux')).toBe('/home/u/.overlord/hook.sock');
+    expect(socketPath({ home: '/Users/u' }, 'darwin')).toBe('/Users/u/.overlord/hook.sock');
   });
 
   it('uses the current platform by default', () => {
-    expect(socketPath({ configDir: '/c' })).toBe(socketPath({ configDir: '/c' }, process.platform));
-    expect(path.basename(socketPath({ configDir: '/c' }, 'linux'))).toBe('hook.sock');
+    expect(socketPath({ home: '/h' })).toBe(socketPath({ home: '/h' }, process.platform));
+    expect(path.basename(socketPath({ home: '/h' }, 'linux'))).toBe('hook.sock');
   });
 
-  it('uses a named pipe keyed by config dir on Windows', () => {
-    const first = socketPath({ configDir: String.raw`C:\Users\u\.claude` }, 'win32');
+  it('uses a named pipe keyed by home on Windows', () => {
+    const first = socketPath({ home: String.raw`C:\Users\u` }, 'win32');
     expect(first).toMatch(/^\\\\\.\\pipe\\overlord-hook-[0-9a-f]{16}$/u);
-    expect(socketPath({ configDir: String.raw`C:\Users\u\.claude` }, 'win32')).toBe(first);
-    expect(socketPath({ configDir: String.raw`D:\other` }, 'win32')).not.toBe(first);
+    expect(socketPath({ home: String.raw`C:\Users\u` }, 'win32')).toBe(first);
+    expect(socketPath({ home: String.raw`D:\other` }, 'win32')).not.toBe(first);
   });
 
   it('names the override variable', () => {

@@ -20,9 +20,11 @@ and without pressing Reload Window himself.
    It packages the extension, runs `code --install-extension --force`, then
    waits up to 60 seconds for a VS Code window to reload onto the new build.
    Installed copies of Overlord poll their own `dist/extension.cjs`, reload the
-   window when it is replaced, and write `~/.claude/overlord/loaded.json`
-   with the mtime of the bundle they loaded. The script waits for that mtime
-   to match the installed file.
+   window when it is replaced, and write `~/.overlord/loaded.json` with the
+   mtime of the bundle they loaded. The script waits for that mtime to match
+   the installed file. Builds from before the hook socket moved wrote the
+   marker to `~/.claude/overlord/loaded.json`, so the script checks there
+   too.
 
 3. Report the result in one line: installed and reloaded, held, or what failed.
    **"Held"** means a window has Launcher runs going. A reload would end them,

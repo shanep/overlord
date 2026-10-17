@@ -8,6 +8,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
+import { overlordHome } from './overlord-home.js';
 import type { ClaudePaths } from './paths.js';
 
 /** Calls the listener with the file's mtime (0 while it is missing) on every poll that sees a change. */
@@ -77,8 +78,8 @@ export interface LoadedMarker {
   readonly at: number;
 }
 
-export function loadedMarkerPath(paths: Pick<ClaudePaths, 'configDir'>): string {
-  return path.join(paths.configDir, 'overlord', 'loaded.json');
+export function loadedMarkerPath(paths: Pick<ClaudePaths, 'home'>): string {
+  return path.join(overlordHome(paths.home), 'loaded.json');
 }
 
 export interface HeldMarker {
@@ -91,8 +92,8 @@ export interface HeldMarker {
 }
 
 /** Where a window says a new build waits for Launcher runs, so the install script can say so. */
-export function heldMarkerPath(paths: Pick<ClaudePaths, 'configDir'>): string {
-  return path.join(paths.configDir, 'overlord', 'held.json');
+export function heldMarkerPath(paths: Pick<ClaudePaths, 'home'>): string {
+  return path.join(overlordHome(paths.home), 'held.json');
 }
 
 export async function writeHeldMarker(file: string, marker: HeldMarker): Promise<void> {

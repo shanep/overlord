@@ -2,9 +2,10 @@
 // window has reloaded onto the new build. It builds HEAD in a temporary
 // worktree, so uncommitted work (yours or another session's) never ships.
 // Installed copies watch their own bundle and reload themselves, then write
-// ~/.claude/overlord/loaded.json, which is what this waits for. A window with
+// ~/.overlord/loaded.json, which is what this waits for. A window with
 // Launcher runs going holds the reload until they finish and writes held.json
-// instead, since a reload would end them.
+// instead, since a reload would end them. Builds from before the move wrote
+// both markers under ~/.claude/overlord/, so that folder is checked second.
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, statSync, symlinkSync } from 'node:fs';
 import os from 'node:os';
@@ -27,8 +28,7 @@ const bundle = path.join(
   'extension.cjs',
 );
 const configDir = process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude');
-const marker = path.join(configDir, 'overlord', 'loaded.json');
-const heldMarker = path.join(configDir, 'overlord', 'held.json');
+const markerDirs = [path.join(os.homedir(), '.overlord'), path.join(configDir, 'overlord')];
 
 function run(command, args, cwd = repo) {
   process.stdout.write(`$ ${command} ${args.join(' ')}\n`);
@@ -43,6 +43,17 @@ function readMarker(file) {
   }
 }
 
+/** The first marker with this name, in either folder, that names the installed bundle. */
+function findMarker(name, installed) {
+  for (const dir of markerDirs) {
+    const found = readMarker(path.join(dir, name));
+    if (found?.bundleMtimeMs === installed) {
+      return found;
+    }
+  }
+  return null;
+}
+
 /**
  * Polls the markers until a window reports the installed bundle, says it
  * holds the reload for Launcher runs, or the time runs out.
@@ -50,11 +61,11 @@ function readMarker(file) {
 async function waitForReload(installed) {
   const deadline = Date.now() + TIMEOUT_MS;
   while (Date.now() < deadline) {
-    if (readMarker(marker)?.bundleMtimeMs === installed) {
+    if (findMarker('loaded.json', installed) !== null) {
       return { reloaded: true, runs: 0 };
     }
-    const held = readMarker(heldMarker);
-    if (held?.bundleMtimeMs === installed) {
+    const held = findMarker('held.json', installed);
+    if (held !== null) {
       return { reloaded: false, runs: held.runs };
     }
     await sleep(POLL_MS);

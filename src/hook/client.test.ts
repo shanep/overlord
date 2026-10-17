@@ -68,14 +68,14 @@ describe('resolveSocketPath', () => {
     ).toBe('/x.sock');
   });
 
-  it('uses CLAUDE_CONFIG_DIR, then the home directory', () => {
+  it('uses ~/.overlord whatever CLAUDE_CONFIG_DIR says', () => {
     expect(resolveSocketPath({ CLAUDE_CONFIG_DIR: '/c' }, '/h', 'linux')).toBe(
-      '/c/overlord/hook.sock',
+      '/h/.overlord/hook.sock',
     );
     expect(
       resolveSocketPath({ OVERLORD_HOOK_SOCKET: '', CLAUDE_CONFIG_DIR: '' }, '/h', 'darwin'),
-    ).toBe('/h/.claude/overlord/hook.sock');
-    expect(resolveSocketPath({}, '/h', 'linux')).toBe('/h/.claude/overlord/hook.sock');
+    ).toBe('/h/.overlord/hook.sock');
+    expect(resolveSocketPath({}, '/h', 'linux')).toBe('/h/.overlord/hook.sock');
   });
 
   it('uses a named pipe on Windows', () => {

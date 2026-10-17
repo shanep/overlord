@@ -125,7 +125,7 @@ async function waitFor(check: () => boolean): Promise<void> {
 
 describe('socketPath', () => {
   it('is re-exported from the server module', () => {
-    expect(socketPath({ configDir: '/c' }, 'linux')).toBe('/c/overlord/hook.sock');
+    expect(socketPath({ home: '/h' }, 'linux')).toBe('/h/.overlord/hook.sock');
   });
 });
 

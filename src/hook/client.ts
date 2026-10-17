@@ -4,7 +4,6 @@
 
 import { randomUUID } from 'node:crypto';
 import net from 'node:net';
-import path from 'node:path';
 
 import type { HookReplyMessage } from '../core/hooks/protocol.js';
 import {
@@ -58,21 +57,14 @@ export function parseInput(input: string): HookInput | null {
   return typeof event.hook_event_name === 'string' ? { name: event.hook_event_name, event } : null;
 }
 
-/** The socket to use: OVERLORD_HOOK_SOCKET, else the one under CLAUDE_CONFIG_DIR or ~/.claude. */
+/** The socket to use: OVERLORD_HOOK_SOCKET, else the one in ~/.overlord. */
 export function resolveSocketPath(
   env: Readonly<Record<string, string | undefined>>,
   home: string,
   platform: NodeJS.Platform,
 ): string {
   const override = env[SOCKET_ENV] ?? '';
-  if (override !== '') {
-    return override;
-  }
-  const configDir = env['CLAUDE_CONFIG_DIR'] ?? '';
-  return socketPath(
-    { configDir: configDir === '' ? path.join(home, '.claude') : configDir },
-    platform,
-  );
+  return override === '' ? socketPath({ home }, platform) : override;
 }
 
 export async function readStdin(
