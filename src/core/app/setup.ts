@@ -26,7 +26,10 @@ import {
 } from './setup-codex.js';
 
 export interface SetupStatus {
+  /** Overlord's hooks are in Claude Code's settings.json. */
   readonly hooksInstalled: boolean;
+  /** Overlord's hook file is in Copilot CLI's hooks folder. */
+  readonly copilotHooksInstalled: boolean;
   readonly telemetryEnabled: boolean;
   /** Another Overlord window owns the hook socket, so this one only watches transcripts. */
   readonly observerMode: boolean;
@@ -200,14 +203,14 @@ export class SetupCommands {
 
   async status(): Promise<SetupStatus> {
     const { paths } = this.deps;
-    let hooksInstalled = false;
-    try {
-      hooksInstalled = await claudeHooks.installed(this.dirs());
-    } catch {
-      // A settings file in a shape the installer does not know has no Overlord hooks.
-    }
+    // A settings file in a shape the installer does not know has no Overlord hooks.
+    const hooksInstalled = await claudeHooks.installed(this.dirs()).catch(() => false);
+    const copilotHooksInstalled = await copilotHooks
+      .installed(this.copilotDirs())
+      .catch(() => false);
     return {
       hooksInstalled,
+      copilotHooksInstalled,
       telemetryEnabled: telemetryActive(await userSettingsEnv(paths)),
       observerMode: this.deps.observerMode(),
       errors: this.deps.errors(),

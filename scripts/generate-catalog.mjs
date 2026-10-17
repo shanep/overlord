@@ -52,6 +52,22 @@ async function claudeCodeSources() {
   return { settingsReference: settingsReference ?? null, settings, envVariables, cliReference };
 }
 
+const GITHUB_DOCS = 'https://docs.github.com/api/article/body?pathname=/en/copilot/reference';
+
+/**
+ * Copilot CLI's two reference pages as Markdown, from the GitHub Docs article
+ * API: the configuration directory page holds the settings.json tables, and
+ * the command reference holds the options and environment variables.
+ */
+async function copilotSources() {
+  const [configDir, commandReference] = await Promise.all(
+    ['cli-config-dir-reference', 'cli-command-reference'].map(async (page) =>
+      fetchText(`${GITHUB_DOCS}/copilot-cli-reference/${page}`),
+    ),
+  );
+  return { configDir, commandReference };
+}
+
 /**
  * @typedef {{ kind: 'setting' | 'env' | 'flag' }} Knob
  * @typedef {{
@@ -74,6 +90,17 @@ const AGENTS = {
       );
     },
     minimum: { setting: 100, env: 100, flag: 30 },
+  },
+  copilot: {
+    parser: 'src/core/knobs/copilot-reference.ts',
+    sources: copilotSources,
+    build: (parser, sources) => {
+      const typed = /** @type {typeof import('../src/core/knobs/copilot-reference.ts')} */ (parser);
+      return typed.buildCopilotCatalog(
+        /** @type {import('../src/core/knobs/copilot-reference.ts').CopilotPages} */ (sources),
+      );
+    },
+    minimum: { setting: 60, env: 30, flag: 60 },
   },
 };
 

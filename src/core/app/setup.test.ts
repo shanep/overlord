@@ -105,6 +105,10 @@ describe('Copilot CLI hooks setup', () => {
     });
     expect(existsSync(env.paths.userSettings)).toBe(false);
     expect(await readFile(file, 'utf8')).toContain('--agent copilot --event sessionStart');
+    await expect(app.setup.status()).resolves.toMatchObject({
+      hooksInstalled: false,
+      copilotHooksInstalled: true,
+    });
     await waitFor(() => existsSync(socket));
     env.host.confirmAnswers.push(false, true);
     await app.setup.uninstallHooks();
@@ -112,6 +116,7 @@ describe('Copilot CLI hooks setup', () => {
       'Remove the Overlord hook file ~/.copilot/hooks/overlord.json?',
     );
     expect(existsSync(file)).toBe(false);
+    await expect(app.setup.status()).resolves.toMatchObject({ copilotHooksInstalled: false });
     await waitFor(() => !existsSync(socket));
     await app.setup.uninstallHooks();
     expect(env.host.questions).toHaveLength(6);
@@ -198,6 +203,7 @@ describe('telemetry setup', () => {
     const status = await app.setup.status();
     expect(status).toStrictEqual({
       hooksInstalled: false,
+      copilotHooksInstalled: false,
       telemetryEnabled: false,
       observerMode: false,
       errors: [],

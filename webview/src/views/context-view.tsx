@@ -136,7 +136,15 @@ export function ContextView(props: { readonly state: ContextState }): ReactEleme
                 <McpInstructions servers={snapshot.mcpServers} />
               </Fold>
             </>
-          ) : null}
+          ) : (
+            // Without the full capture there are no instructions, so list the names.
+            <Section id="ctx-mcp-servers" title="MCP servers" count={snapshot.mcpServers.length}>
+              <PlainList
+                label="MCP servers"
+                items={snapshot.mcpServers.map((server) => server.name)}
+              />
+            </Section>
+          )}
           {full && subagents ? (
             <Fold
               id="ctx-agents"

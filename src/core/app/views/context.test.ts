@@ -196,6 +196,51 @@ describe('resolveSnapshot', () => {
     expect(names).not.toContain('tidy');
   });
 
+  it("shows a Copilot session's instruction files and the MCP servers its store turns on", async () => {
+    const { store, workspace, paths } = await setup();
+    const instructions = path.join(workspace, '.github', 'copilot-instructions.md');
+    await writeText(instructions, '# rules\n');
+    await writeJson(path.join(workspace, '.github', 'mcp.json'), {
+      mcpServers: { docs: { command: 'docs-mcp' }, quiet: { command: 'quiet-mcp' } },
+    });
+    const copilotHome = path.join(paths.home, '.copilot');
+    await writeJson(path.join(copilotHome, 'mcp-config.json'), {
+      mcpServers: { linear: { type: 'http', url: 'https://mcp.linear.app/mcp' } },
+    });
+    await writeText(
+      path.join(copilotHome, 'settings.json'),
+      '// User settings belong in settings.json.\n{ "disabledMcpServers": ["quiet"] }\n',
+    );
+    const deps = {
+      paths,
+      fs: createNodeFileSystem(),
+      exec: recordingExec().exec,
+      env: {},
+      store,
+      clock: (): number => NOW,
+    };
+    const copilot = session('c2', { cwd: workspace, agent: 'copilot' });
+    const merged = await resolveSnapshot(deps, {
+      base: snapshot('c2'),
+      session: copilot,
+      agentId: 'c2',
+      observed: [],
+    });
+    expect(merged.loaded.map((item) => item.path)).toContain(instructions);
+    expect(merged.mcpServers).toStrictEqual([
+      { name: 'docs', instructions: '' },
+      { name: 'linear', instructions: '' },
+    ]);
+    // A transcript that names its servers keeps its own list.
+    const named = await resolveSnapshot(deps, {
+      base: snapshot('c2', { mcpServers: [{ name: 'own', instructions: 'x' }] }),
+      session: copilot,
+      agentId: 'c2',
+      observed: [],
+    });
+    expect(named.mcpServers).toStrictEqual([{ name: 'own', instructions: 'x' }]);
+  });
+
   it('puts hook observed loads into the snapshot and marks invoked skills', async () => {
     const { store, workspace, paths } = await setup();
     const extra = loaded(path.join(workspace, 'extra.md'));

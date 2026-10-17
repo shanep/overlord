@@ -1,7 +1,9 @@
 // Safe edits to one key of a settings file: other keys and their order
 // stay as they were, the old file is kept as <file>.bak, and the write is
 // atomic. A file that does not parse is never touched. TOML files go through
-// the line-level editor in toml-edit.ts so their comments survive.
+// the line-level editor in toml-edit.ts so their comments survive. A JSONC
+// file keeps the comments at its top, and one with comments further down is
+// left alone, since writing it again from parsed JSON would drop them.
 
 import { readOptional, resolveLinkTarget, writeFileAtomic } from './atomic-file.js';
 import {
@@ -12,6 +14,7 @@ import {
   type JsonRecord,
   type JsonValue,
 } from './json.js';
+import { parseJsonc, splitHeader } from './jsonc.js';
 import { editTomlFile, parseTomlKey, type TomlEditValue } from './toml-edit.js';
 
 export interface WriteSettingInput {
@@ -21,7 +24,7 @@ export interface WriteSettingInput {
   /** The new value, or undefined to delete the key. */
   readonly value: JsonValue | undefined;
   /** How the file is written. JSON when left out. */
-  readonly format?: 'json' | 'toml' | undefined;
+  readonly format?: 'json' | 'jsonc' | 'toml' | undefined;
 }
 
 export type WriteSettingResult =
@@ -107,6 +110,29 @@ function readDocument(file: string, text: string | null): PathResult {
     : { ok: false, error: `${file} does not hold a JSON object, so it was left alone.` };
 }
 
+/** The JSON part of a file and the comment lines kept above it. JSONC files keep their top comments. */
+function readBody(
+  file: string,
+  text: string | null,
+  jsonc: boolean,
+): { readonly header: string; readonly document: PathResult } {
+  if (!jsonc || text === null) {
+    return { header: '', document: readDocument(file, text) };
+  }
+  const { header, body } = splitHeader(text);
+  const document = readDocument(file, body);
+  if (!document.ok && parseJsonc(body).ok) {
+    return {
+      header,
+      document: {
+        ok: false,
+        error: `${file} has comments below its first lines, so it was left alone to keep them.`,
+      },
+    };
+  }
+  return { header, document };
+}
+
 function isScalar(value: unknown): value is string | number | boolean {
   return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean';
 }
@@ -143,7 +169,7 @@ export async function writeSetting(input: WriteSettingInput): Promise<WriteSetti
   try {
     const target = await resolveLinkTarget(input.file);
     const existing = await readOptional(target);
-    const document = readDocument(target, existing);
+    const { header, document } = readBody(target, existing, input.format === 'jsonc');
     if (!document.ok) {
       return document;
     }
@@ -151,7 +177,7 @@ export async function writeSetting(input: WriteSettingInput): Promise<WriteSetti
     if (!updated.ok) {
       return { ok: false, error: `Cannot set ${input.keyPath}: ${updated.error}` };
     }
-    const content = formatSettings(updated.value);
+    const content = `${header}${formatSettings(updated.value)}`;
     const unchanged = existing === null ? input.value === undefined : content === existing;
     if (unchanged) {
       return { ok: true, file: target, changed: false, backup: null };

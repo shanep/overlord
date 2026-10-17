@@ -19,6 +19,7 @@ import {
   type JsonRecord,
   type ParsedJson,
 } from './json.js';
+import { parseJsonc } from './jsonc.js';
 
 export interface LayerData {
   readonly layer: SettingsLayer;
@@ -73,7 +74,18 @@ function readToml(text: string): ParsedJson {
   }
 }
 
-const FORMAT_NAME: Readonly<Record<SettingsFormat, string>> = { json: 'JSON', toml: 'TOML' };
+function parseAs(format: SettingsFormat, text: string): ParsedJson {
+  if (format === 'toml') {
+    return readToml(text);
+  }
+  return format === 'jsonc' ? parseJsonc(text) : parseJson(text);
+}
+
+const FORMAT_NAME: Readonly<Record<SettingsFormat, string>> = {
+  json: 'JSON',
+  jsonc: 'JSON',
+  toml: 'TOML',
+};
 
 export async function readSettingsFile(
   layer: SettingsLayer,
@@ -92,7 +104,7 @@ export async function readSettingsFile(
     };
   }
   const name = FORMAT_NAME[format];
-  const parsed = format === 'toml' ? readToml(text) : parseJson(text);
+  const parsed = parseAs(format, text);
   if (!parsed.ok) {
     return { layer, file, values: {}, error: `Invalid ${name} in ${file}: ${parsed.error}` };
   }

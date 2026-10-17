@@ -9,6 +9,7 @@ import { CWD, resolveInput } from '../../context/test-helpers/fixtures.js';
 import { makeTemporaryDirectory, removeDir } from '../../transcripts/test-helpers/fixtures.js';
 import { agents } from '../index.js';
 
+import { copilotKnobs } from './config.js';
 import { copilotHooks } from './hooks.js';
 import { copilotInject } from './inject.js';
 import { copilotInstructions } from './instructions.js';
@@ -44,7 +45,7 @@ describe('copilot', () => {
     expect(agents.get('copilot')).toBe(copilot);
   });
 
-  it('only claims what milestones 1 to 4 can show', () => {
+  it('only claims what milestones 1 to 5 can show', () => {
     expect(copilot.capabilities).toStrictEqual({
       launch: true,
       terminal: true,
@@ -66,7 +67,8 @@ describe('copilot', () => {
     });
     expect(copilot.terminal).toBe(copilotTerminal);
     expect(copilot.config).toStrictEqual({
-      settingsFormat: 'json',
+      settingsFormat: 'jsonc',
+      knobs: copilotKnobs,
       mcp: copilotMcp,
       library: copilotLibrary,
       sync: copilotSync,

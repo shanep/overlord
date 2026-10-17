@@ -6,9 +6,10 @@ import type { AgentCapabilities } from '../../../shared/agents.js';
 export const COPILOT_SHORT = 'Copilot';
 
 /**
- * Milestones 1 to 4 of META-HARNESS.md: Overlord reads Copilot sessions,
- * starts them in tabs, drives them from the Launcher over ACP and hears from
- * them through its hooks.
+ * Milestones 1 to 5 of META-HARNESS.md: Overlord reads Copilot sessions,
+ * starts them in tabs, drives them from the Launcher over ACP, hears from
+ * them through its hooks, and shows their instruction files, skills and MCP
+ * servers in the context view.
  */
 export const COPILOT_CAPABILITIES: AgentCapabilities = {
   launch: true,
@@ -29,6 +30,8 @@ export const COPILOT_CAPABILITIES: AgentCapabilities = {
   cacheWrites: true,
   // Copilot reports what it charged in nano AI units, which convert to dollars.
   costUsd: true,
+  // Overlord reads no system prompt or token breakdown from Copilot, so the
+  // context view shows its files, skills and MCP servers, not the full capture.
   contextInspector: false,
   // Once its hooks are installed, notes go out on sessionStart and postToolUse
   // and preToolUse blocks an edit conflict.

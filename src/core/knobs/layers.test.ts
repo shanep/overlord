@@ -49,6 +49,16 @@ describe('layers', () => {
       });
     });
 
+    it('reads JSONC with comments, and refuses them in plain JSON', async () => {
+      const file = await put('c.json', '// header\n{\n  "model": "x", // note\n}\n');
+      expect(await readSettingsFile('user', file, 'jsonc')).toMatchObject({
+        values: { model: 'x' },
+        error: null,
+      });
+      const strict = await readSettingsFile('user', file, 'json');
+      expect(strict.error).toMatch(/^Invalid JSON/u);
+    });
+
     it('treats a missing file as an empty layer with no error', async () => {
       const file = path.join(dir, 'missing.json');
       expect(await readSettingsFile('project', file)).toStrictEqual({

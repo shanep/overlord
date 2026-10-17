@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Connector } from '../../shared/connectors.js';
 import { claudeCode } from '../agents/claude/index.js';
 import { codexMcp } from '../agents/codex/mcp.js';
+import { copilot } from '../agents/copilot/index.js';
 import { agents } from '../agents/index.js';
 import type { AgentAdapter, Detected } from '../agents/types.js';
 import type { FetchFunction } from '../sync/github.js';
@@ -166,6 +167,32 @@ describe('connectors for an agent past Claude Code', () => {
     expect(await install('codex')).toStrictEqual({
       ok: false,
       text: 'Codex CLI is not installed.',
+    });
+  });
+
+  it('adds a registry server to Copilot through copilot mcp add', async () => {
+    vi.spyOn(copilot, 'detect').mockResolvedValue({ bin: '/bin/copilot', version: null });
+    const test = await setup();
+    const rt = test.app.runtime;
+    await rt.caches.connectors.refresh();
+    expect(buildConnectors(rt).mcpAgents).toContain('copilot');
+    await test.app.dispatch({ type: 'searchRegistry', query: 'docs' }, {});
+    await test.app.dispatch(
+      {
+        type: 'installConnector',
+        server: 'io.github.x/docs',
+        option: 0,
+        name: 'docs',
+        values: {},
+        agent: 'copilot',
+      },
+      {},
+    );
+    const add = test.calls.find((call) => call.command === '/bin/copilot');
+    expect(add?.args).toStrictEqual(['mcp', 'add', 'docs', '--', 'npx', '-y', 'docs-mcp@1.0.0']);
+    expect(buildConnectors(rt).registry.notice).toStrictEqual({
+      ok: true,
+      text: 'Added docs to Copilot for every project. New sessions get it. Checking it now.',
     });
   });
 });

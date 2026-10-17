@@ -9,8 +9,11 @@ import type { ClaudePaths } from '../paths.js';
 
 import type { TomlEditValue } from './toml-scan.js';
 
-/** How a settings file is read and written. TOML goes through the line-level editor in toml-edit.ts. */
-export type SettingsFormat = 'json' | 'toml';
+/**
+ * How a settings file is read and written. TOML goes through the line-level
+ * editor in toml-edit.ts, and JSONC is JSON that may hold comments.
+ */
+export type SettingsFormat = 'json' | 'jsonc' | 'toml';
 
 /** What a layer needs to find its file. */
 export interface SettingsPlace {

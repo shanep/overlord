@@ -322,4 +322,48 @@ describe('write', () => {
       expect(await readFile(target, 'utf8')).toBe(toml);
     });
   });
+
+  describe('JSONC', () => {
+    const header = '// User settings belong in settings.json.\n// Edit with care.\n';
+
+    it('keeps the comment lines at the top of the file', async () => {
+      const target = file();
+      await writeFile(target, `${header}{\n  "theme": "dim"\n}\n`);
+      const result = await writeSetting({
+        file: target,
+        keyPath: 'model',
+        value: 'gpt-5.4',
+        format: 'jsonc',
+      });
+      expect(result).toMatchObject({ ok: true, changed: true });
+      expect(await readFile(target, 'utf8')).toBe(
+        `${header}{\n  "theme": "dim",\n  "model": "gpt-5.4"\n}\n`,
+      );
+    });
+
+    it('refuses a file with comments below the top, and leaves it as it was', async () => {
+      const target = file();
+      const text = `${header}{\n  // why\n  "theme": "dim",\n}\n`;
+      await writeFile(target, text);
+      const result = await writeSetting({ file: target, keyPath: 'a', value: 1, format: 'jsonc' });
+      expect(result).toStrictEqual({
+        ok: false,
+        error: `${target} has comments below its first lines, so it was left alone to keep them.`,
+      });
+      expect(await readFile(target, 'utf8')).toBe(text);
+    });
+
+    it('still says when the JSON is broken', async () => {
+      const target = file();
+      await writeFile(target, `${header}{ "a": }`);
+      const result = await writeSetting({ file: target, keyPath: 'a', value: 1, format: 'jsonc' });
+      expect(result.ok ? '' : result.error).toMatch(/is not valid JSON/u);
+    });
+
+    it('writes a new file with no header', async () => {
+      const target = file();
+      await writeSetting({ file: target, keyPath: 'a', value: 1, format: 'jsonc' });
+      expect(await readFile(target, 'utf8')).toBe('{\n  "a": 1\n}\n');
+    });
+  });
 });

@@ -1,14 +1,25 @@
 import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { resolveClaudePaths } from '../../paths.js';
 import type { Exec, ExecOptions } from '../../sync/exec.js';
+import { createNodeExec } from '../../sync/exec.js';
 import type { McpPlace } from '../types.js';
 
 import { addArgs, copilotHome, copilotMcp } from './mcp.js';
+
+const FAKE_COPILOT = fileURLToPath(
+  new URL('../../../../test/fake-agents/copilot/fake-copilot-mcp.mjs', import.meta.url),
+);
+
+/** Runs the fake the way the store would run copilot, through node since it is a script. */
+const nodeExec = createNodeExec();
+const runFake: Exec = async (command, args, options) =>
+  nodeExec(process.execPath, [command, ...args], options);
 
 describe('the Copilot MCP store', () => {
   let home: string;
@@ -166,5 +177,46 @@ describe('the Copilot MCP store', () => {
     ]);
     expect(calls[0]?.options).toStrictEqual({ cwd: home, env: { A: '1' }, timeoutMs: 30_000 });
     expect(copilotMcp.signInArgs).toBeUndefined();
+  });
+
+  it('adds a server a fake copilot writes to mcp-config.json, which the list then shows', async () => {
+    const base = {
+      exec: runFake,
+      cli: { bin: FAKE_COPILOT, env: { COPILOT_HOME: copilot } },
+      cwd: home,
+      scope: 'user' as const,
+    };
+    const added = await copilotMcp.add({
+      ...base,
+      name: 'docs',
+      server: { type: 'stdio', command: 'npx', args: ['-y', 'docs-mcp'], env: { K: 'v' } },
+    });
+    expect(added).toStrictEqual({ ok: true });
+    const remote = await copilotMcp.add({
+      ...base,
+      name: 'linear',
+      server: { type: 'http', url: 'https://mcp.linear.app/mcp', headers: { A: 'b' } },
+    });
+    expect(remote).toStrictEqual({ ok: true });
+    const again = await copilotMcp.add({
+      ...base,
+      name: 'docs',
+      server: { type: 'stdio', command: 'npx', args: [] },
+    });
+    expect(again).toStrictEqual({
+      ok: false,
+      error: 'copilot mcp add failed: Server "docs" already exists',
+    });
+    const found = await copilotMcp.read(place(null));
+    expect(found.errors).toStrictEqual([]);
+    expect(
+      found.servers.map((server) => [server.name, server.transport, server.target]),
+    ).toStrictEqual([
+      ['docs', 'stdio', 'npx -y docs-mcp'],
+      ['linear', 'http', 'https://mcp.linear.app/mcp'],
+    ]);
+    expect(await copilotMcp.remove({ ...base, name: 'docs' })).toStrictEqual({ ok: true });
+    const left = await copilotMcp.read(place(null));
+    expect(left.servers.map((server) => server.name)).toStrictEqual(['linear']);
   });
 });

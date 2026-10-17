@@ -180,6 +180,7 @@ describe('OverlordApp', () => {
     const status = await app.setup.status();
     expect(status).toStrictEqual({
       hooksInstalled: false,
+      copilotHooksInstalled: false,
       telemetryEnabled: false,
       observerMode: false,
       errors: [],

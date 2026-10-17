@@ -1,10 +1,12 @@
 // Runs the "why or why not loaded" resolver for one session and folds the
-// answer into its context snapshot.
+// answer into its context snapshot. An agent whose transcript names no MCP
+// servers (Copilot, Codex) gets the ones its MCP store lists for the folder.
 
 import path from 'node:path';
 
 import type { ContextSnapshot, LoadedInstruction, SessionSummary } from '../../../shared/model.js';
 import { claudeKnobs } from '../../agents/claude/config.js';
+import { agents } from '../../agents/index.js';
 import type { FileSystem } from '../../context/fs.js';
 import { resolveContext } from '../../context/resolve.js';
 import { discoverSkills } from '../../context/skills.js';
@@ -90,6 +92,26 @@ export function mergeLoaded(
   return [...first, ...second.filter((item) => !seen.has(item.path))];
 }
 
+/**
+ * The servers the agent's MCP store has turned on for the folder, with no
+ * instructions, for an agent whose transcript does not list them.
+ */
+export async function storeServers(
+  deps: Pick<ResolveDeps, 'paths' | 'env'>,
+  session: Pick<SessionSummary, 'agent' | 'cwd'>,
+): Promise<ContextSnapshot['mcpServers']> {
+  const store = agents.get(session.agent)?.config?.mcp;
+  if (store === undefined) {
+    return [];
+  }
+  const place = { home: deps.paths.home, env: deps.env, claude: deps.paths, cwd: session.cwd };
+  const found = await store.read(place);
+  const names = new Set(
+    found.servers.filter((server) => server.state !== 'off').map((server) => server.name),
+  );
+  return [...names].map((name) => ({ name, instructions: '' }));
+}
+
 export async function resolveSnapshot(
   deps: ResolveDeps,
   job: ResolveJob,
@@ -133,5 +155,7 @@ export async function resolveSnapshot(
     env: settings.env,
     invoked: job.base.skills.filter((skill) => skill.invoked).map((skill) => skill.name),
   });
-  return mergeIntoSnapshot({ ...job.base, loaded: observedLoaded }, resolved, skills);
+  const mcpServers =
+    job.base.mcpServers.length > 0 ? job.base.mcpServers : await storeServers(deps, job.session);
+  return mergeIntoSnapshot({ ...job.base, loaded: observedLoaded, mcpServers }, resolved, skills);
 }

@@ -27,8 +27,11 @@ Checked against `git log` on 2026-10-17.
   (F), the views hide what an agent cannot do (G), and the boisestate.ai
   bridge is a `Backend` (H).
 - **Phase 2**: fixtures for Codex 0.163.0 and Copilot 1.0.89 (N0) and the
-  generic ACP runtime (N1) have landed. Copilot (N2) has milestones 1 to 3:
-  the Fleet, terminal tabs, and Launcher runs over ACP. Codex (N3) has
+  generic ACP runtime (N1) have landed. Copilot (N2) has milestones 1 to 5:
+  the Fleet, terminal tabs, Launcher runs over ACP, hooks, and the context
+  view, knobs catalog and MCP add. Its subagent hooks and a live check of
+  `additionalContext` are still open, and the Knobs view still shows Claude
+  Code's knobs alone. Codex (N3) has
   milestones 1 and 2, the Fleet and terminal tabs, and milestone 3 (the
   app-server runtime) is in progress. Both agents also got their instruction
   policy and MCP store from milestone 5 early. Custom ACP agents (N4) have
