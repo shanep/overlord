@@ -30,16 +30,16 @@ Checked against `git log` on 2026-10-17.
   generic ACP runtime (N1) have landed. Copilot (N2) has milestones 1 to 5:
   the Fleet, terminal tabs, Launcher runs over ACP, hooks, and the context
   view, knobs catalog and MCP add. Its subagent hooks and a live check of
-  `additionalContext` are still open, and the Knobs view still shows Claude
-  Code's knobs alone. Codex (N3) has
-  milestones 1 and 2, the Fleet and terminal tabs, and milestone 3 (the
-  app-server runtime) is in progress. Both agents also got their instruction
-  policy and MCP store from milestone 5 early. Custom ACP agents (N4) have
-  not started.
+  `additionalContext` are still open. Codex (N3) has milestones 1 to 5:
+  the Fleet, terminal tabs, Launcher runs over app-server, hooks in
+  `hooks.json` (once the user trusts them in `/hooks`), its notes as
+  `developer_instructions` and OTel as `-c otel.*` for the sessions Overlord
+  starts, and its knobs catalog, library and sync part. The Knobs view still
+  shows Claude Code's knobs alone for both agents. Custom ACP agents (N4)
+  have not started.
 - **Phase 3** (help, README, PLAN.md, package.json) is this round.
 
-Left: E4 and E5, Codex milestone 3, milestone 4 (hooks and OTel) and the rest
-of milestone 5 (context view, knobs and skills) for both agents, and N4.
+Left: an agent pick in the Knobs view, Copilot's subagent hooks, and N4.
 
 ## Connector check
 

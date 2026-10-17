@@ -68,6 +68,22 @@ async function copilotSources() {
   return { configDir, commandReference };
 }
 
+const CODEX_DOCS = 'https://learn.chatgpt.com/docs';
+
+/**
+ * Fetch the Codex config reference and environment variables as Markdown, and
+ * the developer commands page as HTML, since its flag tables only live in the
+ * page's island props.
+ */
+async function codexSources() {
+  const [configReference, environment, commandsHtml] = await Promise.all([
+    fetchText(`${CODEX_DOCS}/config-file/config-reference.md`),
+    fetchText(`${CODEX_DOCS}/config-file/environment-variables.md`),
+    fetchText(`${CODEX_DOCS}/developer-commands?surface=cli`),
+  ]);
+  return { configReference, environment, commandsHtml };
+}
+
 /**
  * @typedef {{ kind: 'setting' | 'env' | 'flag' }} Knob
  * @typedef {{
@@ -101,6 +117,17 @@ const AGENTS = {
       );
     },
     minimum: { setting: 60, env: 30, flag: 60 },
+  },
+  codex: {
+    parser: 'src/core/knobs/codex-reference.ts',
+    sources: codexSources,
+    build: (parser, sources) => {
+      const typed = /** @type {typeof import('../src/core/knobs/codex-reference.ts')} */ (parser);
+      return typed.buildCodexCatalog(
+        /** @type {import('../src/core/knobs/codex-reference.ts').CodexReferencePages} */ (sources),
+      );
+    },
+    minimum: { setting: 150, env: 5, flag: 10 },
   },
 };
 

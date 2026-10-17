@@ -721,6 +721,30 @@ describe('agentSyncTargets', () => {
     ]);
   });
 
+  it('lists the Codex adapter items from CODEX_HOME', async () => {
+    const home = await scratchDir();
+    const repo = await scratchDir();
+    const codexHome = path.join(home, 'codex-home');
+    await writeTree(codexHome, {
+      'AGENTS.md': 'be brief',
+      'skills/ship/SKILL.md': '---\nname: ship\ndescription: Ship it.\n---\n',
+      'config.toml': 'model = "gpt-6-luna"\n\n[mcp_servers.docs]\nurl = "https://x"\n',
+    });
+    const targets = agentSyncTargets([claudeCode, codexAdapter], home, { CODEX_HOME: codexHome });
+    expect(targets.map((target) => [target.agent, target.dir])).toStrictEqual([
+      ['codex', codexHome],
+    ]);
+    const items = await agentInventory(
+      must(targets[0]),
+      await createStatusResolver(exec, repo),
+      'box',
+    );
+    expect(items.every((entry) => entry.agent === 'codex')).toBe(true);
+    expect(items.map((entry) => entry.kind)).toStrictEqual(
+      expect.arrayContaining(['claude-md', 'skill', 'settings', 'mcp-server']),
+    );
+  });
+
   it('lists the Copilot adapter items from COPILOT_HOME', async () => {
     const home = await scratchDir();
     const repo = await scratchDir();

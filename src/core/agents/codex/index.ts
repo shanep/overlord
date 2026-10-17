@@ -19,10 +19,12 @@ import { codexKnobs } from './config.js';
 import { codexHooks } from './hooks.js';
 import { codexInject } from './inject.js';
 import { codexInstructions } from './instructions.js';
+import { codexLibrary } from './library.js';
 import { codexMcp } from './mcp.js';
 import { codexModels } from './models.js';
 import { codexObserverFacet } from './observer.js';
 import { codexRuntime } from './runtime.js';
+import { codexSync } from './sync.js';
 import { codexTelemetry } from './telemetry.js';
 import { codexTerminal } from './terminal.js';
 
@@ -64,5 +66,11 @@ export const codex: AgentAdapter = {
   telemetry: codexTelemetry,
   inject: codexInject,
   instructions: codexInstructions,
-  config: { settingsFormat: 'toml', mcp: codexMcp, knobs: codexKnobs },
+  config: {
+    settingsFormat: 'toml',
+    mcp: codexMcp,
+    knobs: codexKnobs,
+    library: codexLibrary,
+    sync: codexSync,
+  },
 };

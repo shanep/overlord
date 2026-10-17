@@ -173,6 +173,33 @@ describe('resolveSnapshot', () => {
     expect(calls).toStrictEqual([]);
   });
 
+  it("lists a Codex session's skills from .agents/skills and not Claude's own", async () => {
+    const { store, workspace, paths } = await setup();
+    await writeText(
+      path.join(workspace, '.agents', 'skills', 'land', 'SKILL.md'),
+      '---\nname: land\ndescription: Land it.\n---\nDo it.\n',
+    );
+    const merged = await resolveSnapshot(
+      {
+        paths,
+        fs: createNodeFileSystem(),
+        exec: recordingExec().exec,
+        env: {},
+        store,
+        clock: () => NOW,
+      },
+      {
+        base: snapshot('x1'),
+        session: session('x1', { cwd: workspace, agent: 'codex' }),
+        agentId: 'x1',
+        observed: [],
+      },
+    );
+    const names = merged.skills.map((skill) => skill.name);
+    expect(names).toContain('land');
+    expect(names).not.toContain('tidy');
+  });
+
   it("lists a Copilot session's skills from its skills folder and not Claude's own", async () => {
     const { store, workspace, paths } = await setup();
     await writeText(

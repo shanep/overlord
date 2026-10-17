@@ -12,7 +12,14 @@ import { resolveClaudePaths } from '../../paths.js';
 import { agents } from '../index.js';
 import { AgentRegistry } from '../registry.js';
 
+import { codexKnobs } from './config.js';
+import { codexHooks } from './hooks.js';
+import { codexInject } from './inject.js';
 import { codexInstructions } from './instructions.js';
+import { codexLibrary } from './library.js';
+import { codexMcp } from './mcp.js';
+import { codexSync } from './sync.js';
+import { codexTelemetry } from './telemetry.js';
 
 import { codex } from './index.js';
 
@@ -76,6 +83,19 @@ describe('codex', () => {
       cacheReads: true,
       costUsd: false,
       handoffs: ['resume-local'],
+    });
+  });
+
+  it('hooks, injects, exports and tunes through its own files', () => {
+    expect(codex.hooks).toBe(codexHooks);
+    expect(codex.inject).toBe(codexInject);
+    expect(codex.telemetry).toBe(codexTelemetry);
+    expect(codex.config).toStrictEqual({
+      settingsFormat: 'toml',
+      mcp: codexMcp,
+      knobs: codexKnobs,
+      library: codexLibrary,
+      sync: codexSync,
     });
   });
 
