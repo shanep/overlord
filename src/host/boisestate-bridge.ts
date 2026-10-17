@@ -1,19 +1,18 @@
 // Spawns and manages the boisestate.ai bridge sidecar for this window. The
-// sidecar is started the first time a session opts in (a profile whose
-// ANTHROPIC_BASE_URL is the placeholder), kept for the window's life, and
-// killed on dispose. The real api key lives only in the child's environment,
+// sidecar is started the first time a session runs on the boisestate
+// backend, kept for the window's life, and killed on dispose. The real api key lives only in the child's environment,
 // read from VS Code SecretStorage, and the loopback port is guarded by a random
 // token. The token and port are saved and reused, so a chat tab that survives
-// a window reload still reaches the new sidecar. Pure parsing and env
-// rewriting come from core/bridge.
+// a window reload still reaches the new sidecar. Parsing comes from
+// core/bridge, and so does the env each agent gets from the endpoint.
 
 import { spawn, type ChildProcess } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { once } from 'node:events';
 import process from 'node:process';
 
-import type { BridgeEndpoint } from '../core/bridge/boisestate.js';
-import { applyBridge, needsBridge, parseReadyLine } from '../core/bridge/boisestate.js';
+import type { BackendEndpoint } from '../core/bridge/backend.js';
+import { BOISESTATE, parseReadyLine } from '../core/bridge/boisestate.js';
 
 type SpawnFunction = typeof spawn;
 
@@ -49,8 +48,8 @@ class MissingBridgeKeyError extends Error {
 
 export class BoisestateBridge {
   private child: ChildProcess | null = null;
-  private endpoint: BridgeEndpoint | null = null;
-  private starting: Promise<BridgeEndpoint> | null = null;
+  private endpoint: BackendEndpoint | null = null;
+  private starting: Promise<BackendEndpoint> | null = null;
   private readonly proxyPath: string;
   private readonly getKey: () => Promise<string | undefined>;
   private readonly onError: (message: string) => void;
@@ -76,12 +75,12 @@ export class BoisestateBridge {
     this.readyTimeoutMs = options.readyTimeoutMs ?? DEFAULT_READY_TIMEOUT_MS;
   }
 
-  /** Rewrite a launch env, starting the sidecar when the env opts in. */
-  async resolveEnv(env: Readonly<Record<string, string>>): Promise<Record<string, string>> {
-    if (!needsBridge(env)) {
-      return { ...env };
+  /** The running sidecar's endpoint, starting it first when it is not up. */
+  async endpointFor(backend: string): Promise<BackendEndpoint> {
+    if (backend !== BOISESTATE.id) {
+      throw new Error(`This window has no endpoint for the ${backend} backend.`);
     }
-    return applyBridge(env, await this.ensure());
+    return this.ensure();
   }
 
   /** Start the sidecar now, when this window ran one before, so tabs from before a reload reconnect. */
@@ -130,14 +129,14 @@ export class BoisestateBridge {
     return this.loadEndpoint === null ? null : this.loadEndpoint();
   }
 
-  private live(): BridgeEndpoint | null {
+  private live(): BackendEndpoint | null {
     if (this.endpoint !== null && this.child !== null && this.child.exitCode === null) {
       return this.endpoint;
     }
     return null;
   }
 
-  private async ensure(): Promise<BridgeEndpoint> {
+  private async ensure(): Promise<BackendEndpoint> {
     const live = this.live();
     if (live !== null) {
       return live;
@@ -146,7 +145,7 @@ export class BoisestateBridge {
     return this.starting;
   }
 
-  private async spawnSidecar(): Promise<BridgeEndpoint> {
+  private async spawnSidecar(): Promise<BackendEndpoint> {
     const key = await this.getKey();
     if (key === undefined || key === '') {
       this.starting = null;
@@ -167,7 +166,7 @@ export class BoisestateBridge {
     });
     try {
       const port = await this.awaitReady(child);
-      const endpoint: BridgeEndpoint = { baseUrl: `http://127.0.0.1:${String(port)}`, token };
+      const endpoint: BackendEndpoint = { baseUrl: `http://127.0.0.1:${String(port)}`, token };
       this.child = child;
       this.endpoint = endpoint;
       if (saved?.port !== port || saved.token !== token) {

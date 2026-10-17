@@ -5,7 +5,10 @@ import path from 'node:path';
 import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 
 import { fakeQueries, resultMessage } from '../../../test/fake-claude/fake-query.js';
-import { BOISESTATE_PROFILE } from '../bridge/boisestate.js';
+import { CLAUDE_CODE } from '../../shared/agents.js';
+import type { LaunchProfile } from '../../shared/model.js';
+import type { BackendEndpoint } from '../bridge/backend.js';
+import { BOISESTATE_PROFILE, BRIDGE_BASE_URL } from '../bridge/boisestate.js';
 import { transcriptPathFor } from '../surfaces/desktop.js';
 import type { Exec } from '../sync/exec.js';
 import { SETUP_SCRIPT } from '../worktrees/setup.js';
@@ -147,18 +150,27 @@ async function landUpstream(): Promise<void> {
 }
 
 /** An app where Boise State is set up, and its bridge answers with a loopback URL and token. */
-async function bridged(starts: (readonly string[])[] = []): Promise<TestApp> {
+async function bridged(
+  starts: (readonly string[])[] = [],
+  profile: LaunchProfile = BOISESTATE_PROFILE,
+): Promise<TestApp> {
   const test = await setup('repo', async (_command, args) => {
     starts.push(args);
     await Promise.resolve();
     return { code: 1, stdout: '', stderr: 'claude does not run in tests' };
   });
-  test.env.host.resolveBridgeEnv = async (env): Promise<Record<string, string>> => {
+  test.env.host.backendEndpoint = async (): Promise<BackendEndpoint> => {
     await Promise.resolve();
-    return { ...env, ANTHROPIC_BASE_URL: 'http://127.0.0.1:9', ANTHROPIC_API_KEY: 'tok' };
+    return { baseUrl: 'http://127.0.0.1:9', token: 'tok' };
   };
-  await test.app.dispatch({ type: 'saveProfile', profile: BOISESTATE_PROFILE }, {});
+  await test.app.dispatch({ type: 'saveProfile', profile }, {});
   return test;
+}
+
+/** The bridge's endpoint is down, for the reason a missing key gives. */
+async function noKey(): Promise<BackendEndpoint> {
+  await Promise.resolve();
+  throw new Error('No Boise State API key is set.');
 }
 
 // Each test runs real git many times, which takes far longer than usual on a busy machine.
@@ -695,10 +707,7 @@ describe('worktrees in the app', { timeout: 30_000 }, () => {
       });
 
       const before = test.env.host.terminals.length;
-      test.env.host.resolveBridgeEnv = async (): Promise<Record<string, string>> => {
-        await Promise.resolve();
-        throw new Error('No Boise State API key is set.');
-      };
+      test.env.host.backendEndpoint = noKey;
       await continueOld(test, null);
       expect(test.env.host.terminals).toHaveLength(before);
       expect(test.env.host.warnings.at(-1)).toBe('No Boise State API key is set.');
@@ -746,6 +755,27 @@ describe('worktrees in the app', { timeout: 30_000 }, () => {
       expect(existsSync(terminal.cwd)).toBe(false);
     });
 
+    it('are offered for a profile saved with only the old placeholder', async () => {
+      const old: LaunchProfile = {
+        id: 'old',
+        name: 'Boise State from before',
+        agent: CLAUDE_CODE,
+        model: BOISESTATE_PROFILE.model,
+        effort: null,
+        permissionMode: null,
+        env: { ANTHROPIC_BASE_URL: BRIDGE_BASE_URL },
+        extraArgs: [],
+      };
+      const test = await bridged([], old);
+      test.env.host.pickAnswers.push(HERE_ID, BRIDGE_ID);
+      await test.app.dispatch({ type: 'newSession' }, {});
+      expect(lastTerminal(test)).toMatchObject({
+        name: 'Boise State',
+        env: { ANTHROPIC_BASE_URL: 'http://127.0.0.1:9', ANTHROPIC_AUTH_TOKEN: 'tok' },
+      });
+      await test.app.sessionClosed(lastTerminal(test).sessionId ?? '');
+    });
+
     it('leave the usual session as it was, and start nothing when the choice is cancelled', async () => {
       const test = await bridged();
       test.env.host.pickAnswers.push(HERE_ID, CLAUDE_ID);
@@ -763,9 +793,9 @@ describe('worktrees in the app', { timeout: 30_000 }, () => {
 
     it('are not offered before Boise State is set up', async () => {
       const test = await setup();
-      test.env.host.resolveBridgeEnv = async (env): Promise<Record<string, string>> => {
+      test.env.host.backendEndpoint = async (): Promise<BackendEndpoint> => {
         await Promise.resolve();
-        return { ...env };
+        return { baseUrl: 'http://127.0.0.1:9', token: 'tok' };
       };
       await newSession(test);
       expect(test.env.host.picks.map((pick) => pick.placeholder)).not.toContain(BACKEND_TITLE);
@@ -780,10 +810,7 @@ describe('worktrees in the app', { timeout: 30_000 }, () => {
       await test.app.sessionClosed(lastTerminal(test).sessionId ?? '');
 
       const before = test.env.host.terminals.length;
-      test.env.host.resolveBridgeEnv = async (): Promise<Record<string, string>> => {
-        await Promise.resolve();
-        throw new Error('No Boise State API key is set.');
-      };
+      test.env.host.backendEndpoint = noKey;
       test.env.host.pickAnswers.push(HERE_ID);
       await test.app.dispatch({ type: 'newBridgeChat' }, {});
       expect(test.env.host.warnings.at(-1)).toBe('No Boise State API key is set.');

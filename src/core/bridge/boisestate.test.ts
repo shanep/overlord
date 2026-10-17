@@ -1,34 +1,45 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  applyBridge,
-  bearerEnv,
-  BOISESTATE_PROFILE,
-  BRIDGE_BASE_URL,
-  BRIDGE_ARGS,
-  needsBridge,
-  parseReadyLine,
-} from './boisestate.js';
+import { CLAUDE_CODE, CODEX } from '../../shared/agents.js';
 
-describe('needsBridge', () => {
-  it('is true only when the base URL is the placeholder', () => {
-    expect(needsBridge({ ANTHROPIC_BASE_URL: BRIDGE_BASE_URL })).toBe(true);
-    expect(needsBridge({ ANTHROPIC_BASE_URL: 'https://api.anthropic.com' })).toBe(false);
-    expect(needsBridge({})).toBe(false);
+import { BOISESTATE, BOISESTATE_PROFILE, BRIDGE_BASE_URL, parseReadyLine } from './boisestate.js';
+
+const ENDPOINT = { baseUrl: 'http://127.0.0.1:4321', token: 'tok' };
+
+describe('BOISESTATE', () => {
+  it('serves Claude Code only', () => {
+    expect(BOISESTATE.appliesTo(CLAUDE_CODE)).toBe(true);
+    expect(BOISESTATE.appliesTo(CODEX)).toBe(false);
   });
-});
 
-describe('applyBridge', () => {
-  it('swaps in the real URL and sets the token as the api key', () => {
-    const result = applyBridge(
-      { ANTHROPIC_BASE_URL: BRIDGE_BASE_URL, FOO: 'bar' },
-      { baseUrl: 'http://127.0.0.1:4321', token: 'tok' },
-    );
-    expect(result).toStrictEqual({
+  it('gives a run the token as the api key', () => {
+    expect(BOISESTATE.env(CLAUDE_CODE, ENDPOINT, 'run')).toStrictEqual({
       ANTHROPIC_BASE_URL: 'http://127.0.0.1:4321',
       ANTHROPIC_API_KEY: 'tok',
-      FOO: 'bar',
     });
+  });
+
+  it('gives a tab the token as a bearer token, so the CLI does not ask to approve it', () => {
+    expect(BOISESTATE.env(CLAUDE_CODE, ENDPOINT, 'tab')).toStrictEqual({
+      ANTHROPIC_BASE_URL: 'http://127.0.0.1:4321',
+      ANTHROPIC_AUTH_TOKEN: 'tok',
+    });
+  });
+
+  it('starts a tab on the bridge model, with no MCP servers, in the foreground', () => {
+    expect(BOISESTATE.tabArgs(CLAUDE_CODE)).toStrictEqual([
+      '--model',
+      BOISESTATE_PROFILE.model,
+      '--strict-mcp-config',
+    ]);
+    expect(BOISESTATE.noMcp).toBe(true);
+    expect(BOISESTATE.windowBound).toBe(true);
+  });
+
+  it('claims an env only when the base URL is the placeholder', () => {
+    expect(BOISESTATE.claims({ ANTHROPIC_BASE_URL: BRIDGE_BASE_URL })).toBe(true);
+    expect(BOISESTATE.claims({ ANTHROPIC_BASE_URL: 'https://api.anthropic.com' })).toBe(false);
+    expect(BOISESTATE.claims({})).toBe(false);
   });
 });
 
@@ -49,33 +60,10 @@ describe('parseReadyLine', () => {
 });
 
 describe('BOISESTATE_PROFILE', () => {
-  it('opts into the bridge on Opus 5.5', () => {
+  it('runs Claude Code on the boisestate backend, on Opus 5.5', () => {
     expect(BOISESTATE_PROFILE.id).toBe('boisestate');
+    expect(BOISESTATE_PROFILE.agent).toBe(CLAUDE_CODE);
+    expect(BOISESTATE_PROFILE.backend).toBe(BOISESTATE.id);
     expect(BOISESTATE_PROFILE.model).toBe('claude-opus-5-5');
-    expect(BOISESTATE_PROFILE.env['ANTHROPIC_BASE_URL']).toBe(BRIDGE_BASE_URL);
-    expect(needsBridge(BOISESTATE_PROFILE.env)).toBe(true);
-  });
-});
-
-describe('bearerEnv', () => {
-  it('moves the token from the api key to the bearer token', () => {
-    expect(
-      bearerEnv({ ANTHROPIC_BASE_URL: 'http://127.0.0.1:4321', ANTHROPIC_API_KEY: 'tok' }),
-    ).toStrictEqual({
-      ANTHROPIC_BASE_URL: 'http://127.0.0.1:4321',
-      ANTHROPIC_AUTH_TOKEN: 'tok',
-    });
-  });
-
-  it('leaves an env with no api key alone', () => {
-    expect(bearerEnv({ ANTHROPIC_BASE_URL: 'http://127.0.0.1:4321' })).toStrictEqual({
-      ANTHROPIC_BASE_URL: 'http://127.0.0.1:4321',
-    });
-  });
-});
-
-describe('BRIDGE_ARGS', () => {
-  it('start the session on the bridge model, with no MCP servers', () => {
-    expect(BRIDGE_ARGS).toStrictEqual(['--model', BOISESTATE_PROFILE.model, '--strict-mcp-config']);
   });
 });

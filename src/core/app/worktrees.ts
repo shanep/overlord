@@ -7,9 +7,9 @@
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 
-import type { AgentId } from '../../shared/agents.js';
+import { CLAUDE_CODE, type AgentId } from '../../shared/agents.js';
 import type { AgentTerminal } from '../agents/terminals.js';
-import { bearerEnv, BRIDGE_ARGS, BRIDGE_BASE_URL } from '../bridge/boisestate.js';
+import { backendFor, findBackend } from '../bridge/backends.js';
 import type { WorktreeLease, WorktreeProvider } from '../harness/launcher.js';
 import type { ClaudePaths } from '../paths.js';
 import { daemonJobCwds } from '../surfaces/daemon.js';
@@ -124,37 +124,45 @@ export interface SessionStart {
   readonly prompt?: string;
   /** The session this one continues as a fork, which stays as it was. */
   readonly forkOf?: string;
-  /** Runs on Boise State's Opus 5.5 through this window's bridge sidecar. */
-  readonly bridge?: boolean;
+  /** The backend the session runs on, such as "boisestate". The agent's own account when left out. */
+  readonly backend?: string;
   /** The agent whose terminal facet opens the tab. Claude Code when left out. */
   readonly agent?: AgentId;
 }
 
 const PLAIN_START: SessionStart = { name: 'Claude Code' };
-const BRIDGE_START: SessionStart = { name: 'Boise State', bridge: true };
 
-/** What a tab adds for where its session runs: nothing, or the bridge's env and args. */
-export interface Backend {
+/** What a tab adds for where its session runs: nothing, or its backend's env and args. */
+export interface TabBackend {
   readonly env?: Readonly<Record<string, string>>;
   readonly args?: readonly string[];
   readonly foreground?: boolean;
 }
 
-export const CLAUDE: Backend = {};
+const CLAUDE: TabBackend = {};
 
 /**
- * The bridge's env and args, or null after saying why it cannot start. Its
- * sessions run in their tab, since the sidecar goes away with the window.
+ * A backend's env and args for a tab, or null after saying why it cannot
+ * start. A backend whose endpoint goes away with the window runs its
+ * sessions in their tab.
  */
-export async function bridgeBackend(rt: Runtime): Promise<Backend | null> {
-  const resolve = rt.host.resolveBridgeEnv;
-  if (resolve === undefined) {
-    rt.host.showInfo('The Boise State bridge is not available in this window.');
-    return null;
+export async function tabBackend(
+  rt: Runtime,
+  id: string | undefined,
+  agent: AgentId = CLAUDE_CODE,
+): Promise<TabBackend | null> {
+  if (id === undefined) {
+    return CLAUDE;
   }
+  const source = rt.host.backendEndpoint;
   try {
-    const env = await resolve({ ANTHROPIC_BASE_URL: BRIDGE_BASE_URL });
-    return { env: bearerEnv(env), args: BRIDGE_ARGS, foreground: true };
+    const backend = backendFor(id, agent);
+    if (source === undefined) {
+      rt.host.showInfo(`The ${backend.short} backend is not available in this window.`);
+      return null;
+    }
+    const env = backend.env(agent, await source(backend.id), 'tab');
+    return { env, args: backend.tabArgs(agent), foreground: backend.windowBound };
   } catch (error: unknown) {
     rt.host.showWarning(messageOf(error));
     return null;
@@ -172,7 +180,7 @@ function tabStart(
 /** What a new tab starts: the session, and where it runs. */
 interface Opening {
   readonly start: SessionStart;
-  readonly backend: Backend;
+  readonly backend: TabBackend;
 }
 
 async function openSession(
@@ -210,7 +218,7 @@ export async function startSession(
   folder: string | null,
   start: SessionStart,
 ): Promise<void> {
-  const backend = start.bridge === true ? await bridgeBackend(rt) : CLAUDE;
+  const backend = await tabBackend(rt, start.backend, start.agent);
   if (backend === null) {
     return;
   }
@@ -242,19 +250,26 @@ export async function startSession(
 
 /**
  * Starts a session in a new worktree of the folder's repository, or in home
- * with no folder, on Claude Code's usual account or on the bridge. An agent
- * other than Claude Code opens through its own terminal facet.
+ * with no folder, on Claude Code's usual account or on a backend such as the
+ * bridge. An agent other than Claude Code opens through its own terminal facet.
  */
 export async function newSession(
   rt: Runtime,
   folder: string | null,
-  bridge = false,
+  backend?: string,
   agent?: AgentTerminal,
 ): Promise<void> {
-  const base = bridge ? BRIDGE_START : PLAIN_START;
-  const start =
-    agent === undefined || bridge ? base : { name: agent.adapter.name, agent: agent.adapter.id };
-  await startSession(rt, folder, start);
+  const which = agent === undefined ? {} : { agent: agent.adapter.id };
+  if (backend !== undefined) {
+    const name = findBackend(backend)?.short ?? backend;
+    await startSession(rt, folder, { ...which, name, backend });
+    return;
+  }
+  await startSession(
+    rt,
+    folder,
+    agent === undefined ? PLAIN_START : { ...which, name: agent.adapter.name },
+  );
 }
 
 /** Opens a new session in a worktree that is still around, to finish its work. */

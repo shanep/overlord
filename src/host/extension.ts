@@ -120,7 +120,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   void bridge.warm();
   const host = createVscodeHostPort({
     context,
-    resolveBridgeEnv: bridge.resolveEnv.bind(bridge),
+    backendEndpoint: bridge.endpointFor.bind(bridge),
     openPanel: (view, params) => {
       // Session properties live in the sidebar, beside the Fleet, not in a panel.
       const properties = propertiesHolder.current;

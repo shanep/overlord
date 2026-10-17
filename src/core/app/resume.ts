@@ -8,13 +8,13 @@
 import path from 'node:path';
 
 import type { SurfaceSession } from '../../shared/protocol.js';
+import { BOISESTATE } from '../bridge/boisestate.js';
 
 import { openClaudeTab } from './claude-tabs.js';
 import { messageOf } from './errors.js';
 import type { Runtime } from './runtime.js';
 import { ranOnBridge } from './session-backend.js';
-import type { Backend } from './worktrees.js';
-import { bridgeBackend, CLAUDE, heldWorktreeEnv, startSession, worktreeRoot } from './worktrees.js';
+import { heldWorktreeEnv, startSession, tabBackend, worktreeRoot } from './worktrees.js';
 
 export const UPDATE = 'Bring up to date';
 export const AS_IS = 'Continue as is';
@@ -141,7 +141,7 @@ async function settleGaps(
   rt: Runtime,
   at: Continuing,
   gaps: readonly Gap[],
-  bridge: boolean,
+  backend: string | undefined,
 ): Promise<Plan> {
   const { session, cwd, name } = at;
   const title = session.title === '' ? 'This session' : `"${session.title}"`;
@@ -164,7 +164,7 @@ async function settleGaps(
       forkOf: session.id,
       prompt: refreshPrompt([moved]),
       agent: session.agent,
-      bridge,
+      ...(backend === undefined ? {} : { backend }),
     };
     await startSession(rt, cwd, start);
     return { kind: 'stop' };
@@ -180,8 +180,8 @@ async function settleGaps(
 export async function continueHere(rt: Runtime, at: Continuing): Promise<void> {
   const { session, cwd, name, restored } = at;
   // A session goes back to the backend it ran on, so a Boise State one stays on the bridge.
-  const bridge = await ranOnBridge(rt.paths, cwd, session.id);
-  const backend: Backend | null = bridge ? await bridgeBackend(rt) : CLAUDE;
+  const ran = (await ranOnBridge(rt.paths, cwd, session.id)) ? BOISESTATE.id : undefined;
+  const backend = await tabBackend(rt, ran, session.agent);
   if (backend === null) {
     await letGo(rt, session.id);
     return;
@@ -191,8 +191,7 @@ export async function continueHere(rt: Runtime, at: Continuing): Promise<void> {
     await holdWorktree(rt, session.id, entry.id);
   }
   const gaps = await findGaps(rt, cwd, restored);
-  const plan: Plan =
-    gaps.length === 0 ? { kind: 'resume' } : await settleGaps(rt, at, gaps, bridge);
+  const plan: Plan = gaps.length === 0 ? { kind: 'resume' } : await settleGaps(rt, at, gaps, ran);
   if (plan.kind === 'stop') {
     return;
   }

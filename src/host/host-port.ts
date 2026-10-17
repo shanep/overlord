@@ -16,6 +16,7 @@ import type {
   TerminalRequest,
   TerminalTarget,
 } from '../core/app/host-port.js';
+import type { EndpointSource } from '../core/bridge/backend.js';
 import { findOnPath } from '../core/find-on-path.js';
 import { loginShellLaunch } from '../core/login-shell.js';
 import { LEADERBOARD_URL } from '../shared/leaderboard.js';
@@ -153,10 +154,8 @@ export interface VscodeHostPortOptions {
   readonly onSessionTerminal: (terminal: vscode.Terminal, sessionId: string) => void;
   /** Focuses the tab Overlord opened for a session. False when there is none. */
   readonly showSessionTerminal: (sessionId: string) => boolean;
-  /** Resolves a launch env through the boisestate.ai bridge, when it opts in. */
-  readonly resolveBridgeEnv?: (
-    env: Readonly<Record<string, string>>,
-  ) => Promise<Record<string, string>>;
+  /** Starts a backend's endpoint, such as the boisestate.ai sidecar. */
+  readonly backendEndpoint?: EndpointSource;
 }
 
 async function terminalWithProcess(processId: number): Promise<vscode.Terminal | undefined> {
@@ -295,9 +294,7 @@ export function createVscodeHostPort(options: VscodeHostPortOptions): HostPort {
         await context.secrets.delete(name);
       },
     },
-    ...(options.resolveBridgeEnv === undefined
-      ? {}
-      : { resolveBridgeEnv: options.resolveBridgeEnv }),
+    ...(options.backendEndpoint === undefined ? {} : { backendEndpoint: options.backendEndpoint }),
     workspaceFolder: (): string | null =>
       vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? null,
     workspaceFolders: (): readonly string[] =>

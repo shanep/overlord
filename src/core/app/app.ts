@@ -138,7 +138,7 @@ export class OverlordApp {
         baseEnv: launchEnv,
         executablePath: (agent, runEnv): string | null =>
           agent === CLAUDE_CODE ? executableFor(host.settings.claudePath, runEnv, platform) : null,
-        ...(host.resolveBridgeEnv === undefined ? {} : { resolveBridgeEnv: host.resolveBridgeEnv }),
+        ...(host.backendEndpoint === undefined ? {} : { backendEndpoint: host.backendEndpoint }),
         now: clock,
       },
       concurrencyFrom(host.settings.maxConcurrency),

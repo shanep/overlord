@@ -7,10 +7,11 @@
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 
-import { CLAUDE_CODE } from '../../shared/agents.js';
+import { CLAUDE_CODE, type AgentId } from '../../shared/agents.js';
 import type { ProjectSummary } from '../../shared/protocol.js';
 import type { AgentTerminal } from '../agents/terminals.js';
-import { needsBridge } from '../bridge/boisestate.js';
+import { backendIdOf, backendsFor } from '../bridge/backends.js';
+import { BOISESTATE } from '../bridge/boisestate.js';
 import { addProject, assignFolder, resolveProject, setProjectFolder } from '../projects/book.js';
 
 import type { ActionHandlers } from './action-types.js';
@@ -30,15 +31,12 @@ export const SESSION_TITLE = 'Start a Claude Code session in';
 export const HERE_ID = 'here';
 export const BACKEND_TITLE = 'Run the session on';
 export const CLAUDE_ID = 'claude';
-export const BRIDGE_ID = 'boisestate';
-const BACKENDS: readonly PickItem[] = [
-  { id: CLAUDE_ID, label: 'Claude Code', description: 'your usual account' },
-  {
-    id: BRIDGE_ID,
-    label: 'Boise State (Opus 5.5)',
-    description: 'through the boisestate.ai bridge',
-  },
-];
+export const BRIDGE_ID = BOISESTATE.id;
+const OWN_ACCOUNT: PickItem = {
+  id: CLAUDE_ID,
+  label: 'Claude Code',
+  description: 'your usual account',
+};
 const BROWSE_ITEM: PickItem = { id: BROWSE_ID, label: BROWSE_LABEL, description: '' };
 
 type Way = 'session' | 'window' | 'here';
@@ -157,44 +155,55 @@ async function pickSessionFolder(rt: Runtime): Promise<string | null | undefined
   return target?.folder;
 }
 
-/** True once Boise State is set up, which saving its key does by adding its profile. */
-async function bridgeReady(rt: Runtime): Promise<boolean> {
-  if (rt.host.resolveBridgeEnv === undefined) {
-    return false;
+/**
+ * The backends set up for an agent, which saving a backend's key does by
+ * adding a profile that runs on it. None when the host has no backends.
+ */
+async function readyBackends(rt: Runtime, agent: AgentId): Promise<readonly PickItem[]> {
+  if (rt.host.backendEndpoint === undefined) {
+    return [];
   }
   await rt.caches.profiles.refresh();
-  return rt.caches.profiles.peek().some((profile) => needsBridge(profile.env));
+  const profiles = rt.caches.profiles.peek();
+  const used = new Set(profiles.map((profile) => backendIdOf(profile)));
+  return backendsFor(agent)
+    .filter((backend) => used.has(backend.id))
+    .map((backend) => ({ id: backend.id, label: backend.name, description: backend.description }));
 }
 
-/** Whether the session runs on the bridge, asked only once Boise State is set up. Null when cancelled. */
-async function pickBridge(rt: Runtime): Promise<boolean | null> {
-  if (!(await bridgeReady(rt))) {
-    return false;
+/**
+ * The backend a session runs on, asked only once one is set up: undefined
+ * for the agent's own account, null when cancelled.
+ */
+async function pickBackend(rt: Runtime, agent: AgentId): Promise<string | undefined | null> {
+  const ready = await readyBackends(rt, agent);
+  if (ready.length === 0) {
+    return undefined;
   }
-  const picked = await rt.host.quickPick(BACKENDS, BACKEND_TITLE);
-  return picked === null ? null : picked === BRIDGE_ID;
+  const picked = await rt.host.quickPick([OWN_ACCOUNT, ...ready], BACKEND_TITLE);
+  return picked === CLAUDE_ID ? undefined : picked;
 }
 
 async function startIn(
   rt: Runtime,
   folder: string | null,
-  bridge = false,
+  backend?: string,
   agent?: AgentTerminal,
 ): Promise<void> {
-  const title = bridge || agent === undefined ? STARTING : `Starting ${agent.adapter.name}`;
-  await rt.host.withProgress(title, async () => newSession(rt, folder, bridge, agent));
+  const title =
+    backend !== undefined || agent === undefined ? STARTING : `Starting ${agent.adapter.name}`;
+  await rt.host.withProgress(title, async () => newSession(rt, folder, backend, agent));
 }
 
-/** Starts a session in a folder, after asking where it runs. The bridge only serves Claude Code. */
+/** Starts a session in a folder, after asking where it runs. Only Claude Code has backends today. */
 async function askAndStart(
   rt: Runtime,
   folder: string | null,
   agent?: AgentTerminal,
 ): Promise<void> {
-  const claude = agent === undefined || agent.adapter.id === CLAUDE_CODE;
-  const bridge = claude ? await pickBridge(rt) : false;
-  if (bridge !== null) {
-    await startIn(rt, folder, bridge, agent);
+  const backend = await pickBackend(rt, agent?.adapter.id ?? CLAUDE_CODE);
+  if (backend !== null) {
+    await startIn(rt, folder, backend, agent);
   }
 }
 
@@ -240,7 +249,7 @@ export const openProjectActions: ActionHandlers<OpenActions> = {
   newBridgeChat: async ({ rt }) => {
     const folder = await pickSessionFolder(rt);
     if (folder !== undefined) {
-      await startIn(rt, folder, true);
+      await startIn(rt, folder, BOISESTATE.id);
     }
   },
 };

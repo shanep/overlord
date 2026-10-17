@@ -6,8 +6,6 @@ import { describe, expect, it } from 'vitest';
 
 import { BoisestateBridge, type SavedEndpoint } from './boisestate-bridge.js';
 
-const BRIDGE_ENV = { ANTHROPIC_BASE_URL: 'overlord://boisestate' };
-
 interface Spawned {
   readonly key: string | undefined;
   readonly port: string | undefined;
@@ -55,11 +53,11 @@ describe('BoisestateBridge.restart', () => {
       loadEndpoint: async (): Promise<SavedEndpoint> => saved,
       spawnFn: fakeSpawn(spawned),
     });
-    const before = await bridge.resolveEnv(BRIDGE_ENV);
+    const before = await bridge.endpointFor('boisestate');
 
     key = Promise.resolve('new-key');
     await bridge.restart();
-    const after = await bridge.resolveEnv(BRIDGE_ENV);
+    const after = await bridge.endpointFor('boisestate');
 
     expect(spawned.map((entry) => entry.key)).toStrictEqual(['old-key', 'new-key']);
     expect(spawned[0]?.child.signalCode).toBe('SIGTERM');

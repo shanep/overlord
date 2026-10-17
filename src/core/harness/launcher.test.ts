@@ -17,7 +17,8 @@ import { AgentRegistry } from '../agents/registry.js';
 import type { AgentEvent } from '../agents/shared/events.js';
 import type { AgentRun, RuntimeFacet } from '../agents/shared/runtime.js';
 import type { AgentAdapter } from '../agents/types.js';
-import { BOISESTATE_PROFILE } from '../bridge/boisestate.js';
+import type { BackendEndpoint } from '../bridge/backend.js';
+import { BOISESTATE_PROFILE, BRIDGE_BASE_URL } from '../bridge/boisestate.js';
 import { EventBus } from '../bus.js';
 
 import { PermissionInbox } from './inbox.js';
@@ -434,33 +435,59 @@ describe('Launcher concurrency', () => {
   });
 });
 
-describe('Launcher bridge env', () => {
-  it('routes the launch env through resolveBridgeEnv before starting', async () => {
-    const { launcher, queries } = setup(1, {
-      resolveBridgeEnv: async (env) => {
-        await Promise.resolve();
-        return { ...env, ROUTED: 'yes' };
-      },
-    });
+/** A host whose backend endpoints answer on one loopback port, recording each ask. */
+function endpoints(asked: string[]): Partial<LauncherDeps> {
+  return {
+    backendEndpoint: async (backend): Promise<BackendEndpoint> => {
+      asked.push(backend);
+      await Promise.resolve();
+      return { baseUrl: 'http://127.0.0.1:1', token: 'tok' };
+    },
+  };
+}
+
+describe('Launcher backends', () => {
+  it('leaves a profile with no backend on its own account', async () => {
+    const asked: string[] = [];
+    const { launcher, queries } = setup(1, endpoints(asked));
     launcher.launch([spec('ok:0', { profileId: 'p1' })], [PROFILE]);
     await launcher.idle();
-    expect(queries[0]?.options.env['ROUTED']).toBe('yes');
+    expect(asked).toStrictEqual([]);
     expect(queries[0]?.options.env['FROM_PROFILE']).toBe('yes');
+    expect(queries[0]?.options.env['ANTHROPIC_BASE_URL']).toBeUndefined();
     expect(queries[0]?.options.noMcp).toBe(false);
   });
 
-  it('runs a bridge profile without MCP servers, with the env rewritten', async () => {
-    const { launcher, queries } = setup(1, {
-      resolveBridgeEnv: async (env) => {
-        await Promise.resolve();
-        return { ...env, ANTHROPIC_BASE_URL: 'http://127.0.0.1:1' };
-      },
-    });
-    const bridged: LaunchProfile = { ...PROFILE, id: 'bsu', env: BOISESTATE_PROFILE.env };
+  it.each([
+    ['the backend field', { backend: BOISESTATE_PROFILE.backend ?? '' }],
+    ['the old placeholder', { env: { ANTHROPIC_BASE_URL: BRIDGE_BASE_URL } }],
+  ])('runs a profile on the bridge from %s, with no MCP servers', async (_how, fields) => {
+    const asked: string[] = [];
+    const { launcher, queries } = setup(1, endpoints(asked));
+    const bridged: LaunchProfile = { ...PROFILE, id: 'bsu', ...fields };
     launcher.launch([spec('ok:0', { profileId: 'bsu' })], [bridged]);
     await launcher.idle();
+    expect(launcher.runs()[0]?.state).toBe('done');
+    expect(asked).toStrictEqual(['boisestate']);
     expect(queries[0]?.options.noMcp).toBe(true);
-    expect(queries[0]?.options.env['ANTHROPIC_BASE_URL']).toBe('http://127.0.0.1:1');
+    expect(queries[0]?.options.env).toMatchObject({
+      ANTHROPIC_BASE_URL: 'http://127.0.0.1:1',
+      ANTHROPIC_API_KEY: 'tok',
+    });
+  });
+
+  it('fails a run whose backend is unknown or has no endpoint here', async () => {
+    const { launcher } = setup(2);
+    const unknown: LaunchProfile = { ...PROFILE, id: 'u', backend: 'nope' };
+    launcher.launch(
+      [spec('ok:0', { profileId: 'u' }), spec('ok:0', { profileId: 'b' })],
+      [unknown, { ...BOISESTATE_PROFILE, id: 'b' }],
+    );
+    await launcher.idle();
+    expect(launcher.runs().map((run) => [run.state, run.result])).toStrictEqual([
+      ['failed', 'Unknown backend "nope"'],
+      ['failed', 'The Boise State (Opus 5.5) backend is not available here.'],
+    ]);
   });
 });
 

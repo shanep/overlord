@@ -1,6 +1,7 @@
 // A HostPort that records every call and answers from queues the test fills.
 
 import type { ViewId } from '../../../shared/protocol.js';
+import type { EndpointSource } from '../../bridge/backend.js';
 import { createMemorySecretStore } from '../../sync/secrets.js';
 import type {
   FilePickRequest,
@@ -49,8 +50,8 @@ export class FakeHost implements HostPort {
   readonly windows: string[] = [];
   readonly progress: string[] = [];
   readonly terminals: TerminalRequest[] = [];
-  /** The bridge, when a test gives the host one. */
-  resolveBridgeEnv?: (env: Readonly<Record<string, string>>) => Promise<Record<string, string>>;
+  /** The backends' endpoints, when a test gives the host some. */
+  backendEndpoint?: EndpointSource;
   readonly shown: TerminalTarget[] = [];
   /** Session ids with a tab Overlord opened, which showTerminal finds. */
   terminalTabs: readonly string[] = [];

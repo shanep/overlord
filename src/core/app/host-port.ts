@@ -3,6 +3,7 @@
 
 import type { AgentId } from '../../shared/agents.js';
 import type { ViewId } from '../../shared/protocol.js';
+import type { EndpointSource } from '../bridge/backend.js';
 import type { SecretStore } from '../sync/secrets.js';
 
 export interface PanelParams {
@@ -148,13 +149,10 @@ export interface HostPort {
   /** VS Code SecretStorage, which is the OS keychain. */
   readonly secrets: SecretStore;
   /**
-   * Rewrite a launch env that opts into the boisestate.ai bridge, starting the
-   * sidecar if needed and pointing the env at it. Returns the env unchanged when
-   * it does not opt in. Absent when the host does not provide a bridge.
+   * Starts a backend's endpoint, such as the boisestate.ai sidecar, or returns
+   * the running one. Absent when the host provides no backends.
    */
-  readonly resolveBridgeEnv?: (
-    env: Readonly<Record<string, string>>,
-  ) => Promise<Record<string, string>>;
+  readonly backendEndpoint?: EndpointSource;
   readonly workspaceFolder: () => string | null;
   /** Every folder in this window's workspace, the first one first. */
   readonly workspaceFolders: () => readonly string[];

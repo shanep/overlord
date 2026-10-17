@@ -10,7 +10,8 @@ import type { LaunchProfile, LaunchSpec } from '../../shared/model.js';
 import type { LaunchRun, LauncherState } from '../../shared/protocol.js';
 import type { AgentRegistry } from '../agents/registry.js';
 import type { AgentAdapter } from '../agents/types.js';
-import { needsBridge } from '../bridge/boisestate.js';
+import type { Backend, EndpointSource } from '../bridge/backend.js';
+import { chosenBackend } from '../bridge/backends.js';
 import type { EventBus } from '../bus.js';
 
 import { errorMessage, type TurnResult } from './events.js';
@@ -45,10 +46,8 @@ export interface LauncherDeps {
     agent: AgentId,
     env: Readonly<Record<string, string | undefined>>,
   ) => string | null;
-  /** Rewrites a session's env to point at the boisestate.ai bridge when it opts in. */
-  readonly resolveBridgeEnv?: (
-    env: Readonly<Record<string, string>>,
-  ) => Promise<Record<string, string>>;
+  /** Starts the endpoint of the backend a profile runs on, such as the boisestate.ai bridge. */
+  readonly backendEndpoint?: EndpointSource;
   readonly now?: () => number;
   readonly newId?: () => string;
 }
@@ -232,16 +231,13 @@ export class Launcher {
     const profile = findProfile(spec, record.profiles);
     const { adapter, runtime } = this.runtimeFor(profile);
     const settings = sessionSettings(spec, profile, baseEnv, adapter.modes);
+    const backend = chosenBackend({ backend: profile?.backend, env: settings.env }, adapter.id);
     const lease = spec.worktree ? await this.acquireWorktree(record) : null;
     if (record.stopRequested) {
       this.finish(record, 'stopped', null);
       return;
     }
-    const mergedEnv = { ...settings.env, ...lease?.env };
-    const env =
-      this.deps.resolveBridgeEnv === undefined
-        ? mergedEnv
-        : await this.deps.resolveBridgeEnv(mergedEnv);
+    const routed = await this.onBackend(backend, adapter.id, { ...settings.env, ...lease?.env });
     const session = AgentSession.start(
       {
         runtime,
@@ -252,19 +248,34 @@ export class Launcher {
       },
       {
         ...settings,
+        ...routed,
         agent: adapter.id,
-        env,
         cwd: lease?.path ?? spec.cwd,
         title: spec.label,
         executablePath: this.deps.executablePath?.(adapter.id, baseEnv) ?? null,
-        // Checked before the rewrite, which swaps the placeholder for the real URL.
-        noMcp: needsBridge(mergedEnv),
       },
     );
     record.session = session;
     this.follow(record, session);
     session.send(spec.prompt);
     this.settle(record, await session.finished);
+  }
+
+  /** A run's env and MCP choice on its backend, once the backend's endpoint is up. */
+  private async onBackend(
+    backend: Backend | null,
+    agent: AgentId,
+    env: Readonly<Record<string, string>>,
+  ): Promise<{ readonly env: Record<string, string>; readonly noMcp: boolean }> {
+    if (backend === null) {
+      return { env: { ...env }, noMcp: false };
+    }
+    const source = this.deps.backendEndpoint;
+    if (source === undefined) {
+      throw new Error(`The ${backend.name} backend is not available here.`);
+    }
+    const endpoint = await source(backend.id);
+    return { env: { ...env, ...backend.env(agent, endpoint, 'run') }, noMcp: backend.noMcp };
   }
 
   /** Records the session id once known and the first turn's result, then closes the input. */
