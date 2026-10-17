@@ -24,7 +24,7 @@ export function bridgeUsageFile(home: string): string {
 }
 
 /** A Faculty account's monthly limit, as boisestate.ai reported it. A quota report replaces it. */
-export const DEFAULT_LIMIT_USD = 30;
+const DEFAULT_LIMIT_USD = 30;
 
 /**
  * boisestate.ai's dollars per million tokens, input then output. Worked out
