@@ -2008,11 +2008,15 @@ details.panel[open] > summary,
   font-size: 0.85em;
 }
 
+/* One line, so a long value such as a model name is cut short instead of wrapping. */
 .tile-value {
   margin: 0;
+  overflow: hidden;
   font-size: 1.5em;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .tile-detail {

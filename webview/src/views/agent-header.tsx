@@ -63,7 +63,7 @@ export function AgentHeader(props: {
         </p>
       )}
       <StatTiles label="Agent numbers">
-        <StatTile label="Model" value={agent.model ?? 'unknown'} />
+        <StatTile label="Model" value={agent.model ?? 'unknown'} title={agent.model ?? undefined} />
         <StatTile
           label="Elapsed"
           value={formatDuration((agent.endedAt ?? now) - agent.startedAt)}

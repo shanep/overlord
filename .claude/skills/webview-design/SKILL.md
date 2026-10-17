@@ -24,16 +24,18 @@ Every view should look like it came from the same place.
 The pieces live in `webview/src/components/card.tsx` and the "Cards and groups" section of
 `webview/src/theme.css`. Use them instead of writing new classes for the same thing.
 
-| Need                                                      | Use                                                                         |
-| --------------------------------------------------------- | --------------------------------------------------------------------------- |
-| A grid of cards under a heading with a count              | `CardGroup`                                                                 |
-| A grid with no heading, or large cards that open in place | `CardGrid` (`wide` for large ones)                                          |
-| One card, with a colored left edge for its state          | `Card tone="good"` (or warning, critical, info)                             |
-| A card with buttons, or one opened to show a form         | `Card action`, `Card open`                                                  |
-| The state at a glance                                     | `StatusDot` next to the title, plus a `Badge` in words when it is a problem |
-| A tile that tells similar items apart                     | `Avatar seed={id} text={title}`                                             |
-| A filter or mode switch                                   | `Segmented`                                                                 |
-| What an action did, or why it failed                      | `Notice ok={...}`                                                           |
+| Need                                                           | Use                                                                         |
+| -------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| A grid of cards under a heading with a count                   | `CardGroup`                                                                 |
+| A grid with no heading, or large cards that open in place      | `CardGrid` (`wide` for large ones)                                          |
+| One card, with a colored left edge for its state               | `Card tone="good"` (or warning, critical, info)                             |
+| A card with buttons, or one opened to show a form              | `Card action`, `Card open`                                                  |
+| The state at a glance                                          | `StatusDot` next to the title, plus a `Badge` in words when it is a problem |
+| A tile that tells similar items apart                          | `Avatar seed={id} text={title}`                                             |
+| A filter or mode switch                                        | `Segmented`                                                                 |
+| What an action did, or why it failed                           | `Notice ok={...}`                                                           |
+| The few numbers a page is about                                | `StatTiles` with a `StatTile` each (`detail`, `tone`, `title`)              |
+| An element that is not a list item but should look like a card | `cardClassName({ tone })` on an `<article>` or `<div>`                      |
 
 Inside a card, use these classes: `card-head` (the top row), `card-title`, `card-titles`
 (a title with a `card-sub` line under it), `card-text` (muted detail, add `card-clamp` to
@@ -41,6 +43,13 @@ cut it at three lines), `card-foot` (chips and buttons, pinned to the bottom) an
 for small labels. For a form inside an open card, use `card-form`, `form-grid` and
 `form-actions`. Use `search-bar`, `list-bar` and `load-more` around a list, and
 `empty-line` for "nothing here yet".
+
+For tables and sections, `panel` frames a section with a heading (`panel-head`), and
+`<details className="panel">` makes it fold away with a count in the summary.
+`table-card` frames a bare sortable table so it sits well next to cards. `chip-list` is a
+row of chips with no bullets, `pill-check` draws a checkbox as a toggle pill, and
+`choice-grid` with `choice` lays radio buttons out as cards, each with room for a line
+of explanation.
 
 If you need something the pieces do not cover, add it to card.tsx and theme.css so the
 next view gets it too. Only add page-specific classes for things that really are
@@ -78,7 +87,9 @@ node scripts/preview-view.mjs connectors --click "Install…"
 It builds the webview, hands the view the sample state in `webview/preview/<view>.json`,
 and saves `<view>-light-wide.png`, `<view>-dark-wide.png` and `<view>-dark-narrow.png`
 under `.cache/preview/`. Each `--click` presses the first button with that text, so you
-can show an open form or menu. `--state file.json` uses another state file.
+can show an open form or menu. `--state file.json` uses another state file, and
+`--narrow 340` sets the narrow shot's width, which is how to check a sidebar view such as
+Session Properties.
 
 If the view has no sample yet, write `webview/preview/<view>.json` with its state as
 `src/shared/protocol.ts` types it, and make the data look real: a mix of states, long and

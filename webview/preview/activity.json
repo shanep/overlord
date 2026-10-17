@@ -208,7 +208,7 @@
     {
       "sessionId": "s-paper",
       "title": "Tighten the related work section",
-      "cwd": "/Users/shane/research/esem-2026",
+      "cwd": "/Users/shane/research/paper-2026",
       "pid": 38004,
       "place": "vscode",
       "cpuPct": 12.8,
@@ -243,8 +243,8 @@
         {
           "pid": 38050,
           "ppid": 38004,
-          "name": "latexmk",
-          "command": "latexmk -pdf main.tex",
+          "name": "make",
+          "command": "make paper",
           "state": "R",
           "cpuPct": 8.7,
           "memoryBytes": 322122547,
