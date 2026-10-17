@@ -1,12 +1,19 @@
 // Auto-approve rules for permission requests. Deny rules always win over
 // allow rules, and disabled rules are ignored. A SendMessage rule pattern
-// matches the message's recipient (the tool's `to` input). A rule names
-// Claude's tools, and it also covers other agents' names for the shell, so a
-// Bash rule matches Copilot's bash hook tool and the ACP kind execute.
+// matches the message's recipient (the tool's `to` input). Each rule applies
+// to one agent or to every agent, and a rule saved before rules had an agent
+// applies to Claude Code alone, so an old Bash rule never starts approving
+// another agent's shell. A rule names Claude's tools, and for the other
+// agents it scopes to it also covers their names for the shell, so a Bash
+// rule matches Copilot's bash hook tool, the ACP kind execute and Codex's
+// exec_command.
 
 import picomatch from 'picomatch';
 
-import type { AutoApproveRule } from '../../shared/protocol.js';
+import type { AgentId } from '../../shared/agents.js';
+import { CLAUDE_CODE } from '../../shared/agents.js';
+import type { AutoApproveRule } from '../../shared/rules.js';
+import { ALL_AGENTS } from '../../shared/rules.js';
 
 export interface RuleMatch {
   readonly behavior: 'allow' | 'deny';
@@ -32,7 +39,19 @@ const COMPOUND_COMMAND = /[;&|`<>\n\r]|\$\(/u;
 const CLAUDE_SHELLS: ReadonlyMap<string, string> = new Map([
   ['bash', 'Bash'],
   ['execute', 'Bash'],
+  ['exec_command', 'Bash'],
 ]);
+
+/** The agent a rule applies to: its own, or Claude Code for a rule saved before rules had one. */
+export function ruleAgent(rule: AutoApproveRule): AgentId {
+  return rule.agent ?? CLAUDE_CODE;
+}
+
+/** True when the rule applies to requests from this agent. */
+export function ruleCovers(rule: AutoApproveRule, agent: AgentId): boolean {
+  const scope = ruleAgent(rule);
+  return scope === ALL_AGENTS || scope === agent;
+}
 
 function isShell(toolName: string): boolean {
   return toolName === 'Bash' || toolName === 'PowerShell' || CLAUDE_SHELLS.has(toolName);
@@ -106,6 +125,7 @@ export function literalPattern(text: string): string {
  * backslash, since no pattern matches it exactly.
  */
 export function alwaysAllowRule(
+  agent: AgentId,
   toolName: string,
   input: unknown,
   id: string,
@@ -122,6 +142,7 @@ export function alwaysAllowRule(
     tool: literalPattern(toolName),
     pattern: command === null ? null : literalPattern(command.trim()),
     description: 'Added by Always allow',
+    agent,
   };
 }
 
@@ -142,15 +163,35 @@ function patternMatches(rule: AutoApproveRule, subject: RuleSubject | null): boo
   return compile(rule.pattern, subject.kind === 'recipient')(subject.value);
 }
 
-/** True when a rule's tool pattern covers the tool, whether or not the rule is enabled. */
-export function toolPatternMatches(pattern: string, toolName: string): boolean {
+/**
+ * True when a rule's tool pattern covers the tool, whether or not the rule is
+ * enabled. Another agent's shell also answers to Claude's name for it, Bash.
+ */
+export function toolPatternMatches(
+  pattern: string,
+  toolName: string,
+  agent: AgentId = CLAUDE_CODE,
+): boolean {
   const matcher = compile(pattern, false);
-  const claude = CLAUDE_SHELLS.get(toolName);
-  return matcher(toolName) || (claude !== undefined && matcher(claude));
+  if (matcher(toolName)) {
+    return true;
+  }
+  const claude = agent === CLAUDE_CODE ? undefined : CLAUDE_SHELLS.get(toolName);
+  return claude !== undefined && matcher(claude);
 }
 
-export function ruleMatches(rule: AutoApproveRule, toolName: string, input: unknown): boolean {
-  if (!rule.enabled || !toolPatternMatches(rule.tool, toolName)) {
+/** True when the rule is on, applies to the agent, and covers this call. */
+export function ruleMatches(
+  rule: AutoApproveRule,
+  agent: AgentId,
+  toolName: string,
+  input: unknown,
+): boolean {
+  if (
+    !rule.enabled ||
+    !ruleCovers(rule, agent) ||
+    !toolPatternMatches(rule.tool, toolName, agent)
+  ) {
     return false;
   }
   return patternMatches(rule, ruleSubject(toolName, input));
@@ -159,12 +200,13 @@ export function ruleMatches(rule: AutoApproveRule, toolName: string, input: unkn
 /** The rule that decides a request: the first matching deny rule, else the first matching allow rule. */
 export function findMatchingRule(
   rules: readonly AutoApproveRule[],
+  agent: AgentId,
   toolName: string,
   input: unknown,
 ): AutoApproveRule | null {
   let allow: AutoApproveRule | null = null;
   for (const rule of rules) {
-    if (!ruleMatches(rule, toolName, input)) {
+    if (!ruleMatches(rule, agent, toolName, input)) {
       continue;
     }
     if (rule.behavior === 'deny') {
@@ -177,9 +219,10 @@ export function findMatchingRule(
 
 export function evaluateRules(
   rules: readonly AutoApproveRule[],
+  agent: AgentId,
   toolName: string,
   input: unknown,
 ): RuleMatch | null {
-  const rule = findMatchingRule(rules, toolName, input);
+  const rule = findMatchingRule(rules, agent, toolName, input);
   return rule === null ? null : { behavior: rule.behavior, ruleId: rule.id };
 }

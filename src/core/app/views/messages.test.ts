@@ -4,7 +4,7 @@ import path from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import type { AutoApproveRule } from '../../../shared/protocol.js';
+import type { AutoApproveRule } from '../../../shared/rules.js';
 import type { Runtime } from '../runtime.js';
 import type { TestEnv } from '../test-helpers/fixtures.js';
 import { makeApp, makeEnv, NOW, waitFor, writeJson, writeText } from '../test-helpers/fixtures.js';

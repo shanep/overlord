@@ -4,7 +4,7 @@
 // automatic decision lands in the audit log.
 
 import type { PermissionDecision, PermissionRequest } from '../../shared/model.js';
-import type { AutoApproveRule } from '../../shared/protocol.js';
+import type { AutoApproveRule } from '../../shared/rules.js';
 import type { EventBus } from '../bus.js';
 import type { AutoDecisionEntry } from '../harness/inbox.js';
 import { PermissionInbox } from '../harness/inbox.js';
@@ -42,7 +42,7 @@ export function decideByRules(
   rules: readonly AutoApproveRule[],
   request: PermissionRequest,
 ): PermissionDecision | null {
-  const rule = findMatchingRule(rules, request.toolName, request.input);
+  const rule = findMatchingRule(rules, request.agent, request.toolName, request.input);
   if (rule === null) {
     return null;
   }
@@ -125,7 +125,12 @@ export class PermissionHub {
     }
     // Answer first, so the request cannot time out while the rule is written.
     this.resolve(requestId, { behavior: 'allow', ruleId: null });
-    const rule = alwaysAllowRule(request.toolName, request.input, `allow-${request.id}`);
+    const rule = alwaysAllowRule(
+      request.agent,
+      request.toolName,
+      request.input,
+      `allow-${request.id}`,
+    );
     if (rule === null) {
       return 'once';
     }

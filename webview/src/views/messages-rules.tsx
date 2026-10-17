@@ -5,7 +5,7 @@
 import type { ReactElement } from 'react';
 import { useState } from 'react';
 
-import type { AutoApproveRule } from '../../../src/shared/protocol.js';
+import type { AutoApproveRule } from '../../../src/shared/rules.js';
 import { Badge } from '../components/badge.js';
 import { usePostAction } from '../vscode-context.js';
 

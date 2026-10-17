@@ -4,12 +4,8 @@ import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import type {
-  AgentMessage,
-  AutoApproveRule,
-  MessageRoute,
-  MessagesState,
-} from '../../../src/shared/protocol.js';
+import type { AgentMessage, MessageRoute, MessagesState } from '../../../src/shared/protocol.js';
+import type { AutoApproveRule } from '../../../src/shared/rules.js';
 import { NOW } from '../../test/fixtures.js';
 import { expectAccessible, renderView } from '../../test/render.js';
 

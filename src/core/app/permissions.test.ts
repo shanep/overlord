@@ -3,8 +3,10 @@ import path from 'node:path';
 
 import { describe, expect, it, vi, type Mock } from 'vitest';
 
+import { CLAUDE_CODE, CODEX, COPILOT } from '../../shared/agents.js';
 import type { PermissionDecision, PermissionRequest } from '../../shared/model.js';
-import type { AutoApproveRule } from '../../shared/protocol.js';
+import type { AutoApproveRule } from '../../shared/rules.js';
+import { ALL_AGENTS } from '../../shared/rules.js';
 import { EventBus } from '../bus.js';
 import { ruleDenyMessage } from '../hooks/mapping.js';
 
@@ -91,6 +93,33 @@ describe('decideByRules', () => {
     expect(
       decideByRules(rules, permissionRequest('3', { input: { command: 'cat x' } })),
     ).toBeNull();
+  });
+
+  it("keeps a rule saved before scopes off other agents' runtime and hook requests", () => {
+    const bash: AutoApproveRule = { ...ALLOW, pattern: null };
+    const codex = permissionRequest('c', {
+      agent: CODEX,
+      toolName: 'exec_command',
+      input: { command: 'ls' },
+      source: 'runtime',
+    });
+    const copilot = permissionRequest('p', {
+      agent: COPILOT,
+      toolName: 'bash',
+      input: { command: 'ls' },
+      source: 'hook',
+    });
+    expect(decideByRules([bash], codex)).toBeNull();
+    expect(decideByRules([bash], copilot)).toBeNull();
+    const all: AutoApproveRule = { ...bash, agent: ALL_AGENTS };
+    expect(decideByRules([all], codex)).toStrictEqual({ behavior: 'allow', ruleId: 'allow-ls' });
+    expect(decideByRules([all], copilot)).toStrictEqual({ behavior: 'allow', ruleId: 'allow-ls' });
+    const onlyCodex: AutoApproveRule = { ...bash, agent: CODEX };
+    expect(decideByRules([onlyCodex], codex)).toStrictEqual({
+      behavior: 'allow',
+      ruleId: 'allow-ls',
+    });
+    expect(decideByRules([onlyCodex], permissionRequest('claude'))).toBeNull();
   });
 });
 
@@ -226,6 +255,7 @@ describe('PermissionHub', () => {
       tool: 'Bash',
       pattern: 'npm test',
       description: 'Added by Always allow',
+      agent: CLAUDE_CODE,
     };
     expect(inbox.rules()).toStrictEqual([saved]);
     expect(await readJson(path.join(storageDir, 'rules.json'))).toStrictEqual({

@@ -136,7 +136,17 @@
       "behavior": "deny",
       "tool": "Bash",
       "pattern": "git push*",
-      "description": "Runs never push"
+      "description": "Runs never push",
+      "agent": "*"
+    },
+    {
+      "id": "rule-4",
+      "enabled": true,
+      "behavior": "allow",
+      "tool": "bash",
+      "pattern": "npm run lint",
+      "description": "Added by Always allow",
+      "agent": "copilot"
     },
     {
       "id": "rule-3",

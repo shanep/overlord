@@ -1,7 +1,9 @@
 import * as fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 
-import type { AutoApproveRule } from '../../shared/protocol.js';
+import { CLAUDE_CODE, COPILOT, CODEX } from '../../shared/agents.js';
+import type { AutoApproveRule } from '../../shared/rules.js';
+import { ALL_AGENTS } from '../../shared/rules.js';
 
 import {
   alwaysAllowRule,
@@ -9,6 +11,8 @@ import {
   findMatchingRule,
   isCompoundCommand,
   literalPattern,
+  ruleAgent,
+  ruleCovers,
   ruleMatches,
   ruleSubject,
   SEND_MESSAGE_TOOL,
@@ -68,13 +72,23 @@ describe('ruleSubject', () => {
     });
   });
 
-  it("matches a Bash rule through other agents' names for the shell", () => {
-    const bash = rule({ id: 'b', tool: 'Bash', pattern: 'git status*' });
-    expect(ruleMatches(bash, 'bash', { command: 'git status' })).toBe(true);
-    expect(ruleMatches(bash, 'execute', { command: 'git status -s' })).toBe(true);
-    expect(ruleMatches(bash, 'execute', { command: 'git status && rm -rf ~' })).toBe(false);
-    expect(ruleMatches(rule({ id: 'e', tool: 'execute' }), 'execute', {})).toBe(true);
-    expect(ruleMatches(rule({ id: 'r', tool: 'Read' }), 'bash', {})).toBe(false);
+  it("matches a Bash rule through other agents' names for the shell when it covers them", () => {
+    const bash = rule({ id: 'b', tool: 'Bash', pattern: 'git status*', agent: ALL_AGENTS });
+    expect(ruleMatches(bash, COPILOT, 'bash', { command: 'git status' })).toBe(true);
+    expect(ruleMatches(bash, COPILOT, 'execute', { command: 'git status -s' })).toBe(true);
+    expect(ruleMatches(bash, CODEX, 'exec_command', { command: 'git status' })).toBe(true);
+    expect(ruleMatches(bash, COPILOT, 'execute', { command: 'git status && rm -rf ~' })).toBe(
+      false,
+    );
+    expect(ruleMatches(rule({ id: 'e', tool: 'execute' }), CLAUDE_CODE, 'execute', {})).toBe(true);
+    const read = rule({ id: 'r', tool: 'Read', agent: ALL_AGENTS });
+    expect(ruleMatches(read, COPILOT, 'bash', {})).toBe(false);
+  });
+
+  it("does not map Claude's own tools to Bash", () => {
+    const bash = rule({ id: 'b', tool: 'Bash' });
+    expect(ruleMatches(bash, CLAUDE_CODE, 'bash', { command: 'ls' })).toBe(false);
+    expect(ruleMatches(bash, CLAUDE_CODE, 'execute', { command: 'ls' })).toBe(false);
   });
 
   it('uses file_path, then path, then notebook_path for file tools', () => {
@@ -155,9 +169,9 @@ describe('literalPattern', () => {
     ];
     for (const command of commands) {
       const pattern = exactCommandRule(command);
-      expect(ruleMatches(pattern, 'Bash', { command })).toBe(true);
-      expect(ruleMatches(pattern, 'Bash', { command: `${command}x` })).toBe(false);
-      expect(ruleMatches(pattern, 'Bash', { command: `x${command}` })).toBe(false);
+      expect(ruleMatches(pattern, CLAUDE_CODE, 'Bash', { command })).toBe(true);
+      expect(ruleMatches(pattern, CLAUDE_CODE, 'Bash', { command: `${command}x` })).toBe(false);
+      expect(ruleMatches(pattern, CLAUDE_CODE, 'Bash', { command: `x${command}` })).toBe(false);
     }
   });
 
@@ -171,8 +185,10 @@ describe('literalPattern', () => {
         const command = raw.trim();
         fc.pre(command !== '' && !isCompoundCommand(command));
         const pattern = exactCommandRule(command);
-        expect(ruleMatches(pattern, 'Bash', { command })).toBe(true);
-        expect(ruleMatches(pattern, 'Bash', { command: `${command}${extra}` })).toBe(false);
+        expect(ruleMatches(pattern, CLAUDE_CODE, 'Bash', { command })).toBe(true);
+        expect(ruleMatches(pattern, CLAUDE_CODE, 'Bash', { command: `${command}${extra}` })).toBe(
+          false,
+        );
       }),
     );
   });
@@ -180,7 +196,12 @@ describe('literalPattern', () => {
 
 describe('alwaysAllowRule', () => {
   it('allows the exact command for a shell tool', () => {
-    const made = alwaysAllowRule('Bash', { command: '  git log --format="%h (%s)"  ' }, 'r1');
+    const made = alwaysAllowRule(
+      CLAUDE_CODE,
+      'Bash',
+      { command: '  git log --format="%h (%s)"  ' },
+      'r1',
+    );
     expect(made).toStrictEqual({
       id: 'r1',
       enabled: true,
@@ -188,112 +209,178 @@ describe('alwaysAllowRule', () => {
       tool: 'Bash',
       pattern: literalPattern('git log --format="%h (%s)"'),
       description: 'Added by Always allow',
+      agent: CLAUDE_CODE,
     });
     if (made === null) {
       return;
     }
-    expect(ruleMatches(made, 'Bash', { command: 'git log --format="%h (%s)"' })).toBe(true);
-    expect(ruleMatches(made, 'Bash', { command: 'git log --format="%h (%s)" -p' })).toBe(false);
-    expect(ruleMatches(made, 'PowerShell', { command: 'git log --format="%h (%s)"' })).toBe(false);
+    expect(ruleMatches(made, CLAUDE_CODE, 'Bash', { command: 'git log --format="%h (%s)"' })).toBe(
+      true,
+    );
+    expect(
+      ruleMatches(made, CLAUDE_CODE, 'Bash', { command: 'git log --format="%h (%s)" -p' }),
+    ).toBe(false);
+    expect(
+      ruleMatches(made, CLAUDE_CODE, 'PowerShell', { command: 'git log --format="%h (%s)"' }),
+    ).toBe(false);
   });
 
   it('allows the whole tool when there is no command', () => {
-    expect(alwaysAllowRule('Edit', { file_path: '/a.ts' }, 'r2')).toMatchObject({
+    expect(alwaysAllowRule(CLAUDE_CODE, 'Edit', { file_path: '/a.ts' }, 'r2')).toMatchObject({
       tool: 'Edit',
       pattern: null,
     });
-    expect(alwaysAllowRule('mcp__github__create_issue', {}, 'r3')).toMatchObject({
+    expect(alwaysAllowRule(CLAUDE_CODE, 'mcp__github__create_issue', {}, 'r3')).toMatchObject({
       tool: 'mcp__github__create_issue',
       pattern: null,
     });
   });
 
   it('gives no rule for a compound command, since no allow rule could match it', () => {
-    expect(alwaysAllowRule('Bash', { command: 'ls && rm -rf ~' }, 'r4')).toBeNull();
-    expect(alwaysAllowRule('Bash', { command: 'ls\n' }, 'r5')).toBeNull();
+    expect(alwaysAllowRule(CLAUDE_CODE, 'Bash', { command: 'ls && rm -rf ~' }, 'r4')).toBeNull();
+    expect(alwaysAllowRule(CLAUDE_CODE, 'Bash', { command: 'ls\n' }, 'r5')).toBeNull();
   });
 
   it('gives no rule for a command with a backslash, since no pattern matches it exactly', () => {
-    expect(alwaysAllowRule('Bash', { command: String.raw`printf "a\n"` }, 'r6')).toBeNull();
+    expect(
+      alwaysAllowRule(CLAUDE_CODE, 'Bash', { command: String.raw`printf "a\n"` }, 'r6'),
+    ).toBeNull();
+  });
+});
+
+describe('rule scope', () => {
+  const shell = { command: 'git status' };
+
+  it('keeps a rule with no agent to Claude Code, so an old Bash rule approves no other shell', () => {
+    const legacy = rule({ id: 'legacy', tool: 'Bash' });
+    expect(ruleAgent(legacy)).toBe(CLAUDE_CODE);
+    expect(ruleMatches(legacy, CLAUDE_CODE, 'Bash', shell)).toBe(true);
+    expect(ruleMatches(legacy, COPILOT, 'bash', shell)).toBe(false);
+    expect(ruleMatches(legacy, COPILOT, 'execute', shell)).toBe(false);
+    expect(ruleMatches(legacy, CODEX, 'exec_command', shell)).toBe(false);
+    expect(ruleMatches(rule({ id: 'any' }), COPILOT, 'view', { path: '/a' })).toBe(false);
+  });
+
+  it('lets an all agents rule approve every shell', () => {
+    const all = rule({ id: 'all', tool: 'Bash', pattern: 'git status', agent: ALL_AGENTS });
+    expect(ruleCovers(all, 'some-acp-agent')).toBe(true);
+    expect(ruleMatches(all, CLAUDE_CODE, 'Bash', shell)).toBe(true);
+    expect(ruleMatches(all, COPILOT, 'bash', shell)).toBe(true);
+    expect(ruleMatches(all, CODEX, 'exec_command', shell)).toBe(true);
+  });
+
+  it('keeps a Copilot rule off Claude and Codex', () => {
+    const copilot = rule({ id: 'c', tool: 'Bash', agent: COPILOT });
+    expect(ruleMatches(copilot, COPILOT, 'bash', shell)).toBe(true);
+    expect(ruleMatches(copilot, CLAUDE_CODE, 'Bash', shell)).toBe(false);
+    expect(ruleMatches(copilot, CODEX, 'exec_command', shell)).toBe(false);
+  });
+
+  it('lets a deny rule for another agent leave Claude asking', () => {
+    const rules = [rule({ id: 'deny', behavior: 'deny', tool: 'Bash', agent: COPILOT })];
+    expect(evaluateRules(rules, CLAUDE_CODE, 'Bash', shell)).toBeNull();
+    expect(evaluateRules(rules, COPILOT, 'bash', shell)).toStrictEqual({
+      behavior: 'deny',
+      ruleId: 'deny',
+    });
+  });
+
+  it('scopes an Always allow rule to the agent that asked', () => {
+    expect(alwaysAllowRule(COPILOT, 'bash', shell, 'r')).toMatchObject({
+      tool: 'bash',
+      agent: COPILOT,
+    });
   });
 });
 
 describe('ruleMatches', () => {
   it('ignores disabled rules', () => {
-    expect(ruleMatches(rule({ id: 'r', enabled: false }), 'Bash', { command: 'ls' })).toBe(false);
-    expect(ruleMatches(rule({ id: 'r' }), 'Bash', { command: 'ls' })).toBe(true);
+    expect(
+      ruleMatches(rule({ id: 'r', enabled: false }), CLAUDE_CODE, 'Bash', { command: 'ls' }),
+    ).toBe(false);
+    expect(ruleMatches(rule({ id: 'r' }), CLAUDE_CODE, 'Bash', { command: 'ls' })).toBe(true);
   });
 
   it('matches tool names with globs and exactly otherwise', () => {
     const mcp = rule({ id: 'r', tool: 'mcp__github__*' });
-    expect(ruleMatches(mcp, 'mcp__github__create_issue', {})).toBe(true);
-    expect(ruleMatches(mcp, 'mcp__gitlab__create_issue', {})).toBe(false);
+    expect(ruleMatches(mcp, CLAUDE_CODE, 'mcp__github__create_issue', {})).toBe(true);
+    expect(ruleMatches(mcp, CLAUDE_CODE, 'mcp__gitlab__create_issue', {})).toBe(false);
     const read = rule({ id: 'r', tool: 'Read' });
-    expect(ruleMatches(read, 'Read', {})).toBe(true);
-    expect(ruleMatches(read, 'read', {})).toBe(false);
-    expect(ruleMatches(read, 'ReadAll', {})).toBe(false);
+    expect(ruleMatches(read, CLAUDE_CODE, 'Read', {})).toBe(true);
+    expect(ruleMatches(read, CLAUDE_CODE, 'read', {})).toBe(false);
+    expect(ruleMatches(read, CLAUDE_CODE, 'ReadAll', {})).toBe(false);
   });
 
   it('never matches an empty tool pattern', () => {
-    expect(ruleMatches(rule({ id: 'r', tool: '' }), 'Bash', {})).toBe(false);
+    expect(ruleMatches(rule({ id: 'r', tool: '' }), CLAUDE_CODE, 'Bash', {})).toBe(false);
   });
 
   it('matches command patterns with stars that cross slashes', () => {
     const npm = rule({ id: 'r', tool: 'Bash', pattern: 'npm run *' });
-    expect(ruleMatches(npm, 'Bash', { command: 'npm run lint' })).toBe(true);
-    expect(ruleMatches(npm, 'Bash', { command: '  npm run test/unit  ' })).toBe(true);
-    expect(ruleMatches(npm, 'Bash', { command: 'npm install' })).toBe(false);
-    expect(ruleMatches(npm, 'Bash', {})).toBe(false);
+    expect(ruleMatches(npm, CLAUDE_CODE, 'Bash', { command: 'npm run lint' })).toBe(true);
+    expect(ruleMatches(npm, CLAUDE_CODE, 'Bash', { command: '  npm run test/unit  ' })).toBe(true);
+    expect(ruleMatches(npm, CLAUDE_CODE, 'Bash', { command: 'npm install' })).toBe(false);
+    expect(ruleMatches(npm, CLAUDE_CODE, 'Bash', {})).toBe(false);
   });
 
   it('never lets an allow rule match a compound command', () => {
     const git = rule({ id: 'r', tool: 'Bash', pattern: 'git status*' });
-    expect(ruleMatches(git, 'Bash', { command: 'git status' })).toBe(true);
-    expect(ruleMatches(git, 'Bash', { command: 'git status && rm -rf ~' })).toBe(false);
+    expect(ruleMatches(git, CLAUDE_CODE, 'Bash', { command: 'git status' })).toBe(true);
+    expect(ruleMatches(git, CLAUDE_CODE, 'Bash', { command: 'git status && rm -rf ~' })).toBe(
+      false,
+    );
     const all = rule({ id: 'r', tool: 'Bash', pattern: '*' });
-    expect(ruleMatches(all, 'Bash', { command: 'a; b' })).toBe(false);
-    expect(ruleMatches(rule({ id: 'r', tool: 'Bash' }), 'Bash', { command: 'a; b' })).toBe(true);
+    expect(ruleMatches(all, CLAUDE_CODE, 'Bash', { command: 'a; b' })).toBe(false);
+    expect(
+      ruleMatches(rule({ id: 'r', tool: 'Bash' }), CLAUDE_CODE, 'Bash', { command: 'a; b' }),
+    ).toBe(true);
   });
 
   it('lets a deny rule match a compound command', () => {
     const deny = rule({ id: 'd', behavior: 'deny', tool: 'Bash', pattern: '*rm -rf*' });
-    expect(ruleMatches(deny, 'Bash', { command: 'git status && rm -rf ~' })).toBe(true);
+    expect(ruleMatches(deny, CLAUDE_CODE, 'Bash', { command: 'git status && rm -rf ~' })).toBe(
+      true,
+    );
   });
 
   it('matches path patterns with normal glob rules', () => {
     const source = rule({ id: 'r', tool: 'Edit', pattern: '/repo/src/**/*.ts' });
-    expect(ruleMatches(source, 'Edit', { file_path: '/repo/src/a/b.ts' })).toBe(true);
-    expect(ruleMatches(source, 'Edit', { file_path: '/repo/src/.hidden/b.ts' })).toBe(true);
-    expect(ruleMatches(source, 'Edit', { file_path: '/repo/test/b.ts' })).toBe(false);
+    expect(ruleMatches(source, CLAUDE_CODE, 'Edit', { file_path: '/repo/src/a/b.ts' })).toBe(true);
+    expect(ruleMatches(source, CLAUDE_CODE, 'Edit', { file_path: '/repo/src/.hidden/b.ts' })).toBe(
+      true,
+    );
+    expect(ruleMatches(source, CLAUDE_CODE, 'Edit', { file_path: '/repo/test/b.ts' })).toBe(false);
     const shallow = rule({ id: 'r', tool: 'Edit', pattern: '/repo/*' });
-    expect(ruleMatches(shallow, 'Edit', { file_path: '/repo/a/b' })).toBe(false);
-    expect(ruleMatches(shallow, 'Edit', { file_path: '/repo/a' })).toBe(true);
+    expect(ruleMatches(shallow, CLAUDE_CODE, 'Edit', { file_path: '/repo/a/b' })).toBe(false);
+    expect(ruleMatches(shallow, CLAUDE_CODE, 'Edit', { file_path: '/repo/a' })).toBe(true);
   });
 
   it('treats a bad pattern as no match', () => {
-    expect(ruleMatches(rule({ id: 'r', pattern: '' }), 'Read', { file_path: '/a' })).toBe(false);
+    expect(
+      ruleMatches(rule({ id: 'r', pattern: '' }), CLAUDE_CODE, 'Read', { file_path: '/a' }),
+    ).toBe(false);
   });
 
   it('reuses compiled patterns', () => {
     const cached = rule({ id: 'r', tool: 'Read', pattern: '/x/**' });
-    expect(ruleMatches(cached, 'Read', { file_path: '/x/1' })).toBe(true);
-    expect(ruleMatches(cached, 'Read', { file_path: '/x/2' })).toBe(true);
-    expect(ruleMatches(cached, 'Read', { file_path: '/y/2' })).toBe(false);
+    expect(ruleMatches(cached, CLAUDE_CODE, 'Read', { file_path: '/x/1' })).toBe(true);
+    expect(ruleMatches(cached, CLAUDE_CODE, 'Read', { file_path: '/x/2' })).toBe(true);
+    expect(ruleMatches(cached, CLAUDE_CODE, 'Read', { file_path: '/y/2' })).toBe(false);
   });
 
   it('keeps command and path compilations of one pattern apart', () => {
     const commandRule = rule({ id: 'c', tool: 'Bash', pattern: 'a*' });
     const pathRule = rule({ id: 'p', tool: 'Read', pattern: 'a*' });
-    expect(ruleMatches(commandRule, 'Bash', { command: 'a/b' })).toBe(true);
-    expect(ruleMatches(pathRule, 'Read', { file_path: 'a/b' })).toBe(false);
-    expect(ruleMatches(commandRule, 'Bash', { command: 'a/b' })).toBe(true);
+    expect(ruleMatches(commandRule, CLAUDE_CODE, 'Bash', { command: 'a/b' })).toBe(true);
+    expect(ruleMatches(pathRule, CLAUDE_CODE, 'Read', { file_path: 'a/b' })).toBe(false);
+    expect(ruleMatches(commandRule, CLAUDE_CODE, 'Bash', { command: 'a/b' })).toBe(true);
   });
 });
 
 describe('evaluateRules', () => {
   it('returns null when nothing matches', () => {
-    expect(evaluateRules([], 'Bash', { command: 'ls' })).toBeNull();
-    expect(evaluateRules([rule({ id: 'a', tool: 'Read' })], 'Bash', {})).toBeNull();
+    expect(evaluateRules([], CLAUDE_CODE, 'Bash', { command: 'ls' })).toBeNull();
+    expect(evaluateRules([rule({ id: 'a', tool: 'Read' })], CLAUDE_CODE, 'Bash', {})).toBeNull();
   });
 
   it('returns the first matching allow rule', () => {
@@ -302,7 +389,7 @@ describe('evaluateRules', () => {
       rule({ id: 'first', tool: 'Bash' }),
       rule({ id: 'second', tool: 'Bash' }),
     ];
-    expect(evaluateRules(rules, 'Bash', { command: 'ls' })).toStrictEqual({
+    expect(evaluateRules(rules, CLAUDE_CODE, 'Bash', { command: 'ls' })).toStrictEqual({
       behavior: 'allow',
       ruleId: 'first',
     });
@@ -314,20 +401,23 @@ describe('evaluateRules', () => {
       rule({ id: 'deny', tool: 'Bash', behavior: 'deny', pattern: 'rm *' }),
       rule({ id: 'deny2', tool: 'Bash', behavior: 'deny' }),
     ];
-    expect(evaluateRules(rules, 'Bash', { command: 'rm x' })).toStrictEqual({
+    expect(evaluateRules(rules, CLAUDE_CODE, 'Bash', { command: 'rm x' })).toStrictEqual({
       behavior: 'deny',
       ruleId: 'deny',
     });
-    expect(evaluateRules(rules, 'Bash', { command: 'ls' })).toStrictEqual({
+    expect(evaluateRules(rules, CLAUDE_CODE, 'Bash', { command: 'ls' })).toStrictEqual({
       behavior: 'deny',
       ruleId: 'deny2',
     });
-    expect(findMatchingRule(rules, 'Bash', { command: 'rm x' })).toBe(rules[1]);
+    expect(findMatchingRule(rules, CLAUDE_CODE, 'Bash', { command: 'rm x' })).toBe(rules[1]);
   });
 
   it('ignores a disabled deny rule', () => {
     const rules = [rule({ id: 'deny', behavior: 'deny', enabled: false }), rule({ id: 'allow' })];
-    expect(evaluateRules(rules, 'Read', {})).toStrictEqual({ behavior: 'allow', ruleId: 'allow' });
+    expect(evaluateRules(rules, CLAUDE_CODE, 'Read', {})).toStrictEqual({
+      behavior: 'allow',
+      ruleId: 'allow',
+    });
   });
 
   const tools = fc.constantFrom('Bash', 'Read', 'Edit', 'mcp__github__x', '*', 'mcp__*');
@@ -354,8 +444,12 @@ describe('evaluateRules', () => {
         toolNameArb,
         inputArb,
         (rules, tool, input) => {
-          const matching = rules.filter((candidate) => ruleMatches(candidate, tool, input));
-          expect(evaluateRules(rules, tool, input)).toStrictEqual(expectedOutcome(matching));
+          const matching = rules.filter((candidate) =>
+            ruleMatches(candidate, CLAUDE_CODE, tool, input),
+          );
+          expect(evaluateRules(rules, CLAUDE_CODE, tool, input)).toStrictEqual(
+            expectedOutcome(matching),
+          );
         },
       ),
     );
@@ -368,8 +462,8 @@ describe('evaluateRules', () => {
         toolNameArb,
         inputArb,
         (rules, tool, input) => {
-          const forward = evaluateRules(rules, tool, input);
-          const backward = evaluateRules(rules.toReversed(), tool, input);
+          const forward = evaluateRules(rules, CLAUDE_CODE, tool, input);
+          const backward = evaluateRules(rules.toReversed(), CLAUDE_CODE, tool, input);
           expect(forward?.behavior).toBe(backward?.behavior);
         },
       ),
@@ -383,7 +477,7 @@ describe('evaluateRules', () => {
         toolNameArb,
         inputArb,
         (rules, tool, input) => {
-          const found = findMatchingRule(rules, tool, input);
+          const found = findMatchingRule(rules, CLAUDE_CODE, tool, input);
           expect(found === null || found.enabled).toBe(true);
         },
       ),
@@ -409,18 +503,18 @@ describe('SendMessage rules', () => {
 
   it('lets a star cross the slashes in a socket address', () => {
     const deny = rule({ id: 'd', behavior: 'deny', tool: 'SendMessage', pattern: 'uds:*' });
-    expect(ruleMatches(deny, 'SendMessage', message)).toBe(true);
-    expect(ruleMatches(deny, 'SendMessage', { to: 'main' })).toBe(false);
-    expect(ruleMatches(deny, 'SendMessage', { to: ' uds:/x' })).toBe(false);
+    expect(ruleMatches(deny, CLAUDE_CODE, 'SendMessage', message)).toBe(true);
+    expect(ruleMatches(deny, CLAUDE_CODE, 'SendMessage', { to: 'main' })).toBe(false);
+    expect(ruleMatches(deny, CLAUDE_CODE, 'SendMessage', { to: ' uds:/x' })).toBe(false);
     const exact = rule({ id: 'e', behavior: 'deny', tool: 'SendMessage', pattern: 'wt-apps-*' });
-    expect(ruleMatches(exact, 'SendMessage', { to: 'wt-apps-d3' })).toBe(true);
-    expect(ruleMatches(exact, 'SendMessage', { to: 'main' })).toBe(false);
+    expect(ruleMatches(exact, CLAUDE_CODE, 'SendMessage', { to: 'wt-apps-d3' })).toBe(true);
+    expect(ruleMatches(exact, CLAUDE_CODE, 'SendMessage', { to: 'main' })).toBe(false);
   });
 
   it('keeps file paths on the strict matcher', () => {
     const paths = rule({ id: 'p', tool: 'Read', pattern: 'src/*' });
-    expect(ruleMatches(paths, 'Read', { file_path: 'src/a/b.ts' })).toBe(false);
-    expect(ruleMatches(paths, 'Read', { file_path: 'src/b.ts' })).toBe(true);
+    expect(ruleMatches(paths, CLAUDE_CODE, 'Read', { file_path: 'src/a/b.ts' })).toBe(false);
+    expect(ruleMatches(paths, CLAUDE_CODE, 'Read', { file_path: 'src/b.ts' })).toBe(true);
   });
 
   it('checks a tool pattern whether or not the rule is enabled', () => {

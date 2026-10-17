@@ -416,6 +416,7 @@ describe('auto-approve rules', () => {
     expect(rules.getByText(/Deny rules always win/u)).toBeDefined();
     expect(rules.getByText('any')).toBeDefined();
     expect(rules.getByText('rm *')).toBeDefined();
+    expect(rules.getAllByText('Claude Code').length).toBeGreaterThan(0);
     const read = rules.getByRole('checkbox', { name: 'Enable rule for Read' });
     const bash = rules.getByRole('checkbox', { name: 'Enable rule for Bash' });
     expect(read).toHaveProperty('checked', true);
@@ -446,6 +447,7 @@ describe('auto-approve rules', () => {
     await userEvent.type(tool, 'Read');
     await userEvent.type(rules.getByRole('textbox', { name: 'Command or path' }), 'src/**');
     await userEvent.selectOptions(action, 'allow');
+    await userEvent.selectOptions(rules.getByRole('combobox', { name: 'Agent' }), 'All agents');
     await userEvent.click(add);
     expect(api.actions()).toStrictEqual([
       {
@@ -457,6 +459,7 @@ describe('auto-approve rules', () => {
           tool: 'Grep',
           pattern: null,
           description: 'No grep',
+          agent: 'claude-code',
         },
       },
       {
@@ -468,6 +471,7 @@ describe('auto-approve rules', () => {
           tool: 'Read',
           pattern: 'src/**',
           description: '',
+          agent: '*',
         },
       },
     ]);

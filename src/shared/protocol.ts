@@ -30,6 +30,7 @@ import type {
 } from './model.js';
 import type { FleetProgress } from './progress.js';
 import type { ReputationState } from './reputation.js';
+import type { AutoApproveRule } from './rules.js';
 import type { TuningState } from './tuning.js';
 import type { WorktreeSummary } from './worktrees.js';
 
@@ -171,17 +172,6 @@ export interface LaunchRun {
   readonly durationMs: number;
   readonly result: string | null;
   readonly worktreePath: string | null;
-}
-
-export interface AutoApproveRule {
-  readonly id: string;
-  readonly enabled: boolean;
-  readonly behavior: 'allow' | 'deny';
-  /** Tool name pattern, for example "Bash" or "mcp__github__*". */
-  readonly tool: string;
-  /** Optional pattern on the command (Bash) or path (file tools). */
-  readonly pattern: string | null;
-  readonly description: string;
 }
 
 /** A folder the Launcher form offers to run in. */

@@ -6,7 +6,8 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { AgentNode, PermissionRequest } from '../../shared/model.js';
-import type { AutoApproveRule } from '../../shared/protocol.js';
+import type { AutoApproveRule } from '../../shared/rules.js';
+import { ALL_AGENTS } from '../../shared/rules.js';
 import { createCopilotHooks } from '../agents/copilot/hooks.js';
 import { EventBus } from '../bus.js';
 
@@ -361,7 +362,7 @@ describe('HookServer', () => {
     it('answers a permission hook from the rules and never holds it', async () => {
       const server = await startServer({
         dialects: (agent) => (agent === 'copilot' ? createCopilotHooks() : null),
-        rules: [allowLs],
+        rules: [{ ...allowLs, agent: ALL_AGENTS }],
       });
       const asked: PermissionRequest[] = [];
       bus.on('permission.requested', (request) => asked.push(request));
@@ -372,6 +373,16 @@ describe('HookServer', () => {
       expect(await opened.next()).toStrictEqual({ id: 'm2', output: {} });
       expect(asked).toStrictEqual([]);
       expect(server.pendingRequests()).toStrictEqual([]);
+    });
+
+    it('leaves a Claude Bash rule out of Copilot permission hooks', async () => {
+      await startServer({
+        dialects: (agent) => (agent === 'copilot' ? createCopilotHooks() : null),
+        rules: [allowLs],
+      });
+      const opened = await client();
+      copilotSend(opened, 'm1', 'permissionRequest', copilotPermission('ls -la'));
+      expect(await opened.next()).toStrictEqual({ id: 'm1', output: {} });
     });
 
     it('sends a note for the first prompt with the session start after it', async () => {

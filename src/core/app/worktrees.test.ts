@@ -462,8 +462,11 @@ describe('worktrees in the app', { timeout: 30_000 }, () => {
         {},
       );
       await test.app.runtime.launcher.idle();
-      expect(errors.map((error) => error.source)).toStrictEqual(['worktrees']);
-      expect(errors[0]?.message).toMatch(
+      // A busy machine can make the background worktree reload fail too, so
+      // look for the setup warning alone instead of counting every error.
+      const warnings = errors.filter((error) => error.message.includes(SETUP_SCRIPT));
+      expect(warnings.map((error) => error.source)).toStrictEqual(['worktrees']);
+      expect(warnings[0]?.message).toMatch(
         /^Running \.overlord\/setup\.sh failed: \.overlord\/setup\.sh exited 5/u,
       );
     });

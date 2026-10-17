@@ -3,7 +3,8 @@
 // can block SendMessage. Reads are synchronous from a per-runtime cache that
 // refreshes in the background once it is older than STALE_MS.
 
-import type { AutoApproveRule, MessagesState } from '../../../shared/protocol.js';
+import type { MessagesState } from '../../../shared/protocol.js';
+import type { AutoApproveRule } from '../../../shared/rules.js';
 import { claudeKnobs } from '../../agents/claude/config.js';
 import { SEND_MESSAGE_TOOL, toolPatternMatches } from '../../hooks/rules.js';
 import { loadCatalog } from '../../knobs/catalog.js';

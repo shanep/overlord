@@ -4,7 +4,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import type { LaunchProfile, LaunchSpec, PermissionDecision } from '../../shared/model.js';
-import type { AutoApproveRule } from '../../shared/protocol.js';
+import type { AutoApproveRule } from '../../shared/rules.js';
 import { addProject } from '../projects/book.js';
 
 import { BROWSE_TITLE, CONFIRM_ABOVE_USD, defaultModel } from './actions-launch.js';

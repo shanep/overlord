@@ -8,7 +8,8 @@ import path from 'node:path';
 import { z } from 'zod';
 
 import { CLAUDE_CODE } from '../../shared/agents.js';
-import type { AutoApproveRule, LauncherState, SurfaceSession } from '../../shared/protocol.js';
+import type { LauncherState, SurfaceSession } from '../../shared/protocol.js';
+import type { AutoApproveRule } from '../../shared/rules.js';
 import { readOptional, writeFileAtomic } from '../knobs/atomic-file.js';
 import type { ProjectBook } from '../projects/book.js';
 
@@ -48,14 +49,20 @@ export function storagePath(storageDir: string, name: StorageName): string {
   return path.join(storageDir, STORAGE_FILES[name]);
 }
 
-const ruleSchema = z.object({
-  id: z.string().min(1),
-  enabled: z.boolean(),
-  behavior: z.enum(['allow', 'deny']),
-  tool: z.string().min(1),
-  pattern: z.string().nullable(),
-  description: z.string(),
-});
+const ruleSchema = z
+  .object({
+    id: z.string().min(1),
+    enabled: z.boolean(),
+    behavior: z.enum(['allow', 'deny']),
+    tool: z.string().min(1),
+    pattern: z.string().nullable(),
+    description: z.string(),
+    agent: z.string().min(1).optional(),
+  })
+  // A rule with no agent keeps the key out, so it reads as an old Claude Code rule.
+  .transform(({ agent, ...rule }): AutoApproveRule =>
+    agent === undefined ? rule : { ...rule, agent },
+  );
 
 /** The rule when the value is a valid AutoApproveRule, else null. */
 export function parseRule(value: unknown): AutoApproveRule | null {

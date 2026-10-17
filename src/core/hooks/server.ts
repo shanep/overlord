@@ -18,7 +18,7 @@ import path from 'node:path';
 import type { AgentId } from '../../shared/agents.js';
 import { CLAUDE_CODE } from '../../shared/agents.js';
 import type { PermissionDecision, PermissionRequest } from '../../shared/model.js';
-import type { AutoApproveRule } from '../../shared/protocol.js';
+import type { AutoApproveRule } from '../../shared/rules.js';
 import { claudeHooks } from '../agents/claude/hooks.js';
 import type { EventBus } from '../bus.js';
 
@@ -341,7 +341,7 @@ export class HookServer {
     if (!PRE_TOOL_DENY_TOOLS.has(event.tool.name)) {
       return null;
     }
-    const rule = findMatchingRule(this.rules, event.tool.name, event.tool.input);
+    const rule = findMatchingRule(this.rules, event.agent, event.tool.name, event.tool.input);
     if (rule?.behavior !== 'deny') {
       return null;
     }
@@ -384,7 +384,7 @@ export class HookServer {
     dialect: HookDialect,
   ): void {
     const request = toPermissionRequest(event, this.newId(), this.now());
-    const rule = findMatchingRule(this.rules, request.toolName, request.input);
+    const rule = findMatchingRule(this.rules, request.agent, request.toolName, request.input);
     if (rule !== null) {
       const decision: PermissionDecision =
         rule.behavior === 'allow'

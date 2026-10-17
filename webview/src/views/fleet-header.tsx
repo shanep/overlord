@@ -9,7 +9,7 @@ import {
   type SessionSummary,
 } from '../../../src/shared/model.js';
 import type { FleetState } from '../../../src/shared/protocol.js';
-import { knownAgents, knowsClaude, useAgents } from '../agents.js';
+import { findAgent, knownAgents, knowsClaude, useAgents } from '../agents.js';
 import { Badge } from '../components/badge.js';
 import { Meter } from '../components/meter.js';
 import { formatCost, formatDuration, formatValue, truncate } from '../format.js';
@@ -99,11 +99,23 @@ export function FleetHeader(props: {
 /** A banner button: one of the request's choices, or Always allow, which adds a rule. */
 export type BannerChoice = PermissionChoice | 'always';
 
-/** What an Always allow rule for this tool covers, for the button's tooltip. */
-export function alwaysAllowScope(toolName: string): string {
-  return toolName === 'Bash' || toolName === 'PowerShell'
-    ? 'Allow this exact command from now on, in every session'
-    : `Allow every ${toolName} request from now on, in every session`;
+const SHELL_TOOLS: ReadonlySet<string> = new Set([
+  'Bash',
+  'PowerShell',
+  'bash',
+  'execute',
+  'exec_command',
+]);
+
+/**
+ * What an Always allow rule for this tool covers, for the button's tooltip.
+ * The rule answers only the agent that asked, so the tip names it.
+ */
+export function alwaysAllowScope(toolName: string, agentShort: string): string {
+  const where = `in every ${agentShort} session`;
+  return SHELL_TOOLS.has(toolName)
+    ? `Allow this exact command from now on, ${where}`
+    : `Allow every ${toolName} request from now on, ${where}`;
 }
 
 /** True when the request takes this answer. */
@@ -117,6 +129,7 @@ export function PermissionBanner(props: {
   readonly onResolve: (request: PermissionRequest, choice: BannerChoice) => void;
 }): ReactElement {
   const { requests, sessions, onResolve } = props;
+  const agents = useAgents();
   const titleOf = (sessionId: string): string =>
     sessions.find((session) => session.id === sessionId)?.title ?? sessionId;
   const noun = requests.length === 1 ? 'permission' : 'permissions';
@@ -145,7 +158,10 @@ export function PermissionBanner(props: {
                 </button>
                 <button
                   type="button"
-                  data-tip={alwaysAllowScope(request.toolName)}
+                  data-tip={alwaysAllowScope(
+                    request.toolName,
+                    findAgent(agents, request.agent).short,
+                  )}
                   aria-label={`Always allow ${request.toolName} for ${title}`}
                   onClick={() => {
                     onResolve(request, 'always');

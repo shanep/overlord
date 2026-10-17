@@ -131,7 +131,7 @@ describe('FleetView', () => {
     await user.click(screen.getByRole('button', { name: 'Deny Bash for gone' }));
     await user.click(screen.getByRole('button', { name: 'Always allow Bash for gone' }));
     expect(screen.getByRole('button', { name: 'Always allow Bash for gone' }).dataset['tip']).toBe(
-      'Allow this exact command from now on, in every session',
+      'Allow this exact command from now on, in every Claude session',
     );
     expect(api.actions()).toStrictEqual([
       {
@@ -182,10 +182,15 @@ describe('FleetView', () => {
   });
 
   it('says what always allow covers for shells and for other tools', () => {
-    expect(alwaysAllowScope('PowerShell')).toBe(
-      'Allow this exact command from now on, in every session',
+    expect(alwaysAllowScope('PowerShell', 'Claude')).toBe(
+      'Allow this exact command from now on, in every Claude session',
     );
-    expect(alwaysAllowScope('Edit')).toBe('Allow every Edit request from now on, in every session');
+    expect(alwaysAllowScope('bash', 'Copilot')).toBe(
+      'Allow this exact command from now on, in every Copilot session',
+    );
+    expect(alwaysAllowScope('Edit', 'Claude')).toBe(
+      'Allow every Edit request from now on, in every Claude session',
+    );
   });
 
   it('shows how much health each session has left and opens its properties from the bar', async () => {

@@ -7,6 +7,7 @@ import {
   type PermissionChoice,
   type PermissionRequest,
 } from '../../../src/shared/model.js';
+import { findAgent, useAgents } from '../agents.js';
 import { useNow } from '../clock.js';
 import { Card, CardGrid, StatusDot } from '../components/card.js';
 import { JsonView } from '../components/json-view.js';
@@ -22,6 +23,7 @@ export function PermissionInbox(props: {
 }): ReactElement {
   const post = usePostAction();
   const now = useNow();
+  const agents = useAgents();
   const answer = (request: PermissionRequest, choice: PermissionChoice): void => {
     post({
       type: 'resolvePermission',
@@ -59,7 +61,7 @@ export function PermissionInbox(props: {
               <span className="spacer" />
               <button
                 type="button"
-                title={alwaysAllowScope(request.toolName)}
+                title={alwaysAllowScope(request.toolName, findAgent(agents, request.agent).short)}
                 aria-label={`Always allow ${request.toolName} for ${request.sessionId}`}
                 onClick={() => {
                   post({ type: 'alwaysAllowPermission', requestId: request.id });
