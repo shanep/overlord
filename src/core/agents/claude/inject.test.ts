@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import type { InjectFacet } from '../types.js';
-import { INJECT_ORDER, injectRoute } from '../types.js';
+import type { InjectFacet } from '../talk-types.js';
+import { INJECT_ORDER, injectRoute } from '../talk-types.js';
 
 import { claudeInject } from './inject.js';
 

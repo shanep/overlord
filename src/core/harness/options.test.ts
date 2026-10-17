@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import type { LaunchProfile, LaunchSpec } from '../../shared/model.js';
 import { claudeCode } from '../agents/claude/index.js';
+import type { LaunchOverrides } from '../knobs/facet.js';
+import { parseExtraArgs } from '../knobs/launch.js';
 
-import { findProfile, mergeEnv, parseExtraArgs, sessionSettings } from './options.js';
+import { findProfile, mergeEnv, sessionSettings } from './options.js';
 
 const MODES = claudeCode.modes;
 
@@ -56,6 +58,10 @@ describe('parseExtraArgs', () => {
   });
 });
 
+function launch(): LaunchOverrides {
+  return { env: {}, extraArgs: { search: null }, config: [{ key: ['model'], raw: '"o3"' }] };
+}
+
 describe('findProfile', () => {
   it('finds the profile, null for none, and throws when missing', () => {
     expect(findProfile(spec, [profile])).toBe(profile);
@@ -76,6 +82,7 @@ describe('sessionSettings', () => {
       permissionMode: 'acceptEdits',
       env: { FOO: 'profile', PATH: '/bin', EXTRA: '1' },
       extraArgs: { 'verbose-tools': null, 'add-dir': '/tmp/x', name: 'value' },
+      config: [],
       maxBudgetUsd: 2,
     });
   });
@@ -87,7 +94,19 @@ describe('sessionSettings', () => {
       permissionMode: null,
       env: { PATH: '/bin' },
       extraArgs: {},
+      config: [],
       maxBudgetUsd: null,
+    });
+  });
+
+  it("takes flags and config overrides from the agent's launch overrides when it has them", () => {
+    expect(sessionSettings(spec, profile, {}, { ...MODES, launch })).toMatchObject({
+      extraArgs: { search: null },
+      config: [{ key: ['model'], raw: '"o3"' }],
+    });
+    expect(sessionSettings(spec, null, {}, { ...MODES, launch })).toMatchObject({
+      extraArgs: {},
+      config: [],
     });
   });
 

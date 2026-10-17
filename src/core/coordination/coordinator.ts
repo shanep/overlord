@@ -108,6 +108,23 @@ export class Coordinator {
     return null;
   }
 
+  /**
+   * Who else works in cwd's repository, for a session about to start there
+   * that hears it at launch instead of from its SessionStart hook. Tracks
+   * nothing, since the session has no id yet.
+   */
+  startNote(cwd: string): string | null {
+    if (!this.deps.enabled()) {
+      return null;
+    }
+    const worktrees = this.deps.worktrees();
+    const all = buildWorkspaces(worktrees, this.tracked());
+    const place = workspaceFor(cwd, worktrees);
+    const self = all.find((item) => item.key === place?.key) ?? place;
+    const peers = self === null ? [] : peersOf(self, all);
+    return peers.length === 0 ? null : peerContext(peers);
+  }
+
   private observe(event: NormalizedHookEvent): void {
     if (event.kind === 'session-end') {
       this.forget(event.sessionId);

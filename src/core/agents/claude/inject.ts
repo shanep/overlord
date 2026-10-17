@@ -4,7 +4,7 @@
 // user sees (see answerClaudeHook in hooks.ts). Claude also takes
 // --append-system-prompt, which only matters once its hooks are off.
 
-import type { InjectFacet } from '../types.js';
+import type { InjectFacet } from '../talk-types.js';
 
 export const claudeInject: InjectFacet = {
   routes: ['hook', 'launch-argument'],

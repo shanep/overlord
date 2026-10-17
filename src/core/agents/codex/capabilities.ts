@@ -8,8 +8,9 @@ export const CODEX_NAME = 'Codex CLI';
 export const CODEX_SHORT = 'Codex';
 
 /**
- * Milestones 1 to 3 of META-HARNESS.md: Overlord reads Codex sessions,
- * starts them in tabs and drives them from the Launcher over app-server.
+ * Milestones 1 to 4 of META-HARNESS.md: Overlord reads Codex sessions,
+ * starts them in tabs, drives them from the Launcher over app-server, and
+ * reaches them through hooks and launch overrides.
  */
 export const CODEX_CAPABILITIES: AgentCapabilities = {
   launch: true,
@@ -22,8 +23,8 @@ export const CODEX_CAPABILITIES: AgentCapabilities = {
   interrupt: true,
   // turn/start takes a model for the turn and the ones after it.
   liveModelChange: true,
-  // turn/start takes a policy too, but the set mode action only reads Claude's mode ids so far.
-  livePermissionMode: false,
+  // turn/start takes an approval and sandbox policy too, from the next turn on, like the model.
+  livePermissionMode: true,
   approvals: true,
   subagents: false,
   // Rollouts report cached input, and cache writes too, though a ChatGPT plan reports 0.
@@ -32,7 +33,9 @@ export const CODEX_CAPABILITIES: AgentCapabilities = {
   // A ChatGPT plan bills by plan limits, not tokens, so there is no honest dollar figure.
   costUsd: false,
   contextInspector: false,
-  hooks: false,
+  // Launcher runs and tabs Overlord opens get the notes as developer_instructions. Other
+  // sessions get them, and edit conflict blocks, from the hooks once the user trusts them.
+  hooks: true,
   messaging: false,
   handoffs: ['resume-local'],
 };

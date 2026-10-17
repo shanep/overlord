@@ -21,6 +21,7 @@ import type {
   ToolPermissionResult,
 } from '../agents/shared/runtime.js';
 import type { EventBus } from '../bus.js';
+import type { ConfigOverride } from '../knobs/facet.js';
 
 import { errorMessage, type EndReason, type SessionEvent, type SessionInfo } from './events.js';
 import type { PermissionBroker } from './inbox.js';
@@ -45,6 +46,8 @@ export interface SessionConfig {
   /** The full child environment (already merged onto process.env). */
   readonly env: Readonly<Record<string, string>>;
   readonly extraArgs: Readonly<Record<string, string | null>>;
+  /** Settings for this launch only. See StartOptions. */
+  readonly config?: readonly ConfigOverride[] | undefined;
   readonly maxBudgetUsd: number | null;
   readonly executablePath: string | null;
   /** Runs the session without MCP servers. See StartOptions. */
@@ -123,6 +126,10 @@ export class AgentSession {
       effort: config.effort,
       permissionMode: config.permissionMode,
       extraArgs: config.extraArgs,
+      // Left out when empty, so agents that take no config overrides see the options they always did.
+      ...(config.config === undefined || config.config.length === 0
+        ? {}
+        : { config: config.config }),
       maxBudgetUsd: config.maxBudgetUsd,
       executablePath: config.executablePath,
       noMcp: config.noMcp ?? false,

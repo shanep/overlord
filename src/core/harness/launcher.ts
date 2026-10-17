@@ -13,6 +13,7 @@ import type { AgentAdapter } from '../agents/types.js';
 import type { Backend, EndpointSource } from '../bridge/backend.js';
 import { chosenBackend } from '../bridge/backends.js';
 import type { EventBus } from '../bus.js';
+import type { ConfigOverride } from '../knobs/facet.js';
 
 import { errorMessage, type TurnResult } from './events.js';
 import type { PermissionBroker } from './inbox.js';
@@ -39,6 +40,14 @@ export interface LauncherDeps {
   readonly bus: EventBus;
   readonly broker: PermissionBroker;
   readonly worktrees?: WorktreeProvider | null;
+  /**
+   * Config overrides a new session of agent in cwd takes at launch, such as
+   * Overlord's notes, or null when the agent takes none.
+   */
+  readonly launchConfig?: (
+    agent: AgentId,
+    cwd: string,
+  ) => Promise<readonly ConfigOverride[]> | null;
   /** Loads the environment profiles are merged onto. Defaults to process.env. */
   readonly baseEnv?: () => Promise<Readonly<Record<string, string | undefined>>>;
   /** Picks the agent's binary, given the loaded base environment. Null keeps the runtime's own. */
@@ -241,9 +250,16 @@ export class Launcher {
     const baseEnv = this.deps.baseEnv === undefined ? process.env : await this.deps.baseEnv();
     const profile = findProfile(spec, record.profiles);
     const { adapter, runtime } = this.runtimeFor(profile, spec);
-    const settings = sessionSettings(spec, profile, baseEnv, adapter.modes);
+    const settings = sessionSettings(spec, profile, baseEnv, {
+      ...adapter.modes,
+      launch: adapter.config?.knobs?.launchOverrides,
+    });
     const backend = chosenBackend({ backend: profile?.backend, env: settings.env }, adapter.id);
     const lease = spec.worktree ? await this.acquireWorktree(record) : null;
+    const cwd = lease?.path ?? spec.cwd;
+    // Only an agent that takes something at launch waits here, so other runs start as before.
+    const pending = this.launchConfig(adapter.id, cwd);
+    const notes = pending === null ? [] : await pending;
     if (record.stopRequested) {
       this.finish(record, 'stopped', null);
       return;
@@ -263,15 +279,28 @@ export class Launcher {
         agent: adapter.id,
         // An agent shows it has a price table by pricing its own default model.
         priced: adapter.models.price(adapter.models.defaultModel) !== null,
-        cwd: lease?.path ?? spec.cwd,
+        cwd,
+        config: [...settings.config, ...notes],
         title: spec.label,
-        executablePath: this.deps.executablePath?.(adapter.id, baseEnv) ?? null,
+        executablePath: this.binaryFor(adapter.id, baseEnv),
       },
     );
     record.session = session;
     this.follow(record, session);
     session.send(spec.prompt);
     this.settle(record, await session.finished);
+  }
+
+  /** What the agent takes at launch, or null when it takes nothing. */
+  private launchConfig(agent: AgentId, cwd: string): Promise<readonly ConfigOverride[]> | null {
+    return this.deps.launchConfig?.(agent, cwd) ?? null;
+  }
+
+  private binaryFor(
+    agent: AgentId,
+    env: Readonly<Record<string, string | undefined>>,
+  ): string | null {
+    return this.deps.executablePath?.(agent, env) ?? null;
   }
 
   /** A run's env and MCP choice on its backend, once the backend's endpoint is up. */

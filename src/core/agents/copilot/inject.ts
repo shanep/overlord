@@ -5,7 +5,7 @@
 // Launcher run gets the text in front of its first prompt, and a terminal
 // session gets nothing.
 
-import type { InjectFacet } from '../types.js';
+import type { InjectFacet } from '../talk-types.js';
 
 export const copilotInject: InjectFacet = {
   routes: ['hook', 'first-prompt'],

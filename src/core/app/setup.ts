@@ -2,7 +2,8 @@
 // command asks first, and the app starts or stops the matching receiver after.
 // The work goes through Claude Code's hooks and telemetry facets. When
 // Copilot CLI is set up on this machine, the hooks commands also offer its
-// hooks file, with a question of its own.
+// hooks file, with a question of its own, and Codex CLI gets its hooks and
+// its [otel] block the same way (setup-codex.ts).
 
 import { mkdir, stat } from 'node:fs/promises';
 import path from 'node:path';
@@ -16,6 +17,13 @@ import type { ClaudePaths } from '../paths.js';
 import type { AppError } from './errors.js';
 import type { HostPort } from './host-port.js';
 import { telemetryActive, userSettingsEnv } from './settings-view.js';
+import type { CodexSetupDeps } from './setup-codex.js';
+import {
+  disableCodexTelemetry,
+  enableCodexTelemetry,
+  installCodexHooks,
+  uninstallCodexHooks,
+} from './setup-codex.js';
 
 export interface SetupStatus {
   readonly hooksInstalled: boolean;
@@ -57,7 +65,8 @@ export class SetupCommands {
   async installHooks(): Promise<void> {
     const claude = await this.installClaudeHooks();
     const copilot = await this.installCopilotHooks();
-    if (claude || copilot) {
+    const codex = await installCodexHooks(this.codex());
+    if (claude || copilot || codex) {
       await this.deps.sync();
     }
   }
@@ -65,7 +74,8 @@ export class SetupCommands {
   async uninstallHooks(): Promise<void> {
     const claude = await this.uninstallClaudeHooks();
     const copilot = await this.uninstallCopilotHooks();
-    if (claude || copilot) {
+    const codex = await uninstallCodexHooks(this.codex());
+    if (claude || copilot || codex) {
       await this.deps.sync();
     }
   }
@@ -141,28 +151,51 @@ export class SetupCommands {
   }
 
   async enableTelemetry(): Promise<void> {
+    const claude = await this.enableClaudeTelemetry();
+    const codex = await enableCodexTelemetry(this.codex(), this.deps.host.settings.telemetryPort);
+    if (claude || codex) {
+      await this.deps.sync();
+    }
+  }
+
+  async disableTelemetry(): Promise<void> {
+    const claude = await this.disableClaudeTelemetry();
+    const codex = await disableCodexTelemetry(this.codex());
+    if (claude || codex) {
+      await this.deps.sync();
+    }
+  }
+
+  /** True when the user said yes. */
+  private async enableClaudeTelemetry(): Promise<boolean> {
     const { host } = this.deps;
     const port = host.settings.telemetryPort;
     const question = `Overlord will set the telemetry env vars in ~/.claude/settings.json so Claude Code sends metrics to 127.0.0.1:${String(port)}. Prompts and tool details stay off. Continue?`;
     if (!(await host.confirm(question, 'Enable'))) {
-      return;
+      return false;
     }
     if (this.shown(await claudeTelemetry.enable(this.dirs(), port))) {
       host.showInfo('Telemetry is on for new Claude Code sessions.');
     }
-    await this.deps.sync();
+    return true;
   }
 
-  async disableTelemetry(): Promise<void> {
+  /** True when the user said yes. */
+  private async disableClaudeTelemetry(): Promise<boolean> {
     const { host } = this.deps;
     const question = 'Remove the telemetry env vars from ~/.claude/settings.json?';
     if (!(await host.confirm(question, 'Disable'))) {
-      return;
+      return false;
     }
     if (this.shown(await claudeTelemetry.disable(this.dirs()))) {
       host.showInfo('Telemetry is off for new Claude Code sessions.');
     }
-    await this.deps.sync();
+    return true;
+  }
+
+  private codex(): CodexSetupDeps {
+    const { paths, host, env } = this.deps;
+    return { paths, host, env: env ?? {} };
   }
 
   async status(): Promise<SetupStatus> {

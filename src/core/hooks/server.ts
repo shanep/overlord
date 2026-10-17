@@ -52,8 +52,8 @@ export interface HookServerOptions {
   readonly platform?: NodeJS.Platform;
   /** Longest hook message accepted before the connection is dropped. */
   readonly maxLineBytes?: number;
-  /** Text every new session gets from its SessionStart hook, or null for none. Must not block. */
-  readonly sessionContext?: () => string | null;
+  /** Text a new session gets from its SessionStart hook, or null for none. Must not block. */
+  readonly sessionContext?: (event: HookEventOf<'session-start'>) => string | null;
   /** Answers a hook that no deny rule answered, or null for no opinion. Must not wait on anything. */
   readonly advise?: Adviser | null;
   /** The dialect for the relay's --agent value, or null for an agent with no hooks. Claude Code only by default. */
@@ -138,7 +138,7 @@ export class HookServer {
   private readonly eventListeners = new Set<Callback<HookEvent>>();
   private readonly instructionListeners = new Set<Callback<InstructionLoadedEvent>>();
   private readonly agentStarts = new Map<string, number>();
-  private readonly sessionContext: () => string | null;
+  private readonly sessionContext: (event: HookEventOf<'session-start'>) => string | null;
   private rules: readonly AutoApproveRule[];
 
   constructor(options: HookServerOptions) {
@@ -304,7 +304,7 @@ export class HookServer {
       return advice;
     }
     const adviceNote = advice?.context ?? '';
-    const notes = [this.sessionNote(), adviceNote === '' ? null : adviceNote].filter(
+    const notes = [this.sessionNote(event), adviceNote === '' ? null : adviceNote].filter(
       (note): note is string => note !== null,
     );
     const notice = advice?.notice ?? '';
@@ -315,9 +315,9 @@ export class HookServer {
     return Object.keys(answer).length === 0 ? null : answer;
   }
 
-  private sessionNote(): string | null {
+  private sessionNote(event: HookEventOf<'session-start'>): string | null {
     try {
-      return this.sessionContext();
+      return this.sessionContext(event);
     } catch (error) {
       this.report(`session note failed: ${errorMessage(error)}`);
       return null;

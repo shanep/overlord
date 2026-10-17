@@ -5,6 +5,7 @@
 // settings go in as `-c key=value` and thread params, never into config.toml.
 
 import { AsyncQueue } from '../../harness/input-queue.js';
+import type { ConfigOverride } from '../../knobs/facet.js';
 import { configArgs } from '../../knobs/launch.js';
 import type { AgentEvent } from '../shared/events.js';
 import type {
@@ -69,16 +70,17 @@ function splitMode(mode: string): Permission {
   return { approvalPolicy, sandbox };
 }
 
-/** The app-server's argv: effort as a config override, then the profile's own flags. */
+/**
+ * The app-server's argv: effort and the launch's config overrides as `-c
+ * key=value`, one pair each, then the profile's own flags.
+ */
 export function appServerArgs(options: StartOptions): string[] {
-  const effort =
-    options.effort === null
-      ? []
-      : configArgs([{ key: ['model_reasoning_effort'], value: options.effort }]);
+  const effort: readonly ConfigOverride[] =
+    options.effort === null ? [] : [{ key: ['model_reasoning_effort'], value: options.effort }];
   const extra = Object.entries(options.extraArgs).flatMap(([flag, value]) =>
     value === null ? [`--${flag}`] : [`--${flag}`, value],
   );
-  return ['app-server', ...effort, ...extra];
+  return ['app-server', ...configArgs([...effort, ...(options.config ?? [])]), ...extra];
 }
 
 /** The request that opens the thread: start, resume, or fork into a new one. */

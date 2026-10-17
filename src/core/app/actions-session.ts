@@ -14,7 +14,6 @@ import { agents } from '../agents/index.js';
 import type { AgentTerminal } from '../agents/terminals.js';
 import { terminalOf } from '../agents/terminals.js';
 import type { AgentAdapter, TerminalFacet } from '../agents/types.js';
-import { parsePermissionMode } from '../harness/events.js';
 import { isTerminal } from '../harness/launcher.js';
 import type { AgentSession } from '../harness/session.js';
 import type { HandoffCommand } from '../surfaces/handoff.js';
@@ -389,12 +388,13 @@ export const sessionActions: ActionHandlers<SessionActions> = {
     rt.host.showInfo(`Model set to ${action.model}.`);
   },
   setPermissionMode: async ({ rt }, action) => {
-    const mode = parsePermissionMode(action.mode);
+    const { mode } = action;
     const target = sdkTarget(rt, action.sessionId);
     const adapter = sessionAdapter(rt, action.sessionId);
-    if (mode === null) {
+    // Each agent has its own modes, so the id is checked against the session's agent.
+    if (adapter?.modes.permission.some((option) => option.id === mode) !== true) {
       rt.host.showInfo(`Unknown permission mode "${action.mode}".`);
-    } else if (target === null && adapter?.capabilities.livePermissionMode === false) {
+    } else if (target === null && !adapter.capabilities.livePermissionMode) {
       rt.host.showInfo(`${adapter.name} cannot change permission mode while a session runs.`);
     } else if (target === null) {
       rt.host.showInfo(SDK_ONLY);

@@ -3,7 +3,6 @@
 // telemetry is on in user settings. Every start and stop runs through one queue, so a settings change
 // and a dispose can never interleave.
 
-import { copilotDirs, copilotHooks } from '../agents/copilot/hooks.js';
 import { agents } from '../agents/index.js';
 import type { AgentRegistry } from '../agents/registry.js';
 import type { WatchFactory } from '../agents/shared/tailing-watcher.js';
@@ -11,13 +10,15 @@ import { TailingWatcher } from '../agents/shared/tailing-watcher.js';
 import type { ObserverContext, ShellEnv } from '../agents/types.js';
 import type { EventBus } from '../bus.js';
 import { isInstalled } from '../hooks/install.js';
-import type { HookDialect } from '../hooks/normalized.js';
+import type { HookEventOf } from '../hooks/normalized.js';
 import type { Adviser } from '../hooks/server.js';
 import { HookServer } from '../hooks/server.js';
+import { installStableRelay } from '../hooks/stable-relay.js';
 import { TelemetryDecoder } from '../otel/decode.js';
 import { OtlpReceiver } from '../otel/receiver.js';
 import type { ClaudePaths } from '../paths.js';
 
+import { dialectsOf, exportingAgents, hookedAgents, telemetryDecoder } from './agent-talk.js';
 import { messageOf } from './errors.js';
 import type { HostPort } from './host-port.js';
 import type { PermissionHub } from './permissions.js';
@@ -43,8 +44,8 @@ export interface SourcesDeps {
   readonly advise?: Adviser | null;
   readonly report: (source: string, message: string) => void;
   readonly notify: () => void;
-  /** The SessionStart note for new sessions, or null for none. */
-  readonly sessionContext: () => string | null;
+  /** The SessionStart note for a new session, or null for none. */
+  readonly sessionContext: (event: HookEventOf<'session-start'>) => string | null;
 }
 
 /** prepareSocketPath says this when another window's hook server owns the socket. */
@@ -205,19 +206,32 @@ export class Sources {
   }
 
   private async syncHooks(): Promise<void> {
+    const { deps } = this;
     let installed = false;
     try {
-      installed =
-        (await isInstalled({ settingsFile: this.deps.paths.userSettings })) ||
-        (await copilotHooks.installed(copilotDirs(this.deps.paths.home, this.deps.env)));
+      installed = await isInstalled({ settingsFile: deps.paths.userSettings });
     } catch (error) {
-      this.deps.report('hooks', messageOf(error));
+      deps.report('hooks', messageOf(error));
     }
+    const others = await hookedAgents(deps.agents ?? agents, deps.paths, deps.env);
+    if (others.length > 0) {
+      await this.refreshRelay();
+    }
+    installed ||= others.length > 0;
     if (installed && this.hooks === null) {
       await this.startHooks();
     } else if (!installed) {
       this.observer = false;
       await this.stopHooks();
+    }
+  }
+
+  /** Puts this version's relay where the other agents' hook commands point. */
+  private async refreshRelay(): Promise<void> {
+    try {
+      await installStableRelay(this.deps.host.extensionPath, this.deps.paths.home);
+    } catch (error) {
+      this.deps.report('hooks', `Cannot update the hook relay: ${messageOf(error)}`);
     }
   }
 
@@ -233,7 +247,7 @@ export class Sources {
       platform: deps.platform,
       sessionContext: deps.sessionContext,
       advise: deps.advise ?? null,
-      dialects: (agent): HookDialect | null => (deps.agents ?? agents).get(agent)?.hooks ?? null,
+      dialects: dialectsOf(deps.agents ?? agents),
     });
     try {
       await server.start();
@@ -267,7 +281,9 @@ export class Sources {
   }
 
   private async syncTelemetry(): Promise<void> {
-    const active = telemetryActive(await userSettingsEnv(this.deps.paths));
+    const { deps } = this;
+    const exporting = await exportingAgents(deps.agents ?? agents, deps.paths, deps.env);
+    const active = telemetryActive(await userSettingsEnv(deps.paths)) || exporting.length > 0;
     if (active && this.receiver === null) {
       await this.startReceiver();
     } else if (!active) {
@@ -278,7 +294,11 @@ export class Sources {
   private async startReceiver(): Promise<void> {
     const { deps } = this;
     const port = deps.host.settings.telemetryPort;
-    const decoder = new TelemetryDecoder({ bus: deps.bus, now: deps.clock });
+    const decoder = new TelemetryDecoder({
+      bus: deps.bus,
+      now: deps.clock,
+      decode: telemetryDecoder(deps.agents ?? agents),
+    });
     const receiver = new OtlpReceiver({
       port,
       onExport: (signal, body): void => {

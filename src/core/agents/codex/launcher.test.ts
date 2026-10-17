@@ -18,7 +18,7 @@ import type {
 } from '../../../shared/model.js';
 import { EventBus, type OverlordEvents } from '../../bus.js';
 import { PermissionInbox } from '../../harness/inbox.js';
-import { Launcher } from '../../harness/launcher.js';
+import { Launcher, type LauncherDeps } from '../../harness/launcher.js';
 import { AgentRegistry } from '../registry.js';
 
 import { codexRuntime } from './runtime.js';
@@ -54,7 +54,13 @@ interface Setup {
   readonly seen: { readonly [K in keyof OverlordEvents]?: OverlordEvents[K][] };
 }
 
-function setup(recording: readonly Recorded[]): Setup {
+interface SetupOptions {
+  readonly profile?: LaunchProfile;
+  readonly launchConfig?: LauncherDeps['launchConfig'];
+}
+
+function setup(recording: readonly Recorded[], options: SetupOptions = {}): Setup {
+  const profile = options.profile ?? PROFILE;
   const server = new FakeAppServer(recording);
   const bus = new EventBus();
   const seen: Record<string, unknown[]> = {};
@@ -82,10 +88,11 @@ function setup(recording: readonly Recorded[]): Setup {
         await Promise.resolve();
         return { PATH: '/usr/bin' };
       },
+      ...(options.launchConfig === undefined ? {} : { launchConfig: options.launchConfig }),
     },
     2,
   );
-  launcher.launch([SPEC], [PROFILE]);
+  launcher.launch([SPEC], [profile]);
   return { launcher, inbox, server, seen };
 }
 
@@ -170,6 +177,36 @@ describe('a Launcher run on a Codex profile', () => {
     expect(inbox.list()).toStrictEqual([]);
     expect(server.sent('turn/interrupt')).toHaveLength(1);
     expect(launcher.runs()[0]).toMatchObject({ state: 'failed' });
+  });
+
+  it("passes every -c pair of the profile and Overlord's notes, each on its own", async () => {
+    const asks: string[] = [];
+    const { launcher, inbox, server } = setup(interruptedApproval(), {
+      profile: {
+        ...PROFILE,
+        extraArgs: ['-c', 'web_search="live"', '--config', 'hide_agent_reasoning=true'],
+      },
+      launchConfig: async (agent, cwd) => {
+        asks.push(`${agent} ${cwd}`);
+        await Promise.resolve();
+        return [{ key: ['developer_instructions'], value: 'Overlord notes' }];
+      },
+    });
+    await asked(inbox);
+    launcher.stopAll();
+    await launcher.idle();
+    expect(asks).toStrictEqual(['codex /work/repo']);
+    expect(server.launches[0]?.args).toStrictEqual([
+      'app-server',
+      '-c',
+      'model_reasoning_effort="low"',
+      '-c',
+      'web_search="live"',
+      '-c',
+      'hide_agent_reasoning=true',
+      '-c',
+      'developer_instructions="Overlord notes"',
+    ]);
   });
 
   it('kills the app-server when the run is stopped', async () => {

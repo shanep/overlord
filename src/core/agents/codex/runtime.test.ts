@@ -388,6 +388,29 @@ describe('how the Codex runtime starts app-server', () => {
     ]);
     started.run.stop();
     expect(appServerArgs(options())).toStrictEqual(['app-server']);
+    // Each config override is its own -c pair, so a profile's two pairs and Overlord's notes all arrive.
+    expect(
+      appServerArgs(
+        options({
+          effort: 'low',
+          config: [
+            { key: ['web_search'], raw: '"live"' },
+            { key: ['model_verbosity'], raw: '"low"' },
+            { key: ['developer_instructions'], value: 'notes' },
+          ],
+        }),
+      ),
+    ).toStrictEqual([
+      'app-server',
+      '-c',
+      'model_reasoning_effort="low"',
+      '-c',
+      'web_search="live"',
+      '-c',
+      'model_verbosity="low"',
+      '-c',
+      'developer_instructions="notes"',
+    ]);
     expect(
       threadRequest(options({ model: 'gpt-6-luna', permissionMode: 'on-request/workspace-write' })),
     ).toStrictEqual({

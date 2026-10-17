@@ -21,7 +21,6 @@ import type { InstructionGates } from '../context/gates.js';
 import type { CandidateKind, CandidateOrigin, InstructionNames } from '../context/types.js';
 import type { EditTools, HookDialect } from '../hooks/normalized.js';
 import type { KnobsFacet, SettingsFormat } from '../knobs/facet.js';
-import type { TelemetryDecode } from '../otel/decode.js';
 import type { ClaudePaths } from '../paths.js';
 import type { Prompt } from '../reputation/prompts.js';
 import type { Collected } from '../surfaces/common.js';
@@ -36,6 +35,9 @@ import type { SessionMeasure } from '../tuning/measure.js';
 
 import type { RuntimeFacet } from './shared/runtime.js';
 import type { SyncFacet } from './sync-types.js';
+import type { AgentDirs, InjectFacet, SettingsWriteResult, TelemetryFacet } from './talk-types.js';
+
+export type { AgentDirs, SettingsWriteResult } from './talk-types.js';
 
 /** The environment to look for binaries in, usually the login shell's. */
 export type ShellEnv = Readonly<Record<string, string | undefined>>;
@@ -330,16 +332,6 @@ export interface TuningFacet {
   readonly knobs?: Readonly<Record<string, readonly string[]>>;
 }
 
-/**
- * Where the app found an agent's files, so a facet can be pointed at a temp
- * folder in tests.
- */
-export interface AgentDirs {
-  readonly home: string;
-  /** The agent's config folder: ~/.claude or CLAUDE_CONFIG_DIR, ~/.copilot, ~/.codex or CODEX_HOME. */
-  readonly configDir: string;
-}
-
 interface HookInstallResult {
   /** False when the file already said the same thing. */
   readonly changed: boolean;
@@ -360,66 +352,6 @@ export interface HooksFacet extends HookDialect {
    * path, tried in order. The coordinator watches these for edits.
    */
   readonly editTools: EditTools;
-}
-
-export type SettingsWriteResult =
-  { readonly ok: true } | { readonly ok: false; readonly error: string };
-
-/**
- * Turns on the agent's OTLP export and reads what it sends. The receiver and
- * the join of span timings onto requests are shared. Workstream D owns it.
- */
-export interface TelemetryFacet {
-  /** Points the agent's export at the receiver on 127.0.0.1:port. Prompts and tool details stay off. */
-  enable: (dirs: AgentDirs, port: number) => Promise<SettingsWriteResult>;
-  disable: (dirs: AgentDirs) => Promise<SettingsWriteResult>;
-  /** Records from one export body, or null when it is not valid OTLP. */
-  readonly decode: TelemetryDecode;
-}
-
-/** The ways Overlord's text can reach a session. */
-export type InjectRoute = 'hook' | 'launch-argument' | 'first-prompt';
-
-/**
- * Best first. A hook answer reaches every session, Overlord's or not, at the
- * moment it matters. A launch argument only reaches sessions Overlord starts.
- * A first prompt prefix is the last resort, since it shows up in the
- * transcript as if the user typed it.
- */
-export const INJECT_ORDER: readonly InjectRoute[] = ['hook', 'launch-argument', 'first-prompt'];
-
-/**
- * How coordination notes, the launch check and the connector briefing reach
- * a session. Workstream D owns it.
- */
-export interface InjectFacet {
-  /** The routes the agent takes, in INJECT_ORDER. */
-  readonly routes: readonly InjectRoute[];
-  /** Arguments that add text to a new session's instructions. */
-  readonly launchArgs?: (text: string) => readonly string[];
-  /** The first prompt with Overlord's text in front of it. */
-  readonly promptPrefix?: (text: string, prompt: string) => string;
-}
-
-/**
- * The best route for a session. A hook only counts while the agent's hooks
- * are installed, and the other two only when Overlord starts the session.
- */
-export function injectRoute(
-  facet: InjectFacet,
-  usable: { readonly hooks: boolean; readonly launching: boolean },
-): InjectRoute | null {
-  const allowed = (route: InjectRoute): boolean => {
-    if (route === 'hook') {
-      return usable.hooks;
-    }
-    const supported =
-      route === 'launch-argument'
-        ? facet.launchArgs !== undefined
-        : facet.promptPrefix !== undefined;
-    return usable.launching && supported;
-  };
-  return INJECT_ORDER.find((route) => facet.routes.includes(route) && allowed(route)) ?? null;
 }
 
 /** Where an agent keeps its own files, for its instruction policy. */

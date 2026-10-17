@@ -1,7 +1,8 @@
 // Codex CLI as an agent adapter. Overlord reads its rollout files for the
-// Fleet, starts or resumes sessions in terminal tabs, and drives Launcher
-// runs over `codex app-server`. Hooking Codex comes in a later milestone of
-// META-HARNESS.md.
+// Fleet, starts or resumes sessions in terminal tabs, drives Launcher runs
+// over `codex app-server`, hooks it through $CODEX_HOME/hooks.json, gives
+// sessions it starts its notes as developer_instructions, and reads its OTel
+// logs.
 
 import { CODEX } from '../../../shared/agents.js';
 import { executableFor } from '../../app/claude-bin.js';
@@ -14,11 +15,15 @@ import {
   CODEX_PERMISSION_MODES,
   CODEX_SHORT,
 } from './capabilities.js';
+import { codexKnobs } from './config.js';
+import { codexHooks } from './hooks.js';
+import { codexInject } from './inject.js';
 import { codexInstructions } from './instructions.js';
 import { codexMcp } from './mcp.js';
 import { codexModels } from './models.js';
 import { codexObserverFacet } from './observer.js';
 import { codexRuntime } from './runtime.js';
+import { codexTelemetry } from './telemetry.js';
 import { codexTerminal } from './terminal.js';
 
 /** Finds the binary on the login shell's PATH without running it, so the version stays unknown. */
@@ -55,6 +60,9 @@ export const codex: AgentAdapter = {
   runtime: codexRuntime(),
   terminal: codexTerminal,
   observer: codexObserverFacet,
+  hooks: codexHooks,
+  telemetry: codexTelemetry,
+  inject: codexInject,
   instructions: codexInstructions,
-  config: { settingsFormat: 'toml', mcp: codexMcp },
+  config: { settingsFormat: 'toml', mcp: codexMcp, knobs: codexKnobs },
 };

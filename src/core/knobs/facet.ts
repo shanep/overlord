@@ -37,11 +37,14 @@ export type LayerSource =
   /** Variables from the process env, shaped as an env block. */
   | { readonly kind: 'env'; readonly layer: SettingsLayer };
 
-/** One setting for a single launch, which Codex takes as `-c key=value`. */
-export interface ConfigOverride {
-  readonly key: readonly string[];
-  readonly value: TomlEditValue;
-}
+/**
+ * One setting for a single launch, which Codex takes as `-c key=value`. A
+ * value the TOML editor cannot write, such as an inline table, or one the
+ * user typed in a profile, goes in as raw TOML text.
+ */
+export type ConfigOverride =
+  | { readonly key: readonly string[]; readonly value: TomlEditValue }
+  | { readonly key: readonly string[]; readonly raw: string };
 
 /** What a launch needs from a profile. Unset fields are left out. */
 export interface LaunchOverrides {

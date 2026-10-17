@@ -3,6 +3,7 @@
 // over its own driver (the Agent SDK for Claude, JSON-RPC for the others).
 
 import type { PermissionChoice, PermissionRequest } from '../../../shared/model.js';
+import type { ConfigOverride } from '../../knobs/facet.js';
 
 import type { AgentEvent, ContextUsage } from './events.js';
 
@@ -56,6 +57,8 @@ export interface StartOptions {
   readonly permissionMode: string | null;
   /** CLI style flags, where null marks a flag with no value. */
   readonly extraArgs: Readonly<Record<string, string | null>>;
+  /** Settings for this launch only, for an agent that takes them as -c key=value (Codex). */
+  readonly config?: readonly ConfigOverride[];
   readonly maxBudgetUsd: number | null;
   /** The agent binary, or null for the runtime's own default. */
   readonly executablePath: string | null;

@@ -14,10 +14,7 @@ import { GitHubReader } from '../catalog/github.js';
 import { callStdioTool } from '../connectors/stdio-mcp.js';
 import { Launcher } from '../harness/launcher.js';
 import { mergeEnv } from '../harness/options.js';
-import type { HookAnswer } from '../hooks/normalized.js';
-import { withContextNote, withNotice } from '../hooks/normalized.js';
 import { socketPath } from '../hooks/socket-path.js';
-import { compatSummary } from '../launch-check/note.js';
 import type { ClaudePaths } from '../paths.js';
 import { OverlordStore } from '../store/store.js';
 
@@ -36,9 +33,11 @@ import { ConfigSync } from './config-sync.js';
 import { createCoordinator } from './coordination.js';
 import type { AppError } from './errors.js';
 import { ErrorLog } from './errors.js';
+import { hookAnswers } from './hook-answers.js';
 import type { PanelParams } from './host-port.js';
 import { BackgroundJobs } from './jobs.js';
 import { createLaunchChecker } from './launch-check.js';
+import { LaunchNotes } from './launch-notes.js';
 import { LaunchedSessions } from './launched-sessions.js';
 import { paceHold, timeOfDay } from './pacing.js';
 import { PermissionHub } from './permissions.js';
@@ -59,7 +58,6 @@ import { SyncCommands } from './sync-commands.js';
 import { startTimers } from './timers.js';
 import { installTransferSkill } from './transfer.js';
 import { createActivity } from './views/activity.js';
-import { sessionBriefing } from './views/connectors.js';
 import { ContextViews } from './views/context.js';
 import { fleetFor } from './views/fleet.js';
 import { stateFor } from './views/state.js';
@@ -134,6 +132,7 @@ export class OverlordApp {
       pid: deps.pid ?? process.pid,
     });
     const runners = launcherAgents(deps.queryFunction);
+    const launchNotes = new LaunchNotes();
     const launcher = new Launcher(
       {
         agents: runners,
@@ -144,6 +143,7 @@ export class OverlordApp {
           void this.rt.caches.worktrees.refresh();
         }),
         baseEnv: launchEnv,
+        launchConfig: launchNotes.config,
         executablePath: (agent, runEnv): string | null =>
           launchBinary(host.settings, runners.get(agent), runEnv, platform),
         ...(host.backendEndpoint === undefined ? {} : { backendEndpoint: host.backendEndpoint }),
@@ -233,6 +233,7 @@ export class OverlordApp {
       },
       fetch: machine.fetch,
       callTool: deps.callTool ?? callStdioTool,
+      launchNotes,
     };
     const context = new ContextViews({ ...base, onUpdate: notify, onError: report });
     const activity = createActivity(base, machine.interval);
@@ -266,17 +267,14 @@ export class OverlordApp {
       watchFactory: deps.watchFactory,
       permissions,
       context,
-      advise: (event): HookAnswer | null => {
-        const note = launchCheck.noteFor(event);
-        return withNotice(
-          withContextNote(coordinator.handle(event), note),
-          note === null ? null : compatSummary(note),
-        );
-      },
+      ...hookAnswers(this.rt, {
+        coordinator,
+        launchCheck,
+        notes: launchNotes,
+        telemetryPort: () => this.sources.telemetryPort,
+      }),
       report,
       notify,
-      sessionContext: (): string | null =>
-        host.settings.briefSessions ? sessionBriefing(this.rt) : null,
     });
     this.setup = new SetupCommands({
       paths: this.paths,

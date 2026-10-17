@@ -163,5 +163,16 @@ export async function openClaudeTab(rt: Runtime, tab: ClaudeTab): Promise<string
     background === undefined || tab.foreground === true
       ? undefined
       : await openAttached(rt, at, background, tab);
-  return attached === undefined ? openPlain(rt, at, tab) : attached;
+  if (attached !== undefined) {
+    return attached;
+  }
+  // A new session or a fork hears Overlord's notes at launch when its agent takes them that way.
+  const fresh = tab.resume === null || tab.fork === true;
+  const pending = fresh ? rt.launchNotes.args(at.adapter.id, tab.cwd) : null;
+  const notes = pending === null ? [] : await pending;
+  return openPlain(
+    rt,
+    at,
+    notes.length === 0 ? tab : { ...tab, args: [...notes, ...(tab.args ?? [])] },
+  );
 }

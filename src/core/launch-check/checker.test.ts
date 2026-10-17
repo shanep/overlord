@@ -289,3 +289,28 @@ describe('LaunchChecker per agent', () => {
     expect(world.agents).toStrictEqual([CLAUDE_CODE, COPILOT]);
   });
 });
+
+describe('LaunchChecker at launch', () => {
+  it('waits for the check of a session about to start, for an agent that hears it at launch', async () => {
+    const { world, checker } = setUp();
+    const note = await checker.noteAt('/repo/sub', 'codex', 1000);
+    expect(note).toContain('- checked 1');
+    expect(world.agents).toStrictEqual(['codex']);
+    expect(await checker.noteAt('/repo/sub', 'codex', 1000)).toContain('- checked 1');
+    expect(world.probes).toHaveLength(1);
+  });
+
+  it('says so outside git, and nothing when off or in the home folder', async () => {
+    const { world, checker } = setUp();
+    expect(await checker.noteAt('/elsewhere', 'codex', 1000)).toContain('not in a git repository');
+    expect(await checker.noteAt('/home/me', 'codex', 1000)).toBeNull();
+    world.enabled = false;
+    expect(await checker.noteAt('/repo', 'codex', 1000)).toBeNull();
+  });
+
+  it('gives up waiting after the time it was given', async () => {
+    const { world, checker } = setUp();
+    world.fail = true;
+    expect(await checker.noteAt('/repo', 'codex', 1)).toBeNull();
+  });
+});

@@ -7,7 +7,7 @@ import path from 'node:path';
 
 import { loadCatalog } from '../../knobs/catalog.js';
 import type { KnobsFacet, LayerSource, SettingsPlace } from '../../knobs/facet.js';
-import { toLaunchOptions } from '../../knobs/launch.js';
+import { parseExtraArgs, toLaunchOptions } from '../../knobs/launch.js';
 import type { ConfigFacet } from '../types.js';
 
 import { claudeLibrary } from './library.js';
@@ -68,8 +68,12 @@ export const claudeKnobs: KnobsFacet = {
   neverMerges,
   // A managed availableModels list applies as is, with no entries added from lower layers.
   managedReplaces: new Set(['availableModels']),
-  // The Agent SDK and the CLI both take the profile's flags and env as they are.
-  launchOverrides: toLaunchOptions,
+  // The Agent SDK and the CLI both take the profile's flags and env as they are. A stray
+  // word that follows no flag is refused, as the Launcher always did.
+  launchOverrides: (profile) => ({
+    ...toLaunchOptions(profile),
+    extraArgs: parseExtraArgs(profile.extraArgs),
+  }),
 };
 
 export const claudeConfig: ConfigFacet = {

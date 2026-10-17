@@ -110,7 +110,11 @@ describe('a Codex tab', () => {
     });
     expect(opened).toBeNull();
     const request = env.host.terminals.at(-1);
-    expect(request).toMatchObject({ command: 'codex', args: ['Hello'], sessionId: null });
+    expect(request).toMatchObject({ command: 'codex', sessionId: null });
+    // Codex hears Overlord's notes at launch, here the connector briefing, then gets its prompt.
+    expect(request?.args.slice(0, 1)).toStrictEqual(['-c']);
+    expect(request?.args[1]).toMatch(/^developer_instructions="Overlord connector check\./u);
+    expect(request?.args.at(-1)).toBe('Hello');
     const now = rt.clock();
     rt.bus.emit(
       'session.upserted',

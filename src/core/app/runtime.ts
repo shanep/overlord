@@ -29,6 +29,7 @@ import type { TokenBudgets } from './budgets.js';
 import type { CatalogBrowser } from './catalog-browser.js';
 import type { HostPort } from './host-port.js';
 import type { BackgroundJobs } from './jobs.js';
+import type { LaunchNotes } from './launch-notes.js';
 import type { LaunchedSessions } from './launched-sessions.js';
 import type { PermissionHub } from './permissions.js';
 import type { SessionPlaces } from './places.js';
@@ -103,6 +104,8 @@ export interface Runtime {
   readonly registry: RegistrySearch;
   /** The premade skills and agents in the Skills and Agents views. */
   readonly catalogs: Catalogs;
+  /** Overlord's notes for sessions it starts of an agent that takes them at launch. */
+  readonly launchNotes: LaunchNotes;
   readonly configSync: ConfigSyncHandle;
   /** Calls the GitHub REST API and the MCP registry. Tests pass a fake so nothing reaches the network. */
   readonly fetch: FetchFunction;

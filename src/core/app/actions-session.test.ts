@@ -389,6 +389,15 @@ describe('other local sessions', () => {
       'Only sessions Overlord launched can change model or permission mode while they run.',
     );
   });
+
+  it("checks a mode against the session's own agent", async () => {
+    const env = await makeEnv();
+    const { app } = makeApp(env);
+    app.bus.emit('session.upserted', session('cx', { agent: 'codex' }));
+    await app.dispatch({ type: 'setPermissionMode', sessionId: 'cx', mode: 'never/read-only' }, {});
+    await app.dispatch({ type: 'setPermissionMode', sessionId: 'cx', mode: 'plan' }, {});
+    expect(env.host.infos).toStrictEqual([SDK_ONLY, 'Unknown permission mode "plan".']);
+  });
 });
 
 describe('attaching a background session', () => {

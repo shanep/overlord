@@ -47,6 +47,8 @@ export interface InstallOptions {
   /** Must contain "overlord-hook", which is how we find our entries again. */
   readonly hookCommand: string;
   readonly events?: readonly string[];
+  /** Seconds each event's hook may run. Claude Code's limits when left out. */
+  readonly timeoutFor?: (event: string) => number;
 }
 
 export interface SettingsFileOptions {
@@ -142,6 +144,7 @@ export function addOverlordHooks(
   settings: JsonObject,
   hookCommand: string,
   events: readonly string[],
+  timeoutFor: (event: string) => number = hookTimeoutFor,
 ): JsonObject {
   if (!hookCommand.includes(HOOK_MARKER)) {
     throw new Error(`the hook command must contain "${HOOK_MARKER}"`);
@@ -149,7 +152,7 @@ export function addOverlordHooks(
   const base = removeOverlordHooks(settings);
   const hooks: Record<string, GroupEntry[]> = { ...hooksBlockOf(base) };
   for (const event of new Set(events)) {
-    const handler = { type: 'command', command: hookCommand, timeout: hookTimeoutFor(event) };
+    const handler = { type: 'command', command: hookCommand, timeout: timeoutFor(event) };
     hooks[event] = [...(hooks[event] ?? []), { hooks: [handler] }];
   }
   return withHooks(base, hooks);
@@ -241,7 +244,7 @@ async function update(
 export async function installHooks(options: InstallOptions): Promise<ChangeResult> {
   const events = options.events ?? DEFAULT_HOOK_EVENTS;
   return update(options.settingsFile, (settings) =>
-    addOverlordHooks(settings, options.hookCommand, events),
+    addOverlordHooks(settings, options.hookCommand, events, options.timeoutFor),
   );
 }
 

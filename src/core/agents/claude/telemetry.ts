@@ -7,7 +7,8 @@ import path from 'node:path';
 import { writeSetting } from '../../knobs/write.js';
 import { decode } from '../../otel/decode.js';
 import { TELEMETRY_ENV_KEYS, telemetryEnv } from '../../otel/env.js';
-import type { AgentDirs, SettingsWriteResult, TelemetryFacet } from '../types.js';
+import type { TelemetryFacet } from '../talk-types.js';
+import type { AgentDirs, SettingsWriteResult } from '../types.js';
 
 /** Writes each env key in turn and stops at the first failure. */
 async function writeEnv(

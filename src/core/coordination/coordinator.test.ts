@@ -359,3 +359,26 @@ describe('Coordinator', () => {
     ).toBeNull();
   });
 });
+
+function plain(worktrees: WorktreeSummary[]): Coordinator {
+  return new Coordinator({
+    enabled: () => true,
+    worktrees: () => worktrees,
+    statuses: () => ({}),
+    isLive: () => false,
+    refresh: (): void => {
+      // Nothing to refresh.
+    },
+    now: () => 0,
+    editTools: () => ({}),
+  });
+}
+
+describe('Coordinator at launch', () => {
+  it('says who else works in the repository for a session about to start there', () => {
+    const coordinator = plain([worktree({ id: 'a' }), worktree({ id: 'b', files: ['src/x.ts'] })]);
+    expect(coordinator.startNote('/wt/a')).toContain('changing src/x.ts');
+    expect(coordinator.startNote('/elsewhere')).toBeNull();
+    expect(plain([worktree({ id: 'a' })]).startNote('/wt/a')).toBeNull();
+  });
+});

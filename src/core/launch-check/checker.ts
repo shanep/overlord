@@ -102,6 +102,45 @@ export class LaunchChecker {
     return later ? this.delivered(id) : null;
   }
 
+  /**
+   * The note for a session about to start in cwd, for an agent that hears it
+   * at launch instead of from a hook. A launch argument has one chance, so
+   * this waits up to waitMs for a check that is not ready yet.
+   */
+  async noteAt(cwd: string, agent: AgentId, waitMs: number): Promise<string | null> {
+    if (!this.deps.enabled() || cwd === '' || cwd === this.deps.home) {
+      return null;
+    }
+    const ready = this.readyNote(cwd, agent);
+    if (ready !== undefined) {
+      return ready;
+    }
+    this.refresh({ cwd, agent }, this.placeOf(cwd));
+    const job = this.jobs.get(keyOf(agent, cwd));
+    if (job !== undefined) {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const late = new Promise<void>((resolve) => {
+        timer = setTimeout(resolve, waitMs);
+      });
+      await Promise.race([job, late]);
+      clearTimeout(timer);
+    }
+    return this.readyNote(cwd, agent) ?? null;
+  }
+
+  /** The note from what is known now, or undefined while the check has no fresh result. */
+  private readyNote(cwd: string, agent: AgentId): string | undefined {
+    const location = this.placeOf(cwd) ?? this.located.get(cwd);
+    if (location === null) {
+      return this.outsideGit(cwd);
+    }
+    const result =
+      location === undefined ? undefined : this.results.get(keyOf(agent, location.repoRoot));
+    return result !== undefined && this.deps.now() - result.checkedAt < FRESH_MS
+      ? this.note(cwd, result)
+      : undefined;
+  }
+
   private started(id: string, session: Waiting): string | null {
     const { cwd, agent } = session;
     if (cwd === '' || cwd === this.deps.home) {

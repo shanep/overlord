@@ -69,6 +69,34 @@ export function toLaunchOptions(profile: LaunchProfile): LaunchOverrides {
 export function configArgs(overrides: readonly ConfigOverride[], flag = '-c'): readonly string[] {
   return overrides.flatMap((item) => [
     flag,
-    `${formatTomlKey(item.key)}=${formatTomlValue(item.value)}`,
+    `${formatTomlKey(item.key)}=${'raw' in item ? item.raw : formatTomlValue(item.value)}`,
   ]);
+}
+
+/**
+ * Converts CLI-style arguments (`--flag`, `--key value`, `--key=value`) into
+ * the SDK's extraArgs record, where null marks a flag with no value.
+ */
+export function parseExtraArgs(args: readonly string[]): Record<string, string | null> {
+  const parsed: Record<string, string | null> = {};
+  let key: string | null = null;
+  for (const argument of args) {
+    if (argument.startsWith('--')) {
+      const body = argument.slice(2);
+      const equals = body.indexOf('=');
+      if (equals === -1) {
+        parsed[body] = null;
+        key = body;
+      } else {
+        parsed[body.slice(0, equals)] = body.slice(equals + 1);
+        key = null;
+      }
+    } else if (key === null) {
+      throw new Error(`Extra argument "${argument}" does not follow a --flag`);
+    } else {
+      parsed[key] = argument;
+      key = null;
+    }
+  }
+  return parsed;
 }
