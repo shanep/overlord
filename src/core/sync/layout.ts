@@ -2,6 +2,8 @@
 
 import path from 'node:path';
 
+import { CLAUDE_CODE, CODEX, COPILOT } from '../../shared/agents.js';
+
 export interface ConfigRepoLayout {
   readonly manifest: string;
   readonly globalClaudeMd: string;
@@ -45,6 +47,32 @@ export function sanitizeHost(host: string): string {
     .replace(/\.local$/u, '');
   const cleaned = lower.replaceAll(/[^a-z0-9.-]/gu, '-').replaceAll(/^\.+/gu, '');
   return cleaned === '' ? 'unknown-host' : cleaned;
+}
+
+/**
+ * Each agent past Claude Code keeps its config under agents/<id>/, with its
+ * own overlord.json there. Claude Code keeps global/ and the folders at the
+ * top, so a repo made before other agents synced applies as it always has.
+ * agents/ also holds Claude Code's own agent files, which is why Claude agent
+ * folders named after an agent are never adopted.
+ */
+export function agentRepoDir(agent: string): string {
+  return `${LAYOUT.agents}/${agent}`;
+}
+
+const AGENT_FOLDERS: ReadonlySet<string> = new Set([CLAUDE_CODE, CODEX, COPILOT]);
+
+/** True for a folder name under agents/ that belongs to an agent, not to Claude Code's agent files. */
+export function isAgentFolder(name: string): boolean {
+  return AGENT_FOLDERS.has(name);
+}
+
+export function agentManifestPath(agent: string): string {
+  return `${agentRepoDir(agent)}/${LAYOUT.manifest}`;
+}
+
+export function agentMachineSettingsPath(agent: string, host: string): string {
+  return `${agentRepoDir(agent)}/${LAYOUT.machines}/${sanitizeHost(host)}.json`;
 }
 
 export function machineSettingsPath(host: string): string {

@@ -33,7 +33,7 @@ interface McpAgent {
   readonly store: McpStore;
 }
 
-function mcpAgent(id: AgentId): McpAgent {
+export function mcpAgent(id: AgentId): McpAgent {
   const adapter = agents.get(id);
   const store = adapter?.config?.mcp;
   if (adapter === null || store === undefined) {
@@ -43,7 +43,7 @@ function mcpAgent(id: AgentId): McpAgent {
 }
 
 /** The agent's binary and environment. Claude Code's comes from the host, as before. */
-async function mcpCli(rt: Runtime, adapter: AgentAdapter): Promise<AgentCli> {
+export async function mcpCli(rt: Runtime, adapter: AgentAdapter): Promise<AgentCli> {
   if (adapter.id === CLAUDE_CODE) {
     return rt.claudeCli();
   }

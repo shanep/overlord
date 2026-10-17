@@ -1,14 +1,18 @@
 // Moves a local-only config item into the config repo layout and links it
 // back, and records it in overlord.json. New agents and skills saved to user
-// scope use the same linking once they are written into the repo.
+// scope use the same linking once they are written into the repo. Another
+// agent's items go under agents/<id>/ with that agent's own overlord.json.
 
 import path from 'node:path';
 
+import { CLAUDE_CODE } from '../../shared/agents.js';
 import type { ConfigItem } from '../../shared/model.js';
 import type { ClaudePaths } from '../paths.js';
 import type { Action } from '../sync/actions.js';
+import { planAgentAdopt } from '../sync/agent-adopt.js';
+import type { AgentSyncTarget } from '../sync/agent-plan.js';
 import { hashPath } from '../sync/files.js';
-import { collapseHome, LAYOUT, repoFile } from '../sync/layout.js';
+import { collapseHome, isAgentFolder, LAYOUT, repoFile } from '../sync/layout.js';
 import type { ManifestItem } from '../sync/manifest.js';
 import {
   emptyManifest,
@@ -18,7 +22,7 @@ import {
   serializeManifest,
   upsertItems,
 } from '../sync/manifest.js';
-import { planLink, prepareTarget } from '../sync/plan.js';
+import { planLink, prepareTarget } from '../sync/plan-steps.js';
 
 interface KindPlace {
   readonly kind: ConfigItem['kind'];
@@ -34,6 +38,13 @@ const FOLDERS: readonly KindPlace[] = [
   { kind: 'rule', dir: (paths) => paths.userRulesDir, repo: LAYOUT.globalRules },
   { kind: 'output-style', dir: (paths) => paths.userOutputStylesDir, repo: LAYOUT.outputStyles },
 ];
+
+// Claude Code's agent files live in agents/, which is also where every other
+// agent keeps its folder, so a Claude agent folder named after one stays put.
+function inAgentFolder(relative: string): boolean {
+  const slash = relative.indexOf('/');
+  return slash !== -1 && isAgentFolder(relative.slice(0, slash));
+}
 
 function relativeUnder(dir: string, target: string): string | null {
   const relative = path.relative(dir, target).split(path.sep).join('/');
@@ -84,7 +95,7 @@ export function manifestItemFor(
     return fileItem(item, paths, target);
   }
   const relative = relativeUnder(place.dir(paths), target);
-  if (relative === null) {
+  if (relative === null || (item.kind === 'agent' && inAgentFolder(relative))) {
     return null;
   }
   return {
@@ -138,4 +149,52 @@ export async function planAdopt(
         ]
       : [];
   return { ok: true, actions: [...copy, ...(await planLinkBack(repoRoot, item, target))] };
+}
+
+/** Whether the Adopt button applies: local-only items, and another agent's settings that changed since they were copied. */
+export function canAdopt(item: ConfigItem): boolean {
+  const agent = item.agent !== undefined && item.agent !== CLAUDE_CODE;
+  return (
+    item.status === 'local-only' ||
+    (agent && item.kind === 'settings' && item.status === 'modified')
+  );
+}
+
+export type ItemAdoptPlan =
+  | { readonly ok: true; readonly actions: readonly Action[]; readonly question: string }
+  | { readonly ok: false; readonly reason: string; readonly unsupported: boolean };
+
+export interface AdoptInput {
+  readonly repoRoot: string;
+  readonly item: ConfigItem;
+  readonly paths: ClaudePaths;
+  readonly agents: readonly AgentSyncTarget[];
+  readonly host: string;
+}
+
+/** The plan and the question for adopting any item, Claude Code's or another agent's. */
+export async function planAdoptItem(input: AdoptInput): Promise<ItemAdoptPlan> {
+  const { item, paths, repoRoot } = input;
+  const cannot: ItemAdoptPlan = {
+    ok: false,
+    reason: `Overlord cannot adopt ${item.name} yet.`,
+    unsupported: true,
+  };
+  if (item.path === null) {
+    return cannot;
+  }
+  if (item.agent !== undefined && item.agent !== CLAUDE_CODE) {
+    const target = input.agents.find((candidate) => candidate.agent === item.agent);
+    return target === undefined
+      ? cannot
+      : planAgentAdopt({ repoRoot, target, item, home: paths.home, host: input.host });
+  }
+  const entry = manifestItemFor(item, paths);
+  if (entry === null) {
+    return cannot;
+  }
+  const plan = await planAdopt(repoRoot, entry, item.path);
+  return plan.ok
+    ? { ...plan, question: `Move ${item.name} into the config repo and link it back?` }
+    : { ...plan, unsupported: false };
 }

@@ -1,18 +1,29 @@
 // Runs a plan. Every backup in the plan happens first, into
-// ~/.claude/backups/overlord-<timestamp>/, and nothing that exists is ever
+// ~/.claude/backups/overlord-<timestamp>/ (another agent's files go in a
+// folder named for the agent inside it), and nothing that exists is ever
 // overwritten or removed unless it was backed up in this run (symlinks are
 // the exception: removing a link leaves the data it points at alone).
 
 import { mkdir, rm, symlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
+import { CLAUDE_CODE, type AgentId } from '../../shared/agents.js';
+import type { AgentCli, McpStore } from '../agents/types.js';
 import type { ClaudePaths } from '../paths.js';
 
-import type { Action } from './actions.js';
+import { isAgentStep, type Action, type AgentStep } from './actions.js';
+import { serverConfigFor } from './agent-mcp.js';
+import { setSettingKeys } from './agent-settings.js';
 import type { Exec } from './exec.js';
 import { copyPath, isInside, lstatOrNull, pathExists } from './files.js';
 import { clone } from './git.js';
-import { resolveSecretsInText, type SecretStore } from './secrets.js';
+import { resolveSecrets, resolveSecretsInText, type SecretStore } from './secrets.js';
+
+/** An agent's MCP store and the binary its add and remove run. */
+export interface AgentMcp {
+  readonly store: McpStore;
+  readonly cli: AgentCli;
+}
 
 export interface ApplyDeps {
   readonly exec: Exec;
@@ -21,6 +32,8 @@ export interface ApplyDeps {
   readonly now: () => Date;
   /** Symlinks become copies on Windows, where links need extra rights. */
   readonly platform: NodeJS.Platform;
+  /** The MCP store for an agent. Throws when the agent has none or is not installed. */
+  readonly mcp?: (agent: AgentId) => Promise<AgentMcp>;
 }
 
 export interface ApplyResult {
@@ -36,13 +49,23 @@ export function backupDirName(now: Date): string {
   return `overlord-${now.toISOString().replaceAll(':', '-').replace('.', '-')}`;
 }
 
-/** Where a path lands inside a backup folder: relative to home, or under _root/ when outside it. */
-export function backupLocation(backupDir: string, target: string, home: string): string {
+/**
+ * Where a path lands inside a backup folder: relative to home, or under
+ * _root/ when outside it. Another agent's files go under a folder named for
+ * the agent, so Claude Code's backups stay where they always were.
+ */
+export function backupLocation(
+  backupDir: string,
+  target: string,
+  home: string,
+  agent: AgentId = CLAUDE_CODE,
+): string {
+  const dir = agent === CLAUDE_CODE ? backupDir : path.join(backupDir, agent);
   const resolved = path.resolve(target);
   if (isInside(resolved, home) && resolved !== path.resolve(home)) {
-    return path.join(backupDir, path.relative(home, resolved));
+    return path.join(dir, path.relative(home, resolved));
   }
-  return path.join(backupDir, '_root', path.relative(path.parse(resolved).root, resolved));
+  return path.join(dir, '_root', path.relative(path.parse(resolved).root, resolved));
 }
 
 function messageOf(error: unknown): string {
@@ -50,6 +73,11 @@ function messageOf(error: unknown): string {
 }
 
 type Failure = ApplyResult['failed'];
+
+interface BackupTarget {
+  readonly path: string;
+  readonly agent: AgentId;
+}
 
 interface BackupOutcome {
   readonly dir: string | null;
@@ -106,6 +134,60 @@ class Runner {
     );
   }
 
+  async mcpFor(agent: AgentId): Promise<AgentMcp> {
+    if (this.deps.mcp === undefined) {
+      throw new Error(`Overlord cannot reach ${agent}'s MCP servers here`);
+    }
+    return this.deps.mcp(agent);
+  }
+
+  async mcpAdd(action: Extract<Action, { kind: 'mcp-add' }>): Promise<void> {
+    const resolved = await resolveSecrets(action.config, this.deps.secrets);
+    if (resolved.missing.length > 0) {
+      throw new Error(`Missing secrets: ${resolved.missing.join(', ')}`);
+    }
+    const server = serverConfigFor(resolved.value);
+    if (server === null) {
+      throw new Error(`${action.name} has neither a command nor a URL`);
+    }
+    const { store, cli } = await this.mcpFor(action.agent);
+    const result = await store.add({
+      exec: this.deps.exec,
+      cli,
+      cwd: this.deps.paths.home,
+      name: action.name,
+      server,
+      scope: 'user',
+    });
+    if (!result.ok) {
+      throw new Error(result.error);
+    }
+  }
+
+  async mcpRemove(agent: AgentId, name: string): Promise<void> {
+    const { store, cli } = await this.mcpFor(agent);
+    const result = await store.remove({
+      exec: this.deps.exec,
+      cli,
+      cwd: this.deps.paths.home,
+      name,
+      scope: 'user',
+    });
+    if (!result.ok) {
+      throw new Error(result.error);
+    }
+  }
+
+  async setKeys(action: Extract<Action, { kind: 'set-keys' }>): Promise<void> {
+    if ((await pathExists(action.target)) && !this.backedUp.has(path.resolve(action.target))) {
+      throw new Error(`Refusing to change ${action.target}: it was not backed up first`);
+    }
+    const failed = await setSettingKeys(action.target, action.format, action.entries);
+    if (failed.length > 0) {
+      throw new Error(`Could not set ${failed.join('; ')}`);
+    }
+  }
+
   async cloneExternal(repoUrl: string, destination: string): Promise<void> {
     if (await pathExists(destination)) {
       return;
@@ -114,7 +196,32 @@ class Runner {
     await clone(this.deps.exec, repoUrl, destination);
   }
 
+  async agentStep(action: AgentStep): Promise<void> {
+    switch (action.kind) {
+      case 'set-keys': {
+        await this.setKeys(action);
+        return;
+      }
+      case 'mcp-add': {
+        await this.mcpAdd(action);
+        return;
+      }
+      case 'mcp-remove': {
+        await this.mcpRemove(action.agent, action.name);
+        return;
+      }
+      case 'save-secret': {
+        await this.deps.secrets.set(action.name, action.value);
+        return;
+      }
+    }
+  }
+
   async perform(action: Action): Promise<void> {
+    if (isAgentStep(action)) {
+      await this.agentStep(action);
+      return;
+    }
     switch (action.kind) {
       case 'mkdir': {
         await mkdir(action.path, { recursive: true });
@@ -153,11 +260,14 @@ class Runner {
   }
 
   /** Copy every existing target into one backup folder. Stops at the first copy that fails. */
-  async backup(targets: readonly string[]): Promise<BackupOutcome> {
-    const existing: string[] = [];
+  async backup(targets: readonly BackupTarget[]): Promise<BackupOutcome> {
+    const existing: BackupTarget[] = [];
+    const seen = new Set<string>();
     for (const target of targets) {
-      if (await pathExists(target)) {
-        existing.push(path.resolve(target));
+      const resolved = path.resolve(target.path);
+      if (!seen.has(resolved) && (await pathExists(resolved))) {
+        seen.add(resolved);
+        existing.push({ path: resolved, agent: target.agent });
       }
     }
     if (existing.length === 0) {
@@ -166,17 +276,17 @@ class Runner {
     const { paths } = this.deps;
     const dir = path.join(paths.configDir, 'backups', backupDirName(this.deps.now()));
     for (const target of existing) {
-      const destination = backupLocation(dir, target, paths.home);
+      const destination = backupLocation(dir, target.path, paths.home, target.agent);
       try {
         await mkdir(path.dirname(destination), { recursive: true });
-        await copyPath(target, destination);
+        await copyPath(target.path, destination);
       } catch (error: unknown) {
         return {
           dir,
-          failed: { action: { kind: 'backup', path: target }, message: messageOf(error) },
+          failed: { action: { kind: 'backup', path: target.path }, message: messageOf(error) },
         };
       }
-      this.backedUp.add(target);
+      this.backedUp.add(target.path);
     }
     return { dir, failed: null };
   }
@@ -185,8 +295,10 @@ class Runner {
 /** Back up, then perform each action in order, stopping at the first failure. */
 export async function applyPlan(actions: readonly Action[], deps: ApplyDeps): Promise<ApplyResult> {
   const runner = new Runner(deps);
-  const backups = actions.flatMap((action) => (action.kind === 'backup' ? [action.path] : []));
-  const { dir: backupDir, failed } = await runner.backup([...new Set(backups)]);
+  const backups = actions.flatMap((action) =>
+    action.kind === 'backup' ? [{ path: action.path, agent: action.agent ?? CLAUDE_CODE }] : [],
+  );
+  const { dir: backupDir, failed } = await runner.backup(backups);
   if (failed !== null) {
     return { backupDir, performed: [], failed };
   }

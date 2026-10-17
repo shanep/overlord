@@ -7,7 +7,7 @@ import type { Action } from '../sync/actions.js';
 import { applyPlan } from '../sync/apply.js';
 import { isolatedExec } from '../sync/test-helpers/fixtures.js';
 
-import { manifestItemFor, planAdopt, planLinkBack } from './adopt.js';
+import { canAdopt, manifestItemFor, planAdopt, planAdoptItem, planLinkBack } from './adopt.js';
 import { applyDeps, changeCount, confirmAndApply, reportApply } from './apply-plan.js';
 import { memoryProjects, runMemorySync } from './memory.js';
 import {
@@ -113,6 +113,57 @@ describe('manifestItemFor', () => {
     expect(
       manifestItemFor({ kind: 'agent', scope: 'user', path: paths.userAgentsDir }, paths),
     ).toBeNull();
+  });
+
+  it('keeps Claude agent folders named after another agent out of agents/<id>/', async () => {
+    const { paths } = await makeEnv();
+    const nested = path.join(paths.userAgentsDir, 'codex', 'a.md');
+    expect(manifestItemFor(userItem('agent', nested), paths)).toBeNull();
+    const file = path.join(paths.userAgentsDir, 'codex.md');
+    expect(manifestItemFor(userItem('agent', file), paths)).toMatchObject({
+      source: 'agents/codex.md',
+    });
+  });
+});
+
+describe('canAdopt and planAdoptItem', () => {
+  const base: ConfigItem = {
+    id: 'user:agent:a',
+    kind: 'agent',
+    name: 'a',
+    scope: 'user',
+    path: null,
+    realPath: null,
+    status: 'local-only',
+    repo: null,
+  };
+
+  it('adopts local-only items, and changed settings of another agent', () => {
+    expect(canAdopt(base)).toBe(true);
+    expect(canAdopt({ ...base, status: 'modified' })).toBe(false);
+    expect(canAdopt({ ...base, kind: 'settings', status: 'modified' })).toBe(false);
+    expect(canAdopt({ ...base, agent: 'codex', kind: 'settings', status: 'modified' })).toBe(true);
+    expect(canAdopt({ ...base, agent: 'codex', status: 'versioned' })).toBe(false);
+  });
+
+  it('asks the same question as before for a Claude item and says when it cannot', async () => {
+    const env = await makeEnv();
+    const exec = isolatedExec();
+    const repo = await cloneConfigRepo(env, exec, { 'overlord.json': '{"version":1}\n' });
+    const target = await writeText(path.join(env.paths.userAgentsDir, 'a.md'), '# a\n');
+    const input = { repoRoot: repo, paths: env.paths, agents: [], host: 'box' };
+    const plan = await planAdoptItem({ ...input, item: { ...base, name: 'a', path: target } });
+    expect(plan.ok && plan.question).toBe('Move a into the config repo and link it back?');
+    expect(await planAdoptItem({ ...input, item: base })).toStrictEqual({
+      ok: false,
+      reason: 'Overlord cannot adopt a yet.',
+      unsupported: true,
+    });
+    const codexItem = { ...base, agent: 'codex', name: 'AGENTS.md (Codex)', path: target };
+    expect(await planAdoptItem({ ...input, item: codexItem })).toMatchObject({
+      ok: false,
+      unsupported: true,
+    });
   });
 });
 

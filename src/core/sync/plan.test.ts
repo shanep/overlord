@@ -6,16 +6,8 @@ import { describe, expect, it } from 'vitest';
 import type { Exec } from './exec.js';
 import { stableJson } from './json.js';
 import { emptyManifest, type Manifest } from './manifest.js';
-import {
-  checkoutOf,
-  linksTo,
-  matchesTemplate,
-  planApply,
-  planCopy,
-  planLink,
-  prepareTarget,
-  repoName,
-} from './plan.js';
+import { linksTo, matchesTemplate, planCopy, planLink, prepareTarget } from './plan-steps.js';
+import { checkoutOf, planApply, repoName } from './plan.js';
 import {
   bareRemoteWith,
   fakePaths,
@@ -337,23 +329,20 @@ describe('planApply', () => {
     const paths = fakePaths(home);
     expect(await planApply(manifest, repo, paths, 'box')).toStrictEqual([
       { kind: 'backup', path: paths.claudeJson },
+      { kind: 'mcp-remove', agent: 'claude-code', short: 'Claude Code', name: 'changed' },
       {
-        kind: 'run-command',
-        command: 'claude',
-        args: ['mcp', 'remove', '--scope', 'user', 'changed'],
-        description: 'replace MCP server changed',
+        kind: 'mcp-add',
+        agent: 'claude-code',
+        short: 'Claude Code',
+        name: 'changed',
+        config: { command: 'new' },
       },
       {
-        kind: 'run-command',
-        command: 'claude',
-        args: ['mcp', 'add-json', '--scope', 'user', 'changed', '{"command":"new"}'],
-        description: 'add MCP server changed',
-      },
-      {
-        kind: 'run-command',
-        command: 'claude',
-        args: ['mcp', 'add-json', '--scope', 'user', 'fresh', '{"url":"https://f"}'],
-        description: 'add MCP server fresh',
+        kind: 'mcp-add',
+        agent: 'claude-code',
+        short: 'Claude Code',
+        name: 'fresh',
+        config: { url: 'https://f' },
       },
     ]);
     await writeTree(repo, { 'mcp.json': JSON.stringify({ mcpServers: { same } }) });

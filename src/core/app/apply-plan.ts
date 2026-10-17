@@ -5,10 +5,11 @@
 import { writeFileAtomic } from '../knobs/atomic-file.js';
 import type { Action } from '../sync/actions.js';
 import { describeAction, summarizePlan } from '../sync/actions.js';
-import type { ApplyDeps, ApplyResult } from '../sync/apply.js';
+import type { AgentMcp, ApplyDeps, ApplyResult } from '../sync/apply.js';
 import { applyPlan } from '../sync/apply.js';
 import { collapseHome } from '../sync/layout.js';
 
+import { mcpAgent, mcpCli } from './actions-connectors.js';
 import type { Runtime } from './runtime.js';
 import { storagePath } from './storage.js';
 import { plural } from './text.js';
@@ -20,6 +21,10 @@ export function applyDeps(rt: Runtime): ApplyDeps {
     paths: rt.paths,
     now: () => new Date(rt.clock()),
     platform: rt.platform,
+    mcp: async (agent): Promise<AgentMcp> => {
+      const { adapter, store } = mcpAgent(agent);
+      return { store, cli: await mcpCli(rt, adapter) };
+    },
   };
 }
 

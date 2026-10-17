@@ -5,6 +5,8 @@ import path from 'node:path';
 import type { ConfigItem, ConfigScope } from '../../shared/model.js';
 import type { ClaudePaths } from '../paths.js';
 
+import { agentInventory } from './agent-inventory.js';
+import type { AgentSyncTarget } from './agent-plan.js';
 import type { Exec } from './exec.js';
 import { readJsonOrUndefined, statOrNull } from './files.js';
 import {
@@ -30,6 +32,10 @@ export interface InventoryDeps {
   readonly configRepoRoot: string | null;
   /** The open workspace folder, for project scope items. */
   readonly workspace: string | null;
+  /** Agents past Claude Code whose user config syncs under agents/<id>/. */
+  readonly agents?: readonly AgentSyncTarget[];
+  /** This machine's name, for the agents' machine settings files. */
+  readonly host?: string;
 }
 
 const LOCAL_ONLY: PathStatus = { status: 'local-only', realPath: null, repo: null };
@@ -180,14 +186,19 @@ async function projectItems(workspace: string, resolver: StatusResolver): Promis
   return [...files, ...settings, ...(await existingFileItems(resolver, content)), ...mcp];
 }
 
-/** Scan user, managed, built-in and (when a workspace is open) project config. */
+/** Scan user, managed, built-in and (when a workspace is open) project config, then each agent's. */
 export async function scanInventory(deps: InventoryDeps): Promise<ConfigItem[]> {
   const resolver = await createStatusResolver(deps.exec, deps.configRepoRoot);
   const project = deps.workspace === null ? [] : await projectItems(deps.workspace, resolver);
+  const agents: ConfigItem[] = [];
+  for (const target of deps.agents ?? []) {
+    agents.push(...(await agentInventory(target, resolver, deps.host ?? '')));
+  }
   return [
     ...(await managedItems(deps.paths)),
     ...(await userItems(deps, resolver)),
     ...project,
     ...builtInAgentItems(),
+    ...agents,
   ];
 }

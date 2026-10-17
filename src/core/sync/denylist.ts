@@ -104,3 +104,77 @@ export function isDeniedPath(target: string, paths: ClaudePaths): boolean {
   }
   return isInside(resolved, paths.configDir) && deniedInConfigDir(resolved, paths.configDir);
 }
+
+// Entries of an agent's own folder (~/.copilot, ~/.codex) that hold sign in
+// data, sessions, history, logs, databases or caches. Copilot keeps its
+// signed in accounts in config.json, so that file stays out too.
+const DENIED_AGENT_ENTRIES: ReadonlySet<string> = new Set([
+  '.credentials.json',
+  'archived_sessions',
+  'auth.json',
+  'backups',
+  'command-history-state.json',
+  'config.json',
+  'history',
+  'history.jsonl',
+  'hosts.json',
+  'hosts.yml',
+  'ide',
+  'log',
+  'logs',
+  'pkg',
+  'session-state',
+  'sessions',
+  'shell-snapshots',
+  'tmp',
+]);
+
+// Any part of the path that names a token, a sign in, a database or a cache.
+const DENIED_AGENT_PARTS: readonly RegExp[] = [
+  /token|oauth|credential|secret|cache/iu,
+  /^auth(?:[._-]|$)/iu,
+  /\.(?:sqlite\d?|db|log)(?:-wal|-shm|-journal)?$/iu,
+];
+
+/**
+ * Whether a path inside an agent's folder must never reach the config repo.
+ * A path outside the folder is judged by the key file rule alone.
+ */
+function deniedPart(part: string): boolean {
+  return DENIED_AGENT_PARTS.some((rule) => rule.test(part));
+}
+
+export function isDeniedAgentPath(target: string, agentDir: string): boolean {
+  const resolved = path.resolve(target);
+  if (KEY_FILE.test(path.basename(resolved))) {
+    return true;
+  }
+  if (!isInside(resolved, agentDir)) {
+    return false;
+  }
+  const parts = path.relative(path.resolve(agentDir), resolved).split(path.sep);
+  const [first = ''] = parts;
+  return DENIED_AGENT_ENTRIES.has(first) || parts.some((part) => deniedPart(part));
+}
+
+// Settings keys about who is signed in, where the agent keeps its state, or
+// which folders are trusted here. A token limit or budget is an ordinary
+// setting, so only other keys with token in them count.
+const DENIED_SETTING_KEYS: readonly RegExp[] = [
+  /token(?!s|_limit|_budget)|auth|log_?in|logged_?in|oauth|credential/iu,
+  /secret|password|api_?key|sqlite/iu,
+  /^(?:log_?dir|history|trusted_?folders)$/iu,
+];
+
+function deniedSettingKey(key: string): boolean {
+  return DENIED_KEYS.has(key) || DENIED_SETTING_KEYS.some((rule) => rule.test(key));
+}
+
+/** Whether an agent settings key must never reach the config repo. Codex's hooks.state is its own bookkeeping. */
+export function isDeniedSettingPath(keyPath: readonly string[]): boolean {
+  const [first, second] = keyPath;
+  if (first === 'hooks' && second === 'state') {
+    return true;
+  }
+  return keyPath.some((key) => deniedSettingKey(key));
+}

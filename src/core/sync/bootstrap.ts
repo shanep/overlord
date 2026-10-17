@@ -5,12 +5,13 @@
 import type { ClaudePaths } from '../paths.js';
 
 import { summarizePlan, type Action } from './actions.js';
+import type { AgentSyncTarget } from './agent-plan.js';
 import type { Exec } from './exec.js';
 import { listDir, pathExists, realpathOrSelf } from './files.js';
 import { clone, remoteUrl, repoRootOf, type GitAuth } from './git.js';
 import { remoteSlug } from './layout.js';
 import { readManifest, type Manifest } from './manifest.js';
-import { checkoutOf, planApply } from './plan.js';
+import { checkoutOf, planAll } from './plan.js';
 
 export interface BootstrapOptions {
   readonly repoUrl: string;
@@ -20,6 +21,8 @@ export interface BootstrapOptions {
   readonly host: string;
   /** Credentials for cloning the config repo. Null leaves it to the user's git setup. */
   readonly deps: { readonly exec: Exec; readonly auth?: GitAuth };
+  /** Agents past Claude Code whose agents/<id>/ part of the repo applies too. */
+  readonly agents?: readonly AgentSyncTarget[];
 }
 
 export interface BootstrapResult {
@@ -73,7 +76,11 @@ export async function bootstrapNewMachine(options: BootstrapOptions): Promise<Bo
       externalsCloned.push(destination);
     }
   }
-  const actions = await planApply(read.manifest, options.dest, options.paths, options.host);
+  const actions = await planAll(read.manifest, options.dest, {
+    paths: options.paths,
+    host: options.host,
+    agents: options.agents ?? [],
+  });
   return {
     manifest: read.manifest,
     actions,

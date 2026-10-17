@@ -362,6 +362,8 @@ export type ConfigStatus =
 
 export interface ConfigItem {
   readonly id: string;
+  /** The agent whose config this is. Left out for Claude Code. */
+  readonly agent?: AgentId;
   readonly kind: ConfigKind;
   readonly name: string;
   readonly scope: ConfigScope;

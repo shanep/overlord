@@ -12,11 +12,12 @@ import { importClaudeAiExport } from '../surfaces/claude-ai-export.js';
 import { applyPlan } from '../sync/apply.js';
 
 import type { ActionHandlers, ActionMap } from './action-types.js';
-import { manifestItemFor, planAdopt } from './adopt.js';
+import { canAdopt, planAdoptItem } from './adopt.js';
 import { applyDeps, reportApply } from './apply-plan.js';
 import type { Runtime } from './runtime.js';
 import { storagePath, writeImport } from './storage.js';
 import { NOT_CONNECTED, SyncCommands } from './sync-commands.js';
+import { syncTargets } from './sync-targets.js';
 import { plural } from './text.js';
 import { configRepoDir, connectedRoot } from './views/config.js';
 import { trackAdviceTaken } from './views/tuning.js';
@@ -81,7 +82,7 @@ function toJson(value: unknown): { readonly ok: boolean; readonly value: JsonVal
 async function adopt(rt: Runtime, itemId: string): Promise<void> {
   await rt.caches.config.refresh();
   const item = rt.caches.config.peek().items.find((candidate) => candidate.id === itemId);
-  if (item?.status !== 'local-only') {
+  if (item === undefined || !canAdopt(item)) {
     rt.host.showInfo('Only local-only items can be adopted.');
     return;
   }
@@ -89,18 +90,27 @@ async function adopt(rt: Runtime, itemId: string): Promise<void> {
     rt.exec,
     configRepoDir(rt.host.settings.configRepoPath, rt.paths.home),
   );
-  const entry = manifestItemFor(item, rt.paths);
-  if (root === null || entry === null || item.path === null) {
-    rt.host.showInfo(root === null ? NOT_CONNECTED : `Overlord cannot adopt ${item.name} yet.`);
+  if (root === null) {
+    rt.host.showInfo(NOT_CONNECTED);
     return;
   }
-  const plan = await planAdopt(root, entry, item.path);
+  const input = {
+    repoRoot: root,
+    item,
+    paths: rt.paths,
+    agents: syncTargets(rt),
+    host: rt.hostname,
+  };
+  const plan = await planAdoptItem(input);
   if (!plan.ok) {
-    rt.host.showError(plan.reason);
+    if (plan.unsupported) {
+      rt.host.showInfo(plan.reason);
+    } else {
+      rt.host.showError(plan.reason);
+    }
     return;
   }
-  const question = `Move ${item.name} into the config repo and link it back?`;
-  if (!(await rt.host.confirm(question, 'Adopt'))) {
+  if (!(await rt.host.confirm(plan.question, 'Adopt'))) {
     return;
   }
   reportApply(rt, await applyPlan(plan.actions, applyDeps(rt)));

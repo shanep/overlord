@@ -6,6 +6,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
+import type { AgentSyncTarget } from '../sync/agent-plan.js';
 import { bootstrapNewMachine } from '../sync/bootstrap.js';
 import { listDir, readTextOrNull } from '../sync/files.js';
 import type { GitAuth, StatusEntry } from '../sync/git.js';
@@ -26,7 +27,7 @@ import {
   isGitHubHttps,
 } from '../sync/github.js';
 import { planImportFromDotfiles } from '../sync/import-dotfiles.js';
-import { remoteSlug } from '../sync/layout.js';
+import { collapseHome, remoteSlug } from '../sync/layout.js';
 import { emptyManifest, writeManifest } from '../sync/manifest.js';
 import { scanForSecrets } from '../sync/secrets.js';
 
@@ -34,18 +35,34 @@ import { changeCount, confirmAndApply } from './apply-plan.js';
 import type { HostPort } from './host-port.js';
 import { runMemorySync } from './memory.js';
 import type { Runtime } from './runtime.js';
+import { syncTargets } from './sync-targets.js';
 import { plural } from './text.js';
 import { configRepoDir, connectedRoot } from './views/config.js';
 
 export const NOT_CONNECTED = 'Turn on config sync first.';
 export const SIGN_IN_MESSAGE = 'Config sync needs you to sign in to GitHub.';
 
-const README = `# Claude Code config
-
-Overlord keeps this repo in sync with ~/.claude on every machine it runs on.
-overlord.json lists each item and where it lands. Edit the files through
-~/.claude as usual; Overlord commits, pulls and pushes in the background.
-`;
+/** The README a new config repo starts with, naming each agent that syncs and where its files land. */
+export function readmeText(targets: readonly AgentSyncTarget[], home: string): string {
+  const others = targets.map(
+    (target) =>
+      `- ${target.name}: agents/${target.agent}/, with its own overlord.json, lands in ${collapseHome(target.dir, home)}`,
+  );
+  return [
+    '# Agent config',
+    '',
+    'Overlord keeps this repo in sync with each coding agent on every machine it',
+    'runs on. Edit the files through the agent folders as usual. Overlord commits,',
+    'pulls and pushes in the background.',
+    '',
+    '- Claude Code: overlord.json, global/ and the folders next to it land in ~/.claude',
+    ...others,
+    '',
+    'Settings files are synced key by key, so the agent can keep writing its own',
+    'keys. Sign in files, sessions, history and logs never come here.',
+    '',
+  ].join('\n');
+}
 
 function repoDir(rt: Runtime): string {
   return configRepoDir(rt.host.settings.configRepoPath, rt.paths.home);
@@ -176,7 +193,10 @@ export class SyncCommands {
   /** A first commit for an empty repo, so every machine has a manifest to read. */
   private async seed(root: string): Promise<void> {
     await writeManifest(root, emptyManifest());
-    await writeFile(path.join(root, 'README.md'), README);
+    await writeFile(
+      path.join(root, 'README.md'),
+      readmeText(syncTargets(this.rt), this.rt.paths.home),
+    );
     await commitAll(this.rt.exec, root, `Start the config repo from ${this.rt.hostname}`);
   }
 
@@ -189,6 +209,7 @@ export class SyncCommands {
       paths: this.rt.paths,
       host: this.rt.hostname,
       deps: { exec: this.rt.exec, auth: signIn?.auth ?? null },
+      agents: syncTargets(this.rt),
     });
     if (changeCount(result.actions) > 0) {
       await confirmAndApply(this.rt, result.actions, []);

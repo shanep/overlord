@@ -12,6 +12,7 @@ import { agentEnabled, agentPath } from './claude-bin.js';
 import { emptyLibrary, loadLibrary } from './library-scan.js';
 import type { Caches, Runtime } from './runtime.js';
 import { readDrafts, storagePath } from './storage.js';
+import { syncTargets } from './sync-targets.js';
 import { configRepoDir, emptyConfig, loadConfig } from './views/config.js';
 import { EMPTY_CONNECTORS, loadConnectors } from './views/connectors-data.js';
 import { EMPTY_KNOBS, loadKnobs, loadProfiles } from './views/knobs.js';
@@ -85,6 +86,8 @@ export function createCaches(rt: CacheRuntime): Caches {
           exec: rt.exec,
           repoDir: repoDir(rt),
           workspace: host.workspaceFolder(),
+          agents: syncTargets(rt),
+          host: rt.hostname,
         }),
     }),
     usage: new AsyncValue({

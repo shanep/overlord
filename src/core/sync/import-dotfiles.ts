@@ -11,7 +11,14 @@ import type { ClaudePaths } from '../paths.js';
 import type { Action } from './actions.js';
 import { hashPath, isInside, listDir, readJsonOrUndefined, realpathOrSelf } from './files.js';
 import { stableJson } from './json.js';
-import { collapseHome, expandHome, LAYOUT, machineSettingsPath, repoFile } from './layout.js';
+import {
+  collapseHome,
+  expandHome,
+  isAgentFolder,
+  LAYOUT,
+  machineSettingsPath,
+  repoFile,
+} from './layout.js';
 import {
   emptyManifest,
   isSafeHomeTarget,
@@ -21,7 +28,7 @@ import {
   serializeManifest,
   upsertItems,
 } from './manifest.js';
-import { planLink, prepareTarget } from './plan.js';
+import { planLink, prepareTarget } from './plan-steps.js';
 import { generateSettings } from './settings-gen.js';
 
 export interface ImportPlan {
@@ -81,6 +88,36 @@ function topLevel(name: string, claudeHome: string): ManifestItem | null {
   return null;
 }
 
+type Folder = (typeof FOLDERS)[number];
+
+/** One mapping per file or folder in a dot-files folder such as skills/ or agents/. */
+async function folderMappings(
+  folder: Folder,
+  dir: string,
+  claudeHome: string,
+): Promise<{ mappings: Mapping[]; skipped: { path: string; reason: string }[] }> {
+  const mappings: Mapping[] = [];
+  const skipped: { path: string; reason: string }[] = [];
+  for (const child of await listDir(dir)) {
+    // agents/codex/ and the like hold that agent's own config in the repo.
+    if (folder.kind === 'agent' && child.isDirectory && isAgentFolder(child.name)) {
+      skipped.push({
+        path: child.path,
+        reason: `agents/${child.name} is where that agent's own config goes`,
+      });
+      continue;
+    }
+    const id = `${folder.kind}:${child.isDirectory ? child.name : child.name.replace(/\.md$/u, '')}`;
+    const source = `${folder.repo}/${child.name}`;
+    const target = `${claudeHome}/${folder.dir}/${child.name}`;
+    mappings.push({
+      from: child.path,
+      item: { id, kind: folder.kind, source, target, mode: 'link' },
+    });
+  }
+  return { mappings, skipped };
+}
+
 async function mappingsFor(
   dotfiles: string,
   claudeHome: string,
@@ -93,15 +130,9 @@ async function mappingsFor(
     if (item !== null) {
       mappings.push({ from: entry.path, item });
     } else if (folder !== undefined && entry.isDirectory) {
-      for (const child of await listDir(entry.path)) {
-        const id = `${folder.kind}:${child.isDirectory ? child.name : child.name.replace(/\.md$/u, '')}`;
-        const source = `${folder.repo}/${child.name}`;
-        const target = `${claudeHome}/${folder.dir}/${child.name}`;
-        mappings.push({
-          from: child.path,
-          item: { id, kind: folder.kind, source, target, mode: 'link' },
-        });
-      }
+      const children = await folderMappings(folder, entry.path, claudeHome);
+      mappings.push(...children.mappings);
+      skipped.push(...children.skipped);
     } else if (entry.name !== 'README.md') {
       skipped.push({
         path: entry.path,

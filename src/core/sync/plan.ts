@@ -2,58 +2,20 @@
 // Anything already in place produces no action, which is what makes apply
 // idempotent: plan, apply, plan again gives an empty list.
 
-import { readlink } from 'node:fs/promises';
 import path from 'node:path';
 
+import { CLAUDE_CODE } from '../../shared/agents.js';
 import type { ClaudePaths } from '../paths.js';
 
 import type { Action } from './actions.js';
-import { hashPath, lstatOrNull, pathExists, readJsonOrUndefined, statOrNull } from './files.js';
-import { isArray, isRecord, jsonEqual } from './json.js';
+import { planAgents, type AgentSyncTarget } from './agent-plan.js';
+import { lstatOrNull, pathExists, readJsonOrUndefined } from './files.js';
+import { isRecord, jsonEqual } from './json.js';
 import { expandHome, remoteSlug, repoFile } from './layout.js';
 import type { ExternalItem, Manifest, ManifestItem } from './manifest.js';
 import { readMcpFile, readUserMcpServers } from './mcp.js';
-import { placeholdersInText } from './secrets.js';
+import { matchesTemplate, planCopy, planLink, prepareTarget } from './plan-steps.js';
 import { generateSettingsFromRepo } from './settings-gen.js';
-
-/** True when `target` is a symlink that points at `source`. */
-export async function linksTo(target: string, source: string): Promise<boolean> {
-  const info = await lstatOrNull(target);
-  if (info?.isSymbolicLink() !== true) {
-    return false;
-  }
-  const pointed = path.resolve(path.dirname(target), await readlink(target));
-  return pointed === path.resolve(source);
-}
-
-/** mkdir for a missing parent and a backup when something is already there. */
-export async function prepareTarget(target: string): Promise<Action[]> {
-  const actions: Action[] = [];
-  const parent = path.dirname(target);
-  if ((await statOrNull(parent)) === null) {
-    actions.push({ kind: 'mkdir', path: parent });
-  }
-  if (await pathExists(target)) {
-    actions.push({ kind: 'backup', path: target });
-  }
-  return actions;
-}
-
-export async function planLink(source: string, target: string): Promise<Action[]> {
-  if (await linksTo(target, source)) {
-    return [];
-  }
-  return [...(await prepareTarget(target)), { kind: 'link', source, target }];
-}
-
-export async function planCopy(source: string, target: string): Promise<Action[]> {
-  const info = await lstatOrNull(target);
-  const isLink = info?.isSymbolicLink() === true;
-  if (info !== null && !isLink && (await hashPath(target)) === (await hashPath(source))) {
-    return [];
-  }
-  return [...(await prepareTarget(target)), { kind: 'copy', source, target }];
-}
 
 async function planSettings(
   item: ManifestItem,
@@ -128,6 +90,8 @@ async function planExternals(
   return { clones, links };
 }
 
+const CLAUDE = 'Claude Code';
+
 function claude(args: readonly string[], description: string): Action {
   return { kind: 'run-command', command: 'claude', args, description };
 }
@@ -154,33 +118,6 @@ async function planPlugins(manifest: Manifest, paths: ClaudePaths): Promise<Acti
   return actions;
 }
 
-/**
- * Whether the live server config already matches the repo's. Keys the CLI
- * adds on its own are ignored, and a string holding a placeholder matches any
- * string, since the secret itself is never read back for comparison.
- */
-export function matchesTemplate(template: unknown, actual: unknown): boolean {
-  if (typeof template === 'string') {
-    return placeholdersInText(template).length > 0
-      ? typeof actual === 'string'
-      : template === actual;
-  }
-  if (isArray(template)) {
-    return (
-      isArray(actual) &&
-      actual.length === template.length &&
-      template.every((entry, index) => matchesTemplate(entry, actual[index]))
-    );
-  }
-  if (isRecord(template)) {
-    return (
-      isRecord(actual) &&
-      Object.entries(template).every(([key, value]) => matchesTemplate(value, actual[key]))
-    );
-  }
-  return jsonEqual(template, actual);
-}
-
 async function planMcp(
   manifest: Manifest,
   repoRoot: string,
@@ -199,20 +136,15 @@ async function planMcp(
       continue;
     }
     if (existing !== undefined) {
-      actions.push(
-        claude(
-          ['mcp', 'remove', '--scope', 'user', server.name],
-          `replace MCP server ${server.name}`,
-        ),
-      );
+      actions.push({ kind: 'mcp-remove', agent: CLAUDE_CODE, short: CLAUDE, name: server.name });
     }
-    const json = JSON.stringify(server.config);
-    actions.push(
-      claude(
-        ['mcp', 'add-json', '--scope', 'user', server.name, json],
-        `add MCP server ${server.name}`,
-      ),
-    );
+    actions.push({
+      kind: 'mcp-add',
+      agent: CLAUDE_CODE,
+      short: CLAUDE,
+      name: server.name,
+      config: server.config,
+    });
   }
   // claude rewrites ~/.claude.json for these, so keep a copy of it first.
   return actions.length > 0 ? [{ kind: 'backup', path: paths.claudeJson }, ...actions] : [];
@@ -248,5 +180,28 @@ export async function planApply(
     ...externals.links,
     ...(await planPlugins(manifest, paths)),
     ...(await planMcp(manifest, repoRoot, paths)),
+  ]);
+}
+
+/** Where a plan applies: this machine's Claude paths and name, and the other agents that sync. */
+export interface ApplyPlace {
+  readonly paths: ClaudePaths;
+  readonly host: string;
+  readonly agents: readonly AgentSyncTarget[];
+}
+
+/**
+ * The Claude Code plan, then each agent's agents/<id>/ part of the repo. With
+ * no agents, or a repo that has only global/, it is exactly planApply's.
+ */
+export async function planAll(
+  manifest: Manifest,
+  repoRoot: string,
+  place: ApplyPlace,
+): Promise<Action[]> {
+  const { paths, host } = place;
+  return dedupeMkdirs([
+    ...(await planApply(manifest, repoRoot, paths, host)),
+    ...(await planAgents(place.agents, repoRoot, paths.home, host)),
   ]);
 }

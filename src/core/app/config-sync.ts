@@ -22,7 +22,7 @@ import {
   statusPorcelain,
 } from '../sync/git.js';
 import { readManifest } from '../sync/manifest.js';
-import { planApply } from '../sync/plan.js';
+import { planAll } from '../sync/plan.js';
 
 import { applyDeps, changeCount, confirmAndApply } from './apply-plan.js';
 import { messageOf } from './errors.js';
@@ -30,6 +30,7 @@ import { runMemorySync } from './memory.js';
 import type { IntervalFunction } from './process.js';
 import type { Runtime } from './runtime.js';
 import { gitAuthFor, NOT_CONNECTED, secretInChanges, SIGN_IN_MESSAGE } from './sync-commands.js';
+import { syncTargets } from './sync-targets.js';
 import { plural } from './text.js';
 import { configRepoDir, connectedRoot, IDLE_SYNC } from './views/config.js';
 
@@ -250,7 +251,8 @@ export class ConfigSync {
     if (!read.ok) {
       return [];
     }
-    const actions = await planApply(read.manifest, root, rt.paths, rt.hostname);
+    const place = { paths: rt.paths, host: rt.hostname, agents: syncTargets(rt) };
+    const actions = await planAll(read.manifest, root, place);
     if (changeCount(actions) === 0) {
       return [];
     }

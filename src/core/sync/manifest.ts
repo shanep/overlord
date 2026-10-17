@@ -13,7 +13,7 @@ import { LAYOUT, repoFile } from './layout.js';
 
 const MANIFEST_VERSION = 1;
 
-const kindSchema: z.ZodType<ConfigKind> = z.enum([
+export const kindSchema: z.ZodType<ConfigKind> = z.enum([
   'claude-md',
   'settings',
   'rule',

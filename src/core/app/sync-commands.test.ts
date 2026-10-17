@@ -3,6 +3,7 @@ import path from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
+import { codexSync } from '../agents/codex/sync.js';
 import { encodeProjectDir } from '../paths.js';
 import type { Exec } from '../sync/exec.js';
 import type { StatusEntry } from '../sync/git.js';
@@ -15,7 +16,7 @@ import {
   scratchDir,
 } from '../sync/test-helpers/fixtures.js';
 
-import { NOT_CONNECTED, secretInChanges, SIGN_IN_MESSAGE } from './sync-commands.js';
+import { NOT_CONNECTED, readmeText, secretInChanges, SIGN_IN_MESSAGE } from './sync-commands.js';
 import type { TestApp, TestEnv } from './test-helpers/fixtures.js';
 import {
   cloneConfigRepo,
@@ -430,5 +431,26 @@ describe('importDotfiles', () => {
     expect(await readlink(env.paths.userClaudeMd)).toBe(path.join(repo, 'global', 'CLAUDE.md'));
     expect(env.host.infos).toHaveLength(1);
     expect(env.host.infos[0]).toMatch(/^Applied \d+ changes\. Backup in ~\/\.claude\/backups\//u);
+  });
+});
+
+describe('readmeText', () => {
+  it('names Claude Code and each agent that syncs, with where its files land', () => {
+    const codex = {
+      agent: 'codex',
+      name: 'Codex CLI',
+      short: 'Codex',
+      sync: codexSync,
+      dir: '/h/.codex',
+      mcpStore: true,
+    };
+    const text = readmeText([codex], '/h');
+    expect(text).toContain(
+      '- Claude Code: overlord.json, global/ and the folders next to it land in ~/.claude',
+    );
+    expect(text).toContain(
+      '- Codex CLI: agents/codex/, with its own overlord.json, lands in ~/.codex',
+    );
+    expect(readmeText([], '/h')).not.toContain('agents/codex/');
   });
 });

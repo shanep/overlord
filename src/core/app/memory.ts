@@ -1,6 +1,7 @@
 // Auto memory sync between ~/.claude/projects/<project>/memory and the config
 // repo, keyed by git remote. The user chose it on for every project, so it
-// runs with every push, pull and bootstrap when the manifest allows it.
+// runs with every push, pull and bootstrap when the manifest allows it. Only
+// Claude Code keeps auto memory, so no other agent takes part.
 
 import path from 'node:path';
 

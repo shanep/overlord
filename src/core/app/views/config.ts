@@ -3,6 +3,7 @@
 
 import type { ConfigState, ConfigSyncStatus } from '../../../shared/protocol.js';
 import type { ClaudePaths } from '../../paths.js';
+import type { AgentSyncTarget } from '../../sync/agent-plan.js';
 import type { Exec } from '../../sync/exec.js';
 import { pathExists, realpathOrSelf } from '../../sync/files.js';
 import { aheadBehind, remoteUrl, repoRootOf, statusPorcelain } from '../../sync/git.js';
@@ -15,6 +16,9 @@ export interface ConfigLoadDeps {
   /** The configured clone location, with ~ already expanded. */
   readonly repoDir: string;
   readonly workspace: string | null;
+  /** Agents past Claude Code whose config syncs under agents/<id>/. */
+  readonly agents?: readonly AgentSyncTarget[];
+  readonly host?: string;
 }
 
 export const IDLE_SYNC: ConfigSyncStatus = { state: 'idle', lastSyncAt: null, message: null };
@@ -47,6 +51,8 @@ export async function loadConfig(deps: ConfigLoadDeps): Promise<ConfigState> {
     exec: deps.exec,
     configRepoRoot: root,
     workspace: deps.workspace,
+    agents: deps.agents ?? [],
+    host: deps.host ?? '',
   });
   if (root === null) {
     return { ...emptyConfig(deps.repoDir), items };
