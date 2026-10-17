@@ -12,6 +12,7 @@ import { agents } from '../index.js';
 import { copilotHooks } from './hooks.js';
 import { copilotInject } from './inject.js';
 import { copilotInstructions } from './instructions.js';
+import { copilotLibrary } from './library.js';
 import { copilotMcp } from './mcp.js';
 import { formatVerified, nanoAiuToUsd } from './models.js';
 import { copilotTerminal } from './terminal.js';
@@ -63,7 +64,11 @@ describe('copilot', () => {
       handoffs: ['resume-local'],
     });
     expect(copilot.terminal).toBe(copilotTerminal);
-    expect(copilot.config).toStrictEqual({ settingsFormat: 'json', mcp: copilotMcp });
+    expect(copilot.config).toStrictEqual({
+      settingsFormat: 'json',
+      mcp: copilotMcp,
+      library: copilotLibrary,
+    });
     expect(copilot.hooks).toBe(copilotHooks);
     expect(copilot.inject).toBe(copilotInject);
   });

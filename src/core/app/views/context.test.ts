@@ -168,6 +168,34 @@ describe('resolveSnapshot', () => {
     expect(calls).toStrictEqual([]);
   });
 
+  it("lists a Copilot session's skills from its skills folder and not Claude's own", async () => {
+    const { store, workspace, paths } = await setup();
+    await writeText(
+      path.join(workspace, '.github', 'skills', 'ship', 'SKILL.md'),
+      '---\nname: ship\ndescription: Ship it.\n---\nDo it.\n',
+    );
+    const merged = await resolveSnapshot(
+      {
+        paths,
+        fs: createNodeFileSystem(),
+        exec: recordingExec().exec,
+        env: {},
+        store,
+        clock: () => NOW,
+      },
+      {
+        base: snapshot('c1'),
+        session: session('c1', { cwd: workspace, agent: 'copilot' }),
+        agentId: 'c1',
+        observed: [],
+      },
+    );
+    const names = merged.skills.map((skill) => skill.name);
+    expect(names).toContain('ship');
+    // ~/.claude/skills is Claude Code's alone.
+    expect(names).not.toContain('tidy');
+  });
+
   it('puts hook observed loads into the snapshot and marks invoked skills', async () => {
     const { store, workspace, paths } = await setup();
     const extra = loaded(path.join(workspace, 'extra.md'));

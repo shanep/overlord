@@ -13,6 +13,7 @@ import { COPILOT_CAPABILITIES, COPILOT_SHORT } from './capabilities.js';
 import { copilotHooks } from './hooks.js';
 import { copilotInject } from './inject.js';
 import { copilotInstructions } from './instructions.js';
+import { copilotLibrary } from './library.js';
 import { copilotMcp } from './mcp.js';
 import { COPILOT_DEFAULT_MODEL, copilotContextWindow } from './models.js';
 import { copilotObserverFacet } from './observer.js';
@@ -77,5 +78,5 @@ export const copilot: AgentAdapter = {
   hooks: copilotHooks,
   inject: copilotInject,
   instructions: copilotInstructions,
-  config: { settingsFormat: 'json', mcp: copilotMcp },
+  config: { settingsFormat: 'json', mcp: copilotMcp, library: copilotLibrary },
 };

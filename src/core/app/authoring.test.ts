@@ -100,6 +100,15 @@ describe('draftText', () => {
   });
 });
 
+/**
+ * Turns the other agents off. These tests run the real login shell, so
+ * Copilot or Codex on this machine's PATH would add an agent picker.
+ */
+function claudeOnly(env: TestEnv): void {
+  const off = { path: '', enabled: false };
+  env.host.settings = { ...env.host.settings, agents: { codex: off, copilot: off } };
+}
+
 describe('newAgent and newSkill', () => {
   it('offers templates and describe-it, then saves a template to ~/.claude', async () => {
     const env = await makeEnv();
@@ -212,6 +221,7 @@ describe('newAgent and newSkill', () => {
 
   it('writes user scope files into the config repo and links them back', async () => {
     const env = await makeEnv();
+    claudeOnly(env);
     const exec = isolatedExec();
     const repo = await cloneConfigRepo(env, exec);
     const { app } = makeApp(env, { deps: { exec } });
@@ -239,6 +249,7 @@ describe('newAgent and newSkill', () => {
 
   it('warns when the repo file cannot be linked back', async () => {
     const env = await makeEnv();
+    claudeOnly(env);
     const exec = isolatedExec();
     await cloneConfigRepo(env, exec);
     await writeText(env.paths.userAgentsDir, 'a file where the folder should be');
@@ -252,6 +263,7 @@ describe('newAgent and newSkill', () => {
 
   it('warns when ~/.claude is outside the home folder', async () => {
     const env = await makeEnv();
+    claudeOnly(env);
     const exec = isolatedExec();
     await cloneConfigRepo(env, exec);
     const outside = path.join(env.root, 'elsewhere', 'agents');
