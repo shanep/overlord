@@ -5,6 +5,7 @@
 
 import type { ActivityState } from './activity.js';
 import type { AgentId, AgentInfo } from './agents.js';
+import type { BridgeUsage } from './bridge-usage.js';
 import type { CatalogKind, LibraryState } from './catalog.js';
 import type { ConnectorsState } from './connectors.js';
 import type { HealthLevel, SessionHealth } from './health.js';
@@ -264,6 +265,8 @@ export interface UsageStats {
   readonly totalSessions: number;
   readonly totalMessages: number;
   readonly climate: ClimateEstimate;
+  /** Calls through the boisestate.ai bridge. Absent until the sidecar has logged one. */
+  readonly bridge?: BridgeUsage;
 }
 
 /** The numbers behind the climate estimate, so the view can show its working. */

@@ -1,7 +1,12 @@
 // The usage view: history from ~/.claude/stats-cache.json plus the plan
-// limits /usage shows, read through the Agent SDK.
+// limits /usage shows, read through the Agent SDK, and the boisestate.ai
+// bridge's own usage log.
 
+import { readFile } from 'node:fs/promises';
+
+import type { BridgeUsage } from '../../../shared/bridge-usage.js';
 import type { PlanLimits, UsageState, UsageStats } from '../../../shared/protocol.js';
+import { bridgeUsageFile, summarizeUsage } from '../../bridge/usage-log.js';
 import type { ClaudePaths } from '../../paths.js';
 import { parsePlanUsage } from '../../surfaces/plan-limits.js';
 import { EMPTY_USAGE, readUsageHistory } from '../../surfaces/usage.js';
@@ -9,6 +14,15 @@ import type { Runtime } from '../runtime.js';
 
 /** Plan limits older than this are read again the next time the view renders. */
 export const PLAN_STALE_MS = 5 * 60_000;
+
+/** The bridge's logged calls, or null when nothing has gone through it yet. */
+async function readBridgeUsage(home: string): Promise<BridgeUsage | null> {
+  try {
+    return summarizeUsage(await readFile(bridgeUsageFile(home), 'utf8'));
+  } catch {
+    return null;
+  }
+}
 
 export async function loadUsage(
   paths: ClaudePaths,
@@ -18,7 +32,9 @@ export async function loadUsage(
   for (const error of read.errors) {
     report('usage', error.message);
   }
-  return read.history?.usage ?? EMPTY_USAGE;
+  const usage = read.history?.usage ?? EMPTY_USAGE;
+  const bridge = await readBridgeUsage(paths.home);
+  return bridge === null ? usage : { ...usage, bridge };
 }
 
 export async function loadPlanLimits(

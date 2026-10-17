@@ -3,8 +3,10 @@
 // line (a JSON object), and points sessions at http://127.0.0.1:<port> through
 // ANTHROPIC_BASE_URL. Run it standalone with `npm run proxy` after a build.
 
+import os from 'node:os';
 import process from 'node:process';
 
+import { bridgeUsageFile, logUsage } from '../core/bridge/usage-log.js';
 import {
   countTokensHandler,
   makeAnthropicHandler,
@@ -24,10 +26,16 @@ async function main(): Promise<void> {
     return;
   }
   const config = result.config;
+  const usageFile = process.env['BRIDGE_USAGE_LOG'] ?? bridgeUsageFile(os.homedir());
   const upstream: UpstreamConfig = {
     endpoint: config.endpoint,
     apiKey: config.apiKey,
     timeoutMs: config.timeoutMs,
+    onUsage: (usage): void => {
+      void logUsage(usageFile, usage, Date.now(), (message) => {
+        process.stderr.write(`boisestate bridge: ${message}\n`);
+      });
+    },
   };
   const routes: ReadonlyMap<string, RouteHandler> = new Map([
     ['/v1/chat/completions', makeOpenAiHandler(upstream)],

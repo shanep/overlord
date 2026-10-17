@@ -68,10 +68,23 @@ export type UpstreamEvent =
   | { readonly kind: 'done' }
   | { readonly kind: 'error'; readonly error: UpstreamError };
 
+/** What one finished call used, by the backend's own counts. */
+export interface CallUsage {
+  readonly model: string;
+  readonly inputTokens: number;
+  readonly outputTokens: number;
+}
+
 export interface UpstreamConfig {
   readonly endpoint: string;
   readonly apiKey: string;
   readonly timeoutMs: number;
+  /** Hears each call's usage once the backend reports it, for the usage log. */
+  readonly onUsage?: (usage: CallUsage) => void;
+}
+
+function reportUsage(config: UpstreamConfig, model: string, usage: ConverseUsage): void {
+  config.onUsage?.({ model, inputTokens: usage.inputTokens, outputTokens: usage.outputTokens });
 }
 
 const deltaSchema = z.object({
@@ -182,6 +195,7 @@ export async function callOnce(
         },
       };
     }
+    reportUsage(config, parsed.data.model_id, parsed.data.usage);
     return { ok: true, response: parsed.data };
   } catch (error) {
     return { ok: false, error: abortError(error, config.timeoutMs) };
@@ -326,7 +340,12 @@ export async function* streamUpstream(
       yield { kind: 'error', error: started.error };
       return;
     }
-    yield* readStream(started.stream, config);
+    for await (const event of readStream(started.stream, config)) {
+      if (event.kind === 'usage') {
+        reportUsage(config, request.model_id, event.usage);
+      }
+      yield event;
+    }
   } finally {
     clearTimeout(timer);
   }

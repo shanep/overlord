@@ -155,6 +155,28 @@ describe('callOnce', () => {
   });
 });
 
+describe('onUsage', () => {
+  it('hears a finished call once, streamed or not, and nothing for a failure', async () => {
+    const heard: unknown[] = [];
+    const config: UpstreamConfig = { ...CONFIG, onUsage: (usage) => heard.push(usage) };
+    stubFetch(() => jsonResponse(200, OK_RESPONSE));
+    await callOnce(config, REQUEST);
+    stubFetch(() =>
+      sseResponse([
+        'event: content_block_delta\ndata: {"type":"text","text":"Hi"}',
+        'event: metadata\ndata: {"usage":{"inputTokens":9,"outputTokens":3,"totalTokens":12}}',
+      ]),
+    );
+    await collect(streamUpstream(config, { ...REQUEST, model_id: 'google.gemma-4-31b' }));
+    stubFetch(() => jsonResponse(401, { detail: 'bad key' }));
+    await callOnce(config, REQUEST);
+    expect(heard).toStrictEqual([
+      { model: 'global.anthropic.claude-opus-5-5', inputTokens: 5, outputTokens: 2 },
+      { model: 'google.gemma-4-31b', inputTokens: 9, outputTokens: 3 },
+    ]);
+  });
+});
+
 describe('streamUpstream', () => {
   it('yields normalized events for a full stream and sends stream:true', async () => {
     const capture = stubFetch(() =>
