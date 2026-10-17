@@ -4,6 +4,7 @@ const config: KnipConfig = {
   entry: [
     'src/host/extension.ts',
     'src/hook/main.ts',
+    'src/proxy/main.ts',
     'webview/src/main.tsx',
     'webview/vite.config.ts',
     'scripts/*.mjs',

@@ -42,12 +42,28 @@ const hookOptions = {
   banner: { js: '#!/usr/bin/env node' },
 };
 
+// The boisestate.ai bridge sidecar, spawned as its own process by the host.
+const proxyOptions = {
+  ...shared,
+  entryPoints: ['src/proxy/main.ts'],
+  outfile: 'dist/overlord-proxy.cjs',
+  banner: { js: '#!/usr/bin/env node' },
+};
+
 if (watch) {
-  const contexts = await Promise.all([esbuild.context(hostOptions), esbuild.context(hookOptions)]);
+  const contexts = await Promise.all([
+    esbuild.context(hostOptions),
+    esbuild.context(hookOptions),
+    esbuild.context(proxyOptions),
+  ]);
   await Promise.all(contexts.map(async (context) => context.watch()));
   await viteBuild({ configFile: 'webview/vite.config.ts', build: { watch: {} } });
 } else {
-  await Promise.all([esbuild.build(hostOptions), esbuild.build(hookOptions)]);
+  await Promise.all([
+    esbuild.build(hostOptions),
+    esbuild.build(hookOptions),
+    esbuild.build(proxyOptions),
+  ]);
   await viteBuild({
     configFile: 'webview/vite.config.ts',
     mode: production ? 'production' : 'development',

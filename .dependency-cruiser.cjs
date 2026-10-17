@@ -18,6 +18,7 @@ module.exports = {
           // Entry points and tool configs have no importers by design.
           String.raw`^src/host/extension\.ts$`,
           String.raw`^src/hook/main\.ts$`,
+          String.raw`^src/proxy/main\.ts$`,
           String.raw`^webview/src/main\.tsx$`,
           String.raw`\.config\.(ts|mts|mjs)$`,
         ],
@@ -39,7 +40,7 @@ module.exports = {
     {
       name: 'core-no-vscode',
       severity: 'error',
-      from: { path: '^src/(core|hook)/' },
+      from: { path: '^src/(core|hook|proxy)/' },
       to: { path: '^vscode$|^src/host/' },
     },
     {

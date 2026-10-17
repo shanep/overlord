@@ -387,6 +387,7 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "watch": "node scripts/build.mjs --watch",
+    "proxy": "node dist/overlord-proxy.cjs",
     "typecheck": "node scripts/slot.mjs tsc -p tsconfig.json --noEmit && node scripts/slot.mjs tsc -p webview/tsconfig.json --noEmit",
     "typecheck:fast": "node scripts/slot.mjs tsc -p tsconfig.json --noEmit --incremental --tsBuildInfoFile .cache/tsc-node.tsbuildinfo && node scripts/slot.mjs tsc -p webview/tsconfig.json --noEmit --incremental --tsBuildInfoFile .cache/tsc-webview.tsbuildinfo",
     "lint": "node scripts/slot.mjs eslint . --max-warnings 0",
