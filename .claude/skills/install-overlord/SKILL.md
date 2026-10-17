@@ -40,6 +40,11 @@ and without pressing Reload Window himself.
 
 ## When it fails
 
+- **"HEAD is N commits behind origin/master"**: the build would drop what
+  other sessions landed since this branch was cut, and roll the installed
+  Overlord back. Run `git fetch origin master && git rebase origin/master`,
+  then install again. Pass `--allow-behind` only to install an older build on
+  purpose.
 - **"no window reloaded within 60 seconds"**: the running window has a build
   from before auto reload existed (or VS Code is closed). The install itself
   worked. Ask Shane to run Developer: Reload Window once. Every install after

@@ -1,6 +1,8 @@
 // Package the committed Overlord, install it into VS Code and wait until a
 // window has reloaded onto the new build. It builds HEAD in a temporary
 // worktree, so uncommitted work (yours or another session's) never ships.
+// It refuses a HEAD that is behind origin/master, since that build would drop
+// whatever other sessions landed since the branch was cut.
 // Installed copies watch their own bundle and reload themselves, then write
 // ~/.overlord/loaded.json, which is what this waits for. A window with
 // Launcher runs going holds the reload until they finish and writes held.json
@@ -77,6 +79,34 @@ async function waitForReload(installed) {
   }
   return { reloaded: false, runs: 0 };
 }
+
+/**
+ * Stops when HEAD is missing commits from origin/master. A failed fetch falls
+ * back to the last origin/master this checkout saw. --allow-behind skips it.
+ */
+function checkUpToDate() {
+  if (process.argv.includes('--allow-behind')) {
+    return;
+  }
+  try {
+    execFileSync('git', ['fetch', '--quiet', 'origin', 'master'], { cwd: repo, stdio: 'ignore' });
+  } catch {
+    process.stderr.write('Could not fetch origin/master, so checking against the last one seen.\n');
+  }
+  const behind = execFileSync('git', ['rev-list', '--count', 'HEAD..origin/master'], {
+    cwd: repo,
+    encoding: 'utf8',
+  }).trim();
+  if (behind !== '0') {
+    throw new Error(
+      `HEAD is ${behind} commits behind origin/master, so this build would drop what landed since. ` +
+        'Rebase first (git fetch origin master && git rebase origin/master) and install again, ' +
+        'or pass --allow-behind to install this older build on purpose.',
+    );
+  }
+}
+
+checkUpToDate();
 
 const tree = path.join(mkdtempSync(path.join(os.tmpdir(), 'overlord-install-')), 'tree');
 run('git', ['worktree', 'add', '--detach', tree, 'HEAD']);
