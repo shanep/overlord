@@ -271,4 +271,55 @@ describe('write', () => {
       );
     });
   });
+
+  describe('TOML files', () => {
+    const toml = '# mine\nmodel = "o3"  # default\n\n[tui]\nnotifications = true\n';
+
+    it('sets and removes one key and keeps the comments', async () => {
+      const target = file('config.toml');
+      await writeFile(target, toml);
+      const set = await writeSetting({
+        file: target,
+        keyPath: 'tui.theme',
+        value: 'dark',
+        format: 'toml',
+      });
+      expect(set).toStrictEqual({ ok: true, file: target, changed: true, backup: `${target}.bak` });
+      expect(await readFile(target, 'utf8')).toBe(`${toml}theme = "dark"\n`);
+      const list = await writeSetting({
+        file: target,
+        keyPath: 'model',
+        value: ['a', 1],
+        format: 'toml',
+      });
+      expect(list.ok).toBe(true);
+      await writeSetting({ file: target, keyPath: 'tui.theme', value: undefined, format: 'toml' });
+      expect(await readFile(target, 'utf8')).toBe(toml.replace('"o3"', '["a", 1]'));
+    });
+
+    it('refuses values and keys TOML cannot take line by line', async () => {
+      const target = file('config.toml');
+      await writeFile(target, toml);
+      const table = await writeSetting({
+        file: target,
+        keyPath: 'otel',
+        value: { a: 1 },
+        format: 'toml',
+      });
+      expect(table).toStrictEqual({
+        ok: false,
+        error: 'otel needs a string, number, true or false, or a list of those.',
+      });
+      const nested = await writeSetting({
+        file: target,
+        keyPath: 'a',
+        value: [[1]],
+        format: 'toml',
+      });
+      expect(nested.ok).toBe(false);
+      const bad = await writeSetting({ file: target, keyPath: 'a..b', value: 1, format: 'toml' });
+      expect(bad).toStrictEqual({ ok: false, error: 'Invalid key path "a..b".' });
+      expect(await readFile(target, 'utf8')).toBe(toml);
+    });
+  });
 });

@@ -1,9 +1,18 @@
-// Safe edits to one key of a settings JSON file: other keys and their order
+// Safe edits to one key of a settings file: other keys and their order
 // stay as they were, the old file is kept as <file>.bak, and the write is
-// atomic. A file that is not valid JSON is never touched.
+// atomic. A file that does not parse is never touched. TOML files go through
+// the line-level editor in toml-edit.ts so their comments survive.
 
 import { readOptional, resolveLinkTarget, writeFileAtomic } from './atomic-file.js';
-import { errorMessage, isPlainObject, parseJson, type JsonRecord, type JsonValue } from './json.js';
+import {
+  errorMessage,
+  isArray,
+  isPlainObject,
+  parseJson,
+  type JsonRecord,
+  type JsonValue,
+} from './json.js';
+import { editTomlFile, parseTomlKey, type TomlEditValue } from './toml-edit.js';
 
 export interface WriteSettingInput {
   readonly file: string;
@@ -11,6 +20,8 @@ export interface WriteSettingInput {
   readonly keyPath: string;
   /** The new value, or undefined to delete the key. */
   readonly value: JsonValue | undefined;
+  /** How the file is written. JSON when left out. */
+  readonly format?: 'json' | 'toml' | undefined;
 }
 
 export type WriteSettingResult =
@@ -96,7 +107,35 @@ function readDocument(file: string, text: string | null): PathResult {
     : { ok: false, error: `${file} does not hold a JSON object, so it was left alone.` };
 }
 
+function isScalar(value: unknown): value is string | number | boolean {
+  return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean';
+}
+
+/** True for what the TOML editor can write: no tables and no nested lists. */
+function isTomlValue(value: JsonValue): value is JsonValue & TomlEditValue {
+  return isScalar(value) || (isArray(value) && value.every((item) => isScalar(item)));
+}
+
+async function writeTomlSetting(input: WriteSettingInput): Promise<WriteSettingResult> {
+  const path = parseTomlKey(input.keyPath);
+  if (path === null) {
+    return { ok: false, error: `Invalid key path "${input.keyPath}".` };
+  }
+  if (input.value === undefined) {
+    return editTomlFile(input.file, { op: 'remove', path });
+  }
+  return isTomlValue(input.value)
+    ? editTomlFile(input.file, { op: 'set', path, value: input.value })
+    : {
+        ok: false,
+        error: `${input.keyPath} needs a string, number, true or false, or a list of those.`,
+      };
+}
+
 export async function writeSetting(input: WriteSettingInput): Promise<WriteSettingResult> {
+  if (input.format === 'toml') {
+    return writeTomlSetting(input);
+  }
   const segments = input.keyPath.split('.');
   if (segments.includes('')) {
     return { ok: false, error: `Invalid key path "${input.keyPath}".` };
