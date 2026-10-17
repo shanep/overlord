@@ -1,6 +1,6 @@
 # Overlord Plan
 
-Overlord is a VS Code extension that works like htop for Claude Code. It shows
+Overlord is a VS Code extension for running a fleet of coding agents. It shows
 every running session and subagent, what is in each one's context and why, and
 every knob we can turn. It also launches and drives agents itself, so VS Code
 becomes the harness for running many agents and prompts at once.
