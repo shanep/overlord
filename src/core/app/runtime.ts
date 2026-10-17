@@ -11,6 +11,7 @@ import type {
   WorktreeSummary,
 } from '../../shared/protocol.js';
 import type { ActivityMonitor } from '../activity/monitor.js';
+import type { LibraryScan } from '../authoring/library.js';
 import type { EventBus } from '../bus.js';
 import type { GitHubReader } from '../catalog/github.js';
 import type { StdioToolCaller } from '../connectors/stdio-mcp.js';
@@ -51,6 +52,8 @@ export interface Caches {
   readonly connectors: AsyncValue<ConnectorsData>;
   /** Every agent adapter and whether its binary was found. */
   readonly agents: AsyncValue<readonly AgentInfo[]>;
+  /** The skills and agent files only agents past Claude Code read. */
+  readonly library: AsyncValue<LibraryScan>;
 }
 
 /** The background config sync, reached from actions and views. */

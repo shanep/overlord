@@ -9,13 +9,14 @@ import path from 'node:path';
 
 import type { CatalogKind } from '../../shared/catalog.js';
 import { nameProblems } from '../authoring/schema.js';
-import { targetPath } from '../authoring/write.js';
 import { installFiles, relativeInside } from '../catalog/files.js';
 import type { FoundEntry } from '../catalog/list.js';
 import { fallbackName, readFrontmatter } from '../catalog/list.js';
 
 import type { ActionHandlers } from './action-types.js';
-import { linkIntoClaude, pickDestination } from './actions-authoring.js';
+import type { Destination } from './actions-authoring.js';
+import { destinationFile, linkIntoClaude, pickDestination } from './actions-authoring.js';
+import { pickAuthoringTarget } from './authoring.js';
 import { messageOf } from './errors.js';
 import type { Runtime } from './runtime.js';
 
@@ -40,6 +41,12 @@ function installName(kind: CatalogKind, text: string, entryPath: string): string
   return fallback;
 }
 
+/** A skill can go in any agent's folder. The premade agents are Claude Code's, so they go in its scopes. */
+async function installDestination(rt: Runtime, kind: CatalogKind): Promise<Destination | null> {
+  const target = kind === 'skill' ? await pickAuthoringTarget(rt, kind) : null;
+  return pickDestination(rt, target === null ? null : { kind, target });
+}
+
 /** Installs the entry. Null when the user backed out, else what to tell them. */
 export async function installEntry(
   rt: Runtime,
@@ -51,11 +58,11 @@ export async function installEntry(
   const plan = await installFiles(reader, kind, found);
   const entryText = await reader.text(repo, plan.entryPath);
   const name = installName(kind, entryText, plan.entryPath);
-  const destination = await pickDestination(rt);
+  const destination = await installDestination(rt, kind);
   if (destination === null) {
     return null;
   }
-  const entryFile = targetPath(kind, destination.scope, name, destination.dirs);
+  const entryFile = destinationFile(kind, destination, name);
   const root = kind === 'agent' ? entryFile : path.dirname(entryFile);
   if (await exists(root)) {
     if (!(await rt.host.confirm(`${root} already exists. Replace it?`, 'Replace'))) {
@@ -79,7 +86,7 @@ export async function installEntry(
     await linkIntoClaude(rt, kind, name, destination.repoRoot);
   }
   await rt.host.openFile(entryFile);
-  await rt.caches.config.refresh();
+  await Promise.all([rt.caches.config.refresh(), rt.caches.library.refresh()]);
   return `Installed ${name} from ${repo} into ${root}. New sessions can use it. Read it over in the editor.`;
 }
 

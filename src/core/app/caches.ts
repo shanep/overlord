@@ -9,6 +9,7 @@ import { EMPTY_USAGE } from '../surfaces/usage.js';
 
 import { AsyncValue } from './async-value.js';
 import { agentEnabled, agentPath } from './claude-bin.js';
+import { emptyLibrary, loadLibrary } from './library-scan.js';
 import type { Caches, Runtime } from './runtime.js';
 import { readDrafts, storagePath } from './storage.js';
 import { configRepoDir, emptyConfig, loadConfig } from './views/config.js';
@@ -135,6 +136,12 @@ export function createCaches(rt: CacheRuntime): Caches {
           pathFor: (id) => agentPath(host.settings, id),
         });
       },
+    }),
+    library: new AsyncValue({
+      ...common,
+      name: 'library',
+      initial: emptyLibrary(rt),
+      load: async () => loadLibrary(rt),
     }),
   };
 }

@@ -2,7 +2,12 @@ import { fireEvent, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
-import type { CatalogEntry, CatalogState, LibraryState } from '../../../src/shared/catalog.js';
+import type {
+  CatalogEntry,
+  CatalogState,
+  LibraryItem,
+  LibraryState,
+} from '../../../src/shared/catalog.js';
 import type { ConfigItem } from '../../../src/shared/model.js';
 import { expectAccessible, first, renderView } from '../../test/render.js';
 
@@ -52,7 +57,7 @@ const SOURCES: CatalogState['sources'] = [
 
 function state(
   catalog: Partial<CatalogState> = {},
-  installed: readonly ConfigItem[] = [MINE],
+  installed: readonly LibraryItem[] = [MINE],
 ): LibraryState {
   return {
     kind: 'skill',
@@ -85,6 +90,23 @@ describe('LibraryView', () => {
     expect(within(list).getByText('documents')).toBeDefined();
     expect(getByText('2 of 2 skills')).toBeDefined();
     await expectAccessible(container);
+  });
+
+  it('names the agents that read each one once other agents are in play', async () => {
+    const shared = { ...MINE, id: 'skill:triage', name: 'triage', agents: ['Copilot', 'Codex'] };
+    const { getByRole, container } = renderView(
+      <LibraryView state={state({}, [{ ...MINE, agents: ['Claude'] }, shared])} />,
+    );
+    const user = getByRole('list', { name: /^For every project/u });
+    expect(within(user).getByTitle('Claude reads it').textContent).toBe('Claude');
+    expect(within(user).getByTitle('Copilot reads it')).toBeDefined();
+    expect(within(user).getByTitle('Codex reads it')).toBeDefined();
+    await expectAccessible(container);
+  });
+
+  it('shows no agent names with Claude Code alone', () => {
+    const { queryByTitle } = renderView(<LibraryView state={state()} />);
+    expect(queryByTitle('Claude reads it')).toBeNull();
   });
 
   it('posts new, open, browse, read and install actions', async () => {

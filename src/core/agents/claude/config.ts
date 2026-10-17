@@ -1,6 +1,7 @@
 // Claude Code's config facet, knobs part: the settings layers and files that
 // settings.md documents, the knob catalog, and how a profile reaches a launch.
-// MCP, skills and sync add their own parts here later.
+// MCP and the skill and agent folders have their own parts, and sync adds
+// its part here later.
 
 import path from 'node:path';
 
@@ -9,6 +10,7 @@ import type { KnobsFacet, LayerSource, SettingsPlace } from '../../knobs/facet.j
 import { toLaunchOptions } from '../../knobs/launch.js';
 import type { ConfigFacet } from '../types.js';
 
+import { claudeLibrary } from './library.js';
 import { claudeMcp } from './mcp.js';
 
 function projectFile(name: string): (place: SettingsPlace) => string | null {
@@ -74,4 +76,5 @@ export const claudeConfig: ConfigFacet = {
   settingsFormat: 'json',
   knobs: claudeKnobs,
   mcp: claudeMcp,
+  library: claudeLibrary,
 };

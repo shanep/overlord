@@ -1,5 +1,7 @@
-// Where new agents and skills go on disk, and the one function that writes
-// them. Writing never replaces an existing file unless the caller says so.
+// Where new agents and skills go on disk, and the functions that write them.
+// Claude Code's folders come from its scopes here. Another agent's folder is
+// picked from its library facet and written with writeAuthoredFile. Writing
+// never replaces an existing file unless the caller says so.
 
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -79,13 +81,17 @@ function isExistsError(error: unknown): boolean {
   return error instanceof Error && 'code' in error && error.code === 'EEXIST';
 }
 
-export async function writeAuthored(request: WriteRequest): Promise<WriteResult> {
-  const file = targetPath(request.kind, request.scope, request.name, request);
+/** Writes one agent or skill file at a path the caller worked out. */
+export async function writeAuthoredFile(
+  file: string,
+  text: string,
+  overwrite: boolean,
+): Promise<WriteResult> {
+  assertSafeName(path.basename(file));
   await mkdir(path.dirname(file), { recursive: true });
-  const overwrite = request.overwrite === true;
   try {
     // "wx" fails if the file exists, so the check and the write cannot race.
-    await writeFile(file, request.text, { flag: 'wx' });
+    await writeFile(file, text, { flag: 'wx' });
     return { ok: true, path: file, replaced: false };
   } catch (error: unknown) {
     if (!isExistsError(error)) {
@@ -95,6 +101,11 @@ export async function writeAuthored(request: WriteRequest): Promise<WriteResult>
   if (!overwrite) {
     return { ok: false, path: file, reason: 'exists' };
   }
-  await writeFile(file, request.text);
+  await writeFile(file, text);
   return { ok: true, path: file, replaced: true };
+}
+
+export async function writeAuthored(request: WriteRequest): Promise<WriteResult> {
+  const file = targetPath(request.kind, request.scope, request.name, request);
+  return writeAuthoredFile(file, request.text, request.overwrite === true);
 }

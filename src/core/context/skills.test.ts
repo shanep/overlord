@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { codexSkills } from '../agents/codex/library.js';
+import { copilotSkills } from '../agents/copilot/library.js';
 import { resolveClaudePaths } from '../paths.js';
 
 import {
@@ -186,5 +188,54 @@ describe('discoverSkills', () => {
       input(TREE, { paths: { ...paths, userSkillsDir: PATHS.userSkillsDir } }),
     );
     expect(found[0]?.source).toBe('user');
+  });
+});
+
+describe('discoverSkills for other agents', () => {
+  const OTHER: MemoryTree = {
+    files: {
+      [`${CWD}/.claude/skills/notes/SKILL.md`]: skill('claude and copilot notes'),
+      [`${CWD}/.github/skills/notes/SKILL.md`]: skill('github notes'),
+      [`${CWD}/packages/app/.agents/skills/build/SKILL.md`]: skill('nested build'),
+      [`${CWD}/.agents/skills/build/SKILL.md`]: skill('root build'),
+      '/home/u/.agents/skills/build/SKILL.md': skill('user build'),
+      '/home/u/.copilot/skills/mine/SKILL.md': '---\nname: mine\n---\nFirst line here.\n',
+      '/home/u/.claude/skills/claude-only/SKILL.md': skill('claude only'),
+      '/home/u/.claude/skills/synced/flat/SKILL.md': skill('synced flat'),
+      [`${CWD}/packages/app/web/.claude/skills/web/SKILL.md`]: skill('nested claude'),
+    },
+  };
+
+  it('reads Codex skills from .agents/skills up to the git root and lists every copy', async () => {
+    const found = await discoverSkills(input(OTHER, { skills: codexSkills }));
+    expect(summary(found)).toStrictEqual([
+      ['build', 'project', true, null],
+      ['build', 'project', true, null],
+      ['build', 'user', true, null],
+    ]);
+    expect(found.map((item) => item.path)).toStrictEqual([
+      `${CWD}/packages/app/.agents/skills/build/SKILL.md`,
+      `${CWD}/.agents/skills/build/SKILL.md`,
+      '/home/u/.agents/skills/build/SKILL.md',
+    ]);
+  });
+
+  it('reads Copilot skills from its folders, including a project .claude/skills', async () => {
+    const found = await discoverSkills(input(OTHER, { skills: copilotSkills, cwd: CWD }));
+    expect(summary(found)).toStrictEqual([
+      ['notes', 'project', true, null],
+      ['build', 'project', true, null],
+      ['notes', 'project', false, 'A project skill with the same name takes precedence.'],
+      ['mine', 'user', true, null],
+      ['build', 'user', false, 'A project skill with the same name takes precedence.'],
+    ]);
+    expect(found.find((item) => item.name === 'mine')?.descriptionChars).toBe(
+      'First line here.'.length,
+    );
+  });
+
+  it('finds no skills for an agent without skill folders', async () => {
+    const found = await discoverSkills(input(OTHER, { agentId: 'no-such-agent' }));
+    expect(found).toStrictEqual([]);
   });
 });

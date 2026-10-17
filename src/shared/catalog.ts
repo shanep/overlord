@@ -49,9 +49,15 @@ export interface CatalogState {
   readonly notice: InstallNotice | null;
 }
 
+/** An installed skill or agent, with the agents that read it. */
+export interface LibraryItem extends ConfigItem {
+  /** Short names like Claude and Copilot. Left out when Claude Code is the only agent in play. */
+  readonly agents?: readonly string[];
+}
+
 export interface LibraryState {
   readonly kind: CatalogKind;
-  /** The installed skills or agents, from the config inventory. */
-  readonly installed: readonly ConfigItem[];
+  /** The installed skills or agents: the config inventory, plus what only other agents read. */
+  readonly installed: readonly LibraryItem[];
   readonly catalog: CatalogState;
 }

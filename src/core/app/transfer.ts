@@ -1,14 +1,18 @@
-// Moving a running Claude Code session into Overlord. The /overlord skill opens
-// a vscode:// link for the current session, and Continue on a session that is
+// Moving a running session into Overlord. The /overlord skill opens a
+// vscode:// link for the current session, and Continue on a session that is
 // still open in another terminal stops that copy first, so two processes never
-// write to the same session.
+// write to the same session. Each agent in play whose sessions Overlord can
+// continue gets its own copy of the skill, written for how it runs skills.
 
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
+import { claudeSkills } from '../agents/claude/library.js';
+import type { AgentRegistry } from '../agents/registry.js';
 import type { LiveProcess } from '../surfaces/live.js';
 
 import { messageOf } from './errors.js';
+import { libraryPlace, readersInPlay } from './library-scan.js';
 import type { Runtime } from './runtime.js';
 
 export const EXTENSION_ID = 'shanep.overlord';
@@ -28,20 +32,14 @@ export function parseTransferUri(uriPath: string, query: string): string | null 
   return id !== null && SESSION_ID.test(id) ? id : null;
 }
 
-/** Text of the /overlord skill. uriScheme is vscode, or vscode-insiders and so on. */
+/** The link the /overlord skill opens, up to the session id the skill adds. */
+function transferLink(uriScheme: string): string {
+  return `${uriScheme}://${EXTENSION_ID}${TRANSFER_PATH}?session=`;
+}
+
+/** Text of Claude Code's /overlord skill. uriScheme is vscode, or vscode-insiders and so on. */
 export function transferSkillText(uriScheme: string): string {
-  const link = `${uriScheme}://${EXTENSION_ID}${TRANSFER_PATH}?session=\${CLAUDE_SESSION_ID}`;
-  return `---
-name: ${SKILL_NAME}
-description: Move this Claude Code session into Overlord in VS Code, where it continues in an editor tab.
-disable-model-invocation: true
----
-
-!\`code --open-url "${link}" 2>/dev/null || open "${link}" 2>/dev/null || xdg-open "${link}"\`
-
-Overlord is taking over this session in VS Code, and will stop this terminal's copy once you
-confirm there. Reply with one short line saying the session is moving to VS Code. Do nothing else.
-`;
+  return claudeSkills.transfer?.text(transferLink(uriScheme)) ?? '';
 }
 
 export function transferSkillPath(rt: Pick<Runtime, 'paths'>): string {
@@ -88,20 +86,67 @@ export async function clearOtherCopy(
   return false;
 }
 
-/** Writes the /overlord skill into ~/.claude/skills after asking. */
-export async function installTransferSkill(rt: Runtime, uriScheme: string): Promise<void> {
-  const file = transferSkillPath(rt);
+interface TransferTarget {
+  readonly name: string;
+  readonly file: string;
+  readonly text: string;
+}
+
+/** Every agent in play that has an /overlord skill, Claude Code first. */
+async function transferTargets(
+  rt: Runtime,
+  uriScheme: string,
+  registry?: AgentRegistry,
+): Promise<TransferTarget[]> {
+  const readers = await readersInPlay(rt, registry);
+  const place = libraryPlace(rt, null, null);
+  const link = transferLink(uriScheme);
+  return readers.flatMap((reader): TransferTarget[] => {
+    const transfer = reader.library.skills?.transfer;
+    if (transfer === undefined) {
+      return [];
+    }
+    const file = path.join(transfer.folder(place), SKILL_NAME, 'SKILL.md');
+    return [{ name: reader.name, file, text: transfer.text(link) }];
+  });
+}
+
+/** "a", "a and b", "a, b and c", with or in place of and when asked. */
+function listed(items: readonly string[], word = 'and'): string {
+  const last = items.at(-1) ?? '';
+  return items.length <= 1 ? last : `${items.slice(0, -1).join(', ')} ${word} ${last}`;
+}
+
+/**
+ * Writes the /overlord skill after asking: into ~/.claude/skills, and into
+ * the user skill folder of every other agent in play whose sessions Overlord
+ * can continue in a tab.
+ */
+export async function installTransferSkill(
+  rt: Runtime,
+  uriScheme: string,
+  registry?: AgentRegistry,
+): Promise<void> {
+  const targets = await transferTargets(rt, uriScheme, registry);
+  if (targets.length === 0) {
+    return;
+  }
+  const agentNames = targets.map((target) => target.name);
   const yes = await rt.host.confirm(
-    `Add the /overlord command to Claude Code? It writes ${file}.`,
+    `Add the /overlord command to ${listed(agentNames)}? It writes ${listed(targets.map((target) => target.file))}.`,
     'Add /overlord',
   );
   if (!yes) {
     return;
   }
   try {
-    await mkdir(path.dirname(file), { recursive: true });
-    await writeFile(file, transferSkillText(uriScheme));
-    rt.host.showInfo('Added /overlord. Type it in any Claude Code session to move it here.');
+    for (const target of targets) {
+      await mkdir(path.dirname(target.file), { recursive: true });
+      await writeFile(target.file, target.text);
+    }
+    rt.host.showInfo(
+      `Added /overlord. Type it in any ${listed(agentNames, 'or')} session to move it here.`,
+    );
   } catch (error) {
     rt.host.showError(`Could not add /overlord: ${messageOf(error)}`);
   }

@@ -397,6 +397,7 @@ export class OverlordApp {
       caches.drafts.refresh(),
       caches.sessions.refresh(),
       caches.config.refresh(),
+      caches.library.refresh(),
       caches.usage.refresh(),
       caches.plan.refresh(),
       caches.connectors.refresh(),

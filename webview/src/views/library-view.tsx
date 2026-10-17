@@ -3,8 +3,8 @@
 
 import type { ReactElement } from 'react';
 
-import type { CatalogKind, LibraryState } from '../../../src/shared/catalog.js';
-import type { ConfigItem, ConfigScope } from '../../../src/shared/model.js';
+import type { CatalogKind, LibraryItem, LibraryState } from '../../../src/shared/catalog.js';
+import type { ConfigScope } from '../../../src/shared/model.js';
 import { Badge } from '../components/badge.js';
 import { Avatar, Card, CardGroup } from '../components/card.js';
 import { usePostAction } from '../vscode-context.js';
@@ -49,7 +49,7 @@ const SCOPE_GROUPS: readonly ScopeGroup[] = [
   { id: 'library-managed', title: 'Set by your organization', scopes: ['managed', 'cloud'] },
 ];
 
-function Installed(props: { readonly item: ConfigItem }): ReactElement {
+function Installed(props: { readonly item: LibraryItem }): ReactElement {
   const post = usePostAction();
   const { item } = props;
   const { path, realPath } = item;
@@ -74,6 +74,11 @@ function Installed(props: { readonly item: ConfigItem }): ReactElement {
       )}
       <div className="card-foot">
         <Badge label={info.label} tone={info.tone} title={info.meaning} />
+        {(item.agents ?? []).map((agent) => (
+          <span key={agent} className="chip" title={`${agent} reads it`}>
+            {agent}
+          </span>
+        ))}
         <span className="spacer" />
         {path === null ? null : (
           <button

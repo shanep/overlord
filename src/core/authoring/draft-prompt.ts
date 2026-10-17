@@ -1,10 +1,11 @@
 // The prompt Overlord sends when the user describes an agent or skill in plain
-// words and wants Claude to draft the file.
+// words and wants Claude to draft the file. Claude drafts every agent's files,
+// and the prompt says which agent the file is for.
 // cspell:words xhigh
 
 import type { AuthoringKind } from './schema.js';
 
-const AGENT_GUIDE = `Write a Claude Code subagent definition file (.claude/agents/<name>.md).
+export const AGENT_GUIDE = `Write a Claude Code subagent definition file (.claude/agents/<name>.md).
 
 Frontmatter fields:
 - name (required): lowercase letters, digits and hyphens, such as code-reviewer. No ":" and no leading "-".
@@ -24,7 +25,7 @@ Frontmatter fields:
 
 The body after the frontmatter is the subagent's system prompt. Write it in the second person, say what to do step by step, and say what to report back.`;
 
-const SKILL_GUIDE = `Write a Claude Code skill file (.claude/skills/<name>/SKILL.md).
+export const SKILL_GUIDE = `Write a Claude Code skill file (.claude/skills/<name>/SKILL.md).
 
 Frontmatter fields:
 - name: lowercase letters, digits and hyphens, such as fix-issue. No ":" and no leading "-".
@@ -41,10 +42,29 @@ Frontmatter fields:
 
 The body is the instructions Claude follows when the skill runs. $ARGUMENTS expands to everything typed after the skill name.`;
 
+/** Who the drafted file is for, when that is not Claude Code alone. */
+export interface DraftFor {
+  /** The field guide of the agent the file is for, in place of Claude Code's. */
+  readonly guide?: string;
+  /** Other agents that read the same file, like Copilot CLI for a skill. */
+  readonly alsoReadBy?: readonly string[];
+}
+
+function sharedNote(names: readonly string[]): string {
+  if (names.length === 0) {
+    return '';
+  }
+  return `\n\n${names.join(' and ')} also read this file, so always set name and description, and keep Claude Code only syntax such as $ARGUMENTS and !\`command\` out of the body unless the request needs it.`;
+}
+
 /** The full prompt. The reply is expected to be the file text and nothing else. */
-export function buildDraftPrompt(kind: AuthoringKind, description: string): string {
-  const guide = kind === 'agent' ? AGENT_GUIDE : SKILL_GUIDE;
-  return `${guide}
+export function buildDraftPrompt(
+  kind: AuthoringKind,
+  description: string,
+  draftFor: DraftFor = {},
+): string {
+  const guide = draftFor.guide ?? (kind === 'agent' ? AGENT_GUIDE : SKILL_GUIDE);
+  return `${guide}${sharedNote(draftFor.alsoReadBy ?? [])}
 
 Only include fields the request needs. Use plain hyphens, never em dashes or en dashes.
 

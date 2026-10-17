@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildDraftPrompt, extractDraftText } from './draft-prompt.js';
+import { AGENT_GUIDE, buildDraftPrompt, extractDraftText, SKILL_GUIDE } from './draft-prompt.js';
 
 describe('buildDraftPrompt', () => {
   it('asks for an agent file with the field guide and the trimmed description', () => {
@@ -29,6 +29,28 @@ describe('buildDraftPrompt', () => {
   it('never contains em or en dashes', () => {
     expect(buildDraftPrompt('agent', 'x')).not.toMatch(/[\u2013\u2014]/u);
     expect(buildDraftPrompt('skill', 'x')).not.toMatch(/[\u2013\u2014]/u);
+    expect(buildDraftPrompt('skill', 'x', { alsoReadBy: ['A', 'B'] })).not.toMatch(
+      /[\u2013\u2014]/u,
+    );
+  });
+
+  it('is the same prompt as before for Claude Code alone', () => {
+    expect(buildDraftPrompt('agent', 'x', {})).toBe(buildDraftPrompt('agent', 'x'));
+    expect(buildDraftPrompt('agent', 'x', { guide: AGENT_GUIDE })).toBe(
+      buildDraftPrompt('agent', 'x'),
+    );
+    expect(buildDraftPrompt('skill', 'x', { alsoReadBy: [] })).toBe(buildDraftPrompt('skill', 'x'));
+  });
+
+  it('uses another agent guide and names who else reads a skill', () => {
+    const agent = buildDraftPrompt('agent', 'x', { guide: 'Write a Copilot CLI agent.' });
+    expect(agent.startsWith('Write a Copilot CLI agent.\n\nOnly include fields')).toBe(true);
+    expect(agent).not.toContain('subagent definition');
+    const skill = buildDraftPrompt('skill', 'x', { alsoReadBy: ['Copilot CLI', 'Codex CLI'] });
+    expect(skill.startsWith(SKILL_GUIDE)).toBe(true);
+    expect(skill).toContain(
+      '\n\nCopilot CLI and Codex CLI also read this file, so always set name',
+    );
   });
 });
 

@@ -120,6 +120,7 @@ export async function resolveSnapshot(
     approvedExternalImports: false,
   });
   const skills = await discoverSkills({
+    agentId: job.session.agent,
     fs: deps.fs,
     paths: deps.paths,
     cwd,

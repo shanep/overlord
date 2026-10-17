@@ -15,6 +15,8 @@ import type {
   ToolCall,
 } from '../../shared/model.js';
 import type { HandoffKind, SurfaceSession } from '../../shared/protocol.js';
+import type { AgentSpec } from '../authoring/schema.js';
+import type { AuthoringIssue } from '../authoring/validate.js';
 import type { InstructionGates } from '../context/gates.js';
 import type { CandidateKind, CandidateOrigin, InstructionNames } from '../context/types.js';
 import type { EditTools, HookDialect } from '../hooks/normalized.js';
@@ -605,6 +607,99 @@ export interface McpStore {
   readonly signInArgs?: (name: string) => readonly string[];
 }
 
+/** Where a folder of skills or agent files applies. */
+export type LibraryScope = 'managed' | 'user' | 'project' | 'plugin';
+
+/** One folder an agent reads skills or agent files from. */
+export interface LibraryFolder {
+  readonly dir: string;
+  readonly scope: LibraryScope;
+  /** Goes before the name of everything in the folder, like a plugin's "name:". Empty for none. */
+  readonly prefix: string;
+  /** False for folders an administrator or a plugin fills, which Overlord never writes. */
+  readonly writable: boolean;
+}
+
+/** Where to look for an agent's skill and agent folders. */
+export interface LibraryPlace extends ObserverContext {
+  /** The project folder, or null for the user folders alone. */
+  readonly cwd: string | null;
+  /** The git root above cwd, or null outside git. */
+  readonly gitRoot: string | null;
+  /** Installed plugins, for an agent that reads skills from them. */
+  readonly plugins: readonly { readonly name: string; readonly root: string }[];
+}
+
+/**
+ * The /overlord skill that moves a running session into Overlord, for an
+ * agent whose sessions Overlord can continue in a tab.
+ */
+export interface TransferSkill {
+  /** The user folder it goes in, as <folder>/overlord/SKILL.md. */
+  readonly folder: (place: LibraryPlace) => string;
+  /** The skill's text. The link ends in "session=", and the skill puts the session id after it. */
+  readonly text: (link: string) => string;
+}
+
+/**
+ * The folders an agent reads SKILL.md skills from, and how it lists them.
+ * Every agent reads the same SKILL.md format, so the schema is shared.
+ */
+export interface SkillsFacet {
+  /** Folders of <name>/SKILL.md, highest precedence first. */
+  folders: (place: LibraryPlace) => readonly LibraryFolder[];
+  /**
+   * The skill folder inside a project folder that --add-dir folders and
+   * folders below cwd have, like .claude/skills. Null when the agent reads
+   * neither.
+   */
+  readonly nested: string | null;
+  /** True when skills synced from claude.ai sit in the user folder's synced folder. */
+  readonly synced: boolean;
+  /** True when one name is one skill and the highest folder wins. False when the agent lists every copy. */
+  readonly ranked: boolean;
+  /** Folder names the agent skips outside plugins, in lower case. One ending in ":" is a prefix. */
+  readonly reserved: readonly string[];
+  /** The frontmatter key that keeps a skill out of the listing until the user runs it, or null. */
+  readonly manualOnly: string | null;
+  /** The variable that turns managed skills off, or null. */
+  readonly managedOffEnv: string | null;
+  /** The listing cuts description plus when_to_use at this many characters, or null. */
+  readonly listingLimit: number | null;
+  readonly transfer?: TransferSkill;
+}
+
+/**
+ * An agent's custom agent files: where they live and their format. Formats
+ * differ per agent (Claude's .md, Copilot's .agent.md, Codex's .toml), so
+ * each adapter brings its own schema.
+ */
+export interface AgentFilesFacet {
+  /** The end of a file name, like .md, .agent.md or .toml. */
+  readonly suffix: string;
+  /** Folders of agent files, highest precedence first. */
+  folders: (place: LibraryPlace) => readonly LibraryFolder[];
+  /** The agent's name for a file, from its text or else its file name. */
+  nameOf: (text: string, file: string) => string;
+  validate: (text: string) => readonly AuthoringIssue[];
+  /** A template in this agent's format. Templates use Claude Code's fields, which each agent maps onto its own. */
+  render: (spec: AgentSpec) => string;
+  /** The file text with its name set. A draft that does not parse comes back as it is. */
+  withName: (text: string, name: string) => string;
+  /**
+   * What the drafting prompt tells Claude about the file. The reply always
+   * opens with YAML frontmatter, so an agent whose files are not Markdown
+   * turns it into its own format in withName.
+   */
+  readonly guide: string;
+}
+
+/** The agent's skills and custom agents. Workstream E4 owns it. */
+export interface LibraryFacet {
+  readonly skills?: SkillsFacet;
+  readonly agents?: AgentFilesFacet;
+}
+
 /**
  * Settings layers, knobs, MCP servers and skills. Workstreams E2 to E5 own it.
  * @public
@@ -616,6 +711,8 @@ export interface ConfigFacet {
   readonly knobs?: KnobsFacet;
   /** The agent's MCP servers. Workstream E3 owns it. */
   readonly mcp?: McpStore;
+  /** The agent's skill folders and custom agent files. Workstream E4 owns it. */
+  readonly library?: LibraryFacet;
 }
 
 export interface AgentAdapter {
