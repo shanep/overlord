@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { Board, Standing } from '../shared/leaderboard.js';
-import { isBoard, isStanding, UPLOADS_PER_DAY } from '../shared/leaderboard.js';
+import { isBoard, isStanding, MAX_ACHIEVEMENTS, UPLOADS_PER_DAY } from '../shared/leaderboard.js';
 import { reputationScore } from '../shared/reputation.js';
 
 import { escapeHtml, REPO_URL } from './page.js';
@@ -122,7 +122,7 @@ describe('leaderboard worker', () => {
       { kind: 1, mean: 1, prompts: 200 },
       { ...MEAN, achievements: 'manners' },
       { ...MEAN, achievements: [1] },
-      { ...MEAN, achievements: Array.from({ length: 15 }, () => 'manners') },
+      { ...MEAN, achievements: Array.from({ length: MAX_ACHIEVEMENTS + 1 }, () => 'manners') },
     ];
     const statuses = await Promise.all(
       bad.map(async (body) => await w.status('POST', '/api/scores', 'token-ann', body)),

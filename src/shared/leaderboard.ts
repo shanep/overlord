@@ -3,8 +3,6 @@
 // An upload carries a display name, three counts and the ids of the
 // achievements you have unlocked, nothing else.
 
-import { ACHIEVEMENTS } from './achievements.js';
-
 /** The Cloudflare Worker that serves the board, the default for overlord.leaderboard.url. */
 export const LEADERBOARD_URL = 'https://overlord-leaderboard.shane-f34.workers.dev';
 /** Anyone with fewer prompts on file is left off the board, since a short history is mostly noise. */
@@ -14,6 +12,12 @@ export const BOARD_SIZE = 10;
 /** Uploads one person may make in a UTC day. */
 export const UPLOADS_PER_DAY = 5;
 export const MAX_NAME_LENGTH = 40;
+/**
+ * Achievement ids one upload may carry. A number rather than ACHIEVEMENTS.length,
+ * since achievements.ts depends on this file through reputation.ts and importing
+ * it back would make a cycle. achievements.test.ts keeps the list under it.
+ */
+export const MAX_ACHIEVEMENTS = 64;
 /** Shown for anyone who uploads without a name. */
 export const ANONYMOUS = 'Anonymous';
 
@@ -102,7 +106,7 @@ export function isScoreUpload(value: unknown): value is ScoreUpload {
     isCount(value['mean']) &&
     isCount(value['prompts']) &&
     value['kind'] + value['mean'] <= value['prompts'] &&
-    (value['achievements'] === undefined || isIdList(value['achievements'], ACHIEVEMENTS.length))
+    (value['achievements'] === undefined || isIdList(value['achievements'], MAX_ACHIEVEMENTS))
   );
 }
 
