@@ -332,6 +332,19 @@ describe('worktrees in the app', { timeout: 30_000 }, () => {
       expect(existsSync(terminal.cwd)).toBe(true);
       expect(await summaries(test)).toMatchObject([{ state: 'active' }]);
     });
+
+    it('keep a released worktree while the daemon restarts the job in it', async () => {
+      const test = await setup();
+      await newSession(test);
+      const terminal = lastTerminal(test);
+      await writeJson(path.join(test.env.paths.configDir, 'daemon', 'roster.json'), {
+        supervisorPid: PID,
+        workers: { '2c087de9': { pid: 999_999, attempt: 2, cwd: terminal.cwd } },
+      });
+      await test.app.sessionClosed(terminal.sessionId ?? '');
+      expect(existsSync(terminal.cwd)).toBe(true);
+      expect(await summaries(test)).toMatchObject([{ state: 'active' }]);
+    });
   });
 
   describe('launched runs', () => {

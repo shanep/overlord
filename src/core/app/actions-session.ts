@@ -205,11 +205,15 @@ async function openAgentPanel(rt: Runtime, sessionId: string, agentId: string): 
 /** A tab running `claude attach` for a background session, tracked so a later open focuses it. */
 async function attachBackground(rt: Runtime, sessionId: string): Promise<void> {
   const live = await liveProcess(rt, sessionId);
+  const cwd = cwdFor(rt, sessionId, live?.cwd ?? null);
   rt.host.runInTerminal({
     name: `Claude ${shortId(sessionId)}`,
     command: rt.host.settings.claudePath,
     args: ['attach', live?.agentId ?? sessionId],
-    cwd: cwdFor(rt, sessionId, live?.cwd ?? null),
+    // Attach reaches the session over a socket, so when its folder is gone
+    // any folder will do, and VS Code will not start a tab in a missing one.
+    cwd:
+      (await rt.fs.kind(cwd)) === 'directory' ? cwd : (rt.host.workspaceFolder() ?? rt.paths.home),
     sessionId,
   });
 }

@@ -9,6 +9,7 @@ import path from 'node:path';
 
 import type { WorktreeLease, WorktreeProvider } from '../harness/launcher.js';
 import type { ClaudePaths } from '../paths.js';
+import { daemonJobCwds } from '../surfaces/daemon.js';
 import { readSessionRegistry } from '../surfaces/live.js';
 import { liveEntries } from '../surfaces/places.js';
 import type { IsAlive } from '../surfaces/process.js';
@@ -52,11 +53,17 @@ export function createWorktreeRegistry(inputs: RegistryInputs): WorktreeRegistry
     pid: inputs.pid,
     isAlive: inputs.isAlive,
     clock: inputs.clock,
+    // A background job the daemon is restarting after a crash has no live
+    // process for a few seconds, so its launch folder counts as well.
     liveCwds: async (): Promise<readonly string[]> => {
-      const registry = await readSessionRegistry(inputs.paths);
-      return liveEntries(registry.items, inputs.isAlive).flatMap((entry) =>
+      const [registry, jobs] = await Promise.all([
+        readSessionRegistry(inputs.paths),
+        daemonJobCwds(inputs.paths, inputs.isAlive),
+      ]);
+      const running = liveEntries(registry.items, inputs.isAlive).flatMap((entry) =>
         entry.cwd === null ? [] : [entry.cwd],
       );
+      return [...running, ...jobs];
     },
   });
 }

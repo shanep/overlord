@@ -350,16 +350,27 @@ describe('attaching a background session', () => {
     const env = await makeEnv();
     await registry(env, { pid: 123, sessionId: 'bg', kind: 'bg' });
     const test = liveApp(env);
-    test.bus.emit('session.upserted', session('bg', { cwd: '/stored' }));
+    test.bus.emit('session.upserted', session('bg', { cwd: env.root }));
     await test.app.dispatch({ type: 'openSession', sessionId: 'bg' }, {});
     expect(env.host.terminals.map((terminal) => [terminal.args, terminal.cwd])).toStrictEqual([
-      [['attach', 'bg'], '/stored'],
+      [['attach', 'bg'], env.root],
+    ]);
+  });
+
+  it('starts in the home folder when the session folder is gone', async () => {
+    const env = await makeEnv();
+    const gone = path.join(env.root, 'tidied-worktree');
+    await registry(env, { pid: 123, sessionId: 'bg', cwd: gone, kind: 'bg' });
+    const test = liveApp(env);
+    await test.app.dispatch({ type: 'openSession', sessionId: 'bg' }, {});
+    expect(env.host.terminals.map((terminal) => [terminal.args, terminal.cwd])).toStrictEqual([
+      [['attach', 'bg'], env.home],
     ]);
   });
 
   it('attaches by the background agent id when claude agents knows it', async () => {
     const env = await makeEnv();
-    await registry(env, { pid: 123, sessionId: 'bg', cwd: '/bg', kind: 'bg' });
+    await registry(env, { pid: 123, sessionId: 'bg', cwd: env.root, kind: 'bg' });
     const agents = JSON.stringify([{ id: 'agent-7', sessionId: 'bg', kind: 'background' }]);
     const test = liveApp(env, agents);
     env.host.settings = { ...env.host.settings, claudePath: '/opt/claude' };
@@ -369,7 +380,7 @@ describe('attaching a background session', () => {
         name: 'Claude bg',
         command: '/opt/claude',
         args: ['attach', 'agent-7'],
-        cwd: '/bg',
+        cwd: env.root,
         sessionId: 'bg',
       },
     ]);
