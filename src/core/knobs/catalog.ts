@@ -1,13 +1,13 @@
-// The knob catalog: every documented settings key, env var and CLI flag.
-// The data comes from catalog.generated.json (npm run catalog) and is checked
-// with zod on load, so a bad regeneration fails loudly instead of rendering junk.
+// The knob catalogs: every documented settings key, env var and CLI flag, one
+// file per agent under catalogs/ (npm run catalog). Each is checked with zod
+// on first use, so a bad regeneration fails loudly instead of rendering junk.
 
 import { z } from 'zod';
 
 import { KNOB_AREAS } from '../../shared/knob-areas.js';
 import type { KnobDefinition, KnobKind } from '../../shared/model.js';
 
-import generated from './catalog.generated.json';
+import claudeCode from './catalogs/claude-code.json';
 
 const knobSchema = z.object({
   key: z.string().min(1),
@@ -30,13 +30,17 @@ export function parseCatalog(raw: unknown): readonly KnobDefinition[] {
   return knobs;
 }
 
-let cached: readonly KnobDefinition[] | null = null;
-
-/** The bundled catalog, validated once. */
-export function loadCatalog(): readonly KnobDefinition[] {
-  cached ??= parseCatalog(generated);
-  return cached;
+/** A loader for one agent's bundled catalog that validates it on the first call and reuses it after. */
+export function bundledCatalog(raw: unknown): () => readonly KnobDefinition[] {
+  let cached: readonly KnobDefinition[] | null = null;
+  return () => {
+    cached ??= parseCatalog(raw);
+    return cached;
+  };
 }
+
+/** Claude Code's catalog. Code that picks an agent reads its config facet's catalog instead. */
+export const loadCatalog = bundledCatalog(claudeCode);
 
 export interface CatalogFilter {
   /** Words that must all appear in the key, description or area, any case. */

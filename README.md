@@ -338,4 +338,5 @@ npm run catalog
 ```
 
 This pulls the settings, env var and CLI reference pages from code.claude.com and rewrites
-`src/core/knobs/catalog.generated.json`.
+`src/core/knobs/catalogs/claude-code.json`. `npm run catalog -- claude-code` regenerates one
+agent's catalog.

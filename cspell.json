@@ -13,7 +13,7 @@
     "reports/**",
     "package-lock.json",
     "test/fixtures/**",
-    "src/core/knobs/catalog.generated.json"
+    "src/core/knobs/catalogs/*.json"
   ],
   "dictionaries": [
     "typescript",
