@@ -11,7 +11,13 @@ import {
   readSessionRegistry,
 } from '../../surfaces/live.js';
 import { parseAttachClients } from '../../surfaces/places.js';
-import type { BackgroundFacet, BackgroundStarted, TerminalFacet, TerminalStart } from '../types.js';
+import type {
+  BackgroundFacet,
+  BackgroundStarted,
+  TabLaunch,
+  TerminalFacet,
+  TerminalStart,
+} from '../types.js';
 
 /** What the UI calls Claude Code for short, in "Claude 8c3efb13" and "Continue in Claude". */
 export const CLAUDE_SHORT = 'Claude';
@@ -28,11 +34,20 @@ function promptArgs(start: TerminalStart): readonly string[] {
   return start.prompt === null ? [] : [start.prompt];
 }
 
+/** --model, --effort and --permission-mode, which claude takes with --bg and in a tab alike. */
+function launchArgs(launch: TabLaunch): readonly string[] {
+  return [
+    ...(launch.model === null ? [] : ['--model', launch.model]),
+    ...(launch.effort === null ? [] : ['--effort', launch.effort]),
+    ...(launch.permissionMode === null ? [] : ['--permission-mode', launch.permissionMode]),
+  ];
+}
+
 const background: BackgroundFacet = {
   start: async (input): Promise<BackgroundStarted> => {
     const result = await input.run(
       input.cli.bin,
-      backgroundArgs(input.resume, input.env, input.prompt, input.fork),
+      [...input.args, ...backgroundArgs(input.resume, input.env, input.prompt, input.fork)],
       { cwd: input.cwd, timeoutMs: BACKGROUND_TIMEOUT_MS, env: input.cli.env },
     );
     const jobId = result.code === 0 ? backgroundedId(result.stdout) : null;
@@ -70,6 +85,7 @@ const background: BackgroundFacet = {
 export const claudeTerminal: TerminalFacet = {
   command: 'claude',
   presetId: true,
+  launchArgs,
   newArgs: (start) => ['--session-id', start.sessionId, ...promptArgs(start)],
   resumeArgs: (sessionId, fork, start) =>
     fork

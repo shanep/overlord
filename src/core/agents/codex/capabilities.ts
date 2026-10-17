@@ -56,6 +56,11 @@ const SANDBOXES: readonly {
   { id: 'danger-full-access', label: 'Full access', risky: true },
 ];
 
+interface Permission {
+  readonly approvalPolicy: string;
+  readonly sandbox: string;
+}
+
 /** The id for one approval_policy and sandbox_mode pair, as the summary reports it. */
 export function permissionModeId(approval: string, sandbox: string): string {
   return `${approval}/${sandbox}`;
@@ -73,6 +78,19 @@ export const CODEX_PERMISSION_MODES: readonly ModeOption[] = SANDBOXES.flatMap((
     ...(sandbox.risky ? { risky: true } : {}),
   })),
 );
+
+/** One of Codex's mode ids, "approval/sandbox", split into its two settings. */
+export function splitMode(mode: string): Permission {
+  const [approvalPolicy, sandbox] = mode.split('/');
+  if (
+    approvalPolicy === undefined ||
+    sandbox === undefined ||
+    !CODEX_PERMISSION_MODES.some((option) => option.id === mode)
+  ) {
+    throw new Error(`Unknown permission mode "${mode}"`);
+  }
+  return { approvalPolicy, sandbox };
+}
 
 /** model_reasoning_effort values Codex 0.163.0 lists for its models. */
 export const CODEX_EFFORT_LEVELS: readonly ModeOption[] = [

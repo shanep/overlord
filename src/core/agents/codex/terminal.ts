@@ -4,11 +4,13 @@
 // tied to its session once the rollout shows up (claude-tabs.ts).
 
 import type { HandoffKind } from '../../../shared/protocol.js';
+import { configArgs } from '../../knobs/launch.js';
 import type { HandoffCommand } from '../../surfaces/handoff.js';
 import type { LiveProcess } from '../../surfaces/live.js';
 import type { TerminalFacet, TerminalStart } from '../types.js';
 
 import { CODEX_SHORT } from './capabilities.js';
+import { codexLaunchConfig } from './launch.js';
 
 const PS_TIMEOUT_MS = 5000;
 
@@ -98,6 +100,7 @@ export const codexTerminal: TerminalFacet = {
     sessionId,
     ...promptArgs(start),
   ],
+  launchArgs: (launch) => configArgs(codexLaunchConfig(launch)),
   // The Codex TUI quits on SIGINT instead of stopping the turn, so only Esc in its tab interrupts.
   interruptSignal: null,
   tabName: (label) => `${CODEX_SHORT} ${label}`,

@@ -20,7 +20,13 @@ import {
   testExec,
 } from '../worktrees/test-helpers/git-world.js';
 
-import { BACKEND_TITLE, BRIDGE_ID, CLAUDE_ID, HERE_ID } from './actions-open-project.js';
+import {
+  BACKEND_TITLE,
+  BRIDGE_ID,
+  CLAUDE_ID,
+  HERE_ID,
+  PROFILE_PICK,
+} from './actions-open-project.js';
 import { AS_IS, UPDATE } from './resume.js';
 import {
   makeApp,
@@ -822,6 +828,75 @@ describe('worktrees in the app', { timeout: 30_000 }, () => {
       expect(test.env.host.warnings.at(-1)).toBe('No Boise State API key is set.');
       expect(test.env.host.terminals).toHaveLength(before);
       expect(await summaries(test)).toStrictEqual([]);
+    });
+  });
+
+  describe('sessions from a launch profile', () => {
+    const OPUS: LaunchProfile = {
+      id: 'opus-plan',
+      name: 'Opus planning',
+      agent: CLAUDE_CODE,
+      model: 'opus',
+      effort: 'high',
+      permissionMode: 'plan',
+      env: {},
+      extraArgs: [],
+    };
+
+    async function withProfile(
+      profile: LaunchProfile,
+      starts: (readonly string[])[] = [],
+    ): Promise<TestApp> {
+      const test = await setup('repo', async (_command, args) => {
+        starts.push(args);
+        await Promise.resolve();
+        return { code: 1, stdout: '', stderr: 'claude does not run in tests' };
+      });
+      await test.app.dispatch({ type: 'saveProfile', profile }, {});
+      return test;
+    }
+
+    it('start on its model, effort and mode, in the background start and the tab alike', async () => {
+      const starts: (readonly string[])[] = [];
+      const test = await withProfile(OPUS, starts);
+      test.env.host.pickAnswers.push(HERE_ID, `${PROFILE_PICK}${OPUS.id}`);
+      await test.app.dispatch({ type: 'newSession' }, {});
+      expect(test.env.host.picks.at(-1)).toMatchObject({ placeholder: BACKEND_TITLE });
+      expect(test.env.host.picks.at(-1)?.items.at(-1)).toStrictEqual({
+        id: `${PROFILE_PICK}${OPUS.id}`,
+        label: 'Opus planning',
+        description: 'opus, high effort, plan',
+      });
+      const flags = ['--model', 'opus', '--effort', 'high', '--permission-mode', 'plan'];
+      expect(starts[0]?.slice(0, 7)).toStrictEqual([...flags, '--bg']);
+      const terminal = lastTerminal(test);
+      expect(terminal.args).toStrictEqual([...flags, '--session-id', terminal.sessionId]);
+      await test.app.sessionClosed(terminal.sessionId ?? '');
+    });
+
+    it('leave the command as it was on the usual account, and are not offered when they set none of the three', async () => {
+      const test = await withProfile(OPUS);
+      test.env.host.pickAnswers.push(HERE_ID, CLAUDE_ID);
+      await test.app.dispatch({ type: 'newSession' }, {});
+      const terminal = lastTerminal(test);
+      expect(terminal.args).toStrictEqual(['--session-id', terminal.sessionId]);
+      await test.app.sessionClosed(terminal.sessionId ?? '');
+
+      const plain = await withProfile({
+        ...OPUS,
+        id: 'env-only',
+        model: null,
+        effort: null,
+        permissionMode: null,
+        env: { FOO: '1' },
+      });
+      await newSession(plain);
+      expect(plain.env.host.picks.map((pick) => pick.placeholder)).not.toContain(BACKEND_TITLE);
+      expect(lastTerminal(plain).args).toStrictEqual([
+        '--session-id',
+        lastTerminal(plain).sessionId,
+      ]);
+      await plain.app.sessionClosed(lastTerminal(plain).sessionId ?? '');
     });
   });
 });

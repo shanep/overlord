@@ -14,6 +14,7 @@ import { bundledCatalog } from '../../knobs/catalog.js';
 import copilotCatalog from '../../knobs/catalogs/copilot.json';
 import type { KnobsFacet, LaunchOverrides, LayerSource, SettingsPlace } from '../../knobs/facet.js';
 import { toExtraArgs } from '../../knobs/launch.js';
+import type { TabLaunch } from '../types.js';
 
 import { copilotHome } from './observer.js';
 
@@ -58,26 +59,31 @@ const REPLACED: ReadonlySet<string> = new Set(['companyAnnouncements']);
 const ALLOW_ALL = 'allow-all';
 
 /**
- * A profile as Copilot's flags: --model, --reasoning-effort, and --mode or
- * --allow-all for the permission mode. The profile's own flags win when they
- * name the same one.
+ * A profile's model, effort and mode as Copilot's flags: --model,
+ * --reasoning-effort, and --mode or --allow-all for the permission mode.
+ * Launcher runs and terminal tabs both start Copilot with these.
  */
-export function copilotLaunchOverrides(profile: LaunchProfile): LaunchOverrides {
+export function copilotModeFlags(launch: TabLaunch): Record<string, string | null> {
   const flags: Record<string, string | null> = {};
-  if (profile.model !== null) {
-    flags['model'] = profile.model;
+  if (launch.model !== null) {
+    flags['model'] = launch.model;
   }
-  if (profile.effort !== null) {
-    flags['reasoning-effort'] = profile.effort;
+  if (launch.effort !== null) {
+    flags['reasoning-effort'] = launch.effort;
   }
-  if (profile.permissionMode === ALLOW_ALL) {
+  if (launch.permissionMode === ALLOW_ALL) {
     flags[ALLOW_ALL] = null;
-  } else if (profile.permissionMode !== null) {
-    flags['mode'] = profile.permissionMode;
+  } else if (launch.permissionMode !== null) {
+    flags['mode'] = launch.permissionMode;
   }
+  return flags;
+}
+
+/** A profile as Copilot's flags. The profile's own flags win when they name the same one. */
+export function copilotLaunchOverrides(profile: LaunchProfile): LaunchOverrides {
   return {
     env: { ...profile.env },
-    extraArgs: { ...flags, ...toExtraArgs(profile.extraArgs) },
+    extraArgs: { ...copilotModeFlags(profile), ...toExtraArgs(profile.extraArgs) },
     config: [],
   };
 }

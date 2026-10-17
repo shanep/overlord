@@ -66,6 +66,28 @@ describe('codexTerminal', () => {
     expect(codexTerminal.interruptSignal).toBeNull();
   });
 
+  it('starts a tab on the profile settings as -c pairs', () => {
+    expect(
+      codexTerminal.launchArgs?.({
+        model: 'gpt-6-luna',
+        effort: 'high',
+        permissionMode: 'on-request/workspace-write',
+      }),
+    ).toStrictEqual([
+      '-c',
+      'model="gpt-6-luna"',
+      '-c',
+      'model_reasoning_effort="high"',
+      '-c',
+      'approval_policy="on-request"',
+      '-c',
+      'sandbox_mode="workspace-write"',
+    ]);
+    expect(
+      codexTerminal.launchArgs?.({ model: null, effort: null, permissionMode: null }),
+    ).toStrictEqual([]);
+  });
+
   it('offers only resume as a handoff', () => {
     expect(codexTerminal.handoff?.('resume-local', ROW, '/bin/codex')).toMatchObject({
       command: '/bin/codex',

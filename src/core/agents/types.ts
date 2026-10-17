@@ -125,9 +125,21 @@ export interface TerminalStart {
   readonly prompt: string | null;
 }
 
+/**
+ * What a launch profile sets for a tab: its model, effort and permission
+ * mode, each null when the profile leaves it to the agent's settings.
+ */
+export interface TabLaunch {
+  readonly model: string | null;
+  readonly effort: string | null;
+  readonly permissionMode: string | null;
+}
+
 interface BackgroundStart {
   readonly run: Exec;
   readonly cli: AgentCli;
+  /** Flags that go before the agent's own, such as a profile's model. */
+  readonly args: readonly string[];
   readonly cwd: string;
   /** The session to continue, or null for a new one. */
   readonly resume: string | null;
@@ -188,6 +200,12 @@ export interface TerminalFacet {
   newArgs: (start: TerminalStart) => readonly string[];
   /** Args to continue sessionId, or with fork a copy of it under start.sessionId. */
   resumeArgs: (sessionId: string, fork: boolean, start: TerminalStart) => readonly string[];
+  /**
+   * Flags that start a tab on a profile's model, effort and mode, the way
+   * the agent's launch overrides give them to a Launcher run. None for a
+   * profile that sets none of the three.
+   */
+  launchArgs?: (launch: TabLaunch) => readonly string[];
   readonly background?: BackgroundFacet;
   /** What interrupts a turn of a session in a plain terminal, or null when only its tab can. */
   readonly interruptSignal: NodeJS.Signals | null;

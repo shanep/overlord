@@ -76,6 +76,18 @@ describe('copilotTerminal', () => {
     ]);
   });
 
+  it('starts a tab on the profile model, effort and mode with the flags Launcher runs get', () => {
+    expect(
+      copilotTerminal.launchArgs?.({ model: 'gpt-5-mini', effort: 'high', permissionMode: 'plan' }),
+    ).toStrictEqual(['--model=gpt-5-mini', '--reasoning-effort=high', '--mode=plan']);
+    expect(
+      copilotTerminal.launchArgs?.({ model: null, effort: null, permissionMode: 'allow-all' }),
+    ).toStrictEqual(['--allow-all']);
+    expect(
+      copilotTerminal.launchArgs?.({ model: null, effort: null, permissionMode: null }),
+    ).toStrictEqual([]);
+  });
+
   it('resumes by id and refuses a fork with a message that says what to do', () => {
     const start = { sessionId: 'unused', prompt: null };
     expect(copilotTerminal.resumeArgs(ID, false, start)).toStrictEqual([`--resume=${ID}`]);

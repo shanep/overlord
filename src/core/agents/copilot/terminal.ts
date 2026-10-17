@@ -10,6 +10,7 @@ import type { LiveProcess } from '../../surfaces/live.js';
 import type { TerminalFacet, TerminalStart } from '../types.js';
 
 import { COPILOT_SHORT } from './capabilities.js';
+import { copilotModeFlags } from './config.js';
 
 export const COPILOT_BINARY = 'copilot';
 const PS_TIMEOUT_MS = 5000;
@@ -113,6 +114,11 @@ export const copilotTerminal: TerminalFacet = {
     }
     return [...resumeArgs(sessionId), ...promptArgs(start)];
   },
+  // --name=value, so a model id that starts with a dash is not read as a flag.
+  launchArgs: (launch) =>
+    Object.entries(copilotModeFlags(launch)).map(([flag, value]) =>
+      value === null ? `--${flag}` : `--${flag}=${value}`,
+    ),
   // Copilot shuts down on SIGINT, the same as on SIGTERM, so only Esc in its tab stops a turn.
   interruptSignal: null,
   tabName: (label) => `${COPILOT_SHORT} ${label}`,

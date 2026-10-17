@@ -83,6 +83,22 @@ function profileArgs(
   return { extraArgs, config };
 }
 
+/**
+ * The profile's model, effort and permission mode, with effort and mode
+ * checked against the agent's lists. Launcher runs and terminal tabs both
+ * start from these. Throws on an id the agent does not list.
+ */
+export function profileModes(
+  profile: LaunchProfile | null,
+  modes: Pick<AgentModes, 'permission' | 'effort'>,
+): Pick<SessionSettings, 'model' | 'effort' | 'permissionMode'> {
+  return {
+    model: profile?.model ?? null,
+    effort: checkMode(profile?.effort ?? null, modes.effort, 'effort level'),
+    permissionMode: checkMode(profile?.permissionMode ?? null, modes.permission, 'permission mode'),
+  };
+}
+
 export function sessionSettings(
   spec: LaunchSpec,
   profile: LaunchProfile | null,
@@ -91,9 +107,7 @@ export function sessionSettings(
 ): SessionSettings {
   const args = profileArgs(profile, modes.launch);
   return {
-    model: profile?.model ?? null,
-    effort: checkMode(profile?.effort ?? null, modes.effort, 'effort level'),
-    permissionMode: checkMode(profile?.permissionMode ?? null, modes.permission, 'permission mode'),
+    ...profileModes(profile, modes),
     env: mergeEnv(baseEnv, profile?.env ?? {}),
     ...args,
     maxBudgetUsd: spec.maxBudgetUsd,

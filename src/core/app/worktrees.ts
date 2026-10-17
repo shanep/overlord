@@ -9,6 +9,7 @@ import path from 'node:path';
 
 import { CLAUDE_CODE, type AgentId } from '../../shared/agents.js';
 import type { AgentTerminal } from '../agents/terminals.js';
+import type { TabLaunch } from '../agents/types.js';
 import { backendFor, findBackend } from '../bridge/backends.js';
 import type { WorktreeLease, WorktreeProvider } from '../harness/launcher.js';
 import type { ClaudePaths } from '../paths.js';
@@ -128,6 +129,8 @@ export interface SessionStart {
   readonly backend?: string;
   /** The agent whose terminal facet opens the tab. Claude Code when left out. */
   readonly agent?: AgentId;
+  /** The launch profile's model, effort and mode, for a session started from one. */
+  readonly launch?: TabLaunch;
 }
 
 const PLAIN_START: SessionStart = { name: 'Claude Code' };
@@ -172,7 +175,7 @@ export async function tabBackend(
 /** The tab fields for a start: a new session, or a fork of forkOf. */
 function tabStart(
   start: SessionStart,
-): Pick<ClaudeTab, 'agent' | 'name' | 'prompt' | 'resume' | 'fork'> {
+): Pick<ClaudeTab, 'agent' | 'name' | 'prompt' | 'resume' | 'fork' | 'launch'> {
   const { forkOf, ...rest } = start;
   return forkOf === undefined ? { ...rest, resume: null } : { ...rest, resume: forkOf, fork: true };
 }
@@ -249,6 +252,13 @@ export async function startSession(
   });
 }
 
+/** How a new session starts: on a backend, with an agent, and on a profile's model, effort and mode. */
+export interface NewSessionHow {
+  readonly backend?: string;
+  readonly agent?: AgentTerminal;
+  readonly launch?: TabLaunch;
+}
+
 /**
  * Starts a session in a new worktree of the folder's repository, or in home
  * with no folder, on Claude Code's usual account or on a backend such as the
@@ -257,20 +267,20 @@ export async function startSession(
 export async function newSession(
   rt: Runtime,
   folder: string | null,
-  backend?: string,
-  agent?: AgentTerminal,
+  how: NewSessionHow = {},
 ): Promise<void> {
-  const which = agent === undefined ? {} : { agent: agent.adapter.id };
+  const { backend, agent } = how;
+  const which = {
+    ...(agent === undefined ? {} : { agent: agent.adapter.id }),
+    ...(how.launch === undefined ? {} : { launch: how.launch }),
+  };
   if (backend !== undefined) {
     const name = findBackend(backend)?.short ?? backend;
     await startSession(rt, folder, { ...which, name, backend });
     return;
   }
-  await startSession(
-    rt,
-    folder,
-    agent === undefined ? PLAIN_START : { ...which, name: agent.adapter.name },
-  );
+  const name = agent === undefined ? PLAIN_START.name : agent.adapter.name;
+  await startSession(rt, folder, { ...which, name });
 }
 
 /** Opens a new session in a worktree that is still around, to finish its work. */

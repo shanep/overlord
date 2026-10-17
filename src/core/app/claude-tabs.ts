@@ -12,7 +12,7 @@ import type { AgentId } from '../../shared/agents.js';
 import { CLAUDE_CODE } from '../../shared/agents.js';
 import type { AgentTerminal } from '../agents/terminals.js';
 import { terminalOf } from '../agents/terminals.js';
-import type { BackgroundFacet } from '../agents/types.js';
+import type { BackgroundFacet, TabLaunch } from '../agents/types.js';
 
 import { agentCli, newSessionIn, terminalCommand } from './agent-terminal.js';
 import type { Runtime } from './runtime.js';
@@ -43,6 +43,8 @@ export interface ClaudeTab {
   readonly prompt?: string;
   /** CLI args that go before the session's own, such as the bridge's model. */
   readonly args?: readonly string[];
+  /** The launch profile's model, effort and mode, for a session started from one. */
+  readonly launch?: TabLaunch;
   /** Runs the agent in the tab itself, for a session that cannot outlive the window. */
   readonly foreground?: boolean;
   /**
@@ -76,6 +78,11 @@ async function waitUntilListed(
   return null;
 }
 
+/** The profile's flags in the agent's own form. None without a profile, so the command stays as it was. */
+function launchFlags(at: AgentTerminal, tab: ClaudeTab): readonly string[] {
+  return tab.launch === undefined ? [] : (at.terminal.launchArgs?.(tab.launch) ?? []);
+}
+
 /**
  * Starts the session in the background and attaches a tab to it once the
  * agent lists it. Resolves to the session id, null when the session started
@@ -92,6 +99,7 @@ async function openAttached(
   const started = await background.start({
     run: rt.exec,
     cli,
+    args: launchFlags(at, tab),
     cwd: tab.cwd,
     resume: tab.resume,
     fork: tab.fork === true,
@@ -128,7 +136,7 @@ async function openAttached(
 /** Args for a tab that runs the agent itself. A fork takes sessionId as its new id. */
 function plainArgs(at: AgentTerminal, tab: ClaudeTab, sessionId: string): readonly string[] {
   const start = { sessionId, prompt: tab.prompt ?? null };
-  const before = tab.args ?? [];
+  const before = [...(tab.args ?? []), ...launchFlags(at, tab)];
   if (tab.resume === null) {
     return [...before, ...at.terminal.newArgs(start)];
   }

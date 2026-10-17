@@ -1,27 +1,34 @@
 // Open a project without a session in it first: pick any project Overlord
 // knows, or a folder, then start a session there, open it in its own
 // window, or add it to this one. The New Session command asks the same way,
-// with this window's folder first, and then, once Boise State is set up,
-// whether the session runs on Claude Code's usual account or on the bridge.
+// with this window's folder first, and then, once Boise State is set up or
+// the agent has a launch profile that sets its model, effort or mode,
+// whether the session runs on the agent's usual setup, the bridge or a profile.
 
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 
 import { CLAUDE_CODE, type AgentId } from '../../shared/agents.js';
+import type { LaunchProfile } from '../../shared/model.js';
 import type { ProjectSummary } from '../../shared/protocol.js';
+import { claudeCode } from '../agents/claude/index.js';
 import type { AgentTerminal } from '../agents/terminals.js';
 import { terminalOf } from '../agents/terminals.js';
+import type { AgentAdapter } from '../agents/types.js';
 import { backendIdOf, backendsFor } from '../bridge/backends.js';
 import { BOISESTATE } from '../bridge/boisestate.js';
+import { profileModes } from '../harness/options.js';
 import { addProject, assignFolder, resolveProject, setProjectFolder } from '../projects/book.js';
 
 import type { ActionHandlers } from './action-types.js';
 import { askName, BROWSE_LABEL, chooseFolder, folderOf } from './actions-projects.js';
 import { agentToStart } from './agent-terminal.js';
 import { agentEnabled } from './claude-bin.js';
+import { messageOf } from './errors.js';
 import type { PickItem } from './host-port.js';
 import type { Runtime } from './runtime.js';
 import { fleetFor } from './views/fleet.js';
+import type { NewSessionHow } from './worktrees.js';
 import { newSession, STARTING } from './worktrees.js';
 
 type OpenActions = 'openProject' | 'newProjectSession' | 'newSession' | 'newBridgeChat';
@@ -35,11 +42,8 @@ export const AGENT_TITLE = 'Start a session with';
 export const BACKEND_TITLE = 'Run the session on';
 export const CLAUDE_ID = 'claude';
 export const BRIDGE_ID = BOISESTATE.id;
-const OWN_ACCOUNT: PickItem = {
-  id: CLAUDE_ID,
-  label: 'Claude Code',
-  description: 'your usual account',
-};
+/** A profile's pick id is this and the profile's id. */
+export const PROFILE_PICK = 'profile:';
 const BROWSE_ITEM: PickItem = { id: BROWSE_ID, label: BROWSE_LABEL, description: '' };
 
 type Way = 'session' | 'window' | 'here';
@@ -162,40 +166,93 @@ async function pickSessionFolder(rt: Runtime): Promise<string | null | undefined
  * The backends set up for an agent, which saving a backend's key does by
  * adding a profile that runs on it. None when the host has no backends.
  */
-async function readyBackends(rt: Runtime, agent: AgentId): Promise<readonly PickItem[]> {
+function readyBackends(
+  rt: Runtime,
+  agent: AgentId,
+  profiles: readonly LaunchProfile[],
+): readonly PickItem[] {
   if (rt.host.backendEndpoint === undefined) {
     return [];
   }
-  await rt.caches.profiles.refresh();
-  const profiles = rt.caches.profiles.peek();
   const used = new Set(profiles.map((profile) => backendIdOf(profile)));
   return backendsFor(agent)
     .filter((backend) => used.has(backend.id))
     .map((backend) => ({ id: backend.id, label: backend.name, description: backend.description }));
 }
 
-/**
- * The backend a session runs on, asked only once one is set up: undefined
- * for the agent's own account, null when cancelled.
- */
-async function pickBackend(rt: Runtime, agent: AgentId): Promise<string | undefined | null> {
-  const ready = await readyBackends(rt, agent);
-  if (ready.length === 0) {
-    return undefined;
+/** "opus, high effort, plan" for a profile, from the three things a tab takes from it. */
+function profileSummary(profile: LaunchProfile): string {
+  const parts = [
+    profile.model,
+    profile.effort === null ? null : `${profile.effort} effort`,
+    profile.permissionMode,
+  ];
+  return parts.filter((part) => part !== null).join(', ');
+}
+
+/** The agent's own profiles that set a model, effort or mode, which a tab can start on. */
+function tabProfiles(profiles: readonly LaunchProfile[], agent: AgentId): readonly LaunchProfile[] {
+  return profiles.filter(
+    (profile) =>
+      profile.agent === agent && backendIdOf(profile) === null && profileSummary(profile) !== '',
+  );
+}
+
+/** Where a new session runs: a backend, or a profile's model, effort and mode. */
+type StartChoice = Pick<NewSessionHow, 'backend' | 'launch'>;
+
+/** A tab's start on the profile, or null with a warning when the agent no longer lists its mode. */
+function launchOf(rt: Runtime, adapter: AgentAdapter, profile: LaunchProfile): StartChoice | null {
+  try {
+    return { launch: profileModes(profile, adapter.modes) };
+  } catch (error: unknown) {
+    rt.host.showWarning(`${profile.name}: ${messageOf(error)}`);
+    return null;
   }
-  const picked = await rt.host.quickPick([OWN_ACCOUNT, ...ready], BACKEND_TITLE);
-  return picked === CLAUDE_ID ? undefined : picked;
+}
+
+/**
+ * Where a session runs, asked only once there is a choice: a backend set up
+ * for the agent, or one of its profiles. Null when cancelled.
+ */
+async function pickStart(rt: Runtime, agent: AgentTerminal | null): Promise<StartChoice | null> {
+  const adapter = agent?.adapter ?? claudeCode;
+  await rt.caches.profiles.refresh();
+  const profiles = rt.caches.profiles.peek();
+  const backends = readyBackends(rt, adapter.id, profiles);
+  const tabbed = tabProfiles(profiles, adapter.id);
+  if (backends.length === 0 && tabbed.length === 0) {
+    return {};
+  }
+  const own: PickItem = { id: CLAUDE_ID, label: adapter.name, description: 'your usual account' };
+  const offered = tabbed.map((profile) => ({
+    id: `${PROFILE_PICK}${profile.id}`,
+    label: profile.name,
+    description: profileSummary(profile),
+  }));
+  const picked = await rt.host.quickPick([own, ...backends, ...offered], BACKEND_TITLE);
+  if (picked === null) {
+    return null;
+  }
+  const profile = tabbed.find((item) => `${PROFILE_PICK}${item.id}` === picked);
+  if (profile !== undefined) {
+    return launchOf(rt, adapter, profile);
+  }
+  return picked === CLAUDE_ID ? {} : { backend: picked };
 }
 
 async function startIn(
   rt: Runtime,
   folder: string | null,
-  backend?: string,
+  choice: StartChoice,
   agent?: AgentTerminal,
 ): Promise<void> {
   const title =
-    backend !== undefined || agent === undefined ? STARTING : `Starting ${agent.adapter.name}`;
-  await rt.host.withProgress(title, async () => newSession(rt, folder, backend, agent));
+    choice.backend !== undefined || agent === undefined
+      ? STARTING
+      : `Starting ${agent.adapter.name}`;
+  const how: NewSessionHow = { ...choice, ...(agent === undefined ? {} : { agent }) };
+  await rt.host.withProgress(title, async () => newSession(rt, folder, how));
 }
 
 /** Starts a session in a folder, after asking where it runs. Only Claude Code has backends today. */
@@ -204,9 +261,9 @@ async function askAndStart(
   folder: string | null,
   agent?: AgentTerminal,
 ): Promise<void> {
-  const backend = await pickBackend(rt, agent?.adapter.id ?? CLAUDE_CODE);
-  if (backend !== null) {
-    await startIn(rt, folder, backend, agent);
+  const choice = await pickStart(rt, agent ?? null);
+  if (choice !== null) {
+    await startIn(rt, folder, choice, agent);
   }
 }
 
@@ -272,7 +329,7 @@ export const openProjectActions: ActionHandlers<OpenActions> = {
   newBridgeChat: async ({ rt }) => {
     const folder = await pickSessionFolder(rt);
     if (folder !== undefined) {
-      await startIn(rt, folder, BOISESTATE.id);
+      await startIn(rt, folder, { backend: BOISESTATE.id });
     }
   },
 };

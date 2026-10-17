@@ -7,6 +7,9 @@ import type { LaunchProfile } from '../../../shared/model.js';
 import type { ConfigOverride, LaunchOverrides } from '../../knobs/facet.js';
 import { parseExtraArgs, toLaunchOptions } from '../../knobs/launch.js';
 import { parseTomlKey } from '../../knobs/toml-edit.js';
+import type { TabLaunch } from '../types.js';
+
+import { splitMode } from './capabilities.js';
 
 const CONFIG_FLAGS: ReadonlySet<string> = new Set(['-c', '--config']);
 const INLINE = '--config=';
@@ -59,4 +62,23 @@ export function splitConfigArgs(args: readonly string[]): {
 export function codexLaunchOverrides(profile: LaunchProfile): LaunchOverrides {
   const { config, rest } = splitConfigArgs(profile.extraArgs);
   return { ...toLaunchOptions(profile), extraArgs: parseExtraArgs(rest), config };
+}
+
+/**
+ * A profile's model, effort and mode as the settings a Codex tab takes with
+ * -c, the same keys a Launcher run sets over app-server. -c goes before the
+ * resume and fork subcommands too, where -m and -s would not.
+ */
+export function codexLaunchConfig(launch: TabLaunch): readonly ConfigOverride[] {
+  const permission = launch.permissionMode === null ? null : splitMode(launch.permissionMode);
+  return [
+    ...(launch.model === null ? [] : [{ key: ['model'], value: launch.model }]),
+    ...(launch.effort === null ? [] : [{ key: ['model_reasoning_effort'], value: launch.effort }]),
+    ...(permission === null
+      ? []
+      : [
+          { key: ['approval_policy'], value: permission.approvalPolicy },
+          { key: ['sandbox_mode'], value: permission.sandbox },
+        ]),
+  ];
 }

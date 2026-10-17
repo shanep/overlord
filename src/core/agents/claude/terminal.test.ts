@@ -68,7 +68,15 @@ describe('claudeTerminal', () => {
 
   it('starts a background job and reads its short id, or says why it did not start', async () => {
     const background = claudeTerminal.background;
-    const input = { cli: CLI, cwd: '/work', resume: null, fork: false, env: {}, prompt: null };
+    const input = {
+      cli: CLI,
+      args: [],
+      cwd: '/work',
+      resume: null,
+      fork: false,
+      env: {},
+      prompt: null,
+    };
     const started = runner({ code: 0, stdout: 'backgrounded · 8c3efb13 (idle)\n', stderr: '' });
     await expect(background?.start({ ...input, run: started.run })).resolves.toStrictEqual({
       jobId: '8c3efb13',
@@ -84,6 +92,19 @@ describe('claudeTerminal', () => {
     await expect(background?.start({ ...input, run: failed.run })).resolves.toStrictEqual({
       error: 'claude --bg did not start a session (exit 2): not logged in',
     });
+    // A profile's flags go ahead of --bg, so the job starts on its model.
+    const profiled = runner({ code: 0, stdout: 'backgrounded · 8c3efb13 (idle)\n', stderr: '' });
+    await background?.start({ ...input, args: ['--model', 'opus'], run: profiled.run });
+    expect(profiled.calls[0]?.args).toStrictEqual(['--model', 'opus', '--bg']);
+  });
+
+  it('starts a tab on the profile model, effort and mode, and adds nothing for a profile that sets none', () => {
+    expect(
+      claudeTerminal.launchArgs?.({ model: 'opus', effort: 'high', permissionMode: 'plan' }),
+    ).toStrictEqual(['--model', 'opus', '--effort', 'high', '--permission-mode', 'plan']);
+    expect(
+      claudeTerminal.launchArgs?.({ model: null, effort: null, permissionMode: null }),
+    ).toStrictEqual([]);
   });
 
   it('attaches to, lists and stops background jobs', async () => {

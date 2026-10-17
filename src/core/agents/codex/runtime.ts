@@ -24,7 +24,7 @@ import {
   turnResultSchema,
 } from './app-server.js';
 import { approvalAsk, approvalReply } from './approvals.js';
-import { CODEX_PERMISSION_MODES } from './capabilities.js';
+import { CODEX_PERMISSION_MODES, splitMode } from './capabilities.js';
 import {
   NOT_HANDLED,
   RpcClosedError,
@@ -51,24 +51,6 @@ const SANDBOX_POLICIES: Readonly<Record<string, unknown>> = {
   },
   'danger-full-access': { type: 'dangerFullAccess' },
 };
-
-interface Permission {
-  readonly approvalPolicy: string;
-  readonly sandbox: string;
-}
-
-/** One of Codex's mode ids, "approval/sandbox", split into its two settings. */
-function splitMode(mode: string): Permission {
-  const [approvalPolicy, sandbox] = mode.split('/');
-  if (
-    approvalPolicy === undefined ||
-    sandbox === undefined ||
-    !CODEX_PERMISSION_MODES.some((option) => option.id === mode)
-  ) {
-    throw new Error(`Unknown permission mode "${mode}"`);
-  }
-  return { approvalPolicy, sandbox };
-}
 
 /**
  * The app-server's argv: effort and the launch's config overrides as `-c
