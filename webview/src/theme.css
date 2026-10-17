@@ -614,6 +614,42 @@ details > summary {
   cursor: pointer;
 }
 
+/* A section folded under its heading, with a turning arrow. */
+.fold > summary {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--ov-border);
+  list-style: none;
+}
+
+.fold > summary::-webkit-details-marker {
+  display: none;
+}
+
+.fold > summary::before {
+  color: var(--ov-muted);
+  content: '\25B8';
+  transition: transform 0.15s ease-out;
+}
+
+.fold[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.fold > summary > h2 {
+  margin: 0;
+}
+
+.fold-note {
+  font-size: 0.85em;
+}
+
+.fold-body {
+  padding-top: 8px;
+}
+
 .charts {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));

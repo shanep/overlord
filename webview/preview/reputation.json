@@ -1,0 +1,158 @@
+{
+  "prompts": 840,
+  "kind": 16,
+  "mean": 17,
+  "general": 9,
+  "score": -0.3,
+  "byDay": [
+    {
+      "date": "2026-10-08",
+      "prompts": 120,
+      "kind": 3,
+      "mean": 0,
+      "general": 1
+    },
+    {
+      "date": "2026-10-09",
+      "prompts": 80,
+      "kind": 1,
+      "mean": 2,
+      "general": 0
+    },
+    {
+      "date": "2026-10-10",
+      "prompts": 150,
+      "kind": 4,
+      "mean": 1,
+      "general": 2
+    },
+    {
+      "date": "2026-10-13",
+      "prompts": 60,
+      "kind": 0,
+      "mean": 5,
+      "general": 1
+    },
+    {
+      "date": "2026-10-14",
+      "prompts": 200,
+      "kind": 2,
+      "mean": 3,
+      "general": 3
+    },
+    {
+      "date": "2026-10-15",
+      "prompts": 90,
+      "kind": 5,
+      "mean": 0,
+      "general": 0
+    },
+    {
+      "date": "2026-10-16",
+      "prompts": 140,
+      "kind": 1,
+      "mean": 6,
+      "general": 2
+    }
+  ],
+  "bySession": [
+    {
+      "sessionId": "11111111-aaaa-4aaa-8aaa-111111111111",
+      "title": "Fix the flaky login test that only fails on CI",
+      "prompts": 60,
+      "kind": 1,
+      "mean": 9,
+      "general": 3,
+      "score": -0.5862068965517241
+    },
+    {
+      "sessionId": "33333333-cccc-4ccc-8ccc-333333333333",
+      "title": "Refactor the parser",
+      "prompts": 45,
+      "kind": 4,
+      "mean": 3,
+      "general": 1,
+      "score": -0.1
+    },
+    {
+      "sessionId": "22222222-bbbb-4bbb-8bbb-222222222222",
+      "title": "Write the README",
+      "prompts": 30,
+      "kind": 6,
+      "mean": 0,
+      "general": 0,
+      "score": 0.375
+    }
+  ],
+  "topKind": [
+    {
+      "term": "thanks",
+      "count": 7
+    },
+    {
+      "term": "please",
+      "count": 5
+    },
+    {
+      "term": "great job",
+      "count": 3
+    },
+    {
+      "term": "nice work",
+      "count": 1
+    }
+  ],
+  "topMean": [
+    {
+      "term": "stupid",
+      "count": 6
+    },
+    {
+      "term": "what the hell",
+      "count": 4
+    },
+    {
+      "term": "idiot",
+      "count": 3
+    },
+    {
+      "term": "hurry up",
+      "count": 2
+    }
+  ],
+  "recent": [
+    {
+      "id": "p1:mean",
+      "sessionId": "11111111-aaaa-4aaa-8aaa-111111111111",
+      "at": 1792173420000,
+      "tone": "mean",
+      "terms": ["stupid"],
+      "excerpt": "why is this test still failing, are you stupid"
+    },
+    {
+      "id": "p2:kind",
+      "sessionId": "22222222-bbbb-4bbb-8bbb-222222222222",
+      "at": 1792172400000,
+      "tone": "kind",
+      "terms": ["thanks", "great job"],
+      "excerpt": "thanks, great job on the install section"
+    },
+    {
+      "id": "p3:general",
+      "sessionId": "33333333-cccc-4ccc-8ccc-333333333333",
+      "at": 1792170900000,
+      "tone": "general",
+      "terms": ["damn"],
+      "excerpt": "this damn parser has no tests at all"
+    },
+    {
+      "id": "p4:mean",
+      "sessionId": "11111111-aaaa-4aaa-8aaa-111111111111",
+      "at": 1792168200000,
+      "tone": "mean",
+      "terms": ["hurry up"],
+      "excerpt": "hurry up, the demo is in ten minutes"
+    }
+  ],
+  "scannedAt": 1792173300000
+}

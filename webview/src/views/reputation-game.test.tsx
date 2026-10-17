@@ -193,3 +193,34 @@ describe('the standing', () => {
     );
   });
 });
+
+describe('the layout', () => {
+  it('puts achievements and the standing up top and folds the rest closed', () => {
+    const { container, getAllByRole } = renderView(<ReputationView state={stateOf(1, 0)} />);
+    const headings = getAllByRole('heading', { level: 2 }).map((heading) => heading.id);
+    expect(headings.slice(0, 2)).toStrictEqual(['reputation-achievements', 'reputation-rank']);
+    const folds = [...container.querySelectorAll<HTMLDetailsElement>('details.fold')];
+    expect(folds.map((fold) => fold.querySelector('h2')?.textContent)).toStrictEqual([
+      'How this works',
+      'By day',
+      'Favorite words',
+      'What the machines remember',
+      'Rap sheet by session',
+    ]);
+    expect(folds.every((fold) => !fold.open)).toBe(true);
+  });
+
+  it('remembers a section you opened', () => {
+    const api = new FakeApi();
+    const { container } = renderView(<ReputationView state={stateOf(1, 0)} />, api);
+    const fold = container.querySelector<HTMLDetailsElement>('details.fold');
+    if (fold === null) {
+      throw new Error('expected a fold');
+    }
+    fold.open = true;
+    fireEvent(fold, new Event('toggle'));
+    expect(api.saved).toMatchObject({ 'fold:reputation-about': true });
+    const again = renderView(<ReputationView state={stateOf(1, 0)} />, api);
+    expect(again.container.querySelector<HTMLDetailsElement>('details.fold')?.open).toBe(true);
+  });
+});

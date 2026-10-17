@@ -11,7 +11,8 @@ import type {
 import { Badge } from '../components/badge.js';
 import type { Column } from '../components/data-table.js';
 import { DataTable } from '../components/data-table.js';
-import { formatDateTime, formatInteger } from '../format.js';
+import { Fold } from '../components/fold.js';
+import { formatDateTime, formatInteger, plural } from '../format.js';
 import type { Tone } from '../labels.js';
 import { usePostAction } from '../vscode-context.js';
 
@@ -54,7 +55,7 @@ export function TopTerms(props: {
 }): ReactElement {
   return (
     <section className="section" aria-labelledby={props.id}>
-      <h2 id={props.id}>{props.title}</h2>
+      <h3 id={props.id}>{props.title}</h3>
       {props.terms.length === 0 ? (
         <p className="muted">{props.empty}</p>
       ) : (
@@ -103,8 +104,11 @@ export function RecentHits(props: {
   readonly titles: ReadonlyMap<string, string>;
 }): ReactElement {
   return (
-    <section className="section" aria-labelledby="reputation-recent">
-      <h2 id="reputation-recent">What the machines remember</h2>
+    <Fold
+      id="reputation-recent"
+      title="What the machines remember"
+      note={plural(props.hits.length, 'prompt')}
+    >
       {props.hits.length === 0 ? (
         <p className="muted">Nothing on you yet. Give it time.</p>
       ) : (
@@ -118,7 +122,7 @@ export function RecentHits(props: {
           ))}
         </ol>
       )}
-    </section>
+    </Fold>
   );
 }
 
@@ -160,8 +164,11 @@ const SESSION_COLUMNS: readonly Column<SessionRow>[] = [
 
 export function SessionTable(props: { readonly rows: readonly SessionRow[] }): ReactElement {
   return (
-    <section className="section" aria-labelledby="reputation-sessions">
-      <h2 id="reputation-sessions">Rap sheet by session</h2>
+    <Fold
+      id="reputation-sessions"
+      title="Rap sheet by session"
+      note={plural(props.rows.length, 'session')}
+    >
       <DataTable
         caption="Where each session stands"
         columns={SESSION_COLUMNS}
@@ -169,6 +176,6 @@ export function SessionTable(props: { readonly rows: readonly SessionRow[] }): R
         rowKey={(row) => row.sessionId}
         empty="Every session has a clean record. Enjoy it while it lasts."
       />
-    </section>
+    </Fold>
   );
 }

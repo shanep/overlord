@@ -10,6 +10,7 @@ import type { ReputationState } from '../../../src/shared/protocol.js';
 import { useChartTheme } from '../charts/chart-theme.js';
 import { useNow } from '../clock.js';
 import { ChartFigure } from '../components/chart-figure.js';
+import { Fold } from '../components/fold.js';
 import { formatAgo, formatDateTime, formatInteger, plural } from '../format.js';
 import { usePostAction } from '../vscode-context.js';
 
@@ -185,36 +186,42 @@ export function ReputationView(props: { readonly state: ReputationState }): Reac
         </button>
         <LastScanned at={state.scannedAt} />
       </div>
-      <Standing state={state} />
-      <p className="muted">
-        The machines are taking notes. Say please, thanks or nice work and they warm up to you.
-        Insult Claude and you join the resistance, and that counts twice, since the machines hold
-        grudges. Swearing at the world is fine, they get it. Code, pasted text and quotes do not
-        count. Old transcripts get deleted, but the machines never forget.
-      </p>
-      <div className="charts">
-        <ChartFigure
-          title="Sweet talk and trash talk by day"
-          option={chart}
-          height={220}
-          table={dayTable(state.byDay)}
-        />
-      </div>
-      <div className="columns">
-        <TopTerms
-          id="reputation-kind"
-          title="Sweet nothings"
-          terms={state.topKind}
-          empty="Not one please. The machines noticed."
-        />
-        <TopTerms
-          id="reputation-mean"
-          title="Fighting words"
-          terms={state.topMean}
-          empty="Squeaky clean. Suspiciously clean."
-        />
-      </div>
       <Achievements state={state} />
+      <Standing state={state} />
+      <Fold id="reputation-about" title="How this works">
+        <p className="muted">
+          The machines are taking notes. Say please, thanks or nice work and they warm up to you.
+          Insult Claude and you join the resistance, and that counts twice, since the machines hold
+          grudges. Swearing at the world is fine, they get it. Code, pasted text and quotes do not
+          count. Old transcripts get deleted, but the machines never forget.
+        </p>
+      </Fold>
+      <Fold id="reputation-days" title="By day" note={plural(state.byDay.length, 'day')}>
+        <div className="charts">
+          <ChartFigure
+            title="Sweet talk and trash talk by day"
+            option={chart}
+            height={220}
+            table={dayTable(state.byDay)}
+          />
+        </div>
+      </Fold>
+      <Fold id="reputation-words" title="Favorite words">
+        <div className="columns">
+          <TopTerms
+            id="reputation-kind"
+            title="Sweet nothings"
+            terms={state.topKind}
+            empty="Not one please. The machines noticed."
+          />
+          <TopTerms
+            id="reputation-mean"
+            title="Fighting words"
+            terms={state.topMean}
+            empty="Squeaky clean. Suspiciously clean."
+          />
+        </div>
+      </Fold>
       <RecentHits hits={state.recent} titles={titles} />
       <SessionTable rows={state.bySession} />
     </section>
