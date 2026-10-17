@@ -157,8 +157,12 @@ export const FLEET_COLUMNS: readonly Column[] = [
   { name: 'Surface', meaning: 'Where it came from. See the table above.' },
   {
     name: 'Title',
+    meaning: 'The session title, with where it runs and a triangle to show its subagents.',
+  },
+  {
+    name: 'Health',
     meaning:
-      'The session title, with where it runs, a triangle to show its subagents, and a Watch or Degraded badge when it is wearing out. Click the badge for its Session Properties.',
+      'How much health a session has left. The bar drains as it wears out: green while healthy, yellow at Watch and red at Degraded. Hover it to see why, or click it for its Session Properties.',
   },
   { name: 'Model', meaning: 'The model it is using.' },
   { name: 'Effort', meaning: 'The reasoning effort, when the session set one.' },

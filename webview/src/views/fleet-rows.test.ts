@@ -208,8 +208,9 @@ describe('buildFleetTree', () => {
       health: null,
       launched: false,
     });
-    const worn = buildFleetTree({ ...fleetState, health: { s1: 'watch' } });
-    expect(firstRow(worn).health).toBe('watch');
+    const health = { level: 'watch', score: 0.4, signals: [] } as const;
+    const worn = buildFleetTree({ ...fleetState, health: { s1: health } });
+    expect(firstRow(worn).health).toBe(health);
   });
 
   it('fills agent rows from the agent and inherits the session surface', () => {

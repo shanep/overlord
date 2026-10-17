@@ -192,4 +192,23 @@ describe('assessHealth', () => {
     expect(health.level).toBe('degraded');
     expect(ids(health)).toStrictEqual(['compactions:degraded', 'context:watch', 'age:watch']);
   });
+
+  it('scores the health left so the bar agrees with the level', () => {
+    // 50K of a 1M window wears a tenth of the way to watch.
+    expect(assessHealth(input()).score).toBeCloseTo(1 - 0.5 * (50 / 300));
+    expect(assessHealth(input({ requests: [], toolCalls: [] })).score).toBe(1);
+    // The watch and degraded marks land on 0.5 and 0.2, halfway between them on 0.35.
+    expect(assessHealth(input({ requests: [request(1, 300_000)] })).score).toBeCloseTo(0.5);
+    expect(assessHealth(input({ requests: [request(1, 400_000)] })).score).toBeCloseTo(0.35);
+    expect(assessHealth(input({ requests: [request(1, 500_000)] })).score).toBeCloseTo(0.2);
+    // Past degraded it keeps draining to empty, and never below.
+    expect(assessHealth(input({ compactions: [T0, T0, T0] })).score).toBeCloseTo(0);
+    expect(assessHealth(input({ compactions: [T0, T0, T0, T0] })).score).toBe(0);
+    // The fuller of size and fill counts: 170K of a 200K window is past the degraded fill.
+    expect(
+      assessHealth(input({ requests: [request(1, 170_000, 1, 'claude-opus-4-6')] })).score,
+    ).toBeLessThan(0.2);
+    // Signals with only a watch level take the bar to watch.
+    expect(assessHealth(input({ updatedAt: T0 + 9 * HOUR })).score).toBeCloseTo(0.5);
+  });
 });

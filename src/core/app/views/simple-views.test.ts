@@ -217,10 +217,14 @@ describe('fleet view', () => {
       bus.emit('compaction.recorded', { sessionId: id, agentId: id, at: NOW });
       bus.emit('compaction.recorded', { sessionId: id, agentId: id, at: NOW + 1 });
     }
-    expect(fleetHealth(fleetStore, fleetStore.fleetState(NOW).sessions)).toStrictEqual({
-      worn: 'degraded',
-      tired: 'watch',
-    });
+    const health = fleetHealth(fleetStore, fleetStore.fleetState(NOW).sessions);
+    expect(sorted(Object.keys(health))).toStrictEqual(['fine', 'tired', 'worn']);
+    expect(health['fine']).toMatchObject({ level: 'good', signals: [] });
+    expect(health['fine']?.score).toBeGreaterThan(0.99);
+    expect(health['tired']?.level).toBe('watch');
+    expect(health['tired']?.signals.map((signal) => signal.title)).toContain('Compacted once');
+    expect(health['worn']?.level).toBe('degraded');
+    expect(health['worn']?.score).toBeCloseTo(0.2);
   });
 
   it('marks finished jobs done and gives a job with no transcript a bare row', () => {

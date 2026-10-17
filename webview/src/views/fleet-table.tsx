@@ -19,6 +19,7 @@ import { formatCompact, formatCost, formatDuration, formatPercent } from '../for
 
 import type { ProjectAction, RowAction, RowEvent } from './fleet-actions.js';
 import { ACTION_LABELS, actionTip } from './fleet-actions.js';
+import { HealthBar } from './fleet-health.js';
 import { deltas } from './fleet-history.js';
 import type { RowHistory } from './fleet-history.js';
 import type { FleetRow, VisibleRow } from './fleet-rows.js';
@@ -30,6 +31,7 @@ const COLUMNS: readonly { readonly id: string; readonly label: string }[] = [
   { id: 'state', label: 'State' },
   { id: 'surface', label: 'Surface' },
   { id: 'title', label: 'Title' },
+  { id: 'health', label: 'Health' },
   { id: 'model', label: 'Model' },
   { id: 'effort', label: 'Effort' },
   { id: 'elapsed', label: 'Elapsed' },
@@ -161,10 +163,9 @@ function ProjectCells(props: FleetTableRowProps): ReactElement {
         visible={visible}
         agent={null}
         showSummary={props.showSummary}
-        tabIndex={selected ? 0 : -1}
         onToggle={props.onToggle}
-        onAction={props.onAction}
       />
+      <td role="gridcell" className="col-health" />
       <td role="gridcell" className="col-model" />
       <td role="gridcell" className="col-effort" />
       <td role="gridcell" className="col-elapsed num" />
@@ -233,10 +234,11 @@ function SessionCells(props: FleetTableRowProps): ReactElement {
         visible={visible}
         agent={session && props.showAgent(row.agent) ? agent : null}
         showSummary={props.showSummary}
-        tabIndex={selected ? 0 : -1}
         onToggle={props.onToggle}
-        onAction={props.onAction}
       />
+      <td role="gridcell" className="col-health">
+        <HealthBar row={row} tabIndex={selected ? 0 : -1} onAction={props.onAction} />
+      </td>
       <td role="gridcell" className="col-model">
         {row.model ?? ''}
       </td>

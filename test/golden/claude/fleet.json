@@ -163,7 +163,18 @@
         }
       }
     ],
-    "health": {},
+    "health": {
+      "sess-0001": {
+        "level": "good",
+        "score": 0.9925,
+        "signals": []
+      },
+      "sess-0002": {
+        "level": "good",
+        "score": 0.9951666666666666,
+        "signals": []
+      }
+    },
     "launched": [],
     "pendingPermissions": [],
     "places": {},

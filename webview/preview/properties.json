@@ -115,6 +115,7 @@
   ],
   "health": {
     "level": "watch",
+    "score": 0.42,
     "metrics": {
       "contextTokens": 640000,
       "contextWindow": 1000000,

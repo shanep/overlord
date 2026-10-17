@@ -365,6 +365,10 @@ kbd {
   background: var(--ov-blue);
 }
 
+.meter-good {
+  background: var(--ov-green);
+}
+
 .meter-warning {
   background: var(--ov-yellow);
 }
@@ -780,19 +784,37 @@ fieldset.chips {
   font-weight: 600;
 }
 
-/* A session's health in the Fleet: a badge that is also a button. */
-.health-badge {
+/* A session's health in the Fleet: a short bar that is also a button. */
+.col-health {
+  white-space: nowrap;
+}
+
+.health-bar {
+  padding: 0 4px;
+  border: none;
+  border-radius: 4px;
+  color: inherit;
+  background: transparent;
   font: inherit;
-  font-size: 0.85em;
   line-height: inherit;
+  vertical-align: middle;
   cursor: pointer;
 }
 
-.health-badge:hover {
+.health-bar .meter {
+  width: 40px;
+}
+
+.health-bar .meter-text {
+  min-width: 2.5em;
+  text-align: left;
+}
+
+.health-bar:hover {
   background: var(--ov-badge);
 }
 
-.health-badge:focus-visible {
+.health-bar:focus-visible {
   outline: 1px solid var(--vscode-focusBorder, var(--ov-blue));
   outline-offset: 1px;
 }

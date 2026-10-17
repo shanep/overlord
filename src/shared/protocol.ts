@@ -8,7 +8,7 @@ import type { AgentId, AgentInfo } from './agents.js';
 import type { BridgeUsage } from './bridge-usage.js';
 import type { CatalogKind, LibraryState } from './catalog.js';
 import type { ConnectorsState } from './connectors.js';
-import type { HealthLevel, SessionHealth } from './health.js';
+import type { FleetHealth, SessionHealth } from './health.js';
 import type {
   AgentNode,
   ApiRequest,
@@ -112,8 +112,8 @@ export interface FleetState {
   readonly rateLimits: RateLimits;
   /** Spend per hour over the last hour, all sessions. */
   readonly spendPerHourUsd: number;
-  /** Health of each unfinished session that is wearing out, by session id. Healthy ones are left out. */
-  readonly health: Readonly<Record<string, Exclude<HealthLevel, 'good'>>>;
+  /** Health of each unfinished session that has done any work, by session id. */
+  readonly health: Readonly<Record<string, FleetHealth>>;
   /** The sessions the Launcher started, which stay in the fleet until removed by hand. */
   readonly launched: readonly string[];
 }

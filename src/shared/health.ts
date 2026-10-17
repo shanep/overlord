@@ -36,7 +36,20 @@ export interface HealthMetrics {
 export interface SessionHealth {
   /** The worst level among the signals, or good with none. */
   readonly level: HealthLevel;
+  /**
+   * How much health is left, from 1 for a fresh session down to 0. It is 0.5
+   * or less at watch and 0.2 or less at degraded, so the bar and the level agree.
+   */
+  readonly score: number;
   readonly metrics: HealthMetrics;
   /** Worst first. */
   readonly signals: readonly HealthSignal[];
+}
+
+/** A session's health on its Fleet row: the bar, and what to say about it. */
+export interface FleetHealth {
+  readonly level: HealthLevel;
+  readonly score: number;
+  /** Worst first. */
+  readonly signals: readonly Pick<HealthSignal, 'level' | 'title' | 'finding'>[];
 }

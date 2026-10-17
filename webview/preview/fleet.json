@@ -439,8 +439,34 @@
   },
   "spendPerHourUsd": 14.6,
   "health": {
-    "s2": "watch",
-    "s4": "degraded"
+    "s1": { "level": "good", "score": 0.86, "signals": [] },
+    "s2": {
+      "level": "watch",
+      "score": 0.42,
+      "signals": [
+        {
+          "level": "watch",
+          "title": "The context is getting large",
+          "finding": "360K tokens in context, 36% of a 1M window."
+        }
+      ]
+    },
+    "s4": {
+      "level": "degraded",
+      "score": 0.12,
+      "signals": [
+        {
+          "level": "degraded",
+          "title": "Compacted more than once",
+          "finding": "Compacted 2 times."
+        },
+        {
+          "level": "watch",
+          "title": "A long running session",
+          "finding": "Active over 9 hours, from its first turn to its latest."
+        }
+      ]
+    }
   },
   "launched": ["s6"]
 }

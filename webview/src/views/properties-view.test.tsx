@@ -49,6 +49,7 @@ const notJudged: PropertiesState = {
 
 const healthy: SessionHealth = {
   level: 'good',
+  score: 0.8,
   metrics: {
     contextTokens: 120_000,
     contextWindow: 1_000_000,

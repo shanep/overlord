@@ -10,7 +10,7 @@ export type RowAction =
   | 'move'
   | 'relocate'
   | 'combine';
-/** A row button, or the health badge, which opens Session Properties. */
+/** A row button, or the health bar, which opens Session Properties. */
 export type RowEvent = RowAction | 'properties';
 export type ProjectAction = 'newSession' | 'openFolder' | 'setFolder' | 'rename' | 'delete';
 

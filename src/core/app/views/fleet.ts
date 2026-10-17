@@ -5,7 +5,7 @@
 import path from 'node:path';
 
 import { CLAUDE_CODE } from '../../../shared/agents.js';
-import type { HealthLevel } from '../../../shared/health.js';
+import type { FleetHealth } from '../../../shared/health.js';
 import type { PermissionRequest, SessionPlace, SessionSummary } from '../../../shared/model.js';
 import { sessionName, ZERO_USAGE } from '../../../shared/model.js';
 import type { FleetState, PlanLimits, RateLimits } from '../../../shared/protocol.js';
@@ -185,26 +185,32 @@ export function windowSession(
   );
 }
 
-/** Each unfinished session that is wearing out, with how badly. */
+/** The health of each unfinished session that has done any work. */
 export function fleetHealth(
   store: OverlordStore,
   sessions: readonly SessionSummary[],
 ): FleetState['health'] {
   const activity = store.mainThreadActivity();
-  const out: Record<string, Exclude<HealthLevel, 'good'>> = {};
+  const out: Record<string, FleetHealth> = {};
   for (const session of sessions) {
     const thread = activity.get(session.id);
     if (thread === undefined || session.state === 'done' || session.state === 'failed') {
       continue;
     }
-    const { level } = assessHealth({
+    const { level, score, signals } = assessHealth({
       startedAt: session.startedAt,
       updatedAt: session.updatedAt,
       ...thread,
     });
-    if (level !== 'good') {
-      out[session.id] = level;
-    }
+    out[session.id] = {
+      level,
+      score,
+      signals: signals.map(({ level: worst, title, finding }) => ({
+        level: worst,
+        title,
+        finding,
+      })),
+    };
   }
   return out;
 }

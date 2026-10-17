@@ -2,7 +2,7 @@
 // sort and flatten them for display. fleet-filter.ts filters them.
 
 import type { AgentId } from '../../../src/shared/agents.js';
-import type { HealthLevel } from '../../../src/shared/health.js';
+import type { FleetHealth } from '../../../src/shared/health.js';
 import type {
   AgentNode,
   SessionPlace,
@@ -59,8 +59,8 @@ export interface FleetRow {
   readonly projectFolder: string | null;
   /** On a project's row, true when this window's workspace holds it, so it stays listed with no running sessions. */
   readonly inWorkspace: boolean;
-  /** On a session's row, how worn out it is, or null when it is healthy or finished. */
-  readonly health: Exclude<HealthLevel, 'good'> | null;
+  /** On a session's row, how worn out it is, or null when it is finished or has not started. */
+  readonly health: FleetHealth | null;
   /** On a session's row, true when the Launcher started it, so it stays until removed by hand. */
   readonly launched: boolean;
 }
@@ -358,6 +358,7 @@ const SORTERS: Readonly<Record<string, Sorter>> = {
   state: (row) => STATE_RANK[row.state],
   surface: (row) => `${SURFACE_LABELS[row.surface]} ${placeLabel(row)}`,
   title: (row) => row.title.toLowerCase(),
+  health: (row) => row.health?.score ?? -1,
   model: (row) => row.model ?? '',
   effort: (row) => row.effort ?? '',
   elapsed: elapsedMs,

@@ -45,6 +45,47 @@ const CACHE_MIN_PROMPT = 20_000;
 const HOUR_MS = 60 * 60 * 1000;
 const AGE_WATCH_MS = 8 * HOUR_MS;
 
+/** Wear at which a measure reaches watch and degraded, on a 0 to 1 scale. */
+const WEAR_WATCH = 0.5;
+const WEAR_DEGRADED = 0.8;
+
+/**
+ * How worn a measure is, from 0 to 1: it climbs to 0.5 at its watch mark and
+ * 0.8 at its degraded mark, then reaches 1 as far past degraded again.
+ */
+function wear(value: number, watch: number, degraded: number): number {
+  if (value < watch) {
+    return (WEAR_WATCH * value) / watch;
+  }
+  const span = degraded - watch;
+  if (value < degraded) {
+    return WEAR_WATCH + ((WEAR_DEGRADED - WEAR_WATCH) * (value - watch)) / span;
+  }
+  return Math.min(1, WEAR_DEGRADED + ((1 - WEAR_DEGRADED) * (value - degraded)) / span);
+}
+
+/** Health left, from the most worn measure. Signals with only a watch level count as watch. */
+function healthScore(metrics: HealthMetrics, signals: readonly HealthSignal[]): number {
+  const { contextTokens, contextWindow: window } = metrics;
+  const context =
+    contextTokens === null || window === null
+      ? 0
+      : Math.max(
+          wear(contextTokens, CONTEXT_WATCH_TOKENS, CONTEXT_DEGRADED_TOKENS),
+          wear(contextTokens / window, FILL_WATCH, FILL_DEGRADED),
+        );
+  const watchOnly = signals.some((signal) => signal.id === 'cache' || signal.id === 'age')
+    ? WEAR_WATCH
+    : 0;
+  const worst = Math.max(
+    context,
+    wear(metrics.compactions, 1, 2),
+    wear(metrics.recentToolErrors, ERRORS_WATCH, ERRORS_DEGRADED),
+    watchOnly,
+  );
+  return 1 - worst;
+}
+
 const RANK: Readonly<Record<HealthLevel, number>> = { good: 0, watch: 1, degraded: 2 };
 
 function contextLevel(used: number, window: number): Level | null {
@@ -230,5 +271,5 @@ export function assessHealth(input: HealthInput): SessionHealth {
     .filter((signal) => signal !== null)
     .toSorted((left, right) => RANK[right.level] - RANK[left.level]);
   const worst = signals[0]?.level ?? 'good';
-  return { level: worst, metrics, signals };
+  return { level: worst, score: healthScore(metrics, signals), metrics, signals };
 }

@@ -155,18 +155,36 @@ describe('FleetView', () => {
     expect(alwaysAllowScope('Edit')).toBe('Allow every Edit request from now on, in every session');
   });
 
-  it('badges a session that is wearing out and opens its properties from the badge', async () => {
+  it('shows how much health each session has left and opens its properties from the bar', async () => {
     const user = userEvent.setup();
-    const { api, container } = setup({ ...fleetState, health: { s1: 'degraded', s2: 'watch' } });
+    const { api, container } = setup({
+      ...fleetState,
+      health: {
+        s1: {
+          level: 'degraded',
+          score: 0.12,
+          signals: [
+            { level: 'degraded', title: 'Compacted more than once', finding: 'Compacted 2 times.' },
+          ],
+        },
+        s2: { level: 'good', score: 0.9, signals: [] },
+      },
+    });
     const degraded = within(rowFor('Refactor parser')).getByRole('button', {
-      name: 'Health Degraded for Refactor parser: open Session Properties',
+      name: 'Health 12%, Degraded, for Refactor parser: open Session Properties',
     });
-    expect(degraded.textContent).toBe('Degraded');
-    expect(degraded.className).toContain('badge-critical');
-    const watch = within(rowFor('Write docs')).getByRole('button', {
-      name: 'Health Watch for Write docs: open Session Properties',
+    expect(
+      within(degraded).getByRole('meter', { name: 'Health' }).getAttribute('aria-valuenow'),
+    ).toBe('12');
+    expect(degraded.querySelector('.meter-critical')).not.toBeNull();
+    expect(degraded.dataset['tip']).toBe(
+      'Health 12%, Degraded. Compacted more than once: Compacted 2 times. Click for Session Properties, with why each one matters and what to do.',
+    );
+    const healthy = within(rowFor('Write docs')).getByRole('button', {
+      name: 'Health 90%, Healthy, for Write docs: open Session Properties',
     });
-    expect(watch.className).toContain('badge-warning');
+    expect(healthy.querySelector('.meter-good')).not.toBeNull();
+    expect(healthy.dataset['tip']).toContain('No signs of trouble.');
     expect(within(rowFor('Old run')).queryByRole('button', { name: /^Health/u })).toBeNull();
     await user.click(degraded);
     expect(api.actions()).toStrictEqual([{ type: 'openProperties', sessionId: 's1' }]);
