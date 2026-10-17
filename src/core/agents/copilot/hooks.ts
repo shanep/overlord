@@ -35,7 +35,7 @@ import type { AgentDirs, HooksFacet, ShellEnv } from '../types.js';
 import { copilotHome } from './observer.js';
 
 /** The file Overlord writes in Copilot's hooks folder. Its name is how it is found again. */
-export const HOOKS_FILE = 'overlord.json';
+const HOOKS_FILE = 'overlord.json';
 
 /** The events Overlord listens to. These are the ones the 1.0.89 recordings fired. */
 export const COPILOT_HOOK_EVENTS: readonly string[] = [
@@ -296,7 +296,7 @@ const fileSchema = z.looseObject({
 });
 
 /** The hooks file Overlord would write for this command. */
-export function hooksFileText(command: string): string {
+function hooksFileText(command: string): string {
   if (!command.includes(HOOK_MARKER)) {
     throw new Error(`the hook command must contain "${HOOK_MARKER}"`);
   }
