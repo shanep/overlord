@@ -117,7 +117,7 @@ export interface Runtime {
   readonly callTool: StdioToolCaller;
 }
 
-export interface Catalogs {
+interface Catalogs {
   readonly reader: GitHubReader;
   readonly skill: CatalogBrowser;
   readonly agent: CatalogBrowser;

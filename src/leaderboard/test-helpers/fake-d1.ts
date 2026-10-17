@@ -30,9 +30,7 @@ export function fakeD1(): D1Database {
 }
 
 /** GitHub's /user endpoint for a few known tokens. Anything else is a bad credential. */
-export const GITHUB_USERS: Readonly<
-  Record<string, { readonly id: number; readonly login: string }>
-> = {
+const GITHUB_USERS: Readonly<Record<string, { readonly id: number; readonly login: string }>> = {
   'token-ann': { id: 1, login: 'ann' },
   'token-bob': { id: 2, login: 'bob' },
   'token-cat': { id: 3, login: 'cat' },

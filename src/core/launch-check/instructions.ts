@@ -8,7 +8,7 @@ import type { FileSystem } from '../context/fs.js';
 import { encodeProjectDir } from '../paths.js';
 
 /** missing: an Overlord feature that does not work here. warn: worth raising. info: fine as it is. */
-export type FindingLevel = 'missing' | 'warn' | 'info';
+type FindingLevel = 'missing' | 'warn' | 'info';
 
 export interface Finding {
   readonly level: FindingLevel;

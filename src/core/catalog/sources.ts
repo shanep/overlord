@@ -89,7 +89,7 @@ const AGENT_SOURCES: readonly RepoSource[] = [
 ];
 
 /** skills.sh indexes skills from every public repository and ranks them by installs. */
-export const SKILLS_SH_SOURCE: CatalogSource = {
+const SKILLS_SH_SOURCE: CatalogSource = {
   id: SKILLS_SH,
   label: 'Search skills.sh',
   description:

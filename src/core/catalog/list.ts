@@ -30,7 +30,7 @@ const DESCRIPTION_LIMIT = 300;
 const SEARCH_LIMIT = 50;
 const SEARCH_TIMEOUT_MS = 15_000;
 
-export const SKILLS_SH_SEARCH = 'https://skills.sh/api/search';
+const SKILLS_SH_SEARCH = 'https://skills.sh/api/search';
 
 /** One line, cut at a word near the limit. */
 export function shortDescription(text: string): string {

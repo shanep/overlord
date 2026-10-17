@@ -8,7 +8,7 @@ import type { FetchFunction } from '../sync/github.js';
 
 const TIMEOUT_MS = 10_000;
 
-export class LeaderboardError extends Error {
+class LeaderboardError extends Error {
   override readonly name = 'LeaderboardError';
 }
 

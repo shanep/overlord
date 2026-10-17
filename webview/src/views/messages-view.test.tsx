@@ -1,4 +1,4 @@
-// Row text is concatenated cell text. cspell:ignore conversationAudit codeMessageStart codeMain conversationReportAudit conversationSession workerMain conversationMessageReady
+// Row text is concatenated cell text. cspell:ignore conversationAudit codeMessageStart codeMain conversationReportAudit conversationSession workerMain conversationMessageReady Messageblocked unknownapi
 // Synthetic messages only.
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';

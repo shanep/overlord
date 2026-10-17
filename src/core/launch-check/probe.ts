@@ -32,7 +32,7 @@ import {
   setupFindings,
 } from './repo.js';
 
-export type { Finding, FindingLevel } from './instructions.js';
+export type { Finding } from './instructions.js';
 export type { ProbeDeps } from './repo.js';
 
 export interface LaunchCheck {

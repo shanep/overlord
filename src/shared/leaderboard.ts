@@ -85,7 +85,7 @@ export function isScoreUpload(value: unknown): value is ScoreUpload {
   );
 }
 
-export function isBoardEntry(value: unknown): value is BoardEntry {
+function isBoardEntry(value: unknown): value is BoardEntry {
   return (
     isRecord(value) &&
     typeof value['id'] === 'string' &&

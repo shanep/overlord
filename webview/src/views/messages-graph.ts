@@ -67,7 +67,7 @@ export function nodeSize(traffic: number, busiest: number): number {
   return MIN_NODE + (MAX_NODE - MIN_NODE) * Math.sqrt(traffic / Math.max(busiest, 1));
 }
 
-export type LabelSide = 'top' | 'bottom' | 'left' | 'right';
+type LabelSide = 'top' | 'bottom' | 'left' | 'right';
 
 export interface RingPlace {
   readonly x: number;

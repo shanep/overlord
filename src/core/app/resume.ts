@@ -96,7 +96,7 @@ async function findGaps(rt: Runtime, cwd: string, restored: boolean): Promise<Ga
 }
 
 /** The first message of a session brought up to date, so it looks again before going on. */
-export function refreshPrompt(done: readonly string[]): string {
+function refreshPrompt(done: readonly string[]): string {
   return [
     'Overlord brought this session up to date before you continue:',
     ...done.map((line) => `- ${line}`),

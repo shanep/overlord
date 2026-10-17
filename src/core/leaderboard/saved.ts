@@ -15,7 +15,7 @@ export interface SavedEntry {
   readonly name: string | null;
 }
 
-export const NO_ENTRY: SavedEntry = { entryId: null, name: null };
+const NO_ENTRY: SavedEntry = { entryId: null, name: null };
 
 function textOrNull(value: unknown): string | null {
   return typeof value === 'string' ? value : null;

@@ -12,7 +12,7 @@ import type { FoundEntry } from './list.js';
 import { readFrontmatter } from './list.js';
 
 export const MAX_FILES = 200;
-export const MAX_BYTES = 10 * 1024 * 1024;
+const MAX_BYTES = 10 * 1024 * 1024;
 /** SKILL.md files read to match a frontmatter name when no folder has the skill's name. */
 const MAX_NAME_READS = 40;
 
