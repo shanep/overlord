@@ -46,6 +46,14 @@ const views: readonly HostToWebview[] = [
       topMean: [],
       recent: [],
       scannedAt: null,
+      leaderboard: {
+        enabled: false,
+        pageUrl: '',
+        board: null,
+        error: null,
+        fetchedAt: null,
+        mine: null,
+      },
     },
   },
   {

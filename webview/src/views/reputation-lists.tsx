@@ -3,11 +3,12 @@
 
 import type { ReactElement } from 'react';
 
+import { rankFor } from '../../../src/shared/reputation-ranks.js';
 import type {
   ReputationHit,
   ReputationState,
   ReputationTone,
-} from '../../../src/shared/protocol.js';
+} from '../../../src/shared/reputation.js';
 import { Badge } from '../components/badge.js';
 import type { Column } from '../components/data-table.js';
 import { DataTable } from '../components/data-table.js';
@@ -17,7 +18,6 @@ import type { Tone } from '../labels.js';
 import { usePostAction } from '../vscode-context.js';
 
 import { GENERAL_LABEL, KIND_LABEL, MEAN_LABEL } from './reputation-chart.js';
-import { rankFor } from './reputation-ranks.js';
 
 type SessionRow = ReputationState['bySession'][number];
 type TermCounts = ReputationState['topKind'];

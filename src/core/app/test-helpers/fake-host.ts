@@ -29,6 +29,8 @@ const DEFAULT_SETTINGS: OverlordSettings = {
   configSyncAuto: true,
   configSyncIntervalMinutes: 5,
   briefSessions: true,
+  leaderboardEnabled: false,
+  leaderboardUrl: '',
 };
 
 export interface FakeHostOptions {

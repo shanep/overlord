@@ -3,7 +3,7 @@ import path from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import type { ReputationState } from '../../../shared/protocol.js';
+import type { ReputationState } from '../../../shared/reputation.js';
 import type { TestApp, TestEnv } from '../test-helpers/fixtures.js';
 import { makeApp, makeEnv, NOW, session, waitFor, writeText } from '../test-helpers/fixtures.js';
 
@@ -76,7 +76,7 @@ describe('buildReputation', () => {
     const env = await makeEnv();
     await transcript(env, S1, [prompt('u1', 'you idiot'), prompt('u2', 'thanks')]);
     const { test, notified } = clockedApp(env);
-    expect(buildReputation(test.app.runtime)).toBe(EMPTY_REPUTATION);
+    expect(buildReputation(test.app.runtime)).toStrictEqual(EMPTY_REPUTATION);
     const state = await settled(test, (next) => next.scannedAt !== null);
     expect(state).toMatchObject({ prompts: 2, kind: 1, mean: 1, general: 0, scannedAt: NOW });
     expect(state.bySession).toStrictEqual([

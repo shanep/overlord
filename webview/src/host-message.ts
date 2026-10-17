@@ -58,6 +58,7 @@ const REQUIRED: Readonly<Record<ViewId, Readonly<Record<string, FieldKind>>>> = 
     topKind: 'array',
     topMean: 'array',
     recent: 'array',
+    leaderboard: 'object',
   },
   messages: { messages: 'array', routes: 'array', inboundChoices: 'array', rules: 'array' },
   properties: { session: 'nullable-object', agents: 'array', pendingPermissions: 'array' },

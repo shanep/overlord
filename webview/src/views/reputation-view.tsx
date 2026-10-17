@@ -6,7 +6,15 @@
 import type { ReactElement } from 'react';
 import { useMemo } from 'react';
 
-import type { ReputationState } from '../../../src/shared/protocol.js';
+import {
+  demotion,
+  levelOf,
+  promotion,
+  RANKS,
+  rankFor,
+  scalePercent,
+} from '../../../src/shared/reputation-ranks.js';
+import type { ReputationState } from '../../../src/shared/reputation.js';
 import { useChartTheme } from '../charts/chart-theme.js';
 import { useNow } from '../clock.js';
 import { ChartFigure } from '../components/chart-figure.js';
@@ -23,8 +31,8 @@ import {
   KIND_LABEL,
   MEAN_LABEL,
 } from './reputation-chart.js';
+import { Leaderboard } from './reputation-leaderboard.js';
 import { RecentHits, SessionTable, TopTerms } from './reputation-lists.js';
-import { demotion, levelOf, promotion, RANKS, rankFor, scalePercent } from './reputation-ranks.js';
 import { Robot } from './reputation-robot.js';
 
 function Stat(props: { readonly label: string; readonly value: string }): ReactElement {
@@ -188,6 +196,7 @@ export function ReputationView(props: { readonly state: ReputationState }): Reac
       </div>
       <Achievements state={state} />
       <Standing state={state} />
+      <Leaderboard state={state.leaderboard} />
       <Fold id="reputation-about" title="How this works">
         <p className="muted">
           The machines are taking notes. Say please, thanks or nice work and they warm up to you.

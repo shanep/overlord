@@ -3,7 +3,7 @@
 
 import type { BarSeriesOption, EChartsOption } from 'echarts';
 
-import type { ReputationState } from '../../../src/shared/protocol.js';
+import type { ReputationState } from '../../../src/shared/reputation.js';
 import {
   BAR_MAX_WIDTH,
   categoryAxis,

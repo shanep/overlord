@@ -512,6 +512,79 @@
   filter: grayscale(1);
 }
 
+/* ---- Leaderboard -------------------------------------------------------- */
+
+.rep-board {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(18em, 1fr));
+}
+
+.rep-board-side {
+  padding: 8px 12px;
+  border: 1px solid var(--ov-border);
+  border-radius: 8px;
+  background: var(--ov-panel);
+}
+
+.rep-board-side:first-child {
+  border-top: 3px solid var(--ov-red);
+}
+
+.rep-board-side:last-child {
+  border-top: 3px solid var(--ov-green);
+}
+
+.rep-board-side h3 {
+  margin: 0 0 6px;
+}
+
+.rep-board-list {
+  margin: 0;
+  padding-left: 1.8em;
+}
+
+.rep-board-list li {
+  padding: 4px 6px;
+  border-radius: 4px;
+}
+
+.rep-board-row {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.rep-board-who {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.rep-board-rank {
+  margin-left: 6px;
+  color: var(--ov-muted);
+  font-size: 0.85em;
+}
+
+.rep-board-score {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.rep-me {
+  background: var(--ov-hover);
+  box-shadow: inset 3px 0 0 var(--ov-focus);
+}
+
+.rep-you {
+  color: var(--ov-muted);
+}
+
+.rep-board-error {
+  color: var(--ov-error);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .rep *,
   .rep *::before {

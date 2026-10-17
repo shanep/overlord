@@ -1,12 +1,12 @@
 import { fireEvent, render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import type { ReputationState } from '../../../src/shared/protocol.js';
+import { levelOf, RANKS, rankFor } from '../../../src/shared/reputation-ranks.js';
+import type { ReputationState } from '../../../src/shared/reputation.js';
 import { reputationScore } from '../../../src/shared/reputation.js';
 import { expectAccessible, FakeApi, renderView } from '../../test/render.js';
 
 import { achievementsFor } from './reputation-achievements.js';
-import { levelOf, RANKS, rankFor } from './reputation-ranks.js';
 import { Robot } from './reputation-robot.js';
 import { ReputationView } from './reputation-view.js';
 
@@ -29,6 +29,14 @@ function stateOf(
     topMean: [],
     recent: [],
     scannedAt: 1,
+    leaderboard: {
+      enabled: false,
+      pageUrl: '',
+      board: null,
+      error: null,
+      fetchedAt: null,
+      mine: null,
+    },
     ...extra,
   };
 }

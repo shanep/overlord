@@ -5,10 +5,9 @@
 import type { ReactElement } from 'react';
 import { useEffect } from 'react';
 
+import type { Rank } from '../../../src/shared/reputation-ranks.js';
+import { RANKS } from '../../../src/shared/reputation-ranks.js';
 import { usePersistentState } from '../vscode-context.js';
-
-import type { Rank } from './reputation-ranks.js';
-import { RANKS } from './reputation-ranks.js';
 
 const SEEN_KEY = 'reputationRank';
 const CONFETTI = 36;

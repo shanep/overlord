@@ -63,6 +63,10 @@ export interface OverlordSettings {
   readonly briefSessions: boolean;
   /** Tell each new session in an Overlord worktree what its repository's setup means for it. */
   readonly launchCheck: boolean;
+  /** Show the global Reputation leaderboard. Off means the leaderboard server is never called. */
+  readonly leaderboardEnabled: boolean;
+  /** The leaderboard server, or empty when there is none. */
+  readonly leaderboardUrl: string;
 }
 
 /** A GitHub sign-in from the editor's own account list. */
@@ -117,7 +121,11 @@ export interface HostPort {
    * support use. Interactive asks the user to sign in when there is none;
    * otherwise null means not signed in or cancelled.
    */
-  readonly gitHubSession: (interactive: boolean) => Promise<GitHubSession | null>;
+  readonly gitHubSession: (
+    interactive: boolean,
+    /** Defaults to the scopes git needs. Pass fewer when only the account is needed. */
+    scopes?: readonly string[],
+  ) => Promise<GitHubSession | null>;
   /** Save an overlord.* setting for the user, across every workspace. */
   readonly saveSetting: (key: string, value: string) => Promise<void>;
   /** VS Code SecretStorage, which is the OS keychain. */

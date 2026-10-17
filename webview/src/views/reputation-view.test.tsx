@@ -2,7 +2,14 @@
 import { fireEvent, render, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import type { ReputationState } from '../../../src/shared/protocol.js';
+import {
+  demotion,
+  promotion,
+  RANKS,
+  rankFor,
+  scalePercent,
+} from '../../../src/shared/reputation-ranks.js';
+import type { ReputationState } from '../../../src/shared/reputation.js';
 import { reputationScore } from '../../../src/shared/reputation.js';
 import { NOW } from '../../test/fixtures.js';
 import { expectAccessible, renderView } from '../../test/render.js';
@@ -17,7 +24,6 @@ import {
   KIND_LABEL,
   MEAN_LABEL,
 } from './reputation-chart.js';
-import { demotion, promotion, RANKS, rankFor, scalePercent } from './reputation-ranks.js';
 import { ReputationView } from './reputation-view.js';
 
 const theme = readChartTheme(document.createElement('div'));
@@ -37,6 +43,14 @@ const EMPTY: ReputationState = {
   topMean: [],
   recent: [],
   scannedAt: null,
+  leaderboard: {
+    enabled: false,
+    pageUrl: '',
+    board: null,
+    error: null,
+    fetchedAt: null,
+    mine: null,
+  },
 };
 
 const STATE: ReputationState = {
@@ -93,6 +107,14 @@ const STATE: ReputationState = {
     },
   ],
   scannedAt: NOW - 5 * MINUTE,
+  leaderboard: {
+    enabled: false,
+    pageUrl: '',
+    board: null,
+    error: null,
+    fetchedAt: null,
+    mine: null,
+  },
 };
 
 describe('reputation ranks', () => {

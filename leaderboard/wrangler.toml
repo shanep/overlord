@@ -1,0 +1,12 @@
+# The Cloudflare Worker behind the Reputation leaderboard. Deploy with
+# node scripts/deploy-leaderboard.mjs, which creates the database the first time.
+name = "overlord-leaderboard"
+main = "../src/leaderboard/worker.ts"
+compatibility_date = "2025-09-01"
+workers_dev = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "overlord-leaderboard"
+database_id = "REPLACE_ON_FIRST_DEPLOY"
+migrations_dir = "migrations"

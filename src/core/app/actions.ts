@@ -11,6 +11,7 @@ import { catalogActions } from './actions-catalog.js';
 import { configActions } from './actions-config.js';
 import { connectorActions } from './actions-connectors.js';
 import { launchActions } from './actions-launch.js';
+import { leaderboardActions } from './actions-leaderboard.js';
 import { messageActions } from './actions-messages.js';
 import { openProjectActions } from './actions-open-project.js';
 import { projectActions } from './actions-projects.js';
@@ -30,6 +31,7 @@ const HANDLERS: ActionHandlers<ActionType> = {
   ...configActions,
   ...authoringActions,
   ...reputationActions,
+  ...leaderboardActions,
   ...messageActions,
   ...tuningActions,
   ...connectorActions,

@@ -17,6 +17,7 @@ import type {
 } from '../core/app/host-port.js';
 import { findOnPath } from '../core/find-on-path.js';
 import { loginShellLaunch } from '../core/login-shell.js';
+import { LEADERBOARD_URL } from '../shared/leaderboard.js';
 import type { ViewId } from '../shared/protocol.js';
 
 /** claude through the login shell, so the tab gets the user's full PATH. */
@@ -44,6 +45,11 @@ function resolveClaude(value: string): string {
   return findOnPath({ name, pathValue: process.env['PATH'], platform: process.platform }) ?? name;
 }
 
+// An empty setting means Overlord's own server.
+function leaderboardUrl(value: string): string {
+  return value.trim() === '' ? LEADERBOARD_URL : value.trim();
+}
+
 function readSettings(): OverlordSettings {
   const config = vscode.workspace.getConfiguration('overlord');
   return {
@@ -61,6 +67,8 @@ function readSettings(): OverlordSettings {
     configSyncIntervalMinutes: config.get<number>('configSync.intervalMinutes', 5),
     briefSessions: config.get<boolean>('connectors.briefSessions', true),
     launchCheck: config.get<boolean>('worktrees.launchCheck', true),
+    leaderboardEnabled: config.get<boolean>('leaderboard.enabled', true),
+    leaderboardUrl: leaderboardUrl(config.get<string>('leaderboard.url', '')),
   };
 }
 
@@ -69,11 +77,14 @@ function readSettings(): OverlordSettings {
 // what creating, cloning and pushing a private repo needs.
 const GITHUB_SCOPES = ['repo', 'workflow', 'user:email', 'read:user'];
 
-async function gitHubSession(interactive: boolean): Promise<GitHubSession | null> {
+async function gitHubSession(
+  interactive: boolean,
+  scopes: readonly string[] = GITHUB_SCOPES,
+): Promise<GitHubSession | null> {
   try {
     const session = await vscode.authentication.getSession(
       'github',
-      GITHUB_SCOPES,
+      scopes,
       interactive ? { createIfNone: true } : { silent: true },
     );
     return session === undefined

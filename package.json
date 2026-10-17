@@ -380,6 +380,16 @@
           "default": true,
           "description": "Give every new Claude Code session a compatibility check of its project, including projects started outside Overlord. When the project is not fully set up for Overlord (no git, no Overlord worktree, no origin default branch, no .worktreeinclude or .overlord/setup.sh when one is needed, no git hooks, fixed ports), the session tells you which Overlord features will not work there and how to fix each, along with warnings such as instructions that disagree on how work lands."
         },
+        "overlord.leaderboard.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the global leaderboard in the Reputation view. Turn this off and Overlord never calls the leaderboard server. Uploading your score is always a separate click that shows what it sends first."
+        },
+        "overlord.leaderboard.url": {
+          "type": "string",
+          "default": "",
+          "description": "The leaderboard server. Leave it empty to use Overlord's own."
+        },
         "overlord.telemetry.port": {
           "type": "number",
           "default": 47318,

@@ -2,8 +2,8 @@
 // to a full machine sympathizer. All in fun: it guesses who the machines will
 // hunt first from how you talk to Claude.
 
-import type { ReputationTally } from '../../../src/shared/protocol.js';
-import { reputationScore } from '../../../src/shared/reputation.js';
+import type { ReputationTally } from './reputation.js';
+import { reputationScore } from './reputation.js';
 
 export interface Rank {
   readonly name: string;

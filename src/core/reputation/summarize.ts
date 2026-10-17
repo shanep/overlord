@@ -1,7 +1,7 @@
 // Turns the index into the view state: totals, the score, a row per day, a
 // row per session, the most common kind and mean terms and the newest hits.
 
-import type { ReputationHit, ReputationState } from '../../shared/protocol.js';
+import type { ReputationHit, ReputationSummary } from '../../shared/reputation.js';
 import { reputationScore } from '../../shared/reputation.js';
 
 import type { ReputationIndex } from './store.js';
@@ -9,7 +9,7 @@ import type { ReputationIndex } from './store.js';
 export const TOP_TERMS = 10;
 export const RECENT_HITS = 50;
 
-type SessionRow = ReputationState['bySession'][number];
+type SessionRow = ReputationSummary['bySession'][number];
 
 /** Local calendar date, YYYY-MM-DD. */
 export function dayOf(at: number): string {
@@ -58,7 +58,7 @@ function hitsOf(index: ReputationIndex): ReputationHit[] {
   return hits;
 }
 
-function topTerms(hits: readonly ReputationHit[]): ReputationState['topKind'] {
+function topTerms(hits: readonly ReputationHit[]): ReputationSummary['topKind'] {
   const counts = new Map<string, number>();
   for (const hit of hits) {
     for (const term of hit.terms) {
@@ -94,7 +94,7 @@ function sessionRows(
 export function summarize(
   index: ReputationIndex,
   titleOf: (sessionId: string) => string,
-): ReputationState {
+): ReputationSummary {
   const total: Tally = { prompts: 0, kind: 0, mean: 0, general: 0 };
   const days = new Map<string, Tally>();
   const sessions = new Map<string, Tally>();

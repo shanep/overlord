@@ -5,13 +5,15 @@
 
 import path from 'node:path';
 
-import type { ReputationState } from '../../../shared/protocol.js';
+import type { ReputationState } from '../../../shared/reputation.js';
 import { scanInto } from '../../reputation/scan.js';
 import type { ReputationIndex } from '../../reputation/store.js';
 import { loadIndex, saveIndex } from '../../reputation/store.js';
 import { summarize } from '../../reputation/summarize.js';
 import { messageOf } from '../errors.js';
 import type { Runtime } from '../runtime.js';
+
+import { buildLeaderboard, EMPTY_LEADERBOARD } from './leaderboard.js';
 
 export const EMPTY_REPUTATION: ReputationState = {
   prompts: 0,
@@ -25,6 +27,7 @@ export const EMPTY_REPUTATION: ReputationState = {
   topMean: [],
   recent: [],
   scannedAt: null,
+  leaderboard: EMPTY_LEADERBOARD,
 };
 
 // The name is from when this was the Frustration view, so its counts carry over.
@@ -108,7 +111,10 @@ function titles(rt: Runtime, index: ReputationIndex): (sessionId: string) => str
 }
 
 function stateOf(rt: Runtime, entry: Entry): ReputationState {
-  return entry.index === null ? EMPTY_REPUTATION : summarize(entry.index, titles(rt, entry.index));
+  const leaderboard = buildLeaderboard(rt);
+  return entry.index === null
+    ? { ...EMPTY_REPUTATION, leaderboard }
+    : { ...summarize(entry.index, titles(rt, entry.index)), leaderboard };
 }
 
 export function buildReputation(rt: Runtime): ReputationState {

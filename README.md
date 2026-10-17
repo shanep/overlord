@@ -206,6 +206,31 @@ hears the result at once. Elsewhere, the first session in a folder hears it with
 or tool call, and later ones at once while the result is under 10 minutes old. Resumed sessions
 and sessions in your home folder are skipped. Turn this off with `overlord.worktrees.launchCheck`.
 
+## Reputation leaderboard
+
+The Reputation view has a global leaderboard: who the machines hunt first and who they keep as
+pets. You see the board without uploading anything. Reading it sends only your entry's random id,
+once you have one.
+
+Uploading is a button. It asks how you want to show up (your GitHub login, a name you pick, or
+Anonymous), then shows the exact JSON it will send and waits for you to confirm. That JSON is a
+name and three counts:
+
+```json
+{ "name": "shanep", "kind": 6, "mean": 21, "prompts": 1998 }
+```
+
+Never prompt text, matched words, session titles or folder names. The server works out the
+score and rank from the counts. To know who is uploading, it checks your GitHub sign-in once
+with GitHub (the `read:user` scope), keeps your GitHub id and login, and drops the token. Each
+account gets one row, replaced on every upload, up to 5 uploads a UTC day. Anyone with fewer than
+100 prompts is left off the board. **Remove my entry** deletes your row from the view and the web
+page.
+
+The server is a Cloudflare Worker with a D1 database, in `src/leaderboard/` and `leaderboard/`.
+Deploy it with `node scripts/deploy-leaderboard.mjs` after `npx wrangler login`. Turn off
+`overlord.leaderboard.enabled` and Overlord never calls the server at all.
+
 ## New machine
 
 1. Install the extension.

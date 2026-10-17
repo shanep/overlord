@@ -4,7 +4,7 @@
 
 import type { ReactElement } from 'react';
 
-import type { Mood, Rank } from './reputation-ranks.js';
+import type { Mood, Rank } from '../../../src/shared/reputation-ranks.js';
 
 const LEFT = 46;
 const RIGHT = 74;

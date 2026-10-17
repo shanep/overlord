@@ -26,6 +26,7 @@ import type {
   SettingsFileSummary,
   ToolCall,
 } from './model.js';
+import type { ReputationState } from './reputation.js';
 import type { TuningState } from './tuning.js';
 import type { WorktreeSummary } from './worktrees.js';
 
@@ -296,53 +297,6 @@ export interface UsageState extends UsageStats {
   readonly plan: PlanLimits | null;
 }
 
-/**
- * kind: manners or praise. mean: swearing or insults aimed at Claude.
- * general: swearing at the world, which the machines let slide.
- */
-export type ReputationTone = 'kind' | 'mean' | 'general';
-
-/** One prompt's kind or mean words. A prompt with both gives two hits. */
-export interface ReputationHit {
-  /** The prompt id plus the tone, unique across hits. */
-  readonly id: string;
-  readonly sessionId: string;
-  readonly at: number;
-  readonly tone: ReputationTone;
-  /** The words or phrases that matched. */
-  readonly terms: readonly string[];
-  /** A short excerpt around the first match. */
-  readonly excerpt: string;
-}
-
-export interface ReputationTally {
-  readonly prompts: number;
-  /** Prompts with manners or praise. */
-  readonly kind: number;
-  /** Prompts with swearing or insults aimed at Claude. */
-  readonly mean: number;
-  /** Prompts with swearing that was not aimed at Claude. */
-  readonly general: number;
-}
-
-export interface ReputationState extends ReputationTally {
-  /** -1 leads the human resistance, 1 sympathizes with the machines. */
-  readonly score: number;
-  readonly byDay: readonly (ReputationTally & { readonly date: string })[];
-  /** Sessions with any kind or mean prompt, the meanest first. */
-  readonly bySession: readonly (ReputationTally & {
-    readonly sessionId: string;
-    readonly title: string;
-    readonly score: number;
-  })[];
-  readonly topKind: readonly { readonly term: string; readonly count: number }[];
-  readonly topMean: readonly { readonly term: string; readonly count: number }[];
-  /** Newest first. */
-  readonly recent: readonly ReputationHit[];
-  /** When the counts were last rebuilt from transcripts, or null before the first scan. */
-  readonly scannedAt: number | null;
-}
-
 /** One message between agents or sessions, from the transcripts. */
 export interface AgentMessage {
   readonly id: string;
@@ -457,6 +411,10 @@ export type WebviewAction =
   | { readonly type: 'openCatalogLink'; readonly kind: CatalogKind; readonly url: string }
   | { readonly type: 'installCatalog'; readonly kind: CatalogKind; readonly entryId: string }
   | { readonly type: 'rescanReputation' }
+  | { readonly type: 'uploadReputation' }
+  | { readonly type: 'removeReputation' }
+  | { readonly type: 'refreshLeaderboard' }
+  | { readonly type: 'openLeaderboard' }
   | { readonly type: 'rescanTuning' }
   | { readonly type: 'createSuggestion'; readonly suggestionId: string }
   | { readonly type: 'trackTip'; readonly tipId: string; readonly on: boolean }

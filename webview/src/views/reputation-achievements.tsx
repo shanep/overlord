@@ -3,10 +3,9 @@
 
 import type { ReactElement } from 'react';
 
-import type { ReputationState } from '../../../src/shared/protocol.js';
+import { RANKS, rankFor } from '../../../src/shared/reputation-ranks.js';
+import type { ReputationState } from '../../../src/shared/reputation.js';
 import { formatInteger } from '../format.js';
-
-import { RANKS, rankFor } from './reputation-ranks.js';
 
 export interface Achievement {
   readonly name: string;

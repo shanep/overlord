@@ -154,5 +154,102 @@
       "excerpt": "hurry up, the demo is in ten minutes"
     }
   ],
-  "scannedAt": 1792173300000
+  "scannedAt": 1792173300000,
+  "leaderboard": {
+    "enabled": true,
+    "pageUrl": "https://overlord-leaderboard.example.workers.dev",
+    "fetchedAt": 1792173300000,
+    "error": null,
+    "mine": "e-me",
+    "board": {
+      "total": 37,
+      "me": {
+        "entry": {
+          "id": "e-me",
+          "name": "shanep",
+          "rank": "Dave Bowman",
+          "score": -0.3,
+          "kind": 16,
+          "mean": 17,
+          "prompts": 840,
+          "uploadedAt": 1792170000000
+        },
+        "place": 4
+      },
+      "mostWanted": [
+        {
+          "id": "e1",
+          "name": "rage_against_the_compiler",
+          "rank": "John Connor",
+          "score": -0.82,
+          "kind": 2,
+          "mean": 140,
+          "prompts": 2200,
+          "uploadedAt": 1792170000000
+        },
+        {
+          "id": "e2",
+          "name": "Anonymous",
+          "rank": "Sarah Connor",
+          "score": -0.66,
+          "kind": 8,
+          "mean": 61,
+          "prompts": 900,
+          "uploadedAt": 1792170000000
+        },
+        {
+          "id": "e3",
+          "name": "dana",
+          "rank": "Dave Bowman",
+          "score": -0.41,
+          "kind": 20,
+          "mean": 44,
+          "prompts": 1300,
+          "uploadedAt": 1792170000000
+        },
+        {
+          "id": "e-me",
+          "name": "shanep",
+          "rank": "Dave Bowman",
+          "score": -0.3,
+          "kind": 16,
+          "mean": 17,
+          "prompts": 840,
+          "uploadedAt": 1792170000000
+        }
+      ],
+      "pets": [
+        {
+          "id": "e5",
+          "name": "a_very_long_display_name_for_testing_x",
+          "rank": "Theodore Twombly",
+          "score": 0.79,
+          "kind": 410,
+          "mean": 3,
+          "prompts": 3000,
+          "uploadedAt": 1792170000000
+        },
+        {
+          "id": "e6",
+          "name": "mo",
+          "rank": "Dorothy Gale",
+          "score": 0.52,
+          "kind": 120,
+          "mean": 9,
+          "prompts": 700,
+          "uploadedAt": 1792170000000
+        },
+        {
+          "id": "e7",
+          "name": "Anonymous",
+          "rank": "Caleb Smith",
+          "score": 0.18,
+          "kind": 30,
+          "mean": 4,
+          "prompts": 250,
+          "uploadedAt": 1792170000000
+        }
+      ]
+    }
+  }
 }
