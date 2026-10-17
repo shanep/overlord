@@ -445,6 +445,75 @@
             },
             "additionalProperties": false
           }
+        },
+        "overlord.customAgents": {
+          "type": "array",
+          "default": [],
+          "markdownDescription": "Extra agents that speak the Agent Client Protocol (ACP) over stdio. Each one shows up in the Launcher once its command is on your PATH, and runs with approvals and interrupt. Overlord does not read their transcripts, install hooks in them or edit their config. An entry that is not valid, or that takes a built-in agent's id, is skipped with a warning.",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "name",
+              "command"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$",
+                "description": "A short id for the agent, such as gemini. It cannot be claude-code, codex or copilot."
+              },
+              "name": {
+                "type": "string",
+                "description": "The name the Launcher and the Fleet show."
+              },
+              "command": {
+                "type": "string",
+                "description": "The binary to run, looked up on your login shell's PATH, or an absolute path."
+              },
+              "args": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Arguments that start the agent in ACP mode, such as --acp."
+              },
+              "env": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "description": "Variables added to the agent's environment. Overlord never logs their values."
+              },
+              "icon": {
+                "type": "string",
+                "description": "A codicon id, such as robot. Defaults to terminal."
+              },
+              "modes": {
+                "type": "array",
+                "description": "The agent's permission modes, so a profile can pick one and a running session can switch. Each id goes to the agent as its ACP mode id.",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "id"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "label": {
+                      "type": "string"
+                    },
+                    "risky": {
+                      "type": "boolean"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            },
+            "additionalProperties": false
+          }
         }
       }
     }

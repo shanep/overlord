@@ -229,7 +229,7 @@ export class Launcher {
     const { spec } = record.run;
     const baseEnv = this.deps.baseEnv === undefined ? process.env : await this.deps.baseEnv();
     const profile = findProfile(spec, record.profiles);
-    const { adapter, runtime } = this.runtimeFor(profile);
+    const { adapter, runtime } = this.runtimeFor(profile, spec);
     const settings = sessionSettings(spec, profile, baseEnv, adapter.modes);
     const backend = chosenBackend({ backend: profile?.backend, env: settings.env }, adapter.id);
     const lease = spec.worktree ? await this.acquireWorktree(record) : null;
@@ -300,12 +300,18 @@ export class Launcher {
     });
   }
 
-  /** The profile's agent, Claude Code without a profile, and the runtime it runs on. */
-  private runtimeFor(profile: LaunchProfile | null): {
+  /**
+   * The profile's agent, or without a profile the one the Launcher picked,
+   * else Claude Code, and the runtime it runs on.
+   */
+  private runtimeFor(
+    profile: LaunchProfile | null,
+    spec: LaunchSpec,
+  ): {
     readonly adapter: AgentAdapter;
     readonly runtime: NonNullable<AgentAdapter['runtime']>;
   } {
-    const id = profile?.agent ?? CLAUDE_CODE;
+    const id = profile?.agent ?? spec.agent ?? CLAUDE_CODE;
     const adapter = this.deps.agents.get(id);
     if (adapter === null) {
       throw new Error(`Unknown agent "${id}"`);

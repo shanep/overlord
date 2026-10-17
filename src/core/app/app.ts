@@ -7,6 +7,8 @@ import path from 'node:path';
 import { CLAUDE_CODE } from '../../shared/agents.js';
 import type { FleetState, HostToWebview, ViewId, WebviewAction } from '../../shared/protocol.js';
 import { sdkPlanUsage } from '../agents/claude/runtime.js';
+import { trackCustomAgents } from '../agents/custom.js';
+import { agents } from '../agents/index.js';
 import type { AgentCli } from '../agents/types.js';
 import type { EventBus } from '../bus.js';
 import { GitHubReader } from '../catalog/github.js';
@@ -86,6 +88,8 @@ export class OverlordApp {
   private readonly interval: IntervalFunction;
   private readonly fileWatch: FileWatchFunction;
   private readonly cleanups: (() => void)[] = [];
+  /** Rereads overlord.customAgents into the agent registry. */
+  private readonly updateCustomAgents: () => void;
   private started = false;
   private disposing: Promise<void> | null = null;
 
@@ -97,6 +101,7 @@ export class OverlordApp {
     this.bus = bus;
     this.interval = machine.interval;
     this.fileWatch = machine.fileWatch;
+    this.updateCustomAgents = trackCustomAgents(agents, host);
     this.errors = new ErrorLog(clock);
     this.cleanups.push(this.errors.attach(bus));
     const notify = (): void => {
@@ -399,6 +404,8 @@ export class OverlordApp {
   /** Call when the overlord.* settings change. */
   applySettings(): void {
     this.rt.launcher.setMaxConcurrency(concurrencyFrom(this.rt.host.settings.maxConcurrency));
+    this.updateCustomAgents();
+    void this.rt.caches.agents.refresh();
     this.changes.notify();
   }
 

@@ -1,0 +1,154 @@
+[
+  {
+    "id": "claude-code",
+    "name": "Claude Code",
+    "short": "Claude",
+    "icon": "sparkle",
+    "installed": true,
+    "version": null,
+    "capabilities": {
+      "launch": true,
+      "terminal": true,
+      "background": true,
+      "resume": true,
+      "fork": true,
+      "interrupt": true,
+      "liveModelChange": true,
+      "livePermissionMode": true,
+      "approvals": true,
+      "subagents": true,
+      "cacheReads": true,
+      "cacheWrites": true,
+      "costUsd": true,
+      "contextInspector": true,
+      "hooks": true,
+      "messaging": true,
+      "handoffs": ["resume-local", "open-desktop", "teleport-local", "remote-control"]
+    },
+    "permissionModes": [
+      {
+        "id": "default",
+        "label": "Default"
+      },
+      {
+        "id": "acceptEdits",
+        "label": "Accept edits"
+      },
+      {
+        "id": "plan",
+        "label": "Plan"
+      },
+      {
+        "id": "auto",
+        "label": "Auto"
+      },
+      {
+        "id": "dontAsk",
+        "label": "Don't ask"
+      },
+      {
+        "id": "bypassPermissions",
+        "label": "Bypass permissions",
+        "risky": true
+      },
+      {
+        "id": "manual",
+        "label": "Manual"
+      }
+    ],
+    "effortLevels": [
+      {
+        "id": "low",
+        "label": "Low"
+      },
+      {
+        "id": "medium",
+        "label": "Medium"
+      },
+      {
+        "id": "high",
+        "label": "High"
+      },
+      {
+        "id": "xhigh",
+        "label": "Extra high"
+      },
+      {
+        "id": "max",
+        "label": "Max"
+      }
+    ]
+  },
+  {
+    "id": "codex",
+    "name": "Codex CLI",
+    "short": "Codex",
+    "icon": "terminal",
+    "installed": true,
+    "version": "0.163.0",
+    "capabilities": {
+      "launch": true,
+      "terminal": true,
+      "background": false,
+      "resume": true,
+      "fork": false,
+      "interrupt": true,
+      "liveModelChange": false,
+      "livePermissionMode": false,
+      "approvals": true,
+      "subagents": false,
+      "cacheReads": false,
+      "cacheWrites": false,
+      "costUsd": false,
+      "contextInspector": false,
+      "hooks": false,
+      "messaging": false,
+      "handoffs": []
+    },
+    "permissionModes": [
+      {
+        "id": "read-only",
+        "label": "Read only"
+      },
+      {
+        "id": "workspace-write",
+        "label": "Workspace write"
+      },
+      {
+        "id": "danger-full-access",
+        "label": "Full access",
+        "risky": true
+      }
+    ],
+    "effortLevels": []
+  },
+  {
+    "id": "gemini",
+    "name": "Gemini CLI",
+    "short": "Gemini CLI",
+    "icon": "robot",
+    "installed": true,
+    "version": null,
+    "capabilities": {
+      "launch": true,
+      "terminal": false,
+      "background": false,
+      "resume": false,
+      "fork": false,
+      "interrupt": true,
+      "liveModelChange": false,
+      "livePermissionMode": false,
+      "approvals": true,
+      "subagents": false,
+      "cacheReads": false,
+      "cacheWrites": false,
+      "costUsd": false,
+      "contextInspector": false,
+      "hooks": false,
+      "messaging": false,
+      "handoffs": []
+    },
+    "permissionModes": [],
+    "effortLevels": []
+  }
+]

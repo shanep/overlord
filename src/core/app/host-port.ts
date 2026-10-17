@@ -3,6 +3,7 @@
 
 import type { AgentId } from '../../shared/agents.js';
 import type { ViewId } from '../../shared/protocol.js';
+import type { CustomAgentsSetting } from '../agents/custom.js';
 import type { EndpointSource } from '../bridge/backend.js';
 import type { SecretStore } from '../sync/secrets.js';
 
@@ -71,6 +72,8 @@ export interface OverlordSettings {
   readonly claudePath: string;
   /** What overlord.agents sets for each agent, by agent id. */
   readonly agents: Readonly<Record<AgentId, AgentSetting>>;
+  /** The ACP agents overlord.customAgents adds, and why it left any entry out. */
+  readonly customAgents: CustomAgentsSetting;
   readonly configRepoUrl: string;
   readonly configRepoPath: string;
   /** Commit, pull and push the config repo in the background once it is connected. */

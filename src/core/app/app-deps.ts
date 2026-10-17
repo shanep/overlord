@@ -10,7 +10,7 @@ import {
   type QueryFunction,
 } from '../agents/claude/runtime.js';
 import { agents } from '../agents/index.js';
-import { AgentRegistry } from '../agents/registry.js';
+import type { AgentRegistry } from '../agents/registry.js';
 import { EventBus } from '../bus.js';
 import type { StdioToolCaller } from '../connectors/stdio-mcp.js';
 import { createNodeFileSystem, type FileSystem } from '../context/fs.js';
@@ -106,11 +106,7 @@ export function launcherAgents(queryFunction: QueryFunction | undefined): AgentR
     return agents;
   }
   const runtime = claudeRuntime(queryFunction);
-  return new AgentRegistry(
-    agents
-      .list()
-      .map((adapter) => (adapter.id === CLAUDE_CODE ? { ...adapter, runtime } : adapter)),
-  );
+  return agents.withBuiltIn(CLAUDE_CODE, (adapter) => ({ ...adapter, runtime }));
 }
 
 export function machineDeps(deps: AppDeps): MachineDeps {

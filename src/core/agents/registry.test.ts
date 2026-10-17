@@ -34,6 +34,31 @@ describe('AgentRegistry', () => {
     expect(registry.list()).toStrictEqual([one, two]);
   });
 
+  it('lists custom agents after the built-in ones and drops one that takes a used id', () => {
+    const one = fake('one', null);
+    const registry = new AgentRegistry([one]);
+    const custom = fake('custom', null);
+    registry.setCustom([custom, fake('one', null), fake('custom', null)]);
+    expect(registry.list()).toStrictEqual([one, custom]);
+    expect(registry.get('one')).toBe(one);
+    expect(registry.get('custom')).toBe(custom);
+    expect([...registry.builtInIds()]).toStrictEqual(['one']);
+    registry.setCustom([]);
+    expect(registry.get('custom')).toBeNull();
+  });
+
+  it('keeps a copy with a changed built-in in step with later custom agents', () => {
+    const one = fake('one', null);
+    const registry = new AgentRegistry([one, fake('two', null)]);
+    const copy = registry.withBuiltIn('one', (adapter) => ({ ...adapter, name: 'Changed' }));
+    expect(copy.get('one')?.name).toBe('Changed');
+    expect(registry.get('one')).toBe(one);
+    const custom = fake('custom', null);
+    registry.setCustom([custom]);
+    expect(copy.list().map((adapter) => adapter.id)).toStrictEqual(['one', 'two', 'custom']);
+    expect(copy.get('custom')).toBe(custom);
+  });
+
   it('registers Claude Code', () => {
     expect(agents.get(CLAUDE_CODE)).toBe(claudeCode);
   });

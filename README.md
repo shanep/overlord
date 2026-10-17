@@ -191,6 +191,30 @@ no setup past [turning them on](#turn-an-agent-on).
 **Help** under Global in the sidebar explains every icon and badge and walks through a
 typical workflow.
 
+## Custom agents
+
+Any agent that speaks the [Agent Client Protocol](https://agentclientprotocol.com) (ACP) over
+stdio can run from the launcher. Add it to `overlord.customAgents` in your VS Code settings:
+
+```json
+"overlord.customAgents": [
+  {
+    "id": "gemini",
+    "name": "Gemini CLI",
+    "command": "gemini",
+    "args": ["--experimental-acp"],
+    "env": { "GEMINI_API_KEY": "..." }
+  }
+]
+```
+
+Once `command` is on your login shell's PATH, the agent shows up under **Which agent?** in the
+launcher. Its runs ask for approval in the permission inbox, and Interrupt and Stop work. That is
+all you get, since Overlord does not read its transcripts, install hooks in it or edit its config.
+Add `modes` (a list of `{ "id", "label" }`) if you want profiles to pick one of its permission
+modes. An entry with a broken field, or with the id of a built-in agent, is skipped with a
+warning.
+
 ## Worktrees
 
 Every session Overlord starts, from **New Claude Code Session**, **New session** or the launcher,

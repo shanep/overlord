@@ -4,6 +4,8 @@ import os from 'node:os';
 import path from 'node:path';
 import * as vscode from 'vscode';
 
+import { parseCustomAgents } from '../core/agents/custom.js';
+import { agents as agentRegistry } from '../core/agents/index.js';
 import { claudePathSetting, parseAgentSettings } from '../core/app/claude-bin.js';
 import type {
   FilePickRequest,
@@ -76,6 +78,10 @@ function readSettings(): OverlordSettings {
     telemetryPort: config.get<number>('telemetry.port', 47_318),
     claudePath: resolveClaude(claudePath),
     agents,
+    customAgents: parseCustomAgents(
+      config.get<unknown>('customAgents', []),
+      agentRegistry.builtInIds(),
+    ),
     configRepoUrl: config.get<string>('configRepo.url', ''),
     configRepoPath: expandHome(config.get<string>('configRepo.path', '~/.overlord-config')),
     configSyncAuto: config.get<boolean>('configSync.auto', true),

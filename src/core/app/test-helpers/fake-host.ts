@@ -1,6 +1,7 @@
 // A HostPort that records every call and answers from queues the test fills.
 
 import type { ViewId } from '../../../shared/protocol.js';
+import { NO_CUSTOM_AGENTS } from '../../agents/custom.js';
 import type { EndpointSource } from '../../bridge/backend.js';
 import { createMemorySecretStore } from '../../sync/secrets.js';
 import type {
@@ -26,6 +27,7 @@ const DEFAULT_SETTINGS: OverlordSettings = {
   telemetryPort: 0,
   claudePath: 'claude',
   agents: {},
+  customAgents: NO_CUSTOM_AGENTS,
   configRepoUrl: '',
   configRepoPath: '~/.overlord-config',
   configSyncAuto: true,
