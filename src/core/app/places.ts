@@ -91,6 +91,8 @@ export class SessionPlaces {
   private pids: Readonly<Record<string, number>> = {};
   private status: Readonly<Record<string, RegistryStatus>> = {};
   private live: readonly RegistryEntry[] = [];
+  /** Sessions whose process was alive at one refresh and gone at a later one. */
+  private exited = new Set<string>();
   private placements: ReadonlyMap<string, Placement> = new Map();
   private parents: ReadonlyMap<number, number> = new Map();
   private attaches: readonly AttachClient[] = [];
@@ -126,6 +128,15 @@ export class SessionPlaces {
   /** Registry entries for the sessions whose process is alive, as of the last refresh. */
   liveSessions(): readonly RegistryEntry[] {
     return this.live;
+  }
+
+  /**
+   * Sessions this window saw running whose process has since exited, until
+   * one starts again. A transcript can not say this itself: a killed session
+   * looks the same as one still in the middle of a turn.
+   */
+  get ended(): ReadonlySet<string> {
+    return this.exited;
   }
 
   /** The shell pid of the VS Code terminal the session runs in, or null. */
@@ -191,6 +202,10 @@ export class SessionPlaces {
         this.deps.terminalPids(),
       ]);
       const live = liveEntries(registry.items, this.deps.isAlive);
+      // A registry that failed to read would make every session look exited.
+      if (registry.errors.length === 0) {
+        this.noteExits(live);
+      }
       this.live = live;
       const roots = new Set(terminals);
       await this.readTree(live, roots);
@@ -217,6 +232,17 @@ export class SessionPlaces {
     } catch (error: unknown) {
       this.deps.report(SOURCE, messageOf(error));
     }
+  }
+
+  private noteExits(live: readonly RegistryEntry[]): void {
+    const now = new Set(live.map((entry) => entry.sessionId));
+    const exited = new Set([...this.exited].filter((sessionId) => !now.has(sessionId)));
+    for (const entry of this.live) {
+      if (!now.has(entry.sessionId)) {
+        exited.add(entry.sessionId);
+      }
+    }
+    this.exited = exited;
   }
 
   /**

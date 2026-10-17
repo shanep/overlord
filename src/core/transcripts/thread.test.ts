@@ -98,7 +98,7 @@ describe('AgentThread', () => {
     expect(delta.compactions).toStrictEqual([]);
     expect(delta.contextChanged).toBe(false);
     expect(thread.state(T0 + 1000, 1000)).toBe('running');
-    expect(thread.state(T0 + 1001, 1000)).toBe('idle');
+    expect(thread.state(T0 + 1001, 1000)).toBe('unfinished');
   });
 
   it('marks meta and compact summary prompts as system items without opening the turn', () => {

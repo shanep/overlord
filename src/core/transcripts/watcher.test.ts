@@ -243,7 +243,7 @@ describe('TranscriptWatcher', () => {
     clock = T0 + 120_000;
     await watcher.refresh();
     expect(names(events)).toStrictEqual(['session.upserted', 'agent.upserted']);
-    expect(payloads(events, 'session.upserted')).toMatchObject([{ state: 'idle' }]);
+    expect(payloads(events, 'session.upserted')).toMatchObject([{ state: 'unfinished' }]);
   });
 
   it('starts the session over when the transcript is truncated', async () => {

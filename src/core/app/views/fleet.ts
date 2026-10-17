@@ -125,12 +125,13 @@ export function withJobStates(
  * waits, and a job's state is only as fresh as the last `claude agents` call.
  * So a pending permission or Claude Code's own waiting means waiting, its
  * busy means running, and its idle ends a running state the transcript has
- * not ended yet.
+ * not ended yet. A running transcript whose process has exited is unfinished.
  */
 export function withLiveStates(
   sessions: readonly SessionSummary[],
   statuses: Readonly<Record<string, RegistryStatus>>,
   pending: readonly PermissionRequest[],
+  ended: ReadonlySet<string> = new Set(),
 ): readonly SessionSummary[] {
   const asking = new Set(pending.map((request) => request.sessionId));
   return sessions.map((session) => {
@@ -142,6 +143,9 @@ export function withLiveStates(
       state = 'running';
     } else if (status === 'idle' && state === 'running') {
       state = 'idle';
+    } else if (state === 'running' && ended.has(session.id)) {
+      // The process exited mid-turn, so nothing will finish it.
+      state = 'unfinished';
     }
     return state === session.state ? session : { ...session, state };
   });
@@ -163,6 +167,8 @@ export interface FleetInputs {
   readonly jobs: readonly BackgroundJob[];
   /** Busy, idle or waiting from Claude Code's session registry, by session id. */
   readonly statuses: Readonly<Record<string, RegistryStatus>>;
+  /** Sessions whose process this window saw exit. */
+  readonly ended?: ReadonlySet<string>;
   /** The sessions the Launcher started. */
   readonly launched: readonly string[];
   /** Token budgets set on sessions, by session id. */
@@ -233,6 +239,7 @@ export function buildFleet(input: FleetInputs): FleetState {
     withJobStates(base.sessions, input.jobs),
     input.statuses,
     input.pending,
+    input.ended,
   );
   const projects = input.projects(sessions, input.workspaceFolders);
   return {
@@ -273,6 +280,7 @@ export function fleetFor(rt: Runtime): FleetState {
     workspaceFolders: rt.host.workspaceFolders(),
     jobs: rt.jobs.value,
     statuses: rt.places.statuses,
+    ended: rt.places.ended,
     launched: rt.launched.list(),
     budgets: rt.budgets.tokens(),
     projects: (sessions, workspace) => rt.projects.view(sessions, workspace),

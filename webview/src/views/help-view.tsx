@@ -50,7 +50,15 @@ import { searchHelp } from './help-search.js';
 import { SessionsSection } from './help-sessions.js';
 import { HANDOFF_LABELS } from './sessions-view.js';
 
-const STATES: readonly SessionState[] = ['running', 'waiting', 'idle', 'done', 'failed', 'unknown'];
+const STATES: readonly SessionState[] = [
+  'running',
+  'waiting',
+  'idle',
+  'unfinished',
+  'done',
+  'failed',
+  'unknown',
+];
 const PLACES: readonly SessionPlace[] = ['vscode', 'terminal', 'background'];
 
 type Row = readonly [key: string, first: ReactNode, meaning: string];

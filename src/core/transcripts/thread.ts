@@ -66,6 +66,8 @@ export interface NotificationOutcome {
 // Claude Code writes these for errors it raises itself, not for API calls.
 const SYNTHETIC_MODEL = '<synthetic>';
 const OPEN_STOP_REASONS = new Set(['tool_use', 'pause_turn']);
+/** How Claude Code starts the message it writes when you press Esc. */
+const INTERRUPTED = '[Request interrupted';
 
 function emptyDelta(): ThreadDelta {
   return { tools: [], requests: [], feed: [], compactions: [], contextChanged: false };
@@ -141,12 +143,15 @@ export class AgentThread {
     return this.turnOpen || this.openTools.size > 0;
   }
 
+  /** Busy and quiet past the window means the work stopped partway, not that it finished. */
   state(now: number, windowMs: number): SessionState {
     if (this.lastAt === null) {
       return 'unknown';
     }
-    const recent = now - this.lastAt <= windowMs;
-    return recent && this.busy ? 'running' : 'idle';
+    if (!this.busy) {
+      return 'idle';
+    }
+    return now - this.lastAt <= windowMs ? 'running' : 'unfinished';
   }
 
   usage(): TokenUsage {
@@ -230,6 +235,13 @@ export class AgentThread {
     if (item.meta || isTaskNotification(item.text)) {
       this.noteNotification(parseTaskNotification(item.text), item.at);
       delta.feed.push({ kind: 'system', id: item.id, at: item.at, text: item.text });
+      return;
+    }
+    // Esc writes this as a user message, but it ends the turn and anything in flight.
+    if (item.text.startsWith(INTERRUPTED)) {
+      this.turnOpen = false;
+      this.openTools.clear();
+      delta.feed.push({ kind: 'user', id: item.id, at: item.at, text: item.text });
       return;
     }
     this.turnOpen = true;

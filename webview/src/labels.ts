@@ -95,6 +95,13 @@ export const STATE_INFO: Readonly<Record<SessionState, StateInfo>> = {
     tone: 'neutral',
     description: 'Not working: the last turn finished and it is waiting for your next prompt.',
   },
+  unfinished: {
+    label: 'unfinished',
+    icon: '◐',
+    tone: 'warning',
+    description:
+      'Stopped partway: the transcript ends in the middle of a turn or a tool call and nothing is running it, so the work may not be done.',
+  },
   done: {
     label: 'done',
     icon: '✓',
@@ -115,14 +122,15 @@ export const STATE_INFO: Readonly<Record<SessionState, StateInfo>> = {
   },
 };
 
-/** Sort rank so active work sorts first: waiting, running, idle, then the rest. */
+/** Sort rank so active work sorts first: waiting, running, unfinished, idle, then the rest. */
 export const STATE_RANK: Readonly<Record<SessionState, number>> = {
   waiting: 0,
   running: 1,
-  idle: 2,
-  unknown: 3,
-  failed: 4,
-  done: 5,
+  unfinished: 2,
+  idle: 3,
+  unknown: 4,
+  failed: 5,
+  done: 6,
 };
 
 const SURFACE_SET: ReadonlySet<string> = new Set(SURFACES);

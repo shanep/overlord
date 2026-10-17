@@ -176,7 +176,7 @@ describe('loadSession', () => {
     expect(
       agents.map((agent) => [agent.id, agent.parentAgentId, agent.agentType, agent.state]),
     ).toStrictEqual([
-      [SESSION, null, 'main', 'idle'],
+      [SESSION, null, 'main', 'unfinished'],
       ['x1', SESSION, 'Explore', 'done'],
       ['w1', SESSION, 'unknown', 'unknown'],
     ]);

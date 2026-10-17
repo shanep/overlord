@@ -4,7 +4,7 @@
 
 import type { FleetRow } from './fleet-rows.js';
 
-const QUIET = new Set(['idle', 'done']);
+const QUIET = new Set(['idle', 'unfinished', 'done']);
 
 /** A quiet session row open in no terminal, so it leaves the fleet in time. */
 export function isWindowless(row: FleetRow): boolean {

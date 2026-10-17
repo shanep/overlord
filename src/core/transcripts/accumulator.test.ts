@@ -309,7 +309,7 @@ describe('SessionAccumulator', () => {
   it('is running while any subagent runs and idle once all settle', () => {
     const accumulator = buildFamily();
     expect(accumulator.summary(T0 + 2000 + MINUTE).state).toBe('running');
-    expect(accumulator.summary(T0 + 2001 + MINUTE).state).toBe('idle');
+    expect(accumulator.summary(T0 + 2001 + MINUTE).state).toBe('unfinished');
   });
 
   it('creates a thread for records from an unregistered subagent and fills meta later', () => {
@@ -393,7 +393,7 @@ describe('SessionAccumulator', () => {
     expect(accumulator.requests()[0]?.costUsd).toBe(4);
     expect(accumulator.toolCalls()[0]?.resultPreview).toBe(`${'y'.repeat(400)}...`);
     expect(accumulator.summary(T0 + 2 + 5 * MINUTE).state).toBe('running');
-    expect(accumulator.summary(T0 + 3 + 5 * MINUTE).state).toBe('idle');
+    expect(accumulator.summary(T0 + 3 + 5 * MINUTE).state).toBe('unfinished');
     for (let index = 0; index < 2100; index += 1) {
       accumulator.ingest(record(userPrompt(`p${String(index)}`, 10, 'p')));
     }

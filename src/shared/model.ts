@@ -8,7 +8,12 @@ import type { AgentId } from './agents.js';
 export type Surface =
   'cli' | 'sdk' | 'overlord' | 'desktop-code' | 'cowork' | 'cloud' | 'claude-ai';
 
-export type SessionState = 'running' | 'waiting' | 'idle' | 'done' | 'failed' | 'unknown';
+/**
+ * Unfinished is a transcript that stops mid-turn or mid tool call with nothing
+ * running it any more, so the work was cut off rather than finished.
+ */
+export type SessionState =
+  'running' | 'waiting' | 'idle' | 'unfinished' | 'done' | 'failed' | 'unknown';
 
 /**
  * Where a live Claude Code process runs: a terminal in this VS Code window,
