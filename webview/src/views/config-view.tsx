@@ -28,7 +28,7 @@ export interface ConfigGroup {
 }
 
 /** True when the item's name, path or link target contains the search text, ignoring case. */
-export function matchesQuery(item: ConfigItem, query: string): boolean {
+function matchesQuery(item: ConfigItem, query: string): boolean {
   const needle = query.trim().toLowerCase();
   return (
     needle === '' ||
