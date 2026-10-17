@@ -153,6 +153,8 @@ export interface AgentNode {
   readonly toolCallCount: number;
   readonly currentTool: string | null;
   readonly model: string | null;
+  /** Why a failed agent failed, when its error came back to the parent. */
+  readonly failure?: string;
 }
 
 export interface ToolCall {

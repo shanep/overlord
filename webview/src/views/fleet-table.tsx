@@ -166,7 +166,9 @@ function ProjectCells(props: FleetTableRowProps): ReactElement {
         visible={visible}
         agent={null}
         showSummary={props.showSummary}
+        tabIndex={selected ? 0 : -1}
         onToggle={props.onToggle}
+        onAction={props.onAction}
       />
       <td role="gridcell" className="col-health" />
       <td role="gridcell" className="col-model" />
@@ -226,6 +228,7 @@ function rowBackend(row: FleetRow): Backend | null {
 
 function SessionCells(props: FleetTableRowProps): ReactElement {
   const { visible, selected, now, history, theme } = props;
+  const tabIndex = selected ? 0 : -1;
   const { row } = visible;
   const session = row.kind === 'session';
   const agent = useAgent(row.agent);
@@ -243,10 +246,12 @@ function SessionCells(props: FleetTableRowProps): ReactElement {
         agent={session && props.showAgent(row.agent) ? agent : null}
         backend={rowBackend(row)}
         showSummary={props.showSummary}
+        tabIndex={tabIndex}
         onToggle={props.onToggle}
+        onAction={props.onAction}
       />
       <td role="gridcell" className="col-health">
-        <HealthBar row={row} tabIndex={selected ? 0 : -1} onAction={props.onAction} />
+        <HealthBar row={row} tabIndex={tabIndex} onAction={props.onAction} />
       </td>
       <td role="gridcell" className="col-model">
         {row.model ?? ''}
@@ -289,7 +294,7 @@ function SessionCells(props: FleetTableRowProps): ReactElement {
       <td role="gridcell" className="col-actions">
         <RowActions
           row={row}
-          tabIndex={selected ? 0 : -1}
+          tabIndex={tabIndex}
           onAction={props.onAction}
           onProjectAction={props.onProjectAction}
         />

@@ -14,7 +14,8 @@ import {
   WindowlessMarker,
 } from '../components/badge.js';
 
-import type { VisibleRow } from './fleet-rows.js';
+import type { RowEvent } from './fleet-actions.js';
+import type { FleetRow, VisibleRow } from './fleet-rows.js';
 import { isLaunched } from './launched.js';
 import { isWindowless } from './windowless.js';
 
@@ -54,6 +55,33 @@ function RowMark(props: {
   return props.backend === null ? null : <BackendMark backend={props.backend} />;
 }
 
+/** On a failed subagent's row, why it failed, as a link that opens the agent. */
+function FailureLine(props: {
+  readonly visible: VisibleRow;
+  readonly tabIndex: number;
+  readonly onAction: (row: FleetRow, action: RowEvent) => void;
+}): ReactElement | null {
+  const { row, depth } = props.visible;
+  if (row.kind !== 'agent' || row.state !== 'failed') {
+    return null;
+  }
+  return (
+    <button
+      type="button"
+      className="link-button row-failure"
+      style={{ paddingLeft: `${(depth * 1.2 + 1.2).toString()}em` }}
+      tabIndex={props.tabIndex}
+      data-tip={row.failure ?? undefined}
+      aria-label={`${row.title} failed: open it`}
+      onClick={() => {
+        props.onAction(row, 'open');
+      }}
+    >
+      Failed: {row.failure ?? 'no error came back, open it to read the transcript'}
+    </button>
+  );
+}
+
 export function TitleCell(props: {
   readonly visible: VisibleRow;
   /** The agent to name in front of the title, or null to leave it out. */
@@ -61,7 +89,9 @@ export function TitleCell(props: {
   /** The backend logo to show in front of the title, or null (the default) for none. */
   readonly backend?: Backend | null;
   readonly showSummary: boolean;
+  readonly tabIndex: number;
   readonly onToggle: (visible: VisibleRow) => void;
+  readonly onAction: (row: FleetRow, action: RowEvent) => void;
 }): ReactElement {
   const { visible, backend = null } = props;
   const { row } = visible;
@@ -83,6 +113,7 @@ export function TitleCell(props: {
         />
       ) : null}{' '}
       <span className="muted row-detail">{row.detail}</span>
+      <FailureLine visible={visible} tabIndex={props.tabIndex} onAction={props.onAction} />
       {row.summary === null || !props.showSummary ? null : (
         <span
           className="muted row-summary"

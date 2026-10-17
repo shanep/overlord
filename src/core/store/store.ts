@@ -194,11 +194,18 @@ export class OverlordStore {
   }
 
   /**
-   * The error result of the Agent call that started a failed agent. A
-   * background agent's call only reports the launch, so it has none.
+   * Why a failed agent failed: what its transcript said, or else the error
+   * result of the Agent call that started it. A background agent's call only
+   * reports the launch, so that fallback has nothing for one.
    */
   private failureOf(agent: AgentNode | null): string | null {
-    if (agent?.state !== 'failed' || agent.parentToolUseId === null) {
+    if (agent?.state !== 'failed') {
+      return null;
+    }
+    if (agent.failure !== undefined) {
+      return agent.failure;
+    }
+    if (agent.parentToolUseId === null) {
       return null;
     }
     const call = this.toolCalls.get(

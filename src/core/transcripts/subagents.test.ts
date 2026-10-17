@@ -154,13 +154,29 @@ describe('spawnCompletion', () => {
     ).toStrictEqual({
       state: 'done',
       endedAt: 5,
+      failure: null,
     });
     expect(
       spawnCompletion('t', lookup({ resultOf: () => ({ at: 6, ok: false, async: false }) })),
     ).toStrictEqual({
       state: 'failed',
       endedAt: 6,
+      failure: null,
     });
+    expect(
+      spawnCompletion(
+        't',
+        lookup({ resultOf: () => ({ at: 6, ok: false, async: false, error: 'API Error' }) }),
+      )?.failure,
+    ).toBe('API Error');
+  });
+
+  it('takes the failure of a background agent from its notification summary', () => {
+    const summary = 'Agent "N1" failed: You have hit your session limit';
+    const failed = lookup({ notificationOf: () => ({ at: 9, status: 'failed', summary }) });
+    const done = lookup({ notificationOf: () => ({ at: 9, status: 'completed', summary }) });
+    expect(spawnCompletion('t', failed)?.failure).toBe(summary);
+    expect(spawnCompletion('t', done)?.failure).toBeNull();
   });
 
   it('waits for the notification when the result only says it launched', () => {

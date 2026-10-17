@@ -85,15 +85,24 @@ export async function listSubagentFiles(sessionDir: string): Promise<SubagentFil
 export interface SpawnLookup {
   /** The agent whose transcript holds this tool use, if any thread has it yet. */
   ownerOf: (toolUseId: string) => string | null;
-  resultOf: (
-    toolUseId: string,
-  ) => { readonly at: number; readonly ok: boolean; readonly async: boolean } | null;
-  notificationOf: (toolUseId: string) => { readonly at: number; readonly status: string } | null;
+  resultOf: (toolUseId: string) => {
+    readonly at: number;
+    readonly ok: boolean;
+    readonly async: boolean;
+    readonly error?: string | null;
+  } | null;
+  notificationOf: (toolUseId: string) => {
+    readonly at: number;
+    readonly status: string;
+    readonly summary?: string | null;
+  } | null;
 }
 
 export interface Completion {
   readonly state: SessionState;
   readonly endedAt: number;
+  /** Why it failed, from the task notification or the tool result, when either says. */
+  readonly failure: string | null;
 }
 
 const FAILED_STATUSES = new Set(['failed', 'error']);
@@ -106,13 +115,21 @@ export function spawnCompletion(toolUseId: string, lookup: SpawnLookup): Complet
   const notification = lookup.notificationOf(toolUseId);
   if (notification !== null) {
     const failed = FAILED_STATUSES.has(notification.status);
-    return { state: failed ? 'failed' : 'done', endedAt: notification.at };
+    return {
+      state: failed ? 'failed' : 'done',
+      endedAt: notification.at,
+      failure: failed ? (notification.summary ?? null) : null,
+    };
   }
   const result = lookup.resultOf(toolUseId);
   if (result === null || result.async) {
     return null;
   }
-  return { state: result.ok ? 'done' : 'failed', endedAt: result.at };
+  return {
+    state: result.ok ? 'done' : 'failed',
+    endedAt: result.at,
+    failure: result.ok ? null : (result.error ?? null),
+  };
 }
 
 /** Everything about one subagent thread that is not in the meta file. */
@@ -176,6 +193,7 @@ export function buildSubagentNode(
   const fields = metaFields(meta);
   const toolUseId = fields.parentToolUseId;
   const completion = toolUseId === null ? null : spawnCompletion(toolUseId, lookup);
+  const failure = completion?.failure ?? null;
   return {
     id: activity.agentId,
     sessionId: activity.sessionId,
@@ -193,5 +211,6 @@ export function buildSubagentNode(
     toolCallCount: activity.toolCallCount,
     currentTool: completion === null ? activity.currentTool : null,
     model: activity.model ?? fields.model,
+    ...(failure === null ? {} : { failure }),
   };
 }

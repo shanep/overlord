@@ -828,6 +828,16 @@ fieldset.chips {
   text-overflow: ellipsis;
 }
 
+button.link-button.row-failure {
+  display: block;
+  max-width: 80ch;
+  overflow: hidden;
+  color: var(--ov-red);
+  font-size: 0.9em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .place {
   display: inline-flex;
   margin-right: 4px;

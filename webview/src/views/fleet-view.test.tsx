@@ -295,6 +295,38 @@ describe('FleetView', () => {
     expect(rowFor('Explore').getAttribute('aria-selected')).toBe('true');
   });
 
+  it('says on a failed subagent row why it failed and opens it from there', async () => {
+    const user = userEvent.setup();
+    const failure = 'Agent terminated early due to an API error';
+    const state: FleetState = {
+      ...fleetState,
+      agents: fleetState.agents.map((node) =>
+        node.id === 'a1' ? { ...node, state: 'failed', failure } : node,
+      ),
+    };
+    const { api, container } = setup(state);
+    const link = within(rowFor('Explore')).getByRole('button', { name: 'Explore failed: open it' });
+    expect(link.textContent).toBe(`Failed: ${failure}`);
+    await user.click(link);
+    expect(api.actions()).toStrictEqual([{ type: 'openAgent', sessionId: 's1', agentId: 'a1' }]);
+    await expectAccessible(container);
+  });
+
+  it('still offers to open a failed subagent that sent back no error', () => {
+    const state: FleetState = {
+      ...fleetState,
+      agents: fleetState.agents.map((node) =>
+        node.id === 'a1' ? { ...node, state: 'failed' } : node,
+      ),
+    };
+    setup(state);
+    expect(
+      within(rowFor('Explore')).getByRole('button', { name: 'Explore failed: open it' })
+        .textContent,
+    ).toBe('Failed: no error came back, open it to read the transcript');
+    expect(within(rowFor('Refactor parser')).queryByText(/^Failed:/u)).toBeNull();
+  });
+
   it('ignores row keys pressed on a button inside the row', async () => {
     const user = userEvent.setup();
     const { api } = setup();

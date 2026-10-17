@@ -52,8 +52,19 @@ describe('parseTaskNotification', () => {
     expect(parseTaskNotification(block)).toStrictEqual({
       toolUseId: 'toolu_abc',
       status: 'completed',
+      summary: null,
     });
     expect(isTaskNotification(block)).toBe(true);
+  });
+
+  it('reads the summary, which says why a failed agent failed', () => {
+    const failed = block
+      .replace('completed', 'failed')
+      .replace(
+        '</task-notification>',
+        '<summary> Agent "N1" failed: API error </summary>\n</task-notification>',
+      );
+    expect(parseTaskNotification(failed)?.summary).toBe('Agent "N1" failed: API error');
   });
 
   it('gives null without the tag, the id or the status', () => {

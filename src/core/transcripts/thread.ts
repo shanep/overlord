@@ -53,11 +53,14 @@ export interface ToolOutcome {
   readonly ok: boolean;
   /** True when the tool only launched a background task and returned at once. */
   readonly async: boolean;
+  /** The start of the result text when the tool failed. */
+  readonly error: string | null;
 }
 
 export interface NotificationOutcome {
   readonly at: number;
   readonly status: string;
+  readonly summary: string | null;
 }
 
 // Claude Code writes these for errors it raises itself, not for API calls.
@@ -248,7 +251,12 @@ export class AgentThread {
     const ok = block.is_error !== true;
     const text = plainText(resultText(block.content));
     this.openTools.delete(block.tool_use_id);
-    this.outcomes.set(block.tool_use_id, { at, ok, async: input.asyncLaunch });
+    this.outcomes.set(block.tool_use_id, {
+      at,
+      ok,
+      async: input.asyncLaunch,
+      error: ok ? null : preview(text, this.options.previewChars),
+    });
     const call = this.toolMap.get(block.tool_use_id);
     if (call !== undefined) {
       const updated: ToolCall = {
@@ -363,7 +371,11 @@ export class AgentThread {
 
   private noteNotification(notification: TaskNotification | null, at: number | null): void {
     if (notification !== null) {
-      this.notifications.set(notification.toolUseId, { at: at ?? 0, status: notification.status });
+      this.notifications.set(notification.toolUseId, {
+        at: at ?? 0,
+        status: notification.status,
+        summary: notification.summary,
+      });
     }
   }
 }

@@ -26,11 +26,14 @@ export function preview(text: string, max: number): string {
 export interface TaskNotification {
   readonly toolUseId: string;
   readonly status: string;
+  /** The one line on how it ended, which holds the error when it failed. */
+  readonly summary: string | null;
 }
 
 const NOTIFICATION_TAG = '<task-notification>';
 const TOOL_USE_ID = /<tool-use-id>([^<]+)<\/tool-use-id>/u;
 const STATUS = /<status>([^<]+)<\/status>/u;
+const SUMMARY = /<summary>([^<]+)<\/summary>/u;
 
 /**
  * Background agents and tasks report back with a <task-notification> block
@@ -45,7 +48,8 @@ export function parseTaskNotification(text: string): TaskNotification | null {
   if (toolUseId === undefined || status === undefined) {
     return null;
   }
-  return { toolUseId, status };
+  const summary = SUMMARY.exec(text)?.[1]?.trim() ?? null;
+  return { toolUseId, status, summary: summary === '' ? null : summary };
 }
 
 export function isTaskNotification(text: string): boolean {

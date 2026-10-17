@@ -201,7 +201,12 @@ describe('AgentThread', () => {
       },
     ]);
     expect(thread.currentTool()).toBe('Bash');
-    expect(thread.outcome('t2')).toStrictEqual({ at: T0 + 20, ok: false, async: false });
+    expect(thread.outcome('t2')).toStrictEqual({
+      at: T0 + 20,
+      ok: false,
+      async: false,
+      error: '0123456789...',
+    });
     expect(thread.outcome('t1')).toBeNull();
     expect(thread.state(T0 + 20, 1000)).toBe('running');
 
@@ -233,7 +238,7 @@ describe('AgentThread', () => {
       }),
     );
     expect(thread.toolCalls()[0]).toMatchObject({ endedAt: 0, ok: true, resultPreview: 'x' });
-    expect(thread.outcome('t')).toStrictEqual({ at: 0, ok: true, async: false });
+    expect(thread.outcome('t')).toStrictEqual({ at: 0, ok: true, async: false, error: null });
   });
 
   it('drops terminal escapes from a tool result before cutting its preview', () => {
@@ -279,7 +284,12 @@ describe('AgentThread', () => {
     );
     expect(delta.tools).toStrictEqual([]);
     expect(delta.feed).toHaveLength(1);
-    expect(thread.outcome('ghost')).toStrictEqual({ at: T0 + 5, ok: true, async: true });
+    expect(thread.outcome('ghost')).toStrictEqual({
+      at: T0 + 5,
+      ok: true,
+      async: true,
+      error: null,
+    });
   });
 
   it('dedupes requests by message id, keeping the last usage and the first time', () => {
@@ -472,19 +482,27 @@ describe('AgentThread', () => {
     expect(delta.feed).toStrictEqual([
       { kind: 'system', id: 'u1', at: T0 + 3, text: note('t1', 'completed') },
     ]);
-    expect(thread.notification('t1')).toStrictEqual({ at: T0 + 3, status: 'completed' });
+    expect(thread.notification('t1')).toStrictEqual({
+      at: T0 + 3,
+      status: 'completed',
+      summary: null,
+    });
     const queued = thread.ingest(
       record(attachment('q1', 4, { type: 'queued_command', prompt: note('t2', 'failed') })),
     );
     expect(queued.contextChanged).toBe(false);
-    expect(thread.notification('t2')).toStrictEqual({ at: T0 + 4, status: 'failed' });
+    expect(thread.notification('t2')).toStrictEqual({
+      at: T0 + 4,
+      status: 'failed',
+      summary: null,
+    });
     thread.ingest(
       record({
         type: 'attachment',
         attachment: { type: 'queued_command', prompt: note('t3', 'killed') },
       }),
     );
-    expect(thread.notification('t3')).toStrictEqual({ at: 0, status: 'killed' });
+    expect(thread.notification('t3')).toStrictEqual({ at: 0, status: 'killed', summary: null });
     thread.ingest(record(attachment('q2', 5, { type: 'queued_command', prompt: 'just a prompt' })));
     expect(thread.notification('nope')).toBeNull();
     thread.ingest(record(userPrompt('u2', 6, '<task-notification>broken')));

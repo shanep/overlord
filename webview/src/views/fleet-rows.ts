@@ -38,6 +38,8 @@ export interface FleetRow {
   readonly detail: string;
   /** On a session's row, one line on what it is working on, or null while nothing says. */
   readonly summary: string | null;
+  /** On a failed subagent's row, why it failed, or null when nothing came back. */
+  readonly failure: string | null;
   readonly model: string | null;
   readonly effort: string | null;
   readonly startedAt: number;
@@ -118,6 +120,7 @@ function sessionRow(
     title,
     detail: session.cwd,
     summary: workingOn(session),
+    failure: null,
     model: session.model,
     effort: session.effort,
     startedAt: session.startedAt,
@@ -154,6 +157,7 @@ function agentRow(agent: AgentNode, session: FleetRow): FleetRow {
     title: agent.agentType,
     detail: agent.description,
     summary: null,
+    failure: agent.state === 'failed' ? (agent.failure ?? null) : null,
     model: agent.model,
     effort: null,
     startedAt: agent.startedAt,
@@ -283,6 +287,7 @@ function projectRow(
     title,
     detail: project?.folder ?? plural(rows.length, 'session'),
     summary: null,
+    failure: null,
     model: null,
     effort: null,
     startedAt: rows.length === 0 ? 0 : Math.min(...rows.map((row) => row.startedAt)),

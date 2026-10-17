@@ -514,6 +514,16 @@ describe('OverlordStore agentDetailState', () => {
     expect(store.agentDetailState('s1', 's1').failure).toBeNull();
   });
 
+  it('prefers the failure the transcript gave the agent', () => {
+    const { bus, store } = setup();
+    const failed = agent('s1', 'sub', { state: 'failed', parentToolUseId: 't1' });
+    bus.emit('agent.upserted', { ...failed, failure: 'Session limit' });
+    bus.emit('tool.upserted', tool('t1', { name: 'Agent', ok: false, resultPreview: 'API Error' }));
+    expect(store.agentDetailState('s1', 'sub').failure).toBe('Session limit');
+    bus.emit('agent.upserted', failed);
+    expect(store.agentDetailState('s1', 'sub').failure).toBe('Session limit');
+  });
+
   it('has no error for a failed background agent, whose call only reports the launch', () => {
     const { bus, store } = setup();
     bus.emit('agent.upserted', agent('s1', 'sub', { state: 'failed', parentToolUseId: 't1' }));

@@ -189,6 +189,7 @@ describe('buildFleetTree', () => {
       title: 'Refactor parser',
       detail: '/Users/dev/repos/s1',
       summary: null,
+      failure: null,
       model: 'claude-opus-4-7',
       effort: 'high',
       startedAt: NOW - 600_000,

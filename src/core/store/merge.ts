@@ -84,6 +84,15 @@ function identity(
   };
 }
 
+/** A hook's report of the end does not know the error, so keep the one the transcript gave. */
+function failureOf(known: AgentNode, next: AgentNode): Pick<AgentNode, 'failure'> {
+  if (next.state !== 'failed') {
+    return {};
+  }
+  const failure = next.failure ?? known.failure;
+  return failure === undefined ? {} : { failure };
+}
+
 /**
  * Folds a new report of an agent into the one already known. A hook only
  * knows the id, type and state, so its node has zero usage and guesses the
@@ -104,5 +113,6 @@ export function mergeAgent(known: AgentNode | undefined, next: AgentNode): Agent
     usage: hasUsage(next) ? next.usage : known.usage,
     toolCallCount: next.toolCallCount === 0 ? known.toolCallCount : next.toolCallCount,
     model: next.model ?? known.model,
+    ...failureOf(known, next),
   };
 }
