@@ -40,18 +40,58 @@ const EDIT_TOOLS: ReadonlySet<string> = new Set([
   'NotebookEdit',
 ]);
 
+const SURROGATES = { low: 0xd8_00, high: 0xdf_ff } as const;
+const DELETE = 0x7f;
+const SPACE = 0x20;
+const BACKSLASH = String.fromCodePoint(0x5c);
+const REPLACEMENT = String.fromCodePoint(0xff_fd);
+
+/** One character as a TOML basic string holds it. */
+function escapeChar(char: string, keepLines: boolean): string {
+  const code = char.codePointAt(0) ?? 0;
+  if (code >= SURROGATES.low && code <= SURROGATES.high) {
+    // No TOML escape can write a lone surrogate.
+    return REPLACEMENT;
+  }
+  if (char === BACKSLASH || (char === '"' && !keepLines)) {
+    return `${BACKSLASH}${char}`;
+  }
+  if (keepLines && (char === '\n' || char === '\t')) {
+    return char;
+  }
+  const hex = code.toString(16).padStart(4, '0');
+  return code < SPACE || code === DELETE ? `${BACKSLASH}u${hex}` : char;
+}
+
+/**
+ * Escapes what a TOML basic string cannot hold as is: backslashes and control
+ * characters, plus line breaks and quotes when keepLines is false. It walks
+ * code points, so a lone surrogate comes through on its own.
+ */
+function escapeBasic(value: string, keepLines: boolean): string {
+  let out = '';
+  for (const char of value) {
+    out += escapeChar(char, keepLines);
+  }
+  return out;
+}
+
 /** A TOML basic string, or a multi-line one for text with line breaks. */
 function tomlString(value: string): string {
   if (!value.includes('\n')) {
-    // JSON's escapes are all valid in a TOML basic string.
-    return JSON.stringify(value);
+    return `"${escapeBasic(value, false)}"`;
   }
-  const escaped = value
-    .replaceAll('\\', String.raw`\\`)
-    .replaceAll('\r', String.raw`\r`)
-    .replaceAll('"""', String.raw`""\"`);
+  const escaped = escapeBasic(value, true).replaceAll('"""', String.raw`""\"`);
   // A newline right after the opening quotes is dropped by TOML readers.
   return `"""\n${escaped}"""`;
+}
+
+function isStringList(value: unknown): value is readonly string[] {
+  if (!Array.isArray(value)) {
+    return false;
+  }
+  const list: readonly unknown[] = value;
+  return list.every((item) => typeof item === 'string');
 }
 
 function tomlValue(value: unknown): string | null {
@@ -61,8 +101,8 @@ function tomlValue(value: unknown): string | null {
   if (typeof value === 'number' || typeof value === 'boolean') {
     return String(value);
   }
-  if (Array.isArray(value) && value.every((item) => typeof item === 'string')) {
-    return `[${value.map((item: string) => tomlString(item)).join(', ')}]`;
+  if (isStringList(value)) {
+    return `[${value.map((item) => tomlString(item)).join(', ')}]`;
   }
   return null;
 }

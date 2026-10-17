@@ -109,6 +109,21 @@ describe('Codex CLI agent files', () => {
     expect(codexAgentFiles.withName(withTable, 'b')).toBe(withTable);
   });
 
+  it('escapes characters TOML cannot hold as they are', () => {
+    const control = `a${String.fromCodePoint(0x7f)}b${String.fromCodePoint(1)}c`;
+    const lone = String.fromCodePoint(0xd8_00);
+    const replacement = String.fromCodePoint(0xff_fd);
+    const text = codexAgentFiles.render({
+      frontmatter: { name: 'odd', description: `${control}"q"\\${lone}` },
+      body: `one${String.fromCodePoint(2)}\ttab\r\ntwo\n`,
+    });
+    expect({ ...parse(text) }).toStrictEqual({
+      name: 'odd',
+      description: `${control}"q"\\${replacement}`,
+      developer_instructions: `one${String.fromCodePoint(2)}\ttab\r\ntwo\n`,
+    });
+  });
+
   it('reports what Codex needs', () => {
     expect(issues('name = ')[0]).toMatch(/^error Not valid TOML: /u);
     expect(issues('name = "a"\ndescription = ""\ncolor = "red"\n')).toStrictEqual([
