@@ -6,14 +6,13 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { EventBus } from '../bus.js';
 import type { Exec } from '../sync/exec.js';
-import { DEFAULT_PRICES } from '../transcripts/pricing.js';
 
 import { AsyncValue } from './async-value.js';
 import { ChangeHub } from './changes.js';
 import { ErrorLog, MAX_ERRORS, messageOf } from './errors.js';
-import { DEFAULT_MODEL, formatUsd, MODEL_ALIASES, toEstimatePrices } from './prices.js';
+import { DEFAULT_MODEL, formatUsd, MODEL_ALIASES } from './prices.js';
 import { defaultInterval, defaultKill, pollingFileWatch, toSurfacesExec } from './process.js';
-import { makeEnv, settle, sorted, waitFor, writeText } from './test-helpers/fixtures.js';
+import { makeEnv, settle, waitFor, writeText } from './test-helpers/fixtures.js';
 import { plural, shortId } from './text.js';
 
 describe('messageOf', () => {
@@ -197,23 +196,9 @@ describe('AsyncValue', () => {
 });
 
 describe('prices', () => {
-  it('converts every list price and adds the CLI aliases', () => {
-    const table = toEstimatePrices(DEFAULT_PRICES);
-    expect(table['claude-opus-5-5']).toStrictEqual({ inputPerMTok: 4, outputPerMTok: 20 });
-    expect(table['opus']).toStrictEqual({ inputPerMTok: 4, outputPerMTok: 20 });
-    expect(table['sonnet']).toStrictEqual({ inputPerMTok: 2, outputPerMTok: 10 });
-    expect(table['haiku']).toStrictEqual({ inputPerMTok: 0.1, outputPerMTok: 0.5 });
-    expect(table['fable']).toStrictEqual({ inputPerMTok: 10, outputPerMTok: 50 });
-    expect(Object.keys(table)).toHaveLength(Object.keys(DEFAULT_PRICES).length + 4);
+  it('names the default model and the CLI aliases', () => {
     expect(DEFAULT_MODEL).toBe('claude-opus-5-5');
     expect(Object.keys(MODEL_ALIASES)).toStrictEqual(['opus', 'sonnet', 'haiku', 'fable']);
-  });
-
-  it('skips an alias whose model has no price', () => {
-    const table = toEstimatePrices({
-      'claude-opus-5-5': { input: 1, output: 2, cacheRead: 0, cacheWrite: 0 },
-    });
-    expect(sorted(Object.keys(table))).toStrictEqual(['claude-opus-5-5', 'opus']);
   });
 
   it('formats dollars with two decimals', () => {

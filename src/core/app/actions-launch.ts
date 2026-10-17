@@ -3,15 +3,16 @@
 
 import path from 'node:path';
 
+import type { AgentId } from '../../shared/agents.js';
+import { CLAUDE_CODE } from '../../shared/agents.js';
 import type { LaunchProfile, LaunchSpec } from '../../shared/model.js';
 import type { LaunchFolder } from '../../shared/protocol.js';
 import { agents } from '../agents/index.js';
-import { estimateBatch } from '../harness/estimate.js';
+import { estimateBatch, type AgentPrices } from '../harness/estimate.js';
 import { deleteProfile, modesLookup, saveProfile } from '../knobs/profiles.js';
-import { DEFAULT_PRICES } from '../transcripts/pricing.js';
 
 import type { ActionHandlers } from './action-types.js';
-import { DEFAULT_MODEL, formatUsd, toEstimatePrices } from './prices.js';
+import { DEFAULT_MODEL, formatUsd } from './prices.js';
 import type { Runtime } from './runtime.js';
 import { parseRule, storagePath } from './storage.js';
 import { plural } from './text.js';
@@ -31,8 +32,6 @@ type LaunchActions =
 
 /** Batches estimated above this many dollars ask before they start. */
 export const CONFIRM_ABOVE_USD = 1;
-
-const ESTIMATE_PRICES = toEstimatePrices(DEFAULT_PRICES);
 
 /** The model a run gets when its profile names none: the effective `model` setting, else the CLI default. */
 export function defaultModel(rt: Runtime): string {
@@ -84,23 +83,44 @@ async function freshProfiles(rt: Runtime): Promise<readonly LaunchProfile[]> {
   return rt.caches.profiles.peek();
 }
 
+/** An unknown agent has no prices. The Launcher fails its runs before they cost anything. */
+const NO_PRICES: AgentPrices = { price: () => null, defaultModel: '' };
+
+/** What an agent's runs cost. Claude Code's default model follows its model setting. */
+function pricesFor(rt: Runtime, agent: AgentId): AgentPrices {
+  const models = agents.get(agent)?.models;
+  if (models === undefined) {
+    return NO_PRICES;
+  }
+  return {
+    price: models.price,
+    defaultModel: agent === CLAUDE_CODE ? defaultModel(rt) : models.defaultModel,
+  };
+}
+
+/** The question before a costly batch, which says how many runs it could not price. */
+function costQuestion(
+  count: number,
+  estimate: { readonly totalUsd: number; readonly unpricedRuns: number },
+): string {
+  const cost = `These ${plural(count, 'run')} may cost about ${formatUsd(estimate.totalUsd)}`;
+  const unknown =
+    estimate.unpricedRuns === 0
+      ? ''
+      : `, not counting ${String(estimate.unpricedRuns)} whose cost is unknown`;
+  return `${cost}${unknown}. Launch them?`;
+}
+
 async function approveCost(
   rt: Runtime,
   specs: readonly LaunchSpec[],
   profiles: readonly LaunchProfile[],
 ): Promise<boolean> {
-  const estimate = estimateBatch(specs, profiles, {
-    prices: ESTIMATE_PRICES,
-    defaultModel: defaultModel(rt),
-  });
+  const estimate = estimateBatch(specs, profiles, { pricesFor: (agent) => pricesFor(rt, agent) });
   if (estimate.totalUsd <= CONFIRM_ABOVE_USD) {
     return true;
   }
-  const runs = plural(specs.length, 'run');
-  return rt.host.confirm(
-    `These ${runs} may cost about ${formatUsd(estimate.totalUsd)}. Launch them?`,
-    'Launch',
-  );
+  return rt.host.confirm(costQuestion(specs.length, estimate), 'Launch');
 }
 
 export const launchActions: ActionHandlers<LaunchActions> = {

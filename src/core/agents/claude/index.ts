@@ -6,7 +6,7 @@ import type { ModeOption } from '../../../shared/agents.js';
 import { CLAUDE_CODE } from '../../../shared/agents.js';
 import { claudeContextWindow } from '../../../shared/model.js';
 import { executableFor } from '../../app/claude-bin.js';
-import { DEFAULT_MODEL } from '../../app/prices.js';
+import { DEFAULT_MODEL, MODEL_ALIASES } from '../../app/prices.js';
 import { DEFAULT_PRICES, findPrice } from '../../transcripts/pricing.js';
 import type { AgentAdapter, AgentWords, DetectInput, Detected } from '../types.js';
 
@@ -63,7 +63,7 @@ export const claudeCode: AgentAdapter = {
   modes: { permission: PERMISSION_MODES, effort: EFFORT_LEVELS },
   models: {
     contextWindow: claudeContextWindow,
-    price: (model) => findPrice(model, DEFAULT_PRICES),
+    price: (model) => findPrice(MODEL_ALIASES[model] ?? model, DEFAULT_PRICES),
     defaultModel: DEFAULT_MODEL,
   },
   words: WORDS,

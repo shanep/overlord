@@ -197,6 +197,27 @@ describe('launch', () => {
     expect(app.stateFor('knobs', {})).toMatchObject({ state: { profiles: [PROFILE] } });
   });
 
+  it('says how many runs of a batch have no price', async () => {
+    const env = await makeEnv();
+    const { app } = makeApp(env);
+    const codex: LaunchProfile = { ...PROFILE, id: 'codex', agent: 'codex', model: null };
+    await app.dispatch({ type: 'saveProfile', profile: codex }, {});
+    await app.dispatch(
+      { type: 'launch', specs: [...specs(12), ...specs(2, { profileId: 'codex' })] },
+      {},
+    );
+    expect(env.host.questions).toStrictEqual([
+      {
+        message:
+          'These 14 runs may cost about $1.20, not counting 2 whose cost is unknown. Launch them?',
+        action: 'Launch',
+      },
+    ]);
+    env.host.questions.splice(0);
+    await app.dispatch({ type: 'launch', specs: specs(20, { profileId: 'codex' }) }, {});
+    expect(env.host.questions).toStrictEqual([]);
+  });
+
   it('uses the model setting as the default model', async () => {
     const env = await makeEnv();
     const { app } = makeApp(env);
