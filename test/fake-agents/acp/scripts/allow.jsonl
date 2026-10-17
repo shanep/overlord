@@ -1,0 +1,19 @@
+{"dir": "send", "msg": {"jsonrpc": "2.0", "id": 1, "method": "initialize"}}
+{"dir": "recv", "msg": {"jsonrpc": "2.0", "id": 1, "result": {"protocolVersion": 1, "agentCapabilities": {}, "agentInfo": {"name": "Fake", "version": "0.1.0"}}}}
+{"dir": "send", "msg": {"jsonrpc": "2.0", "id": 2, "method": "session/new"}}
+{"dir": "recv", "msg": {"jsonrpc": "2.0", "id": 2, "result": {"sessionId": "fake-1", "configOptions": [{"type": "select", "id": "model", "name": "Model", "category": "model", "currentValue": "fake-model", "options": [{"value": "fake-model", "name": "Fake"}, {"value": "fake-big", "name": "Big"}]}]}}}
+{"dir": "send", "msg": {"jsonrpc": "2.0", "id": 3, "method": "session/prompt"}}
+{"dir": "recv", "msg": {"jsonrpc": "2.0", "method": "session/update", "params": {"sessionId": "fake-1", "update": {"sessionUpdate": "agent_thought_chunk", "content": {"type": "text", "text": "Let me think."}}}}}
+{"dir": "recv", "msg": {"jsonrpc": "2.0", "method": "session/update", "params": {"sessionId": "fake-1", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "Let me "}}}}}
+{"dir": "recv", "msg": {"jsonrpc": "2.0", "method": "session/update", "params": {"sessionId": "fake-1", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "edit it."}}}}}
+{"dir": "recv", "msg": {"jsonrpc": "2.0", "method": "session/update", "params": {"sessionId": "fake-1", "update": {"sessionUpdate": "tool_call", "toolCallId": "call-1", "title": "Edit calc.py", "kind": "edit", "status": "pending"}}}}
+{"dir": "recv", "msg": {"jsonrpc": "2.0", "id": 0, "method": "session/request_permission", "params": {"sessionId": "fake-1", "toolCall": {"toolCallId": "call-1", "title": "Edit calc.py", "kind": "edit", "status": "pending", "rawInput": {"path": "/work/repo/calc.py"}}, "options": [{"optionId": "allow_once", "kind": "allow_once", "name": "Allow once"}, {"optionId": "allow_always", "kind": "allow_always", "name": "Always allow"}, {"optionId": "reject_once", "kind": "reject_once", "name": "Deny"}]}}}
+{"dir": "send", "msg": {"jsonrpc": "2.0", "id": 0}}
+{"dir": "recv", "msg": {"jsonrpc": "2.0", "method": "session/update", "params": {"sessionId": "fake-1", "update": {"sessionUpdate": "tool_call_update", "toolCallId": "call-1", "status": "in_progress"}}}}
+{"dir": "recv", "msg": {"jsonrpc": "2.0", "method": "session/update", "params": {"sessionId": "fake-1", "update": {"sessionUpdate": "tool_call_update", "toolCallId": "call-1", "status": "completed", "content": [{"type": "content", "content": {"type": "text", "text": "Edited 1 line"}}]}}}}
+{"dir": "recv", "msg": {"jsonrpc": "2.0", "method": "session/update", "params": {"sessionId": "fake-1", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "Done."}}}}}
+{"dir": "recv", "msg": {"jsonrpc": "2.0", "id": 3, "result": {"stopReason": "end_turn", "usage": {"inputTokens": 100, "outputTokens": 20, "totalTokens": 120, "cachedReadTokens": 40}}}}
+{"dir": "send", "msg": {"jsonrpc": "2.0", "id": 4, "method": "session/prompt"}}
+{"dir": "recv", "msg": {"jsonrpc": "2.0", "method": "session/update", "params": {"sessionId": "fake-1", "update": {"sessionUpdate": "usage_update", "used": 5000, "size": 100000, "cost": {"amount": 0.25, "currency": "USD"}}}}}
+{"dir": "recv", "msg": {"jsonrpc": "2.0", "method": "session/update", "params": {"sessionId": "fake-1", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "Again."}}}}}
+{"dir": "recv", "msg": {"jsonrpc": "2.0", "id": 4, "result": {"stopReason": "end_turn", "usage": {"inputTokens": 150, "outputTokens": 30, "totalTokens": 180, "cachedReadTokens": 40}}}}
