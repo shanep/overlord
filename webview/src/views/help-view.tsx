@@ -390,9 +390,9 @@ export function HelpView(): ReactElement {
         <SearchBox query={query} onChange={setQuery} />
       </header>
       <p className="help-lede">
-        Overlord is htop for Claude Code. It shows every session and subagent you have running, what
-        is in their context, and every knob you can turn. It also runs agents itself, so you can
-        launch a batch of prompts and watch them side by side.
+        Overlord runs a fleet of coding agents from VS Code. It launches a batch of prompts side by
+        side, each in its own git worktree, and shows every session and subagent you have running,
+        what is in their context, and every knob you can turn.
       </p>
       <Contents shown={shown} />
       {shown?.size === 0 ? (

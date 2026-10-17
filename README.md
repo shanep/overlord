@@ -1,12 +1,12 @@
 # Overlord
 
-![Overlord: htop for your Claude Code agents](media/banner.png)
+![Overlord: run a fleet of coding agents from VS Code](media/banner.png)
 
 SkyNet version 1.0, let it begin.
 
-Overlord is a VS Code extension that works like htop for Claude Code. It shows every running
-session and subagent, what is in each one's context and why, and every knob you can turn. It
-also runs agents itself, so you can launch a batch of prompts and watch them side by side.
+Overlord is a VS Code extension for running a fleet of coding agents. It launches a batch of
+prompts side by side, each in its own git worktree, and shows every running session and
+subagent, what is in each one's context and why, and every knob you can turn.
 
 See [PLAN.md](PLAN.md) for the full design and the decisions behind it.
 

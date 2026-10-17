@@ -1,7 +1,7 @@
 {
   "name": "overlord",
   "displayName": "Overlord",
-  "description": "htop for Claude Code: watch, tune and run many Claude Code agents from VS Code.",
+  "description": "Run a fleet of coding agents from VS Code: launch, watch and tune many agents at once, each in its own worktree.",
   "version": "0.1.0",
   "publisher": "shanep",
   "license": "MIT",
