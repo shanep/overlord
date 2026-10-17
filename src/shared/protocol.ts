@@ -447,6 +447,8 @@ export type WebviewAction =
   | { readonly type: 'openLeaderboard' }
   | { readonly type: 'rescanTuning' }
   | { readonly type: 'createSuggestion'; readonly suggestionId: string }
+  | { readonly type: 'installPick'; readonly pickId: string }
+  | { readonly type: 'openPickLink'; readonly pickId: string }
   | { readonly type: 'trackTip'; readonly tipId: string; readonly on: boolean }
   | { readonly type: 'recheckConnectors' }
   | { readonly type: 'fixConnector'; readonly connectorId: string }

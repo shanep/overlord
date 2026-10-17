@@ -1,7 +1,7 @@
 // Turns the session measures into what the Tuning view shows.
 
 import type { PlanLimits } from '../../shared/protocol.js';
-import type { TuningSessionRow, TuningState } from '../../shared/tuning.js';
+import type { CatalogPicks, TuningSessionRow, TuningState } from '../../shared/tuning.js';
 
 import { buildTips, tipsFor } from './build.js';
 import { buildLimit } from './limit.js';
@@ -26,6 +26,8 @@ export interface SummaryInputs {
   readonly scannedAt: number | null;
   /** The plan limits, or null when they do not apply or could not be read. */
   readonly plan: PlanLimits | null;
+  /** The catalog search, which runs outside the summary. */
+  readonly picks: CatalogPicks;
 }
 
 export function summarize(inputs: SummaryInputs): TuningState {
@@ -62,6 +64,7 @@ export function summarize(inputs: SummaryInputs): TuningState {
     largestContext: totals.largestContext,
     tips,
     suggestions: buildSuggestions(totals, inputs.installed),
+    picks: inputs.picks,
     limit: buildLimit({
       plan: inputs.plan,
       measures: [...measures, ...inputs.history],

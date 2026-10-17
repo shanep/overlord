@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import type { CatalogKind, LibraryState } from '../../src/shared/catalog.js';
 import { EMPTY_REGISTRY } from '../../src/shared/connectors.js';
 import type { HostToWebview, ViewStateMessage } from '../../src/shared/protocol.js';
-import { EMPTY_LIMIT } from '../../src/shared/tuning.js';
+import { EMPTY_LIMIT, EMPTY_PICKS } from '../../src/shared/tuning.js';
 import { NOW } from '../test/fixtures.js';
 import { FakeApi } from '../test/render.js';
 
@@ -98,6 +98,7 @@ const views: readonly ViewStateMessage[] = [
       largestContext: 0,
       tips: [],
       suggestions: [],
+      picks: EMPTY_PICKS,
       limit: EMPTY_LIMIT,
       rows: [],
       scannedAt: null,

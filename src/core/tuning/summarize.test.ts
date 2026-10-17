@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { EMPTY_PICKS } from '../../shared/tuning.js';
+
 import { summarize } from './summarize.js';
 import { HOME, measureOf } from './test-helpers/fixtures.js';
 
@@ -27,6 +29,7 @@ describe('summarize', () => {
       home: HOME,
       scannedAt: 9,
       plan: null,
+      picks: EMPTY_PICKS,
     });
     expect(state).toMatchObject({
       sessions: 2,
@@ -63,6 +66,7 @@ describe('summarize', () => {
       home: HOME,
       scannedAt: null,
       plan: null,
+      picks: EMPTY_PICKS,
     });
     expect(state).toMatchObject({ sessions: 0, averageContext: 0, largestContext: 0, rows: [] });
   });
@@ -78,6 +82,7 @@ describe('summarize', () => {
       home: HOME,
       scannedAt: null,
       plan: null,
+      picks: EMPTY_PICKS,
     });
     expect(state.rows).toHaveLength(200);
     expect(state.rows[0]?.sessionId).toBe('s204');

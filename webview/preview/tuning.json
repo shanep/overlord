@@ -157,6 +157,59 @@
       "installed": true
     }
   ],
+  "picks": {
+    "topics": ["TypeScript", "LaTeX", "Python"],
+    "loading": false,
+    "error": null,
+    "installing": null,
+    "notice": null,
+    "picks": [
+      {
+        "id": "skills.sh:wshobson/agents/typescript-advanced-types",
+        "kind": "skill",
+        "name": "typescript-advanced-types",
+        "description": "",
+        "repo": "wshobson/agents",
+        "url": "https://skills.sh/wshobson/agents/typescript-advanced-types",
+        "installs": 4210,
+        "topic": "TypeScript",
+        "reason": "8,412 .ts file reads or edits and 1,190 vitest commands in 212 sessions."
+      },
+      {
+        "id": "VoltAgent/awesome-claude-code-subagents:categories/02-language-specialists/typescript-pro.md",
+        "kind": "agent",
+        "name": "typescript-pro",
+        "description": "Expert TypeScript developer specializing in advanced type system usage, full-stack development, and build optimization.",
+        "repo": "VoltAgent/awesome-claude-code-subagents",
+        "url": "https://github.com/VoltAgent/awesome-claude-code-subagents/blob/HEAD/categories/02-language-specialists/typescript-pro.md",
+        "installs": null,
+        "topic": "TypeScript",
+        "reason": "8,412 .ts file reads or edits and 1,190 vitest commands in 212 sessions."
+      },
+      {
+        "id": "skills.sh:a/b/latex-paper",
+        "kind": "skill",
+        "name": "latex-paper",
+        "description": "",
+        "repo": "academic/skills",
+        "url": "https://skills.sh/academic/skills/latex-paper",
+        "installs": 312,
+        "topic": "LaTeX",
+        "reason": "640 .tex file reads or edits and 88 latexmk commands in 19 sessions."
+      },
+      {
+        "id": "wshobson/agents:plugins/python-development/agents/python-pro.md",
+        "kind": "agent",
+        "name": "python-pro",
+        "description": "Master Python 3.12+ with modern features, async programming, performance optimization, and production-ready practices.",
+        "repo": "wshobson/agents",
+        "url": "https://github.com/wshobson/agents/blob/HEAD/plugins/python-development/agents/python-pro.md",
+        "installs": null,
+        "topic": "Python",
+        "reason": "402 .py file reads or edits and 96 pytest commands in 14 sessions."
+      }
+    ]
+  },
   "limit": {
     "subscription": "max",
     "windows": [

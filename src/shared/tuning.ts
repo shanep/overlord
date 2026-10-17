@@ -1,6 +1,8 @@
 // What the Tuning view shows: advice from the session transcripts, each with
 // its pros and cons, and the skills and agents Overlord can write.
 
+import type { InstallNotice } from './connectors.js';
+
 export type TipSeverity = 'high' | 'medium' | 'low';
 
 /** A session that shows the problem a tip is about. */
@@ -99,6 +101,48 @@ export interface Suggestion {
   readonly installed: boolean;
 }
 
+/** A premade skill or agent from the catalogs that fits the work the sessions do. */
+export interface CatalogPick {
+  /** The catalog entry id. */
+  readonly id: string;
+  readonly kind: 'skill' | 'agent';
+  readonly name: string;
+  /** Empty when the source did not say, as in a skills.sh search. */
+  readonly description: string;
+  /** The GitHub repository it installs from, as owner/repo. */
+  readonly repo: string;
+  /** Where to read it before installing. */
+  readonly url: string;
+  /** How many times skills.sh saw it installed, or null when the source does not count. */
+  readonly installs: number | null;
+  /** The kind of work it fits, such as "Python". */
+  readonly topic: string;
+  /** What in the sessions points at that work. */
+  readonly reason: string;
+}
+
+/** The catalog search behind the picks, and how the last install from it went. */
+export interface CatalogPicks {
+  readonly picks: readonly CatalogPick[];
+  /** The kinds of work searched for, empty until the sessions show one. */
+  readonly topics: readonly string[];
+  readonly loading: boolean;
+  /** Why some or all of the search failed, or null. */
+  readonly error: string | null;
+  /** The id of the pick being installed right now. */
+  readonly installing: string | null;
+  readonly notice: InstallNotice | null;
+}
+
+export const EMPTY_PICKS: CatalogPicks = {
+  picks: [],
+  topics: [],
+  loading: false,
+  error: null,
+  installing: null,
+  notice: null,
+};
+
 /** One session's numbers in the Tuning view's session table. */
 export interface TuningSessionRow {
   readonly sessionId: string;
@@ -193,6 +237,8 @@ export interface TuningState {
   readonly largestContext: number;
   readonly tips: readonly Tip[];
   readonly suggestions: readonly Suggestion[];
+  /** Premade skills and agents that fit the work, from the Skills and Agents catalogs. */
+  readonly picks: CatalogPicks;
   readonly limit: LimitState;
   /** Most expensive first. */
   readonly rows: readonly TuningSessionRow[];

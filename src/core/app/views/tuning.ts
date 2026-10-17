@@ -8,7 +8,9 @@ import { stat } from 'node:fs/promises';
 import path from 'node:path';
 
 import type { TuningState } from '../../../shared/tuning.js';
-import { EMPTY_LIMIT } from '../../../shared/tuning.js';
+import { EMPTY_LIMIT, EMPTY_PICKS } from '../../../shared/tuning.js';
+import type { PickTopic } from '../../catalog/picks.js';
+import { installKey } from '../../catalog/picks.js';
 import type { AdviceStep } from '../../tuning/build.js';
 import { tipsTakenBy } from '../../tuning/build.js';
 import { scanInto } from '../../tuning/scan.js';
@@ -17,9 +19,11 @@ import { loadIndex, saveIndex } from '../../tuning/store.js';
 import type { SuggestionDefinition } from '../../tuning/suggestions.js';
 import { nameOf, SUGGESTIONS } from '../../tuning/suggestions.js';
 import { summarize } from '../../tuning/summarize.js';
+import { topicReason, topTopics } from '../../tuning/topics.js';
 import { loadTracked, saveTracked } from '../../tuning/tracked.js';
 import { messageOf } from '../errors.js';
 import type { Runtime } from '../runtime.js';
+import { TuningPicks } from '../tuning-picks.js';
 
 import { currentPlan } from './usage.js';
 
@@ -31,6 +35,7 @@ export const EMPTY_TUNING: TuningState = {
   largestContext: 0,
   tips: [],
   suggestions: [],
+  picks: EMPTY_PICKS,
   limit: EMPTY_LIMIT,
   rows: [],
   scannedAt: null,
@@ -54,6 +59,10 @@ interface Entry {
   installed: ReadonlySet<string>;
   running: Promise<void> | null;
   startedAt: number | null;
+  picks: TuningPicks | null;
+  /** The topics worked out at the scan time in `topicsAt`, so a render does not redo them. */
+  topics: readonly PickTopic[];
+  topicsAt: number | null;
 }
 
 // Caches are owned by caches.ts, so the index for each runtime lives here.
@@ -70,6 +79,9 @@ function entryFor(rt: Runtime): Entry {
     installed: new Set(),
     running: null,
     startedAt: null,
+    picks: null,
+    topics: [],
+    topicsAt: null,
   };
   entries.set(rt, fresh);
   return fresh;
@@ -168,6 +180,56 @@ async function run(rt: Runtime, entry: Entry): Promise<void> {
   await entry.running;
 }
 
+function picksOf(rt: Runtime, entry: Entry): TuningPicks {
+  entry.picks ??= new TuningPicks({
+    reader: rt.catalogs.reader,
+    fetch: rt.fetch,
+    notify: (): void => {
+      rt.notify();
+    },
+    clock: rt.clock,
+  });
+  return entry.picks;
+}
+
+/** Skills and agents already in the config inventory, as installKey keys. */
+function installedNames(rt: Runtime): Set<string> {
+  return new Set(
+    rt.caches.config.value.items.flatMap((item) =>
+      item.kind === 'skill' || item.kind === 'agent' ? [installKey(item.kind, item.name)] : [],
+    ),
+  );
+}
+
+/** The kinds of work the live sessions show, to search the catalogs for. */
+function topicsOf(entry: Entry): readonly PickTopic[] {
+  const index = entry.saved?.index;
+  if (index === undefined || (entry.topicsAt === index.scannedAt && entry.topicsAt !== null)) {
+    return entry.topics;
+  }
+  const live = [...index.entries.values()].filter((item) => item.live);
+  entry.topicsAt = index.scannedAt;
+  entry.topics = topTopics(live.map((item) => item.measure)).map((score) => ({
+    label: score.topic.label,
+    query: score.topic.query,
+    words: score.topic.words,
+    reason: topicReason(score),
+  }));
+  return entry.topics;
+}
+
+/** Searches the catalogs when the kinds of work changed or the last search is old. */
+function refreshPicks(rt: Runtime, entry: Entry, force = false): void {
+  if (entry.saved !== null) {
+    picksOf(rt, entry).refresh(topicsOf(entry), installedNames(rt), force);
+  }
+}
+
+/** The catalog picks, for the actions that open and install them. */
+export function tuningPicks(rt: Runtime): TuningPicks {
+  return picksOf(rt, entryFor(rt));
+}
+
 function stateOf(rt: Runtime, entry: Entry): TuningState {
   if (entry.saved === null) {
     return EMPTY_TUNING;
@@ -183,6 +245,7 @@ function stateOf(rt: Runtime, entry: Entry): TuningState {
     home: rt.paths.home,
     scannedAt: index.scannedAt,
     plan: currentPlan(rt),
+    picks: picksOf(rt, entry).view(installedNames(rt)),
   });
 }
 
@@ -194,6 +257,7 @@ export function buildTuning(rt: Runtime): TuningState {
       rt.report(SOURCE, messageOf(error));
     });
   }
+  refreshPicks(rt, entry);
   return stateOf(rt, entry);
 }
 
@@ -201,6 +265,7 @@ export function buildTuning(rt: Runtime): TuningState {
 export async function rescanTuning(rt: Runtime): Promise<TuningState> {
   const entry = entryFor(rt);
   await run(rt, entry);
+  refreshPicks(rt, entry, true);
   return stateOf(rt, entry);
 }
 

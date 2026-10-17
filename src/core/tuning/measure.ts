@@ -12,8 +12,13 @@ import type { ContentBlock, TranscriptRecord } from '../transcripts/schemas.js';
 import { parseTimestamp, parseTranscriptLine } from '../transcripts/schemas.js';
 import { resultText } from '../transcripts/text.js';
 
+import type { CommandFamily } from './families.js';
+import { FAMILY_PATTERNS, familyCounts } from './families.js';
 import type { SpendHour } from './spend-hours.js';
 import { HourTally, isPremium } from './spend-hours.js';
+import { StackTally } from './stack.js';
+
+export type { CommandFamily } from './families.js';
 
 /** US dollars at list price, split by token kind. */
 export interface CostSplit {
@@ -24,7 +29,6 @@ export interface CostSplit {
 }
 
 /** Kinds of shell work that a skill or agent could take over. */
-export type CommandFamily = 'land' | 'ci' | 'server' | 'buildTest' | 'search';
 
 export interface RepeatedCommand {
   readonly command: string;
@@ -77,6 +81,8 @@ export interface SessionMeasure {
   readonly families: Readonly<Record<CommandFamily, number>>;
   /** Spend by clock hour, oldest first, for the plan limit windows. */
   readonly hours: readonly SpendHour[];
+  /** Programs run and file extensions touched, with counts, the most used first. */
+  readonly stack: Readonly<Record<string, number>>;
 }
 
 export interface MeasureInput {
@@ -100,34 +106,6 @@ const COMMAND_CHARS = 120;
 const DENIAL =
   /doesn't want to proceed|denied by (?:the )?(?:Claude Code )?auto[- ]mode|permission to use \S+ (?:has been|was) denied/iu;
 const CD_FIRST = /^\s*cd\s/u;
-
-// Simple patterns, several per family, so each stays easy to read and check.
-const FAMILY_PATTERNS: readonly (readonly [CommandFamily, readonly RegExp[]])[] = [
-  ['land', [/\bgit\b[^|;&]*\s(?:fetch|rebase|push)\b/u]],
-  ['ci', [/\bgh\s+run\b/u, /\bgh\s+pr\s+checks\b/u]],
-  [
-    'server',
-    [
-      /\blsof\s+-ti\b/u,
-      /\bdotnet\s+(?:run|watch)\b/u,
-      /\bnpm\s+(?:dev|start)\b/u,
-      /\bnpm\s+run\s+(?:dev|start)\b/u,
-      /\b(?:uvicorn|pkill)\b/u,
-      /\bflask\s+run\b/u,
-    ],
-  ],
-  [
-    'buildTest',
-    [
-      /\bnpm\s+test\b/u,
-      /\bnpm\s+run\s+(?:test|build|check)\b/u,
-      /\bnpx\s+(?:vitest|jest|tsc)\b/u,
-      /\b(?:dotnet|cargo|go)\s+(?:build|test)\b/u,
-      /\b(?:pytest|make|mvn|gradle)\b/u,
-    ],
-  ],
-  ['search', [/^\s*(?:grep|rg|find|cat|head|tail|ls)\b/u, /^\s*sed\s+-n\b/u]],
-];
 
 const SEARCH_TOOLS: ReadonlySet<string> = new Set(['Read', 'Grep', 'Glob']);
 const SPAWN_TOOLS: ReadonlySet<string> = new Set(['Agent', 'Task']);
@@ -248,6 +226,7 @@ class MainTally {
   readonly commands = new Map<string, number>();
   readonly spawns = new Map<string, number>();
   readonly families = new Map<string, number>();
+  readonly stack = new StackTally();
   private readonly seen = new Set<string>();
   private readonly toolIds = new Set<string>();
   private lastRequestAt: number | null = null;
@@ -324,11 +303,12 @@ class MainTally {
     if (SEARCH_TOOLS.has(name)) {
       bump(this.families, 'search');
     }
-    if (name === 'Read') {
-      const file = stringField(input, 'file_path');
-      if (file !== null) {
-        bump(this.reads, file);
-      }
+    const file = stringField(input, 'file_path');
+    if (file !== null) {
+      this.stack.file(file);
+    }
+    if (name === 'Read' && file !== null) {
+      bump(this.reads, file);
     } else if (name === 'Bash') {
       this.bash(stringField(input, 'command') ?? '');
     } else if (SPAWN_TOOLS.has(name)) {
@@ -338,6 +318,7 @@ class MainTally {
 
   private bash(command: string): void {
     this.bashCommands += 1;
+    this.stack.command(command);
     this.cdCommands += CD_FIRST.test(command) ? 1 : 0;
     const trimmed = command.trim();
     if (trimmed !== '') {
@@ -408,16 +389,6 @@ function topRepeat(commands: ReadonlyMap<string, number>): RepeatedCommand | nul
   return best;
 }
 
-function familyCounts(families: ReadonlyMap<string, number>): Record<CommandFamily, number> {
-  return {
-    land: families.get('land') ?? 0,
-    ci: families.get('ci') ?? 0,
-    server: families.get('server') ?? 0,
-    buildTest: families.get('buildTest') ?? 0,
-    search: families.get('search') ?? 0,
-  };
-}
-
 export function measureSession(input: MeasureInput): SessionMeasure {
   const prices = input.prices ?? DEFAULT_PRICES;
   const hours = new HourTally(prices);
@@ -466,5 +437,6 @@ export function measureSession(input: MeasureInput): SessionMeasure {
     subagentUsd: sub.usd,
     families: familyCounts(main.families),
     hours: hours.hours(),
+    stack: main.stack.labels(),
   };
 }

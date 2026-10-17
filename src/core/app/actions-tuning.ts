@@ -7,9 +7,19 @@ import { plural } from '../tuning/words.js';
 
 import type { ActionHandlers } from './action-types.js';
 import { saveAuthored } from './actions-authoring.js';
-import { refreshInstalled, rescanTuning, setTipTracked, trackAdviceTaken } from './views/tuning.js';
+import { installEntry } from './actions-catalog.js';
+import { messageOf } from './errors.js';
+import {
+  refreshInstalled,
+  rescanTuning,
+  setTipTracked,
+  trackAdviceTaken,
+  tuningPicks,
+} from './views/tuning.js';
 
-export const tuningActions: ActionHandlers<'rescanTuning' | 'createSuggestion' | 'trackTip'> = {
+export const tuningActions: ActionHandlers<
+  'rescanTuning' | 'createSuggestion' | 'trackTip' | 'installPick' | 'openPickLink'
+> = {
   rescanTuning: async ({ rt }) => {
     const [state] = await Promise.all([rescanTuning(rt), rt.caches.plan.refresh()]);
     rt.host.showInfo(
@@ -35,5 +45,30 @@ export const tuningActions: ActionHandlers<'rescanTuning' | 'createSuggestion' |
       return;
     }
     await setTipTracked(rt, action.tipId, action.on);
+  },
+  installPick: async ({ rt }, action) => {
+    const picks = tuningPicks(rt);
+    const found = picks.pick(action.pickId);
+    if (picks.busy) {
+      return;
+    }
+    if (found === undefined) {
+      picks.installing(null, { ok: false, text: 'That one is not in the list any more.' });
+      return;
+    }
+    picks.installing(action.pickId, null);
+    try {
+      const text = await installEntry(rt, found.pick.kind, found.found);
+      picks.installing(null, text === null ? null : { ok: true, text });
+    } catch (error) {
+      picks.installing(null, { ok: false, text: messageOf(error) });
+    }
+  },
+  openPickLink: async ({ rt }, action) => {
+    // Only a page the search found, so the webview cannot open any URL it likes.
+    const url = tuningPicks(rt).pick(action.pickId)?.pick.url;
+    if (url?.startsWith('https://') === true) {
+      await rt.host.openExternal(url);
+    }
   },
 };

@@ -86,12 +86,14 @@ const measureSchema = z.object({
   // Version 2 files have no hours. They read as none, and the scan measures
   // live transcripts again to fill them in.
   hours: z.array(hourSchema).readonly().default([]),
+  // Version 3 files have no stack, so it reads as empty until the next measure.
+  stack: z.record(z.string(), count).default({}),
 }) satisfies z.ZodType<SessionMeasure>;
 
 const fileSchema = z.object({
   // Bump when the measure changes meaning, so old entries are measured again.
-  // Version 2 lacks the hours, so its live entries are measured again.
-  version: z.union([z.literal(2), z.literal(3)]),
+  // Versions 2 and 3 lack the hours or the stack, so their live entries are measured again.
+  version: z.union([z.literal(2), z.literal(3), z.literal(4)]),
   scannedAt: z.number().nullable(),
   entries: z.record(
     z.string(),
@@ -123,7 +125,7 @@ function parseIndex(text: string): TuningIndex | null {
   }
   const { version, entries, scannedAt } = parsed.data;
   const stale = (entry: IndexEntry): IndexEntry =>
-    version < 3 && entry.live ? { ...entry, stamp: STALE_STAMP } : entry;
+    version < 4 && entry.live ? { ...entry, stamp: STALE_STAMP } : entry;
   return {
     entries: new Map(Object.entries(entries).map(([file, entry]) => [file, stale(entry)])),
     scannedAt,
@@ -138,7 +140,7 @@ export async function loadIndex(file: string): Promise<TuningIndex> {
 
 export async function saveIndex(file: string, index: TuningIndex): Promise<void> {
   const data: z.input<typeof fileSchema> = {
-    version: 3,
+    version: 4,
     scannedAt: index.scannedAt,
     entries: Object.fromEntries(index.entries),
   };

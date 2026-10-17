@@ -112,6 +112,41 @@ async function mapAtMost<T, R>(
   return results;
 }
 
+/** The frontmatter of an entry file, or none when it will not load. */
+export async function readEntryFront(
+  reader: GitHubReader,
+  source: RepoSource,
+  filePath: string,
+): Promise<Frontmatter> {
+  return reader.text(source.id, filePath).then(readFrontmatter, () => ({
+    name: null,
+    description: '',
+  }));
+}
+
+/** An entry of a GitHub collection, named by its frontmatter or else its file. */
+export function repoEntry(
+  source: RepoSource,
+  filePath: string,
+  group: string,
+  front: Frontmatter,
+): FoundEntry {
+  const folder = source.kind === 'skill';
+  return {
+    entry: {
+      id: `${source.id}:${filePath}`,
+      name: front.name ?? fallbackName(filePath),
+      description: front.description,
+      repo: source.id,
+      group,
+      installs: null,
+      url: githubUrl(source.id, folder ? path.posix.dirname(filePath) : filePath, folder),
+    },
+    path: filePath,
+    skillId: null,
+  };
+}
+
 /** Every entry in the collection, sorted by group and name. An entry whose file will not load keeps its file name. */
 export async function listRepo(reader: GitHubReader, source: RepoSource): Promise<FoundEntry[]> {
   const files = await reader.files(source.id);
@@ -120,24 +155,8 @@ export async function listRepo(reader: GitHubReader, source: RepoSource): Promis
     return group === null ? [] : [{ path: file.path, group }];
   });
   const found = await mapAtMost(matches, READ_AT_ONCE, async (match): Promise<FoundEntry> => {
-    const front = await reader.text(source.id, match.path).then(readFrontmatter, () => ({
-      name: null,
-      description: '',
-    }));
-    const folder = source.kind === 'skill';
-    return {
-      entry: {
-        id: `${source.id}:${match.path}`,
-        name: front.name ?? fallbackName(match.path),
-        description: front.description,
-        repo: source.id,
-        group: match.group,
-        installs: null,
-        url: githubUrl(source.id, folder ? path.posix.dirname(match.path) : match.path, folder),
-      },
-      path: match.path,
-      skillId: null,
-    };
+    const front = await readEntryFront(reader, source, match.path);
+    return repoEntry(source, match.path, match.group, front);
   });
   return found.toSorted(
     (left, right) =>

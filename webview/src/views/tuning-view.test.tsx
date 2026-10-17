@@ -2,7 +2,7 @@ import { fireEvent, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import type { ImpactMetric, TipImpact, TuningState } from '../../../src/shared/tuning.js';
-import { EMPTY_LIMIT } from '../../../src/shared/tuning.js';
+import { EMPTY_LIMIT, EMPTY_PICKS } from '../../../src/shared/tuning.js';
 import { NOW } from '../../test/fixtures.js';
 import { expectAccessible, renderView } from '../../test/render.js';
 
@@ -73,6 +73,7 @@ const EMPTY: TuningState = {
   largestContext: 0,
   tips: [],
   suggestions: [],
+  picks: EMPTY_PICKS,
   limit: EMPTY_LIMIT,
   rows: [],
   scannedAt: null,
@@ -134,6 +135,7 @@ const STATE: TuningState = {
       installed: true,
     },
   ],
+  picks: EMPTY_PICKS,
   limit: EMPTY_LIMIT,
   rows: [
     {

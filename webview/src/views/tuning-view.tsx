@@ -12,6 +12,7 @@ import { usePostAction } from '../vscode-context.js';
 
 import { LimitSection } from './tuning-limit.js';
 import { SuggestionList, TipList, TuningSessionTable } from './tuning-lists.js';
+import { PickList } from './tuning-picks.js';
 
 function Stat(props: { readonly label: string; readonly value: string }): ReactElement {
   return (
@@ -91,10 +92,16 @@ export function TuningView(props: { readonly state: TuningState }): ReactElement
           estimates. Each saving is worked out on its own over the last 7 days, and they overlap, so
           they do not add up.
         </p>
+        <p>
+          The catalog picks come from the programs your sessions run and the kinds of files they
+          edit. A language or tool needs 20 uses across at least 3 sessions to count. Overlord then
+          searches skills.sh and the agent collections for it, once a day or on Rescan.
+        </p>
       </details>
       <LimitSection limit={state.limit} tips={titles} />
       <TipList tips={state.tips} names={names} />
       <SuggestionList suggestions={state.suggestions} />
+      <PickList picks={state.picks} />
       <TuningSessionTable rows={state.rows} titles={titles} />
     </section>
   );

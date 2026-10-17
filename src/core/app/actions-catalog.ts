@@ -41,7 +41,11 @@ function installName(kind: CatalogKind, text: string, entryPath: string): string
 }
 
 /** Installs the entry. Null when the user backed out, else what to tell them. */
-async function install(rt: Runtime, kind: CatalogKind, found: FoundEntry): Promise<string | null> {
+export async function installEntry(
+  rt: Runtime,
+  kind: CatalogKind,
+  found: FoundEntry,
+): Promise<string | null> {
   const { reader } = rt.catalogs;
   const { repo } = found.entry;
   const plan = await installFiles(reader, kind, found);
@@ -109,7 +113,7 @@ export const catalogActions: ActionHandlers<
     }
     browser.installing(action.entryId, null);
     try {
-      const text = await install(rt, action.kind, found);
+      const text = await installEntry(rt, action.kind, found);
       browser.installing(null, text === null ? null : { ok: true, text });
     } catch (error) {
       browser.installing(null, { ok: false, text: messageOf(error) });
