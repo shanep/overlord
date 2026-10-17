@@ -55,7 +55,7 @@ function leadingComments(text: string): string {
   return lines.length === 0 ? '' : `${lines.join('\n')}\n`;
 }
 
-export function parseSettings(text: string, format: SyncSettings['format']): SettingsRead {
+function parseSettings(text: string, format: SyncSettings['format']): SettingsRead {
   if (text.trim() === '') {
     return { ok: true, value: {} };
   }
@@ -179,27 +179,6 @@ export function entriesToObject(entries: readonly SettingEntry[]): Record<string
     }
   }
   return out;
-}
-
-function mentionsHome(value: JsonValue, home: string): boolean {
-  const text = JSON.stringify(value);
-  return text.includes(home) || /\/(?:Users|home)\/[^/"]+/u.test(text);
-}
-
-export interface CapturedSettings {
-  /** Keys every machine shares. */
-  readonly shared: Record<string, unknown>;
-  /** Keys with a home folder path in them, since paths differ per machine. */
-  readonly machine: Record<string, unknown>;
-}
-
-/** The live settings split into what goes in the shared repo file and what goes in the machine file. */
-export function captureSettings(live: unknown, spec: SyncSettings, home: string): CapturedSettings {
-  const entries = entriesToSync(live, spec);
-  return {
-    shared: entriesToObject(entries.filter((entry) => !mentionsHome(entry.value, home))),
-    machine: entriesToObject(entries.filter((entry) => mentionsHome(entry.value, home))),
-  };
 }
 
 function editFor(entry: SettingEntry): TomlEdit | null {

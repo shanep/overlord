@@ -702,14 +702,14 @@ export interface LibraryFacet {
 }
 
 /** A file in the agent's folder that syncs whole, linked from the config repo. */
-export interface SyncFile {
+interface SyncFile {
   readonly kind: ConfigKind;
   /** Relative to the agent's folder, with forward slashes, like "AGENTS.md". */
   readonly file: string;
 }
 
 /** A folder in the agent's folder whose entries sync one by one. */
-export interface SyncFolder {
+interface SyncFolder {
   readonly kind: 'skill' | 'agent';
   /** Relative to the agent's folder, like "skills". */
   readonly dir: string;
@@ -735,7 +735,7 @@ export interface SyncedMcpServer {
 }
 
 /** Where the agent's user MCP servers live, for the config repo. Add and remove go through ConfigFacet.mcp. */
-export interface SyncMcp {
+interface SyncMcp {
   /** Relative to the agent's folder. It is backed up before servers are added. */
   readonly file: string;
   /** The user servers. Never throws, and reads nothing but the server entries. */

@@ -44,7 +44,7 @@ export type AgentManifestResult =
   /** Missing is true when the repo has nothing for the agent, which is not an error. */
   | { readonly ok: false; readonly missing: boolean; readonly error: string };
 
-export function emptyAgentManifest(): AgentManifest {
+function emptyAgentManifest(): AgentManifest {
   return agentManifestSchema.parse({ version: AGENT_MANIFEST_VERSION });
 }
 
@@ -58,7 +58,7 @@ function insideAgentDir(agent: AgentId, manifest: AgentManifest): string | null 
   return sources.find((source) => !source.startsWith(prefix)) ?? null;
 }
 
-export function parseAgentManifest(agent: AgentId, value: unknown): AgentManifestResult {
+function parseAgentManifest(agent: AgentId, value: unknown): AgentManifestResult {
   const result = agentManifestSchema.safeParse(value);
   if (!result.success) {
     return { ok: false, missing: false, error: z.prettifyError(result.error) };
