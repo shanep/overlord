@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import { ZERO_USAGE } from '../../shared/model.js';
 
 import {
-  agentIdOf,
   permissionOutput,
   preToolUseDenyOutput,
   ruleDenyMessage,
@@ -14,29 +13,35 @@ import {
   withContext,
   withSystemMessage,
 } from './mapping.js';
+import type { HookEventOf } from './normalized.js';
+import { hookAgentId } from './normalized.js';
 import type {
   InstructionsLoadedPayload,
   SubagentStartPayload,
   SubagentStopPayload,
 } from './payloads.js';
+import { claudeEvent, claudeEventOf } from './test-helpers/claude-hook.js';
 
-function instruction(overrides: Partial<InstructionsLoadedPayload>): InstructionsLoadedPayload {
-  return {
+function instruction(
+  overrides: Partial<InstructionsLoadedPayload>,
+): HookEventOf<'instructions-loaded'> {
+  return claudeEventOf('instructions-loaded', {
     session_id: 's1',
     hook_event_name: 'InstructionsLoaded',
     file_path: '/p/CLAUDE.md',
     memory_type: 'Project',
     load_reason: 'session_start',
     ...overrides,
-  };
+  });
 }
 
-describe('agentIdOf', () => {
+describe('hookAgentId', () => {
   it('falls back to the session id for the main thread', () => {
-    expect(agentIdOf({ session_id: 's' })).toBe('s');
-    expect(agentIdOf({ session_id: 's', agent_id: null })).toBe('s');
-    expect(agentIdOf({ session_id: 's', agent_id: '' })).toBe('s');
-    expect(agentIdOf({ session_id: 's', agent_id: 'a' })).toBe('a');
+    const stop = { session_id: 's', hook_event_name: 'Stop' };
+    expect(hookAgentId(claudeEvent(stop))).toBe('s');
+    expect(hookAgentId(claudeEvent({ ...stop, agent_id: null }))).toBe('s');
+    expect(hookAgentId(claudeEvent({ ...stop, agent_id: '' }))).toBe('s');
+    expect(hookAgentId(claudeEvent({ ...stop, agent_id: 'a' }))).toBe('a');
   });
 });
 
@@ -110,11 +115,12 @@ describe('toPermissionRequest', () => {
   it('builds a hook permission request', () => {
     expect(
       toPermissionRequest(
-        {
+        claudeEventOf('permission-request', {
           session_id: 's',
+          hook_event_name: 'PermissionRequest',
           tool_name: 'Bash',
           tool_input: { command: 'ls' },
-        },
+        }),
         'req-1',
         99,
       ),
@@ -140,7 +146,9 @@ describe('toAgentNode', () => {
   };
 
   it('marks a started agent running', () => {
-    expect(toAgentNode(start, { startedAt: 5, endedAt: null })).toStrictEqual({
+    expect(
+      toAgentNode(claudeEventOf('subagent-start', start), { startedAt: 5, endedAt: null }),
+    ).toStrictEqual({
       id: 'a1',
       sessionId: 's',
       parentAgentId: 's',
@@ -166,14 +174,16 @@ describe('toAgentNode', () => {
       hook_event_name: 'SubagentStop',
       agent_transcript_path: '/t/agent-a1.jsonl',
     };
-    const node = toAgentNode(stop, { startedAt: 5, endedAt: 9 });
+    const node = toAgentNode(claudeEventOf('subagent-stop', stop), { startedAt: 5, endedAt: 9 });
     expect(node.state).toBe('done');
     expect(node.endedAt).toBe(9);
     expect(node.startedAt).toBe(5);
     expect(node.transcriptPath).toBe('/t/agent-a1.jsonl');
     expect(
-      toAgentNode({ ...stop, agent_transcript_path: null }, { startedAt: 1, endedAt: 2 })
-        .transcriptPath,
+      toAgentNode(claudeEventOf('subagent-stop', { ...stop, agent_transcript_path: null }), {
+        startedAt: 1,
+        endedAt: 2,
+      }).transcriptPath,
     ).toBeNull();
   });
 });

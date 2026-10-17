@@ -11,6 +11,7 @@ import { HookServer } from '../core/hooks/server.js';
 
 import {
   CONNECT_TIMEOUT_MS,
+  parseArgs,
   parseInput,
   PERMISSION_TIMEOUT_MS,
   readStdin,
@@ -54,6 +55,40 @@ describe('parseInput', () => {
     expect(parseInput('3')).toBeNull();
     expect(parseInput('{"session_id":"s"}')).toBeNull();
     expect(parseInput('{"hook_event_name":5}')).toBeNull();
+  });
+});
+
+describe('parseInput with an event name', () => {
+  it('takes the name from --event for a payload that does not carry one', () => {
+    expect(parseInput('{"sessionId":"s"}', 'preToolUse')).toStrictEqual({
+      name: 'preToolUse',
+      event: { sessionId: 's' },
+    });
+    expect(parseInput('[1]', 'preToolUse')).toBeNull();
+    expect(parseInput(stop, '')).toStrictEqual(parseInput(stop));
+  });
+});
+
+describe('parseArgs', () => {
+  it('reads --agent and --event in either form', () => {
+    expect(parseArgs([])).toStrictEqual({ agent: null, event: null });
+    expect(parseArgs(['--agent', 'copilot', '--event=agentStop'])).toStrictEqual({
+      agent: 'copilot',
+      event: 'agentStop',
+    });
+    expect(parseArgs(['--agent=codex', '--other', 'x'])).toStrictEqual({
+      agent: 'codex',
+      event: null,
+    });
+  });
+
+  it('ignores a flag with no value', () => {
+    expect(parseArgs(['--agent'])).toStrictEqual({ agent: null, event: null });
+    expect(parseArgs(['--agent', '--event', 'stop'])).toStrictEqual({
+      agent: null,
+      event: 'stop',
+    });
+    expect(parseArgs(['--agent='])).toStrictEqual({ agent: null, event: null });
   });
 });
 
@@ -176,6 +211,45 @@ describe('runHook', () => {
     expect(received.map((line): unknown => JSON.parse(line))).toStrictEqual([
       { id: 'id-1', event: parseInput(permission)?.event },
     ]);
+  });
+
+  it('sends the agent and event name it was given', async () => {
+    await fakeOverlord((socket, line) => {
+      socket.write(`{"id":"${idOf(line)}","output":{}}\n`);
+    });
+    const input = '{"sessionId":"s","toolName":"bash"}';
+    await runHook({
+      input,
+      socketPath: file,
+      newId: () => 'id-2',
+      agent: 'copilot',
+      event: 'preToolUse',
+    });
+    expect(received.map((line): unknown => JSON.parse(line))).toStrictEqual([
+      {
+        id: 'id-2',
+        event: { sessionId: 's', toolName: 'bash' },
+        agent: 'copilot',
+        hook: 'preToolUse',
+      },
+    ]);
+  });
+
+  it('waits the permission budget for a permission request in any case', async () => {
+    await fakeOverlord(() => {
+      // Never answers.
+    });
+    const started = Date.now();
+    const result = await runHook({
+      input: '{"sessionId":"s"}',
+      socketPath: file,
+      agent: 'copilot',
+      event: 'permissionRequest',
+      replyTimeoutMs: 60_000,
+      permissionTimeoutMs: 30,
+    });
+    expect(result).toStrictEqual({ stdout: '', exitCode: 0 });
+    expect(Date.now() - started).toBeLessThan(1000);
   });
 
   it('waits for a reply split across chunks', async () => {

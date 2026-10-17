@@ -13,6 +13,8 @@ import type {
   ToolCall,
 } from '../../shared/model.js';
 import type { HandoffKind, SurfaceSession } from '../../shared/protocol.js';
+import type { EditTools, HookDialect } from '../hooks/normalized.js';
+import type { TelemetryDecode } from '../otel/decode.js';
 import type { ClaudePaths } from '../paths.js';
 import type { Collected } from '../surfaces/common.js';
 import type { HandoffCommand } from '../surfaces/handoff.js';
@@ -244,31 +246,95 @@ export interface ObserverFacet {
 }
 
 /**
- * Installs the agent's hooks and reads what they send. Workstream D owns it.
- * @public
+ * Where the app found an agent's files, so a facet can be pointed at a temp
+ * folder in tests.
  */
-export interface HooksFacet {
-  install: (command: string) => Promise<void>;
-  uninstall: () => Promise<void>;
-  /** The tool names and input fields the coordinator watches for file edits. */
-  readonly editTools: Readonly<Record<string, string>>;
+export interface AgentDirs {
+  readonly home: string;
+  /** The agent's config folder: ~/.claude or CLAUDE_CONFIG_DIR, ~/.copilot, ~/.codex or CODEX_HOME. */
+  readonly configDir: string;
+}
+
+interface HookInstallResult {
+  /** False when the file already said the same thing. */
+  readonly changed: boolean;
 }
 
 /**
- * Turns on the agent's OTLP export. Workstream D owns it.
- * @public
+ * Installs the agent's hooks, reads what they send and writes the answer.
+ * Workstream D owns it.
+ */
+export interface HooksFacet extends HookDialect {
+  /** Adds the hook command to every event Overlord listens to and keeps the user's own hooks. */
+  install: (dirs: AgentDirs, command: string) => Promise<HookInstallResult>;
+  uninstall: (dirs: AgentDirs) => Promise<HookInstallResult>;
+  /** True when any event runs Overlord's hook command. */
+  installed: (dirs: AgentDirs) => Promise<boolean>;
+  /**
+   * Tools that write files, each with the input fields that can hold the
+   * path, tried in order. The coordinator watches these for edits.
+   */
+  readonly editTools: EditTools;
+}
+
+export type SettingsWriteResult =
+  { readonly ok: true } | { readonly ok: false; readonly error: string };
+
+/**
+ * Turns on the agent's OTLP export and reads what it sends. The receiver and
+ * the join of span timings onto requests are shared. Workstream D owns it.
  */
 export interface TelemetryFacet {
-  enable: (port: number) => Promise<void>;
+  /** Points the agent's export at the receiver on 127.0.0.1:port. Prompts and tool details stay off. */
+  enable: (dirs: AgentDirs, port: number) => Promise<SettingsWriteResult>;
+  disable: (dirs: AgentDirs) => Promise<SettingsWriteResult>;
+  /** Records from one export body, or null when it is not valid OTLP. */
+  readonly decode: TelemetryDecode;
+}
+
+/** The ways Overlord's text can reach a session. */
+export type InjectRoute = 'hook' | 'launch-argument' | 'first-prompt';
+
+/**
+ * Best first. A hook answer reaches every session, Overlord's or not, at the
+ * moment it matters. A launch argument only reaches sessions Overlord starts.
+ * A first prompt prefix is the last resort, since it shows up in the
+ * transcript as if the user typed it.
+ */
+export const INJECT_ORDER: readonly InjectRoute[] = ['hook', 'launch-argument', 'first-prompt'];
+
+/**
+ * How coordination notes, the launch check and the connector briefing reach
+ * a session. Workstream D owns it.
+ */
+export interface InjectFacet {
+  /** The routes the agent takes, in INJECT_ORDER. */
+  readonly routes: readonly InjectRoute[];
+  /** Arguments that add text to a new session's instructions. */
+  readonly launchArgs?: (text: string) => readonly string[];
+  /** The first prompt with Overlord's text in front of it. */
+  readonly promptPrefix?: (text: string, prompt: string) => string;
 }
 
 /**
- * How Overlord's notes, the launch check and the connector briefing reach a
- * session. Workstream D owns it.
- * @public
+ * The best route for a session. A hook only counts while the agent's hooks
+ * are installed, and the other two only when Overlord starts the session.
  */
-export interface InjectFacet {
-  readonly via: 'hook' | 'launch-argument' | 'first-prompt';
+export function injectRoute(
+  facet: InjectFacet,
+  usable: { readonly hooks: boolean; readonly launching: boolean },
+): InjectRoute | null {
+  const allowed = (route: InjectRoute): boolean => {
+    if (route === 'hook') {
+      return usable.hooks;
+    }
+    const supported =
+      route === 'launch-argument'
+        ? facet.launchArgs !== undefined
+        : facet.promptPrefix !== undefined;
+    return usable.launching && supported;
+  };
+  return INJECT_ORDER.find((route) => facet.routes.includes(route) && allowed(route)) ?? null;
 }
 
 /**

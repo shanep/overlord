@@ -1,6 +1,6 @@
 // Keeps sessions in one repository from stepping on each other. It answers
-// Claude Code hooks from what Overlord already knows, so it never runs git
-// while a session waits:
+// agent hooks from what Overlord already knows, so it never runs git while a
+// session waits:
 //
 // - SessionStart, and UserPromptSubmit whenever the set changed, tell a
 //   session who else works in the repository and what they are changing.
@@ -11,10 +11,15 @@
 
 import path from 'node:path';
 
+import type { AgentId } from '../../shared/agents.js';
 import type { WorktreeSummary } from '../../shared/protocol.js';
-import { preToolUseDenyOutput } from '../hooks/mapping.js';
-import type { KnownPayload } from '../hooks/payloads.js';
-import type { HookOutput } from '../hooks/protocol.js';
+import type {
+  EditTools,
+  HookAnswer,
+  HookToolCall,
+  NormalizedHookEvent,
+} from '../hooks/normalized.js';
+import { editedFile } from '../hooks/normalized.js';
 import { stringField } from '../hooks/rules.js';
 
 import { editWarning, landingNotice, peerContext, topicOf } from './notes.js';
@@ -32,12 +37,13 @@ export interface CoordinatorDeps {
   /** Asks for fresh worktree status, after a session pushed. */
   readonly refresh: () => void;
   readonly now: () => number;
+  /** The tools that write files for an agent, from its hooks facet. */
+  readonly editTools: (agent: AgentId) => EditTools;
 }
 
 /** A session Overlord has not heard from in this long counts as gone unless its process runs. */
 export const QUIET_MS = 10 * 60_000;
 
-const EDIT_TOOLS: ReadonlySet<string> = new Set(['Edit', 'Write', 'MultiEdit', 'NotebookEdit']);
 const PUSH = /\bgit\b[^\n;&|]*\spush\b/u;
 
 interface Tracked {
@@ -47,20 +53,9 @@ interface Tracked {
   lastSeen: number;
 }
 
-/** The file an edit tool writes, or null for any other tool. */
-function editedFile(toolName: string, input: unknown): string | null {
-  if (!EDIT_TOOLS.has(toolName)) {
-    return null;
-  }
-  const file = stringField(input, 'file_path') ?? stringField(input, 'notebook_path') ?? '';
-  return file === '' ? null : file;
-}
-
-function context(event: string, notes: readonly (string | null)[]): HookOutput | null {
+function context(notes: readonly (string | null)[]): HookAnswer | null {
   const text = notes.filter((note): note is string => note !== null).join('\n\n');
-  return text === ''
-    ? null
-    : { hookSpecificOutput: { hookEventName: event, additionalContext: text } };
+  return text === '' ? null : { context: text };
 }
 
 /** Who is there and what they work on, not what they changed, so edits alone do not repeat the note. */
@@ -85,47 +80,43 @@ export class Coordinator {
   constructor(private readonly deps: CoordinatorDeps) {}
 
   /** Records what the hook says about its session and returns what to answer, or null. */
-  handle(payload: KnownPayload): HookOutput | null {
-    this.observe(payload);
+  handle(event: NormalizedHookEvent): HookAnswer | null {
+    this.observe(event);
     if (!this.deps.enabled()) {
       return null;
     }
-    const id = payload.session_id;
-    const event = payload.hook_event_name;
-    if (event === 'SessionStart') {
-      return context(event, [this.peerNote(id, true)]);
+    const id = event.sessionId;
+    if (event.kind === 'session-start') {
+      return context([this.peerNote(id, true)]);
     }
-    if (event === 'UserPromptSubmit') {
-      return context(event, [this.peerNote(id, false), this.landingNote(id)]);
+    if (event.kind === 'prompt-submit') {
+      return context([this.peerNote(id, false), this.landingNote(id)]);
     }
-    if (event === 'PreToolUse') {
-      return this.editGuard(id, payload.tool_name, payload.tool_input);
+    if (event.kind === 'pre-tool-use') {
+      return this.editGuard(id, event.agent, event.tool);
     }
     // A subagent's context goes away with it, so the notice waits for the main thread.
-    if (event === 'PostToolUse' && (payload.agent_id ?? '') === '') {
-      return context(event, [this.landingNote(id)]);
+    if (event.kind === 'post-tool-use' && event.subagentId === null) {
+      return context([this.landingNote(id)]);
     }
     return null;
   }
 
-  private observe(payload: KnownPayload): void {
-    if (payload.hook_event_name === 'SessionEnd') {
-      this.forget(payload.session_id);
+  private observe(event: NormalizedHookEvent): void {
+    if (event.kind === 'session-end') {
+      this.forget(event.sessionId);
       return;
     }
-    const entry = this.track(payload.session_id, payload.cwd ?? '');
+    const entry = this.track(event.sessionId, event.cwd ?? '');
     if (entry === null) {
       return;
     }
-    if (payload.hook_event_name === 'PostToolUse') {
-      this.toolDone(entry, payload.tool_name, payload.tool_input);
-    } else if (
-      payload.hook_event_name === 'SessionStart' ||
-      payload.hook_event_name === 'UserPromptSubmit'
-    ) {
+    if (event.kind === 'post-tool-use') {
+      this.toolDone(entry, event.agent, event.tool);
+    } else if (event.kind === 'session-start' || event.kind === 'prompt-submit') {
       // A title wins over the first prompt, which only fills in until one arrives.
-      const prompt = payload.hook_event_name === 'UserPromptSubmit' ? payload.prompt : '';
-      entry.topic = topicOf(payload.session_title ?? '') ?? entry.topic ?? topicOf(prompt);
+      const prompt = event.kind === 'prompt-submit' ? event.prompt : '';
+      entry.topic = topicOf(event.title ?? '') ?? entry.topic ?? topicOf(prompt);
     }
   }
 
@@ -145,12 +136,12 @@ export class Coordinator {
   }
 
   /** Remembers an edited file, and asks for fresh status after a push. */
-  private toolDone(entry: Tracked, toolName: string, input: unknown): void {
-    const file = editedFile(toolName, input);
+  private toolDone(entry: Tracked, agent: AgentId, tool: HookToolCall): void {
+    const file = editedFile(this.deps.editTools(agent), tool);
     if (file !== null) {
       entry.edited.add(path.resolve(entry.cwd, file));
     }
-    const command = toolName === 'Bash' ? stringField(input, 'command') : null;
+    const command = tool.name === 'Bash' ? stringField(tool.input, 'command') : null;
     if (command !== null && PUSH.test(command)) {
       this.deps.refresh();
     }
@@ -234,8 +225,8 @@ export class Coordinator {
     return landingNotice(target, fresh);
   }
 
-  private editGuard(id: string, toolName: string, input: unknown): HookOutput | null {
-    const raw = editedFile(toolName, input);
+  private editGuard(id: string, agent: AgentId, tool: HookToolCall): HookAnswer | null {
+    const raw = editedFile(this.deps.editTools(agent), tool);
     const found = raw === null ? null : this.where(id);
     if (raw === null || found === null) {
       return null;
@@ -255,6 +246,6 @@ export class Coordinator {
       return null;
     }
     this.paused.add(key);
-    return preToolUseDenyOutput(editWarning(relative, peers));
+    return { block: editWarning(relative, peers) };
   }
 }

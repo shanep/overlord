@@ -1,6 +1,7 @@
 // Connects the coordinator to the app: worktree status from the cache, live
 // sessions and their status from places, and the setting that turns it off.
 
+import { agents } from '../agents/index.js';
 import { Coordinator } from '../coordination/coordinator.js';
 
 import type { Runtime } from './runtime.js';
@@ -15,5 +16,6 @@ export function createCoordinator(rt: Runtime): Coordinator {
       void rt.caches.worktrees.refresh();
     },
     now: rt.clock,
+    editTools: (agent) => agents.get(agent)?.hooks?.editTools ?? {},
   });
 }

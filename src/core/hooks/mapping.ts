@@ -1,7 +1,7 @@
-// Turns hook payloads into the shared model and permission decisions into the
-// JSON a PermissionRequest or PreToolUse hook prints.
+// Turns normalized hook events into the shared model, and holds the Claude
+// Code output builders: the JSON a PermissionRequest, PreToolUse or context
+// hook prints.
 
-import { CLAUDE_CODE } from '../../shared/agents.js';
 import type {
   AgentNode,
   LoadReason,
@@ -12,12 +12,8 @@ import type {
 } from '../../shared/model.js';
 import { ZERO_USAGE } from '../../shared/model.js';
 
-import type {
-  InstructionsLoadedPayload,
-  PermissionRequestPayload,
-  SubagentStartPayload,
-  SubagentStopPayload,
-} from './payloads.js';
+import type { HookEventOf } from './normalized.js';
+import { hookAgentId } from './normalized.js';
 import type { HookOutput } from './protocol.js';
 
 /** An InstructionsLoaded event in model terms, plus the raw memory type. */
@@ -47,30 +43,21 @@ function toReason(value: string): LoadReason {
   return REASONS.find((reason) => reason === value) ?? 'unknown';
 }
 
-/** The agent a hook fired in. The main thread uses the session id, as in the shared model. */
-export function agentIdOf(payload: {
-  readonly session_id: string;
-  readonly agent_id?: string | null | undefined;
-}): string {
-  const agentId = payload.agent_id ?? '';
-  return agentId === '' ? payload.session_id : agentId;
-}
-
 export function toInstructionLoaded(
-  payload: InstructionsLoadedPayload,
+  event: HookEventOf<'instructions-loaded'>,
   at: number,
 ): InstructionLoadedEvent {
   return {
-    sessionId: payload.session_id,
-    agentId: agentIdOf(payload),
-    memoryType: payload.memory_type,
+    sessionId: event.sessionId,
+    agentId: hookAgentId(event),
+    memoryType: event.memoryType,
     instruction: {
-      path: payload.file_path,
-      tier: toTier(payload.memory_type),
-      reason: toReason(payload.load_reason),
-      triggerPath: payload.trigger_file_path ?? null,
-      parentPath: payload.parent_file_path ?? null,
-      globs: payload.globs ?? [],
+      path: event.file,
+      tier: toTier(event.memoryType),
+      reason: toReason(event.loadReason),
+      triggerPath: event.triggerPath,
+      parentPath: event.parentPath,
+      globs: event.globs,
       bytes: 0,
       differsFromDisk: null,
       loadedAt: at,
@@ -78,24 +65,21 @@ export function toInstructionLoaded(
   };
 }
 
-/** The fields a tool hook (PermissionRequest or PreToolUse) carries about the call. */
-export type ToolCallPayload = Pick<
-  PermissionRequestPayload,
-  'session_id' | 'agent_id' | 'tool_name' | 'tool_input'
->;
+/** A hook event that carries a tool call: a permission request or a PreToolUse. */
+export type ToolCallEvent = HookEventOf<'permission-request'> | HookEventOf<'pre-tool-use'>;
 
 export function toPermissionRequest(
-  payload: ToolCallPayload,
+  event: ToolCallEvent,
   id: string,
   at: number,
 ): PermissionRequest {
   return {
     id,
-    sessionId: payload.session_id,
-    agent: CLAUDE_CODE,
-    agentId: agentIdOf(payload),
-    toolName: payload.tool_name,
-    input: payload.tool_input,
+    sessionId: event.sessionId,
+    agent: event.agent,
+    agentId: hookAgentId(event),
+    toolName: event.tool.name,
+    input: event.tool.input,
     requestedAt: at,
     source: 'hook',
   };
@@ -107,28 +91,29 @@ export interface AgentTimes {
 }
 
 /**
- * Agent state from SubagentStart or SubagentStop. Hooks do not say which agent
- * spawned a subagent, so the parent is the main thread and the depth is 1. The
- * transcript tailer knows better and should win when both report an agent.
+ * Agent state from a subagent start or stop. Hooks do not say which agent
+ * spawned a subagent, so the parent is the main thread and the depth is 1.
+ * The transcript tailer knows better and should win when both report an
+ * agent.
  */
 export function toAgentNode(
-  payload: SubagentStartPayload | SubagentStopPayload,
+  event: HookEventOf<'subagent-start'> | HookEventOf<'subagent-stop'>,
   times: AgentTimes,
 ): AgentNode {
-  const stopped = payload.hook_event_name === 'SubagentStop';
+  const stopped = event.kind === 'subagent-stop';
   return {
-    id: payload.agent_id,
-    sessionId: payload.session_id,
-    parentAgentId: payload.session_id,
+    id: event.subagent.id,
+    sessionId: event.sessionId,
+    parentAgentId: event.sessionId,
     parentToolUseId: null,
-    agentType: payload.agent_type,
+    agentType: event.subagent.type,
     description: '',
     spawnDepth: 1,
     background: false,
     state: stopped ? 'done' : 'running',
     startedAt: times.startedAt,
     endedAt: times.endedAt,
-    transcriptPath: stopped ? (payload.agent_transcript_path ?? null) : null,
+    transcriptPath: stopped ? event.subagentTranscriptPath : null,
     usage: ZERO_USAGE,
     toolCallCount: 0,
     currentTool: null,
@@ -167,7 +152,7 @@ export function sessionStartOutput(text: string): HookOutput {
 }
 
 /** The additionalContext text an output carries, or null when it carries none. */
-export function additionalContextOf(output: HookOutput | null): string | null {
+function additionalContextOf(output: HookOutput | null): string | null {
   const specific = output?.['hookSpecificOutput'];
   if (typeof specific !== 'object' || specific === null) {
     return null;

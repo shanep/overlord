@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import type { WorktreeSummary } from '../../shared/protocol.js';
-import type { KnownPayload } from '../hooks/payloads.js';
+import { normalizeClaudeHook } from '../agents/claude/hooks.js';
+import type { NormalizedHookEvent } from '../hooks/normalized.js';
 
 import { FRESH_MS, LaunchChecker } from './checker.js';
 import type { LaunchCheck, ProbeTarget } from './probe.js';
@@ -66,23 +67,32 @@ function setUp(): { world: World; checker: LaunchChecker } {
 
 const PLACE = { path: '/wt/a', repoRoot: '/repo', target: 'main' };
 
-function start(session: string, cwd: string, source = 'startup'): KnownPayload {
-  return { session_id: session, hook_event_name: 'SessionStart', cwd, source };
+/** A Claude Code hook payload as the launch check sees it. */
+function hook(payload: Readonly<Record<string, unknown>>): NormalizedHookEvent {
+  const result = normalizeClaudeHook({ payload, name: null });
+  if (!result.ok) {
+    throw new Error(result.error);
+  }
+  return result.event;
 }
 
-function prompt(session: string): KnownPayload {
-  return { session_id: session, hook_event_name: 'UserPromptSubmit', prompt: 'hi' };
+function start(session: string, cwd: string, source = 'startup'): NormalizedHookEvent {
+  return hook({ session_id: session, hook_event_name: 'SessionStart', cwd, source });
 }
 
-function toolUse(session: string, agent?: string): KnownPayload {
-  return {
+function prompt(session: string): NormalizedHookEvent {
+  return hook({ session_id: session, hook_event_name: 'UserPromptSubmit', prompt: 'hi' });
+}
+
+function toolUse(session: string, agent?: string): NormalizedHookEvent {
+  return hook({
     session_id: session,
     hook_event_name: 'PostToolUse',
     tool_name: 'Bash',
     tool_input: {},
     tool_response: {},
     ...(agent === undefined ? {} : { agent_id: agent }),
-  };
+  });
 }
 
 describe('LaunchChecker in Overlord worktrees', () => {
@@ -240,11 +250,13 @@ describe('LaunchChecker failures and settings', () => {
     const { checker } = setUp();
     checker.prime(PLACE);
     checker.noteFor(start('s1', '/wt/a'));
-    checker.noteFor({
-      session_id: 's1',
-      hook_event_name: 'SessionEnd',
-      reason: 'exit',
-    });
+    checker.noteFor(
+      hook({
+        session_id: 's1',
+        hook_event_name: 'SessionEnd',
+        reason: 'exit',
+      }),
+    );
     await checker.idle();
     expect(checker.noteFor(prompt('s1'))).toBeNull();
   });

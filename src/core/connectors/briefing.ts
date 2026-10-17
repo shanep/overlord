@@ -1,7 +1,9 @@
-// The note every new session gets from the SessionStart hook: which connectors
-// worked at the last check, which did not, and the rule to check the ones a
-// task needs before starting on it, so a missing one stops the work at the
-// start instead of halfway through.
+// The note every new session gets when it starts: which connectors worked at
+// the last check, which did not, and the rule to check the ones a task needs
+// before starting on it, so a missing one stops the work at the start instead
+// of halfway through. It is plain text. The session's agent decides how it
+// gets there (its inject facet), which for Claude Code is the SessionStart
+// hook's additionalContext.
 
 import type { Connector, ConnectorsState } from '../../shared/connectors.js';
 
@@ -32,7 +34,7 @@ function line(connector: Connector): string {
     : `- ${connector.name}: ${status}. ${connector.detail}`;
 }
 
-/** The additionalContext for a SessionStart hook. */
+/** The connector note for a new session. */
 export function connectorBriefing(
   state: Pick<ConnectorsState, 'connectors' | 'checkedAt'>,
   formatTime: (at: number) => string,

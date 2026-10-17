@@ -27,6 +27,13 @@ import type {
 
 export type OtlpSignal = 'metrics' | 'logs' | 'traces';
 
+/** One agent's reading of an OTLP export: its records, or null when the body is not valid OTLP. */
+export type TelemetryDecode = (
+  signal: OtlpSignal,
+  body: unknown,
+  now: number,
+) => TelemetryRecord[] | null;
+
 const EVENT_PREFIX = 'claude_code.';
 
 function sessionOf(attributes: Attributes, resource: Attributes): string | null {
@@ -275,12 +282,13 @@ export function decodeTraces(body: unknown, now: number): TelemetryRecord[] | nu
   return records;
 }
 
-export function decode(signal: OtlpSignal, body: unknown, now: number): TelemetryRecord[] | null {
+/** Claude Code's exports, with claude_code.* event names. */
+export const decode: TelemetryDecode = (signal, body, now) => {
   if (signal === 'metrics') {
     return decodeMetrics(body, now);
   }
   return signal === 'logs' ? decodeLogs(body, now) : decodeTraces(body, now);
-}
+};
 
 /** The shared ApiRequest for an api_request event. Null when the event has no session id. */
 export function toApiRequest(record: ApiRequestRecord, ttftMs: number | null): ApiRequest | null {
@@ -313,13 +321,19 @@ export interface TelemetryDecoderOptions {
   readonly now?: () => number;
   /** How many request ids to remember for joining span timings to requests. */
   readonly maxTracked?: number;
+  /** The agent's decoder from its telemetry facet. Claude Code's when left out. */
+  readonly decode?: TelemetryDecode;
 }
 
 type Callback = (record: TelemetryRecord) => void;
 
-/** Feeds decoded exports to the bus and to onRecord listeners. */
+/**
+ * Feeds decoded exports to the bus and to onRecord listeners. The decoding is
+ * the agent's. Joining span timings onto requests is shared.
+ */
 export class TelemetryDecoder {
   private readonly bus: EventBus;
+  private readonly decode: TelemetryDecode;
   private readonly now: () => number;
   private readonly maxTracked: number;
   private readonly listeners = new Set<Callback>();
@@ -330,6 +344,7 @@ export class TelemetryDecoder {
     this.bus = options.bus;
     this.now = options.now ?? Date.now;
     this.maxTracked = options.maxTracked ?? 2000;
+    this.decode = options.decode ?? decode;
   }
 
   onRecord(callback: Callback): () => void {
@@ -339,7 +354,7 @@ export class TelemetryDecoder {
 
   /** Decodes one export body. Returns how many records it held, or -1 when it was not valid OTLP. */
   ingest(signal: OtlpSignal, body: unknown): number {
-    const records = decode(signal, body, this.now());
+    const records = this.decode(signal, body, this.now());
     if (records === null) {
       this.bus.emit('source.error', { source: 'otel', message: `invalid OTLP ${signal} export` });
       return -1;

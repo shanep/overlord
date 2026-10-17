@@ -147,7 +147,6 @@ export const knownPayloadSchema = z.discriminatedUnion('hook_event_name', [
 type CommonPayload = z.infer<typeof commonPayloadSchema>;
 export type KnownPayload = z.infer<typeof knownPayloadSchema>;
 export type KnownEventName = KnownPayload['hook_event_name'];
-export type PermissionRequestPayload = z.infer<typeof permissionRequestSchema>;
 export type InstructionsLoadedPayload = z.infer<typeof instructionsLoadedSchema>;
 export type SubagentStartPayload = z.infer<typeof subagentStartSchema>;
 export type SubagentStopPayload = z.infer<typeof subagentStopSchema>;
@@ -173,7 +172,7 @@ export const KNOWN_EVENT_NAMES: readonly KnownEventName[] = [
 const KNOWN_SET: ReadonlySet<string> = new Set(KNOWN_EVENT_NAMES);
 
 /** A parsed hook input. `known` is false for events we do not model, or a known event with an unexpected shape. */
-export type ParsedHookPayload =
+type ParsedHookPayload =
   | { readonly known: true; readonly payload: KnownPayload }
   | { readonly known: false; readonly payload: CommonPayload };
 

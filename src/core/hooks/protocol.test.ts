@@ -17,12 +17,28 @@ describe('encodeMessage', () => {
 });
 
 describe('parseRequestLine', () => {
-  it('reads a request', () => {
+  it('reads a request from a relay without --agent as Claude Code', () => {
     expect(parseRequestLine('{"id":"r1","event":{"a":2}}')).toStrictEqual({
       id: 'r1',
       event: { a: 2 },
+      agent: 'claude-code',
+      hook: null,
     });
-    expect(parseRequestLine('{"id":"r1","event":null}')).toStrictEqual({ id: 'r1', event: null });
+    expect(parseRequestLine('{"id":"r1","event":null,"agent":"","hook":7}')).toStrictEqual({
+      id: 'r1',
+      event: null,
+      agent: 'claude-code',
+      hook: null,
+    });
+  });
+
+  it('reads the agent and event name the relay was given', () => {
+    expect(
+      parseRequestLine('{"id":"r1","event":{},"agent":"copilot","hook":"preToolUse"}'),
+    ).toStrictEqual({ id: 'r1', event: {}, agent: 'copilot', hook: 'preToolUse' });
+    expect(encodeMessage({ id: 'a', event: {}, agent: 'copilot', hook: 'agentStop' })).toBe(
+      '{"id":"a","event":{},"agent":"copilot","hook":"agentStop"}\n',
+    );
   });
 
   it('rejects anything that is not a request', () => {

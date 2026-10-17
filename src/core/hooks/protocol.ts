@@ -3,11 +3,25 @@
 // script prints on stdout. Hand-written guards instead of zod keep the hook
 // bundle small, since it starts once per hook event.
 
+import { CLAUDE_CODE } from '../../shared/agents.js';
+
 export type HookOutput = Readonly<Record<string, unknown>>;
 
 export interface HookRequestMessage {
   readonly id: string;
   readonly event: unknown;
+  /** The relay's --agent value. Relays from before the flag leave it out, which means Claude Code. */
+  readonly agent?: string;
+  /** The relay's --event value, for agents whose stdin does not name the event. */
+  readonly hook?: string;
+}
+
+/** A request as the server reads it, with the defaults filled in. */
+export interface HookRequest {
+  readonly id: string;
+  readonly event: unknown;
+  readonly agent: string;
+  readonly hook: string | null;
 }
 
 export interface HookReplyMessage {
@@ -34,12 +48,21 @@ function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-export function parseRequestLine(line: string): HookRequestMessage | null {
+function nonEmpty(value: unknown): string | null {
+  return typeof value === 'string' && value !== '' ? value : null;
+}
+
+export function parseRequestLine(line: string): HookRequest | null {
   const value = parseJson(line);
   if (!isRecord(value) || typeof value['id'] !== 'string' || !('event' in value)) {
     return null;
   }
-  return { id: value['id'], event: value['event'] };
+  return {
+    id: value['id'],
+    event: value['event'],
+    agent: nonEmpty(value['agent']) ?? CLAUDE_CODE,
+    hook: nonEmpty(value['hook']),
+  };
 }
 
 export function parseReplyLine(line: string): HookReplyMessage | null {

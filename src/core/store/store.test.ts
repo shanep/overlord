@@ -13,7 +13,7 @@ import type {
 import { ZERO_USAGE } from '../../shared/model.js';
 import { EventBus } from '../bus.js';
 import { toAgentNode } from '../hooks/mapping.js';
-import type { SubagentStartPayload, SubagentStopPayload } from '../hooks/payloads.js';
+import { claudeEventOf } from '../hooks/test-helpers/claude-hook.js';
 
 import {
   DEFAULT_LIMITS,
@@ -350,18 +350,18 @@ describe('OverlordStore agents reported by the transcript and hooks', () => {
     currentTool: 'Grep',
     model: 'claude-haiku-4-5',
   });
-  const start: SubagentStartPayload = {
+  const start = claudeEventOf('subagent-start', {
     session_id: 's1',
     hook_event_name: 'SubagentStart',
     agent_id: 'a2',
     agent_type: 'Explore',
-  };
-  const stop: SubagentStopPayload = {
+  });
+  const stop = claudeEventOf('subagent-stop', {
     session_id: 's1',
     hook_event_name: 'SubagentStop',
     agent_id: 'a2',
     agent_type: 'Explore',
-  };
+  });
 
   it('keeps what the transcript knows when a SubagentStop hook node arrives later', () => {
     const { bus, store } = setup();

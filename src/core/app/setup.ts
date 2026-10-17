@@ -1,12 +1,13 @@
 // Hooks and telemetry setup. Both change ~/.claude/settings.json, so each
 // command asks first, and the app starts or stops the matching receiver after.
+// The work goes through Claude Code's hooks and telemetry facets.
 
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 
-import { installHooks, isInstalled, uninstallHooks } from '../hooks/install.js';
-import { writeSetting } from '../knobs/write.js';
-import { TELEMETRY_ENV_KEYS, telemetryEnv } from '../otel/env.js';
+import { claudeHooks } from '../agents/claude/hooks.js';
+import { claudeTelemetry } from '../agents/claude/telemetry.js';
+import type { AgentDirs, SettingsWriteResult } from '../agents/types.js';
 import type { ClaudePaths } from '../paths.js';
 
 import type { AppError } from './errors.js';
@@ -46,10 +47,7 @@ export class SetupCommands {
       return;
     }
     await mkdir(path.dirname(paths.userSettings), { recursive: true });
-    const result = await installHooks({
-      settingsFile: paths.userSettings,
-      hookCommand: hookCommand(host.extensionPath),
-    });
+    const result = await claudeHooks.install(this.dirs(), hookCommand(host.extensionPath));
     host.showInfo(
       result.changed
         ? 'Hooks installed. New Claude Code sessions report to Overlord.'
@@ -59,13 +57,13 @@ export class SetupCommands {
   }
 
   async uninstallHooks(): Promise<void> {
-    const { host, paths } = this.deps;
+    const { host } = this.deps;
     if (
       !(await host.confirm('Remove the Overlord hooks from ~/.claude/settings.json?', 'Remove'))
     ) {
       return;
     }
-    const result = await uninstallHooks({ settingsFile: paths.userSettings });
+    const result = await claudeHooks.uninstall(this.dirs());
     host.showInfo(result.changed ? 'Hooks removed.' : 'No Overlord hooks were installed.');
     await this.deps.sync();
   }
@@ -77,7 +75,7 @@ export class SetupCommands {
     if (!(await host.confirm(question, 'Enable'))) {
       return;
     }
-    if (await this.write(Object.entries(telemetryEnv(port)))) {
+    if (this.shown(await claudeTelemetry.enable(this.dirs(), port))) {
       host.showInfo('Telemetry is on for new Claude Code sessions.');
     }
     await this.deps.sync();
@@ -89,7 +87,7 @@ export class SetupCommands {
     if (!(await host.confirm(question, 'Disable'))) {
       return;
     }
-    if (await this.write(TELEMETRY_ENV_KEYS.map((key) => [key, undefined]))) {
+    if (this.shown(await claudeTelemetry.disable(this.dirs()))) {
       host.showInfo('Telemetry is off for new Claude Code sessions.');
     }
     await this.deps.sync();
@@ -99,7 +97,7 @@ export class SetupCommands {
     const { paths } = this.deps;
     let hooksInstalled = false;
     try {
-      hooksInstalled = await isInstalled({ settingsFile: paths.userSettings });
+      hooksInstalled = await claudeHooks.installed(this.dirs());
     } catch {
       // A settings file in a shape the installer does not know has no Overlord hooks.
     }
@@ -111,21 +109,15 @@ export class SetupCommands {
     };
   }
 
-  /** Writes each env key in turn. Stops and shows the error at the first failure. */
-  private async write(
-    entries: readonly (readonly [string, string | undefined])[],
-  ): Promise<boolean> {
-    for (const [key, value] of entries) {
-      const result = await writeSetting({
-        file: this.deps.paths.userSettings,
-        keyPath: `env.${key}`,
-        value,
-      });
-      if (!result.ok) {
-        this.deps.host.showError(result.error);
-        return false;
-      }
+  private dirs(): AgentDirs {
+    return { home: this.deps.paths.home, configDir: this.deps.paths.configDir };
+  }
+
+  /** True when the write worked, else shows its error. */
+  private shown(result: SettingsWriteResult): boolean {
+    if (!result.ok) {
+      this.deps.host.showError(result.error);
     }
-    return true;
+    return result.ok;
   }
 }

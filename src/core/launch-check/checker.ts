@@ -10,7 +10,7 @@
 import path from 'node:path';
 
 import type { WorktreeSummary } from '../../shared/protocol.js';
-import type { KnownPayload } from '../hooks/payloads.js';
+import type { NormalizedHookEvent } from '../hooks/normalized.js';
 
 import type { Finding } from './instructions.js';
 import { missing, shownPath } from './instructions.js';
@@ -67,10 +67,9 @@ export class LaunchChecker {
   }
 
   /** The note to add to this hook's reply, or null. */
-  noteFor(payload: KnownPayload): string | null {
-    const id = payload.session_id;
-    const event = payload.hook_event_name;
-    if (event === 'SessionEnd') {
+  noteFor(event: NormalizedHookEvent): string | null {
+    const id = event.sessionId;
+    if (event.kind === 'session-end') {
       this.waiting.delete(id);
       return null;
     }
@@ -78,12 +77,13 @@ export class LaunchChecker {
       return null;
     }
     // Resuming or compacting a session is not a new session, so it is not told again.
-    if (event === 'SessionStart') {
-      return payload.source === 'startup' ? this.started(id, payload.cwd ?? '') : null;
+    if (event.kind === 'session-start') {
+      return event.source === 'new' ? this.started(id, event.cwd ?? '') : null;
     }
     // A subagent's context goes away with it, so the note waits for the main thread.
     const later =
-      event === 'UserPromptSubmit' || (event === 'PostToolUse' && (payload.agent_id ?? '') === '');
+      event.kind === 'prompt-submit' ||
+      (event.kind === 'post-tool-use' && event.subagentId === null);
     return later ? this.delivered(id) : null;
   }
 

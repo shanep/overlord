@@ -12,8 +12,8 @@ import { callStdioTool } from '../connectors/stdio-mcp.js';
 import { Launcher } from '../harness/launcher.js';
 import { mergeEnv } from '../harness/options.js';
 import { sdkPlanUsage, sdkQuery } from '../harness/sdk-types.js';
-import { withContext, withSystemMessage } from '../hooks/mapping.js';
-import type { HookOutput } from '../hooks/protocol.js';
+import type { HookAnswer } from '../hooks/normalized.js';
+import { withContextNote, withNotice } from '../hooks/normalized.js';
 import { socketPath } from '../hooks/socket-path.js';
 import { compatSummary } from '../launch-check/note.js';
 import type { ClaudePaths } from '../paths.js';
@@ -255,10 +255,10 @@ export class OverlordApp {
       watchFactory: deps.watchFactory,
       permissions,
       context,
-      advise: (payload): HookOutput | null => {
-        const note = launchCheck.noteFor(payload);
-        return withSystemMessage(
-          withContext(coordinator.handle(payload), payload.hook_event_name, note),
+      advise: (event): HookAnswer | null => {
+        const note = launchCheck.noteFor(event);
+        return withNotice(
+          withContextNote(coordinator.handle(event), note),
           note === null ? null : compatSummary(note),
         );
       },

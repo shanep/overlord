@@ -1,7 +1,10 @@
-// The extension side of the hook bridge. Every Claude Code hook runs the
+// The extension side of the hook bridge. Every agent hook runs the
 // overlord-hook script, which forwards its stdin here over a local socket and
-// prints whatever we answer. Only PermissionRequest waits for an answer; every
-// other event is acknowledged at once so hooks never slow a session down.
+// prints whatever we answer. The script's --agent flag says whose hook it is,
+// and that agent's dialect reads the payload and writes the answer, so the
+// rest of this file only sees normalized events. Only a permission request
+// waits for an answer. Every other event is acknowledged at once so hooks
+// never slow a session down.
 // SendMessage never asks permission, so its deny rules are applied on
 // PreToolUse instead. PreToolUse only ever denies; it never allows anything.
 // An adviser may answer the other events too, from what it already knows, so
@@ -12,31 +15,22 @@ import { mkdir, rm } from 'node:fs/promises';
 import net from 'node:net';
 import path from 'node:path';
 
+import type { AgentId } from '../../shared/agents.js';
+import { CLAUDE_CODE } from '../../shared/agents.js';
 import type { PermissionDecision, PermissionRequest } from '../../shared/model.js';
 import type { AutoApproveRule } from '../../shared/protocol.js';
+import { claudeHooks } from '../agents/claude/hooks.js';
 import type { EventBus } from '../bus.js';
 
 import type { AuditEntry } from './audit.js';
 import type { InstructionLoadedEvent } from './mapping.js';
 import {
-  additionalContextOf,
-  permissionOutput,
-  preToolUseDenyOutput,
   ruleDenyMessage,
-  sessionStartOutput,
   toAgentNode,
   toInstructionLoaded,
   toPermissionRequest,
-  withSystemMessage,
 } from './mapping.js';
-import type {
-  KnownPayload,
-  ParsedHookPayload,
-  PermissionRequestPayload,
-  SubagentStartPayload,
-  SubagentStopPayload,
-} from './payloads.js';
-import { parseHookPayload } from './payloads.js';
+import type { HookAnswer, HookDialect, HookEventOf, NormalizedHookEvent } from './normalized.js';
 import type { HookOutput } from './protocol.js';
 import { encodeMessage, LineDecoder, MAX_LINE_BYTES, parseRequestLine } from './protocol.js';
 import { findMatchingRule, SEND_MESSAGE_TOOL } from './rules.js';
@@ -62,13 +56,15 @@ export interface HookServerOptions {
   readonly sessionContext?: () => string | null;
   /** Answers a hook that no deny rule answered, or null for no opinion. Must not wait on anything. */
   readonly advise?: Adviser | null;
+  /** The dialect for the relay's --agent value, or null for an agent with no hooks. Claude Code only by default. */
+  readonly dialects?: (agent: AgentId) => HookDialect | null;
 }
 
-export type Adviser = (payload: KnownPayload) => HookOutput | null;
+export type Adviser = (event: NormalizedHookEvent) => HookAnswer | null;
 
 export interface HookEvent {
   readonly receivedAt: number;
-  readonly hook: ParsedHookPayload;
+  readonly hook: NormalizedHookEvent;
 }
 
 type Callback<T> = (value: T) => void;
@@ -80,6 +76,8 @@ export interface AuditSink {
 
 interface Pending {
   readonly request: PermissionRequest;
+  readonly event: NormalizedHookEvent;
+  readonly dialect: HookDialect;
   readonly socket: net.Socket;
   readonly messageId: string;
   readonly timer: NodeJS.Timeout;
@@ -87,7 +85,9 @@ interface Pending {
 
 const SOURCE = 'hooks';
 
-type PreToolUsePayload = Extract<KnownPayload, { readonly hook_event_name: 'PreToolUse' }>;
+function claudeOnly(agent: AgentId): HookDialect | null {
+  return agent === CLAUDE_CODE ? claudeHooks : null;
+}
 
 /** Tools that run without a permission prompt, so deny rules must act on PreToolUse. */
 const PRE_TOOL_DENY_TOOLS: ReadonlySet<string> = new Set([SEND_MESSAGE_TOOL]);
@@ -131,6 +131,7 @@ export class HookServer {
   private readonly platform: NodeJS.Platform;
   private readonly maxLineBytes: number;
   private readonly advise: Adviser | null;
+  private readonly dialects: (agent: AgentId) => HookDialect | null;
   private readonly server: net.Server;
   private readonly sockets = new Set<net.Socket>();
   private readonly pending = new Map<string, Pending>();
@@ -152,6 +153,7 @@ export class HookServer {
     this.maxLineBytes = options.maxLineBytes ?? MAX_LINE_BYTES;
     this.sessionContext = options.sessionContext ?? ((): null => null);
     this.advise = options.advise ?? null;
+    this.dialects = options.dialects ?? claudeOnly;
     this.server = net.createServer((socket) => {
       this.accept(socket);
     });
@@ -211,7 +213,7 @@ export class HookServer {
     if (entry === undefined) {
       return false;
     }
-    this.finish(entry, permissionOutput(decision));
+    this.finish(entry, entry.dialect.answer(entry.event, { decision }));
     return true;
   }
 
@@ -253,55 +255,65 @@ export class HookServer {
       this.report('hook script sent a message that is not a request');
       return;
     }
-    const parsed = parseHookPayload(message.event);
+    const dialect = this.dialects(message.agent);
+    if (dialect === null) {
+      this.report(`hook from ${message.agent}, an agent with no hook support`);
+      this.reply(socket, message.id, {});
+      return;
+    }
+    const parsed = dialect.normalize({ payload: message.event, name: message.hook });
     if (!parsed.ok) {
       this.report(`invalid hook payload: ${parsed.error}`);
       this.reply(socket, message.id, {});
       return;
     }
-    const hook = parsed.value;
+    const hook = parsed.event;
     this.safely(() => {
       const event: HookEvent = { receivedAt: this.now(), hook };
       for (const listener of this.eventListeners) {
         listener(event);
       }
     });
-    if (hook.known && hook.payload.hook_event_name === 'PermissionRequest') {
-      this.handlePermission(socket, message.id, hook.payload);
+    if (hook.kind === 'permission-request') {
+      this.handlePermission(socket, message.id, hook, dialect);
       return;
     }
-    if (hook.known) {
-      this.safely(() => {
-        this.publish(hook.payload);
-      });
+    if (hook.kind === 'other') {
+      this.reply(socket, message.id, {});
+      return;
     }
-    this.reply(socket, message.id, (hook.known ? this.outputFor(hook.payload) : null) ?? {});
+    this.safely(() => {
+      this.publish(hook);
+    });
+    const answer = this.answerFor(hook);
+    this.reply(socket, message.id, answer === null ? {} : dialect.answer(hook, answer));
   }
 
   /**
-   * What a hook prints: a deny rule's answer on PreToolUse, else the
-   * adviser's. SessionStart joins the session note and the adviser's note
-   * into one, since a hook prints a single answer, and keeps the adviser's
-   * systemMessage, which is what the user sees on screen.
+   * What a hook answers: a deny rule's block on a tool call, else the
+   * adviser's answer. A session start joins the session note and the
+   * adviser's note into one, since a hook prints a single answer, and keeps
+   * the adviser's notice, which is what the user sees on screen.
    */
-  private outputFor(payload: KnownPayload): HookOutput | null {
-    const denied = payload.hook_event_name === 'PreToolUse' ? this.preToolDeny(payload) : null;
+  private answerFor(event: NormalizedHookEvent): HookAnswer | null {
+    const denied = event.kind === 'pre-tool-use' ? this.preToolDeny(event) : null;
     if (denied !== null) {
       return denied;
     }
-    const advice = this.adviseSafely(payload);
-    if (payload.hook_event_name !== 'SessionStart') {
+    const advice = this.adviseSafely(event);
+    if (event.kind !== 'session-start') {
       return advice;
     }
-    const notes = [this.sessionNote(), additionalContextOf(advice)].filter(
+    const adviceNote = advice?.context ?? '';
+    const notes = [this.sessionNote(), adviceNote === '' ? null : adviceNote].filter(
       (note): note is string => note !== null,
     );
-    const joined = notes.length === 0 ? null : sessionStartOutput(notes.join('\n\n'));
-    const message: unknown = advice?.['systemMessage'];
-    return withSystemMessage(
-      joined,
-      typeof message === 'string' && message !== '' ? message : null,
-    );
+    const notice = advice?.notice ?? '';
+    const answer: HookAnswer = {
+      ...(notes.length === 0 ? {} : { context: notes.join('\n\n') }),
+      ...(notice === '' ? {} : { notice }),
+    };
+    return Object.keys(answer).length === 0 ? null : answer;
   }
 
   private sessionNote(): string | null {
@@ -313,65 +325,66 @@ export class HookServer {
     }
   }
 
-  private adviseSafely(payload: KnownPayload): HookOutput | null {
+  private adviseSafely(event: NormalizedHookEvent): HookAnswer | null {
     if (this.advise === null) {
       return null;
     }
     try {
-      return this.advise(payload);
+      return this.advise(event);
     } catch (error) {
       this.report(`hook adviser failed: ${errorMessage(error)}`);
       return null;
     }
   }
 
-  /** The deny output when a deny rule covers a tool that never prompts, else null. */
-  private preToolDeny(payload: PreToolUsePayload): HookOutput | null {
-    if (!PRE_TOOL_DENY_TOOLS.has(payload.tool_name)) {
+  /** The block when a deny rule covers a tool that never prompts, else null. */
+  private preToolDeny(event: HookEventOf<'pre-tool-use'>): HookAnswer | null {
+    if (!PRE_TOOL_DENY_TOOLS.has(event.tool.name)) {
       return null;
     }
-    const rule = findMatchingRule(this.rules, payload.tool_name, payload.tool_input);
+    const rule = findMatchingRule(this.rules, event.tool.name, event.tool.input);
     if (rule?.behavior !== 'deny') {
       return null;
     }
-    this.record(toPermissionRequest(payload, this.newId(), this.now()), rule.id, 'deny');
-    return preToolUseDenyOutput(ruleDenyMessage(rule.id, rule.description));
+    this.record(toPermissionRequest(event, this.newId(), this.now()), rule.id, 'deny');
+    return { block: ruleDenyMessage(rule.id, rule.description) };
   }
 
-  private publish(payload: KnownPayload): void {
-    if (payload.hook_event_name === 'InstructionsLoaded') {
-      const event = toInstructionLoaded(payload, this.now());
+  private publish(event: NormalizedHookEvent): void {
+    if (event.kind === 'instructions-loaded') {
+      const loaded = toInstructionLoaded(event, this.now());
       for (const listener of this.instructionListeners) {
-        listener(event);
+        listener(loaded);
       }
       return;
     }
-    if (payload.hook_event_name === 'SubagentStart' || payload.hook_event_name === 'SubagentStop') {
-      this.publishAgent(payload);
+    if (event.kind === 'subagent-start' || event.kind === 'subagent-stop') {
+      this.publishAgent(event);
     }
   }
 
-  private publishAgent(payload: SubagentStartPayload | SubagentStopPayload): void {
-    const key = `${payload.session_id}\u0000${payload.agent_id}`;
+  private publishAgent(event: HookEventOf<'subagent-start'> | HookEventOf<'subagent-stop'>): void {
+    const key = `${event.sessionId}\u0000${event.subagent.id}`;
     const now = this.now();
-    if (payload.hook_event_name === 'SubagentStart') {
-      // A resumed subagent fires SubagentStart again; keep the first start time.
+    if (event.kind === 'subagent-start') {
+      // A resumed subagent starts again; keep the first start time.
       const startedAt = this.agentStarts.get(key) ?? now;
       this.agentStarts.set(key, startedAt);
-      this.bus.emit('agent.upserted', toAgentNode(payload, { startedAt, endedAt: null }));
+      this.bus.emit('agent.upserted', toAgentNode(event, { startedAt, endedAt: null }));
       return;
     }
     const startedAt = this.agentStarts.get(key) ?? now;
     this.agentStarts.delete(key);
-    this.bus.emit('agent.upserted', toAgentNode(payload, { startedAt, endedAt: now }));
+    this.bus.emit('agent.upserted', toAgentNode(event, { startedAt, endedAt: now }));
   }
 
   private handlePermission(
     socket: net.Socket,
     messageId: string,
-    payload: PermissionRequestPayload,
+    event: HookEventOf<'permission-request'>,
+    dialect: HookDialect,
   ): void {
-    const request = toPermissionRequest(payload, this.newId(), this.now());
+    const request = toPermissionRequest(event, this.newId(), this.now());
     const rule = findMatchingRule(this.rules, request.toolName, request.input);
     if (rule !== null) {
       const decision: PermissionDecision =
@@ -382,12 +395,14 @@ export class HookServer {
               ruleId: rule.id,
               message: ruleDenyMessage(rule.id, rule.description),
             };
-      this.reply(socket, messageId, permissionOutput(decision));
+      this.reply(socket, messageId, dialect.answer(event, { decision }));
       this.record(request, rule.id, rule.behavior);
       return;
     }
     const entry: Pending = {
       request,
+      event,
+      dialect,
       socket,
       messageId,
       timer: setTimeout(() => {

@@ -11,6 +11,8 @@ import { EventBus } from '../bus.js';
 
 import type { AuditEntry } from './audit.js';
 import type { InstructionLoadedEvent } from './mapping.js';
+import type { HookAnswer, HookNormalizeResult } from './normalized.js';
+import type { HookOutput } from './protocol.js';
 import type { HookEvent, HookServerOptions } from './server.js';
 import { DEFAULT_HOLD_MS, HookServer, prepareSocketPath, socketPath } from './server.js';
 
@@ -260,16 +262,83 @@ describe('HookServer', () => {
     expect(await opened.next()).toStrictEqual({ id: 'm2', output: {} });
     expect(events).toHaveLength(2);
     expect(events[0]?.receivedAt).toBe(1001);
-    expect(events[0]?.hook.known).toBe(true);
-    expect(events[0]?.hook.payload.hook_event_name).toBe('PreToolUse');
+    expect(events[0]?.hook.kind).toBe('pre-tool-use');
+    expect(events[0]?.hook.native).toBe('PreToolUse');
     expect(events[1]?.hook).toStrictEqual({
-      known: false,
-      payload: { ...base, hook_event_name: 'TaskCreated', task_id: 't' },
+      agent: 'claude-code',
+      native: 'TaskCreated',
+      sessionId: 'sess',
+      subagentId: null,
+      cwd: '/w',
+      transcriptPath: '/t.jsonl',
+      timestamp: null,
+      kind: 'other',
     });
     off();
     opened.send('m3', { ...base, hook_event_name: 'Stop' });
     await opened.next();
     expect(events).toHaveLength(2);
+  });
+
+  it('reads hooks as Claude Code by default and answers other agents with nothing', async () => {
+    await startServer({ sessionContext: () => 'note' });
+    const errors: string[] = [];
+    bus.on('source.error', (error) => errors.push(error.message));
+    const opened = await client();
+    const start = { ...base, hook_event_name: 'SessionStart', source: 'startup' };
+    opened.socket.write(`${JSON.stringify({ id: 'm1', event: start, agent: 'codex' })}\n`);
+    expect(await opened.next()).toStrictEqual({ id: 'm1', output: {} });
+    opened.socket.write(`${JSON.stringify({ id: 'm2', event: start, agent: 'claude-code' })}\n`);
+    expect(await opened.next()).toMatchObject({
+      id: 'm2',
+      output: { hookSpecificOutput: { additionalContext: 'note' } },
+    });
+    expect(errors).toStrictEqual(['hook from codex, an agent with no hook support']);
+  });
+
+  it('reads a hook from an agent with a dialect and drops one without', async () => {
+    const seen: string[] = [];
+    await startServer({
+      dialects: (agent) =>
+        agent === 'copilot'
+          ? {
+              normalize: (raw): HookNormalizeResult => ({
+                ok: true,
+                event: {
+                  agent,
+                  native: raw.name ?? '',
+                  sessionId: 's',
+                  subagentId: null,
+                  cwd: null,
+                  transcriptPath: null,
+                  timestamp: 1,
+                  kind: 'prompt-submit',
+                  prompt: 'go',
+                  title: null,
+                },
+              }),
+              answer: (event, answer): HookOutput => ({ event: event.native, ...answer }),
+            }
+          : null,
+      advise: (event) => {
+        seen.push(event.agent);
+        return { context: 'note' };
+      },
+    });
+    const errors: string[] = [];
+    bus.on('source.error', (error) => errors.push(error.message));
+    const opened = await client();
+    opened.socket.write(
+      `${JSON.stringify({ id: 'm1', event: {}, agent: 'copilot', hook: 'userPromptSubmitted' })}\n`,
+    );
+    expect(await opened.next()).toStrictEqual({
+      id: 'm1',
+      output: { event: 'userPromptSubmitted', context: 'note' },
+    });
+    opened.send('m2', { ...base, hook_event_name: 'Stop' });
+    expect(await opened.next()).toStrictEqual({ id: 'm2', output: {} });
+    expect(seen).toStrictEqual(['copilot']);
+    expect(errors).toStrictEqual(['hook from claude-code, an agent with no hook support']);
   });
 
   describe('SessionStart', () => {
@@ -305,10 +374,7 @@ describe('HookServer', () => {
     it("joins the session note and the adviser's note into one answer", async () => {
       await startServer({
         sessionContext: () => 'check the connectors',
-        advise: (payload) =>
-          payload.hook_event_name === 'SessionStart'
-            ? { hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: 'peers' } }
-            : null,
+        advise: (event) => (event.kind === 'session-start' ? { context: 'peers' } : null),
       });
       const opened = await client();
       opened.send('m1', start);
@@ -324,12 +390,9 @@ describe('HookServer', () => {
     });
 
     it("keeps the adviser's systemMessage so the user sees it", async () => {
-      const outputs: (Readonly<Record<string, unknown>> | null)[] = [
-        {
-          hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: 'check' },
-          systemMessage: 'on screen',
-        },
-        { systemMessage: 'only on screen' },
+      const outputs: (HookAnswer | null)[] = [
+        { context: 'check', notice: 'on screen' },
+        { notice: 'only on screen' },
       ];
       await startServer({
         sessionContext: () => 'check the connectors',
@@ -361,11 +424,11 @@ describe('HookServer', () => {
     });
 
     it('uses the adviser alone when there is no session note', async () => {
-      const outputs: (Readonly<Record<string, unknown>> | null)[] = [
-        { hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: 'peers' } },
-        { hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: '' } },
-        { hookSpecificOutput: 'odd' },
-        { continue: true },
+      const outputs: (HookAnswer | null)[] = [
+        { context: 'peers' },
+        { context: '' },
+        { notice: '' },
+        {},
       ];
       await startServer({ advise: () => outputs.shift() ?? null });
       const opened = await client();
@@ -693,9 +756,7 @@ describe('HookServer', () => {
   });
 
   describe('adviser', () => {
-    const note = {
-      hookSpecificOutput: { hookEventName: 'UserPromptSubmit', additionalContext: 'hi' },
-    };
+    const note: HookAnswer = { context: 'hi' };
     const prompt = { ...base, hook_event_name: 'UserPromptSubmit', prompt: 'go' };
 
     it('answers with what the adviser returns, after the deny rules had their say', async () => {
@@ -704,14 +765,19 @@ describe('HookServer', () => {
         rules: [
           { ...allowLs, id: 'deny-peers', behavior: 'deny', tool: 'SendMessage', pattern: null },
         ],
-        advise: (payload) => {
-          seen.push(payload.hook_event_name);
-          return payload.hook_event_name === 'UserPromptSubmit' ? note : null;
+        advise: (event) => {
+          seen.push(event.native);
+          return event.kind === 'prompt-submit' ? note : null;
         },
       });
       const opened = await client();
       opened.send('m1', prompt);
-      expect(await opened.next()).toStrictEqual({ id: 'm1', output: note });
+      expect(await opened.next()).toStrictEqual({
+        id: 'm1',
+        output: {
+          hookSpecificOutput: { hookEventName: 'UserPromptSubmit', additionalContext: 'hi' },
+        },
+      });
       opened.send('m2', sendEvent('uds:/x'));
       expect(await opened.next()).toMatchObject({
         id: 'm2',

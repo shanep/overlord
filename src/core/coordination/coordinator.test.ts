@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { WorktreeSummary } from '../../shared/protocol.js';
+import { claudeHooks } from '../agents/claude/hooks.js';
 import type { KnownPayload } from '../hooks/payloads.js';
 import type { HookOutput } from '../hooks/protocol.js';
 
@@ -35,7 +36,25 @@ interface World {
   refreshes: number;
 }
 
-function setUp(worktrees: WorktreeSummary[]): { world: World; coordinator: Coordinator } {
+/** The coordinator as a Claude Code hook sees it: Claude's payload in, Claude's JSON out. */
+interface ClaudeSide {
+  handle: (payload: KnownPayload) => HookOutput | null;
+}
+
+function claudeSide(coordinator: Coordinator): ClaudeSide {
+  return {
+    handle: (payload): HookOutput | null => {
+      const result = claudeHooks.normalize({ payload, name: null });
+      if (!result.ok) {
+        throw new Error(result.error);
+      }
+      const answer = coordinator.handle(result.event);
+      return answer === null ? null : claudeHooks.answer(result.event, answer);
+    },
+  };
+}
+
+function setUp(worktrees: WorktreeSummary[]): { world: World; coordinator: ClaudeSide } {
   const world: World = { worktrees, enabled: true, now: 0, live: new Set(), refreshes: 0 };
   const deps: CoordinatorDeps = {
     enabled: () => world.enabled,
@@ -46,8 +65,9 @@ function setUp(worktrees: WorktreeSummary[]): { world: World; coordinator: Coord
       world.refreshes += 1;
     },
     now: () => world.now,
+    editTools: () => claudeHooks.editTools,
   };
-  return { world, coordinator: new Coordinator(deps) };
+  return { world, coordinator: claudeSide(new Coordinator(deps)) };
 }
 
 function start(session: string, cwd: string, title: string | null = null): KnownPayload {

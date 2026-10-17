@@ -11,7 +11,10 @@ import { DEFAULT_MODEL } from '../../app/prices.js';
 import { DEFAULT_PRICES, findPrice } from '../../transcripts/pricing.js';
 import type { AgentAdapter, DetectInput, Detected } from '../types.js';
 
+import { claudeHooks } from './hooks.js';
+import { claudeInject } from './inject.js';
 import { claudeObserverFacet } from './observer.js';
+import { claudeTelemetry } from './telemetry.js';
 import { CLAUDE_SHORT, claudeTerminal } from './terminal.js';
 
 const HANDOFFS: readonly HandoffKind[] = [
@@ -81,4 +84,7 @@ export const claudeCode: AgentAdapter = {
   },
   terminal: claudeTerminal,
   observer: claudeObserverFacet,
+  hooks: claudeHooks,
+  telemetry: claudeTelemetry,
+  inject: claudeInject,
 };
