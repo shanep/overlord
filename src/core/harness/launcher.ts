@@ -50,9 +50,11 @@ export interface LauncherDeps {
   readonly backendEndpoint?: EndpointSource;
   readonly now?: () => number;
   readonly newId?: () => string;
+  /** Why queued runs should wait for now, such as a nearly used usage limit, or null to start them. */
+  readonly canStart?: () => string | null;
 }
 
-export type LauncherSnapshot = Pick<LauncherState, 'runs' | 'maxConcurrency'>;
+export type LauncherSnapshot = Pick<LauncherState, 'runs' | 'maxConcurrency' | 'held'>;
 
 interface RunRecord {
   run: LaunchRun;
@@ -88,6 +90,7 @@ export class Launcher {
   private idleWaiters: (() => void)[] = [];
   private limit: number;
   private running = 0;
+  private heldReason: string | null = null;
 
   constructor(deps: LauncherDeps, maxConcurrency: number) {
     this.deps = deps;
@@ -145,7 +148,7 @@ export class Launcher {
   }
 
   state(): LauncherSnapshot {
-    return { runs: this.runs(), maxConcurrency: this.limit };
+    return { runs: this.runs(), maxConcurrency: this.limit, held: this.heldReason };
   }
 
   /** Total reported spend across every run so far. */
@@ -198,8 +201,16 @@ export class Launcher {
     return this.queue.length === 0 && this.running === 0;
   }
 
+  /** Looks again at whether queued runs may start. True when that changed. */
+  recheck(): boolean {
+    const before = this.heldReason;
+    this.pump();
+    return this.heldReason !== before;
+  }
+
   private pump(): void {
-    while (this.running < this.limit) {
+    this.heldReason = this.queue.length === 0 ? null : (this.deps.canStart?.() ?? null);
+    while (this.running < this.limit && this.heldReason === null) {
       const runId = this.queue.shift();
       const record = runId === undefined ? undefined : this.records.get(runId);
       if (record === undefined) {

@@ -61,6 +61,8 @@ export interface OverlordSettings {
   readonly idleMinutes: number;
   readonly updateThrottleMs: number;
   readonly maxConcurrency: number;
+  /** Hold queued Launcher runs while the plan's usage limit is nearly used up. */
+  readonly paceToUsageLimit: boolean;
   readonly holdTimeoutSeconds: number;
   /** Tell sessions in one repository about each other and pause clashing edits. */
   readonly coordinateSessions: boolean;

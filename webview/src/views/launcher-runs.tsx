@@ -6,6 +6,7 @@ import { useState } from 'react';
 import type { LaunchProfile } from '../../../src/shared/model.js';
 import type { LaunchRun } from '../../../src/shared/protocol.js';
 import { Badge } from '../components/badge.js';
+import { cardClassName, StatusDot } from '../components/card.js';
 import { ConfirmBar } from '../components/confirm-bar.js';
 import type { Column } from '../components/data-table.js';
 import { DataTable } from '../components/data-table.js';
@@ -125,8 +126,9 @@ export function RunsTable(props: {
   readonly runs: readonly LaunchRun[];
   readonly profiles: readonly LaunchProfile[];
   readonly maxConcurrency: number;
+  readonly held: string | null;
 }): ReactElement {
-  const { runs, profiles, maxConcurrency } = props;
+  const { runs, profiles, maxConcurrency, held } = props;
   const post = usePostAction();
   const [confirming, setConfirming] = useState(false);
   const active = runs.filter((run) => isActiveRun(run)).length;
@@ -152,6 +154,11 @@ export function RunsTable(props: {
       <p className="hint">
         Open shows what a run is doing. Runs past the first {maxConcurrency} wait their turn.
       </p>
+      {held === null ? null : (
+        <p className={cardClassName({ tone: 'warning', extra: 'launch-held' })} role="status">
+          <StatusDot tone="warning" /> {held}
+        </p>
+      )}
       {confirming ? (
         <ConfirmBar
           message={`Stop ${active.toString()} active runs?`}

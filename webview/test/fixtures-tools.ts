@@ -76,6 +76,7 @@ export const launcherState: LauncherState = {
     },
   ],
   maxConcurrency: 4,
+  held: null,
   defaultFolder: '/work',
   folders: [
     { name: 'work', folder: '/work', source: 'window' },

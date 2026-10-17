@@ -20,6 +20,7 @@ const empty: LauncherState = {
   pendingPermissions: [],
   rules: [],
   maxConcurrency: 2,
+  held: null,
   defaultFolder: '/work',
   folders: [{ name: 'work', folder: '/work', source: 'window' }],
   browsed: null,
@@ -70,6 +71,14 @@ describe('LauncherView', () => {
 });
 
 describe('launch form', () => {
+  it('says why queued runs wait when the usage limit holds them, and passes axe', async () => {
+    const held =
+      'The 5 hour session limit is 92% used, so queued runs wait until it resets at 3:40 PM.';
+    const { container } = renderView(<LauncherView state={{ ...empty, held }} />);
+    expect(within(region('Runs')).getByRole('status').textContent).toContain(held);
+    await expectAccessible(container);
+  });
+
   it('needs a prompt before it can launch', async () => {
     renderView(<LauncherView state={launcherState} />);
     const launch = screen.getByRole('button', { name: 'Launch 1 run' });

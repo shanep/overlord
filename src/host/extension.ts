@@ -61,7 +61,6 @@ const PALETTE_VIEWS: readonly ViewEntry[] = [
 
 const VIEW_COMMANDS = [...GLOBAL_VIEWS, ...FLEET_TITLE_VIEWS, ...PALETTE_VIEWS];
 
-/** Where the bridge sidecar's token (SecretStorage) and this window's port (workspace state) live. */
 /**
  * The views the self-check builds after an install. Session views need a
  * session to show, and Skills and Agents only list a GitHub collection.
@@ -72,6 +71,7 @@ const CHECKED_VIEWS: readonly ViewId[] = VIEW_IDS.filter(
 /** How long the self-check lets caches load and the Tuning scan run before measuring. */
 const CHECK_SETTLE_MS = 20_000;
 
+/** Where the bridge sidecar's token (SecretStorage) and this window's port (workspace state) live. */
 const BRIDGE_TOKEN_SECRET = 'overlord.boisestate.bridgeToken';
 const BRIDGE_PORT_STATE = 'overlord.boisestate.bridgePort';
 

@@ -60,6 +60,7 @@ export function LauncherView(props: { readonly state: LauncherState }): ReactEle
         runs={state.runs}
         profiles={state.profiles}
         maxConcurrency={state.maxConcurrency}
+        held={state.held}
       />
       <WorktreesTable worktrees={state.worktrees} />
       {waiting ? null : inbox}

@@ -172,7 +172,7 @@ describe('Launcher basics', () => {
     });
     expect(runs[1]).toMatchObject({ costUsd: 0.25, turns: 1, result: 'bad', durationMs: 100 });
     expect(launcher.spendUsd()).toBe(1.25);
-    expect(launcher.state()).toStrictEqual({ runs, maxConcurrency: 2 });
+    expect(launcher.state()).toStrictEqual({ runs, maxConcurrency: 2, held: null });
     expect(launcher.runningCount).toBe(0);
     expect(changes.filter((run) => run.id === 'id-4').map((run) => run.state)).toContain('queued');
     expect(queries.every((query) => query.inputEnded)).toBe(true);
@@ -248,6 +248,23 @@ describe('Launcher basics', () => {
     await flush();
     expect(queries).toHaveLength(2);
     expect(launcher.stopAll()).toBe(2);
+    await launcher.idle();
+  });
+
+  it('holds queued runs while canStart says why, and starts them once it allows', async () => {
+    let hold: string | null = 'The 5 hour session limit is 92% used.';
+    const { launcher, queries } = setup(2, { canStart: () => hold });
+    launcher.launch([spec('hang')], []);
+    await flush();
+    expect(queries).toHaveLength(0);
+    expect(launcher.state().held).toBe('The 5 hour session limit is 92% used.');
+    expect(launcher.recheck()).toBe(false);
+    hold = null;
+    expect(launcher.recheck()).toBe(true);
+    await flush();
+    expect(queries).toHaveLength(1);
+    expect(launcher.state().held).toBeNull();
+    expect(launcher.stopAll()).toBe(1);
     await launcher.idle();
   });
 

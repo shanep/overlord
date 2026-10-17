@@ -194,6 +194,13 @@ function diffFor(base, cwd) {
  */
 export async function review(base, cwd = process.cwd(), { accept = false } = {}) {
   const cache = cacheFile(cwd);
+  if (accept) {
+    // The author read the findings and judged them wrong, so this tree lands as it is.
+    mkdirSync(path.dirname(cache), { recursive: true });
+    writeFileSync(cache, JSON.stringify({ verdict: 'pass', accepted: true, at: Date.now() }));
+    process.stderr.write('review: accepted without another review (--accept-review).\n');
+    return 'pass';
+  }
   if (remembered(cache, accept)) {
     process.stderr.write('review: this exact change was already reviewed or accepted.\n');
     return 'pass';

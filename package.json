@@ -367,6 +367,11 @@
           "maximum": 32,
           "description": "Most agents the launcher runs at once."
         },
+        "overlord.paceToUsageLimit": {
+          "type": "boolean",
+          "default": true,
+          "description": "Hold queued Launcher runs while the 5 hour session limit is nearly used up or on pace to run out well before it resets, and while the weekly limit is nearly used up. Runs already going carry on."
+        },
         "overlord.permissions.holdTimeoutSeconds": {
           "type": "number",
           "default": 600,

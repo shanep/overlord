@@ -21,6 +21,7 @@ const DEFAULT_SETTINGS: OverlordSettings = {
   idleMinutes: 10,
   updateThrottleMs: 250,
   maxConcurrency: 4,
+  paceToUsageLimit: true,
   holdTimeoutSeconds: 600,
   coordinateSessions: true,
   launchCheck: false,

@@ -200,6 +200,8 @@ export interface LauncherState {
   readonly pendingPermissions: readonly PermissionRequest[];
   readonly rules: readonly AutoApproveRule[];
   readonly maxConcurrency: number;
+  /** Why queued runs are waiting, such as a nearly used usage limit, or null. */
+  readonly held: string | null;
   readonly worktrees: readonly WorktreeSummary[];
   /** Where a run works when the form leaves Folder empty. */
   readonly defaultFolder: string;

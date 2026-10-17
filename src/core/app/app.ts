@@ -40,6 +40,7 @@ import type { PanelParams } from './host-port.js';
 import { BackgroundJobs } from './jobs.js';
 import { createLaunchChecker } from './launch-check.js';
 import { LaunchedSessions } from './launched-sessions.js';
+import { paceHold, timeOfDay } from './pacing.js';
 import { PermissionHub } from './permissions.js';
 import type { ActiveTerminal } from './places.js';
 import { SessionPlaces } from './places.js';
@@ -62,6 +63,7 @@ import { sessionBriefing } from './views/connectors.js';
 import { ContextViews } from './views/context.js';
 import { fleetFor } from './views/fleet.js';
 import { stateFor } from './views/state.js';
+import { currentPlan } from './views/usage.js';
 import {
   createWorktreeRegistry,
   launcherWorktrees,
@@ -145,6 +147,9 @@ export class OverlordApp {
           agent === CLAUDE_CODE ? executableFor(host.settings.claudePath, runEnv, platform) : null,
         ...(host.backendEndpoint === undefined ? {} : { backendEndpoint: host.backendEndpoint }),
         now: clock,
+        // The runtime exists by the time a queued run asks.
+        canStart: (): string | null =>
+          host.settings.paceToUsageLimit ? paceHold(currentPlan(this.rt), timeOfDay) : null,
       },
       concurrencyFrom(host.settings.maxConcurrency),
     );

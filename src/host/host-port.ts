@@ -73,6 +73,7 @@ function readSettings(): OverlordSettings {
     idleMinutes: config.get<number>('idleMinutes', 10),
     updateThrottleMs: config.get<number>('updateThrottleMs', 250),
     maxConcurrency: config.get<number>('maxConcurrency', 4),
+    paceToUsageLimit: config.get<boolean>('paceToUsageLimit', true),
     holdTimeoutSeconds: config.get<number>('permissions.holdTimeoutSeconds', 600),
     coordinateSessions: config.get<boolean>('coordination.enabled', true),
     telemetryPort: config.get<number>('telemetry.port', 47_318),

@@ -32,6 +32,7 @@ function buildLauncher(rt: Runtime): LauncherState {
   return {
     runs: snapshot.runs,
     maxConcurrency: snapshot.maxConcurrency,
+    held: snapshot.held,
     profiles: rt.caches.profiles.value,
     drafts: rt.caches.drafts.value,
     pendingPermissions: rt.permissions.list(),
