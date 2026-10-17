@@ -6,6 +6,7 @@ import { launcherState } from '../../test/fixtures-tools.js';
 import type { LaunchForm } from './launcher-values.js';
 import {
   buildSpecs,
+  folderGroups,
   isActiveRun,
   launchSummary,
   parseBudget,
@@ -125,5 +126,34 @@ describe('launchSummary', () => {
     ).toBe(
       'Starts 3 runs, one each for Fast, Deep and Cheap, each in its own copy of /repo, with no spending limit.',
     );
+  });
+});
+
+describe('folderGroups', () => {
+  const home = { name: 'Home folder', folder: '/home/me', source: 'home' } as const;
+  const project = { name: 'api', folder: '/src/api', source: 'project' } as const;
+  const browsed = { name: 'notes', folder: '/notes', source: 'browsed' } as const;
+
+  it('groups folders by where they came from, in the order sent', () => {
+    expect(folderGroups([home, project, browsed], '/src/api')).toStrictEqual([
+      { label: 'This window', folders: [home] },
+      { label: 'Open projects', folders: [project] },
+      { label: 'Picked with Browse', folders: [browsed] },
+    ]);
+  });
+
+  it('keeps a saved folder the host no longer offers', () => {
+    expect(folderGroups([home], '/gone/deep')).toStrictEqual([
+      { label: 'This window', folders: [home] },
+      {
+        label: 'Used before',
+        folders: [{ name: 'deep', folder: '/gone/deep', source: 'browsed' }],
+      },
+    ]);
+    expect(folderGroups([home], '/')).toStrictEqual([
+      { label: 'This window', folders: [home] },
+      { label: 'Used before', folders: [{ name: '/', folder: '/', source: 'browsed' }] },
+    ]);
+    expect(folderGroups([], '')).toStrictEqual([]);
   });
 });

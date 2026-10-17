@@ -187,6 +187,7 @@ export class OverlordApp {
       launcher,
       worktrees,
       sessionWorktrees: new Map(),
+      browsedFolders: [],
       permissions,
       places,
       jobs,

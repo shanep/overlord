@@ -84,6 +84,8 @@ export interface Runtime {
   readonly jobs: BackgroundJobs;
   /** Each session's project, and the projects made by hand. */
   readonly projects: ProjectIndex;
+  /** Folders picked with Browse in the Launcher, newest first, until the window reloads. */
+  readonly browsedFolders: { readonly folder: string; readonly at: number }[];
   /** The sessions the Launcher started, held in the fleet until removed by hand. */
   readonly launched: LaunchedSessions;
   readonly caches: Caches;

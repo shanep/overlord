@@ -77,6 +77,11 @@ export const launcherState: LauncherState = {
   ],
   maxConcurrency: 4,
   defaultFolder: '/work',
+  folders: [
+    { name: 'work', folder: '/work', source: 'window' },
+    { name: 'repo', folder: '/repo', source: 'project' },
+  ],
+  browsed: null,
   worktrees: [
     {
       id: 'w1',

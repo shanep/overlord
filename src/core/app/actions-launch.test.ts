@@ -5,8 +5,9 @@ import { describe, expect, it } from 'vitest';
 
 import type { LaunchProfile, LaunchSpec, PermissionDecision } from '../../shared/model.js';
 import type { AutoApproveRule } from '../../shared/protocol.js';
+import { addProject } from '../projects/book.js';
 
-import { CONFIRM_ABOVE_USD, defaultModel } from './actions-launch.js';
+import { BROWSE_TITLE, CONFIRM_ABOVE_USD, defaultModel } from './actions-launch.js';
 import {
   makeApp,
   makeEnv,
@@ -151,6 +152,37 @@ describe('launch', () => {
     const bare = await makeEnv();
     expect(makeApp(bare).app.stateFor('launcher', {})).toMatchObject({
       state: { defaultFolder: bare.home },
+    });
+  });
+
+  it('offers this window, the fleet projects and browsed folders, each once', async () => {
+    const env = await makeEnv({ workspace: true });
+    const { app } = makeApp(env);
+    const workspace = env.host.workspaceFolder() ?? '';
+    await app.runtime.projects.update((book) =>
+      addProject(book, { id: 'm1', name: 'Notes', folder: '/notes' }),
+    );
+    env.host.folderAnswers.push('/elsewhere', '/notes');
+    for (let pick = 0; pick < 3; pick += 1) {
+      await app.dispatch({ type: 'browseLaunchFolder' }, {});
+    }
+    expect(env.host.folderPicks).toStrictEqual([BROWSE_TITLE, BROWSE_TITLE, BROWSE_TITLE]);
+    expect(app.stateFor('launcher', {})).toMatchObject({
+      state: {
+        folders: [
+          { name: 'work', folder: workspace, source: 'window' },
+          { name: 'Notes', folder: '/notes', source: 'project' },
+          { name: 'elsewhere', folder: '/elsewhere', source: 'browsed' },
+        ],
+        browsed: { folder: '/notes' },
+      },
+    });
+    const bare = await makeEnv();
+    expect(makeApp(bare).app.stateFor('launcher', {})).toMatchObject({
+      state: {
+        folders: [{ name: 'Home folder', folder: bare.home, source: 'home' }],
+        browsed: null,
+      },
     });
   });
 

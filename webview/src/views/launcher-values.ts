@@ -2,7 +2,7 @@
 // one launch spec per selected profile (a matrix run).
 
 import type { LaunchProfile, LaunchSpec } from '../../../src/shared/model.js';
-import type { LaunchRun } from '../../../src/shared/protocol.js';
+import type { LaunchFolder, LaunchRun } from '../../../src/shared/protocol.js';
 import { formatUsd, truncate } from '../format.js';
 import type { Tone } from '../labels.js';
 
@@ -116,4 +116,38 @@ export const RUN_TONES: Readonly<Record<LaunchRun['state'], Tone>> = {
 
 export function isActiveRun(run: LaunchRun): boolean {
   return run.state === 'queued' || run.state === 'running';
+}
+
+export interface FolderGroup {
+  readonly label: string;
+  readonly folders: readonly LaunchFolder[];
+}
+
+const GROUP_LABELS: Readonly<Record<LaunchFolder['source'], string>> = {
+  window: 'This window',
+  home: 'This window',
+  project: 'Open projects',
+  browsed: 'Picked with Browse',
+};
+
+/**
+ * The Folder choices in groups, in the order the host sent them. A saved
+ * folder the host no longer offers gets its own group, so it stays selected.
+ */
+export function folderGroups(folders: readonly LaunchFolder[], current: string): FolderGroup[] {
+  const groups: { label: string; folders: LaunchFolder[] }[] = [];
+  for (const folder of folders) {
+    const label = GROUP_LABELS[folder.source];
+    const group = groups.find((item) => item.label === label);
+    if (group === undefined) {
+      groups.push({ label, folders: [folder] });
+    } else {
+      group.folders.push(folder);
+    }
+  }
+  if (current !== '' && !folders.some((item) => item.folder === current)) {
+    const name = current.slice(current.lastIndexOf('/') + 1) || current;
+    groups.push({ label: 'Used before', folders: [{ name, folder: current, source: 'browsed' }] });
+  }
+  return groups;
 }

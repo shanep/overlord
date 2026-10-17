@@ -170,6 +170,14 @@ export interface AutoApproveRule {
   readonly description: string;
 }
 
+/** A folder the Launcher form offers to run in. */
+export interface LaunchFolder {
+  readonly name: string;
+  readonly folder: string;
+  /** This window's folder (home in a window with none), a project in the fleet, or one picked with Browse. */
+  readonly source: 'window' | 'home' | 'project' | 'browsed';
+}
+
 export interface LauncherState {
   readonly runs: readonly LaunchRun[];
   readonly profiles: readonly LaunchProfile[];
@@ -184,6 +192,10 @@ export interface LauncherState {
   readonly worktrees: readonly WorktreeSummary[];
   /** Where a run works when the form leaves Folder empty. */
   readonly defaultFolder: string;
+  /** The folders the form offers, the default one first. */
+  readonly folders: readonly LaunchFolder[];
+  /** The last folder picked with Browse and when, so the form can select it, or null. */
+  readonly browsed: { readonly folder: string; readonly at: number } | null;
 }
 
 export interface SurfaceSession {
@@ -383,6 +395,7 @@ export type WebviewAction =
   | { readonly type: 'launch'; readonly specs: readonly LaunchSpec[] }
   | { readonly type: 'stopRun'; readonly runId: string }
   | { readonly type: 'stopAll' }
+  | { readonly type: 'browseLaunchFolder' }
   | { readonly type: 'alwaysAllowPermission'; readonly requestId: string }
   | { readonly type: 'saveRule'; readonly rule: AutoApproveRule }
   | { readonly type: 'deleteRule'; readonly ruleId: string }

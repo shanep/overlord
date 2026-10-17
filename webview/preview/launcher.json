@@ -227,5 +227,36 @@
       "overlaps": []
     }
   ],
-  "defaultFolder": "/Users/alex/code/storefront"
+  "defaultFolder": "/Users/alex/code/storefront",
+  "folders": [
+    {
+      "name": "storefront",
+      "folder": "/Users/alex/code/storefront",
+      "source": "window"
+    },
+    {
+      "name": "design-system",
+      "folder": "/Users/alex/code/design-system",
+      "source": "project"
+    },
+    {
+      "name": "payments-service",
+      "folder": "/Users/alex/code/payments-service",
+      "source": "project"
+    },
+    {
+      "name": "storefront-mobile-app-with-a-long-name",
+      "folder": "/Users/alex/code/clients/acme/storefront-mobile-app-with-a-long-name",
+      "source": "project"
+    },
+    {
+      "name": "scratch",
+      "folder": "/Users/alex/scratch",
+      "source": "browsed"
+    }
+  ],
+  "browsed": {
+    "folder": "/Users/alex/scratch",
+    "at": 1
+  }
 }

@@ -21,6 +21,8 @@ const empty: LauncherState = {
   rules: [],
   maxConcurrency: 2,
   defaultFolder: '/work',
+  folders: [{ name: 'work', folder: '/work', source: 'window' }],
+  browsed: null,
   worktrees: [],
 };
 
@@ -37,10 +39,10 @@ describe('LauncherView', () => {
       'Auto-approve rules',
     ]);
     expect(screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toStrictEqual([
-      '1. What should it do?',
-      '2. Which profiles?',
-      '3. Where?',
-      '4. Name and limit (optional)',
+      'What should it do?',
+      'Which profiles?',
+      'Where?',
+      'Name and limit (optional)',
     ]);
     expect(screen.getByText(/use the sparkle button/u)).toBeDefined();
     await expectAccessible(container);
@@ -78,18 +80,18 @@ describe('launch form', () => {
     expect(launch).toHaveProperty('disabled', true);
   });
 
-  it('says what Launch will do and which folder an empty Folder means', async () => {
+  it('says what Launch will do and which folder it runs in', async () => {
     renderView(<LauncherView state={launcherState} />);
-    const folder = screen.getByRole('textbox', { name: 'Folder' });
-    expect(folder).toHaveProperty('placeholder', '/work');
-    expect(screen.getByText('Leave it empty to use /work.')).toBeDefined();
+    const folder = screen.getByRole('combobox', { name: 'Folder' });
+    expect(folder).toHaveProperty('value', '/work');
+    expect(screen.getByText('/work', { selector: '.launch-path' })).toBeDefined();
     await userEvent.type(screen.getByRole('textbox', { name: 'Prompt' }), 'Go');
     expect(
       screen.getByText(
         'Starts 1 run with your usual settings, in its own copy of /work, with no spending limit.',
       ),
     ).toBeDefined();
-    await userEvent.type(folder, ' /repo ');
+    await userEvent.selectOptions(folder, '/repo');
     await userEvent.click(screen.getByRole('checkbox', { name: 'Fast' }));
     await userEvent.click(screen.getByRole('checkbox', { name: 'Deep' }));
     await userEvent.type(screen.getByRole('spinbutton', { name: 'Budget (USD)' }), '2');
@@ -110,7 +112,7 @@ describe('launch form', () => {
     const { api } = renderView(<LauncherView state={launcherState} />);
     await userEvent.type(screen.getByRole('textbox', { name: 'Prompt' }), 'Fix it');
     await userEvent.type(screen.getByRole('textbox', { name: 'Label' }), 'Fixer');
-    await userEvent.type(screen.getByRole('textbox', { name: 'Folder' }), '/repo');
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Folder' }), '/repo');
     await userEvent.type(screen.getByRole('spinbutton', { name: 'Budget (USD)' }), '3');
     expect(screen.getByRole('checkbox', { name: 'Own git worktree' })).toHaveProperty(
       'checked',
@@ -193,9 +195,50 @@ describe('launch form', () => {
     renderView(<LauncherView state={launcherState} />, api);
     expect(screen.getByRole('textbox', { name: 'Prompt' })).toHaveProperty('value', 'Saved prompt');
     expect(screen.getByRole('textbox', { name: 'Label' })).toHaveProperty('value', 'Saved');
-    expect(screen.getByRole('textbox', { name: 'Folder' })).toHaveProperty('value', '/saved');
+    expect(screen.getByRole('combobox', { name: 'Folder' })).toHaveProperty('value', '/saved');
+    expect(screen.getByRole('group', { name: 'Used before' })).toBeDefined();
     expect(screen.getByRole('checkbox', { name: 'Deep' })).toHaveProperty('checked', true);
     expect(screen.getByRole('checkbox', { name: 'Fast' })).toHaveProperty('checked', false);
+  });
+});
+
+describe('folder picker', () => {
+  it('groups this window and the open projects, and ends with Browse', () => {
+    renderView(<LauncherView state={launcherState} />);
+    const folder = screen.getByRole('combobox', { name: 'Folder' });
+    expect(
+      within(folder)
+        .getAllByRole('group')
+        .map((group) => group.getAttribute('label')),
+    ).toStrictEqual(['This window', 'Open projects']);
+    expect(
+      within(folder)
+        .getAllByRole('option')
+        .map((option) => option.textContent),
+    ).toStrictEqual(['work', 'repo', 'Browse…']);
+  });
+
+  it('asks the host to browse and keeps the folder until one comes back', async () => {
+    const { api } = renderView(<LauncherView state={launcherState} />);
+    const folder = screen.getByRole('combobox', { name: 'Folder' });
+    await userEvent.selectOptions(folder, 'Browse…');
+    expect(api.actions()).toStrictEqual([{ type: 'browseLaunchFolder' }]);
+    expect(folder).toHaveProperty('value', '/work');
+  });
+
+  it('selects a folder picked with Browse once, and not again after you change it', async () => {
+    const browsed: LauncherState = {
+      ...launcherState,
+      folders: [...launcherState.folders, { name: 'other', folder: '/other', source: 'browsed' }],
+      browsed: { folder: '/other', at: 5 },
+    };
+    const { api } = renderView(<LauncherView state={browsed} />);
+    const folder = screen.getByRole('combobox', { name: 'Folder' });
+    expect(folder).toHaveProperty('value', '/other');
+    expect(screen.getByRole('group', { name: 'Picked with Browse' })).toBeDefined();
+    await userEvent.selectOptions(folder, '/repo');
+    expect(folder).toHaveProperty('value', '/repo');
+    expect(api.saved).toMatchObject({ 'launcher.cwd': '/repo', 'launcher.browsedAt': 5 });
   });
 });
 

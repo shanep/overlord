@@ -49,6 +49,8 @@ export function LauncherView(props: { readonly state: LauncherState }): ReactEle
         profiles={state.profiles}
         drafts={state.drafts}
         defaultFolder={state.defaultFolder}
+        folders={state.folders}
+        browsed={state.browsed}
       />
       {waiting ? inbox : null}
       <RunsTable

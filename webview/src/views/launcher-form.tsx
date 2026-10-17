@@ -1,15 +1,24 @@
 // The launch form, in the order you fill it in: what to do, which profiles,
 // where, and the optional limits. Each field says what it is for, and the
-// line beside Launch says what will happen or what is still missing.
+// bar under the form says what Launch will do or what is still missing.
 
 import type { ReactElement } from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import type { LauncherState } from '../../../src/shared/protocol.js';
-import { isString, isStringArray } from '../guards.js';
+import { isNumber, isString, isStringArray } from '../guards.js';
 import { usePersistentState, usePostAction } from '../vscode-context.js';
 
-import { buildSpecs, launchSummary, parseBudget, runCountLabel } from './launcher-values.js';
+import {
+  buildSpecs,
+  folderGroups,
+  launchSummary,
+  parseBudget,
+  runCountLabel,
+} from './launcher-values.js';
+
+/** The Folder option that opens the folder picker instead of choosing a folder. */
+const BROWSE = ':browse';
 
 function DraftPicker(props: {
   readonly drafts: LauncherState['drafts'];
@@ -22,7 +31,7 @@ function DraftPicker(props: {
   return (
     <div className="launch-draft">
       <label>
-        Load draft
+        <span className="muted">Load draft</span>
         <select
           value=""
           onChange={(event) => {
@@ -53,7 +62,7 @@ function ProfilePicker(props: {
   const post = usePostAction();
   if (profiles.length === 0) {
     return (
-      <div className="toolbar">
+      <div className="launch-empty">
         <span className="muted">
           No profiles yet, so you get 1 run with your usual settings. Profiles live in Knobs.
         </span>
@@ -72,7 +81,7 @@ function ProfilePicker(props: {
     <fieldset className="chips launch-profiles" aria-describedby="launch-profiles-hint">
       <legend className="visually-hidden">Profiles</legend>
       {profiles.map((profile) => (
-        <label key={profile.id} className="pill-check">
+        <label key={profile.id} className="pill-check" title={profile.model ?? undefined}>
           <input
             type="checkbox"
             checked={checked.includes(profile.id)}
@@ -91,16 +100,60 @@ function ProfilePicker(props: {
   );
 }
 
+function FolderPicker(props: {
+  readonly folders: LauncherState['folders'];
+  readonly folder: string;
+  readonly onChange: (folder: string) => void;
+}): ReactElement {
+  const { folders, folder, onChange } = props;
+  const post = usePostAction();
+  return (
+    <>
+      <label className="field">
+        <span>Folder</span>
+        <select
+          value={folder}
+          aria-describedby="launch-folder-hint"
+          onChange={(event) => {
+            if (event.target.value === BROWSE) {
+              post({ type: 'browseLaunchFolder' });
+            } else {
+              onChange(event.target.value);
+            }
+          }}
+        >
+          {folderGroups(folders, folder).map((group) => (
+            <optgroup key={group.label} label={group.label}>
+              {group.folders.map((item) => (
+                <option key={item.folder} value={item.folder} title={item.folder}>
+                  {item.name}
+                </option>
+              ))}
+            </optgroup>
+          ))}
+          <option value={BROWSE}>Browse…</option>
+        </select>
+      </label>
+      <p id="launch-folder-hint" className="hint">
+        Runs in <span className="mono launch-path">{folder}</span>. Browse picks any other folder.
+      </p>
+    </>
+  );
+}
+
 export function LaunchFormView(props: {
   readonly profiles: LauncherState['profiles'];
   readonly drafts: LauncherState['drafts'];
   readonly defaultFolder: string;
+  readonly folders: LauncherState['folders'];
+  readonly browsed: LauncherState['browsed'];
 }): ReactElement {
-  const { profiles, drafts, defaultFolder } = props;
+  const { profiles, drafts, defaultFolder, folders, browsed } = props;
   const post = usePostAction();
   const [prompt, setPrompt] = usePersistentState('launcher.prompt', '', isString);
   const [label, setLabel] = usePersistentState('launcher.label', '', isString);
   const [cwd, setCwd] = usePersistentState('launcher.cwd', '', isString);
+  const [browsedAt, setBrowsedAt] = usePersistentState('launcher.browsedAt', 0, isNumber);
   const [checked, setChecked] = usePersistentState<readonly string[]>(
     'launcher.profiles',
     [],
@@ -108,122 +161,131 @@ export function LaunchFormView(props: {
   );
   const [worktree, setWorktree] = useState(true);
   const [budgetText, setBudgetText] = useState('');
+  // A folder picked with Browse arrives with the next state, so select it once.
+  useEffect(() => {
+    if (browsed !== null && browsed.at > browsedAt) {
+      setCwd(browsed.folder);
+      setBrowsedAt(browsed.at);
+    }
+  }, [browsed, browsedAt, setCwd, setBrowsedAt]);
   const budget = parseBudget(budgetText);
   const selected = profiles.filter((profile) => checked.includes(profile.id));
   const maxBudgetUsd = budget.ok ? budget.value : null;
   const specs = buildSpecs({ prompt, label, cwd, worktree, maxBudgetUsd }, selected);
   const canLaunch = prompt.trim() !== '' && budget.ok;
+  const folder = cwd.trim() === '' ? defaultFolder : cwd.trim();
   const summary = launchSummary({
     prompt,
-    folder: cwd.trim() === '' ? defaultFolder : cwd.trim(),
+    folder,
     worktree,
     maxBudgetUsd,
     profileNames: selected.map((profile) => profile.name),
   });
   return (
     <section className="card launch-card" aria-labelledby="launch-heading">
-      <h2 id="launch-heading" className="launch-title">
-        New run
-      </h2>
-
-      <h3 className="launch-step">1. What should it do?</h3>
-      <DraftPicker
-        drafts={drafts}
-        onPick={(draft) => {
-          setPrompt(draft.prompt);
-          setLabel(draft.label);
-        }}
-      />
-      <label className="field">
-        <span>Prompt</span>
-        <textarea
-          value={prompt}
-          aria-describedby="launch-prompt-hint"
-          placeholder="For example: Add a test for the date parser and make sure npm test passes."
-          onChange={(event) => {
-            setPrompt(event.target.value);
+      <div className="launch-head">
+        <h2 id="launch-heading" className="launch-title">
+          New run
+        </h2>
+        <span className="spacer" />
+        <DraftPicker
+          drafts={drafts}
+          onPick={(draft) => {
+            setPrompt(draft.prompt);
+            setLabel(draft.label);
           }}
         />
-      </label>
-      <p id="launch-prompt-hint" className="hint">
-        A run works on its own until it finishes, so say what done looks like.
-      </p>
-
-      <h3 className="launch-step">2. Which profiles?</h3>
-      <p id="launch-profiles-hint" className="hint">
-        A profile is a saved model and settings. Each one you tick runs the same prompt, so you can
-        compare them side by side. Tick none for 1 run with your usual settings.
-      </p>
-      <ProfilePicker profiles={profiles} checked={checked} onChange={setChecked} />
-
-      <h3 className="launch-step">3. Where?</h3>
-      <label className="field">
-        <span>Folder</span>
-        <input
-          type="text"
-          value={cwd}
-          placeholder={defaultFolder}
-          aria-describedby="launch-folder-hint"
-          onChange={(event) => {
-            setCwd(event.target.value);
-          }}
-        />
-      </label>
-      <p id="launch-folder-hint" className="hint">
-        Leave it empty to use {defaultFolder}.
-      </p>
-      <label>
-        <input
-          type="checkbox"
-          checked={worktree}
-          aria-describedby="launch-worktree-hint"
-          onChange={(event) => {
-            setWorktree(event.target.checked);
-          }}
-        />
-        Own git worktree
-      </label>
-      <p id="launch-worktree-hint" className="hint">
-        Each run gets its own copy of the repository, so runs never change your files or each
-        other&apos;s. When a run finishes, land or discard its copy under Worktrees.
-      </p>
-
-      <h3 className="launch-step">4. Name and limit (optional)</h3>
-      <div className="launch-limits">
-        <label>
-          Label
-          <input
-            type="text"
-            value={label}
-            placeholder="first line of the prompt"
-            aria-describedby="launch-label-hint"
-            onChange={(event) => {
-              setLabel(event.target.value);
-            }}
-          />
-        </label>
-        <label>
-          Budget (USD)
-          <input
-            type="number"
-            min="0"
-            step="0.5"
-            value={budgetText}
-            placeholder="none"
-            aria-describedby="launch-budget-hint"
-            onChange={(event) => {
-              setBudgetText(event.target.value);
-            }}
-          />
-        </label>
       </div>
-      <p className="hint">
-        <span id="launch-label-hint">The label names the run in the table below.</span>{' '}
-        <span id="launch-budget-hint">A budget stops a run once it has spent that much.</span>
-      </p>
 
-      <div className="form-actions launch-actions">
-        <span id="launch-summary" className="muted">
+      <div className="launch-body">
+        <div className="launch-group launch-prompt">
+          <h3 className="launch-step">What should it do?</h3>
+          <label className="field">
+            <span>Prompt</span>
+            <textarea
+              value={prompt}
+              aria-describedby="launch-prompt-hint"
+              placeholder="For example: Add a test for the date parser and make sure npm test passes."
+              onChange={(event) => {
+                setPrompt(event.target.value);
+              }}
+            />
+          </label>
+          <p id="launch-prompt-hint" className="hint">
+            A run works on its own until it finishes, so say what done looks like.
+          </p>
+        </div>
+
+        <div className="launch-side">
+          <div className="launch-group">
+            <h3 className="launch-step">Which profiles?</h3>
+            <p id="launch-profiles-hint" className="hint">
+              Each profile you pick runs the same prompt with its own model and settings, so you can
+              compare them. Pick none for 1 run with your usual settings.
+            </p>
+            <ProfilePicker profiles={profiles} checked={checked} onChange={setChecked} />
+          </div>
+
+          <div className="launch-group">
+            <h3 className="launch-step">Where?</h3>
+            <FolderPicker folders={folders} folder={folder} onChange={setCwd} />
+            <label className="switch">
+              <input
+                type="checkbox"
+                checked={worktree}
+                aria-describedby="launch-worktree-hint"
+                onChange={(event) => {
+                  setWorktree(event.target.checked);
+                }}
+              />
+              Own git worktree
+            </label>
+            <p id="launch-worktree-hint" className="hint">
+              Each run gets its own copy of the repository, so runs never change your files or each
+              other&apos;s. Land or discard the copy under Worktrees when it finishes.
+            </p>
+          </div>
+
+          <div className="launch-group">
+            <h3 className="launch-step">Name and limit (optional)</h3>
+            <div className="launch-limits">
+              <label className="field">
+                <span>Label</span>
+                <input
+                  type="text"
+                  value={label}
+                  placeholder="first line of the prompt"
+                  aria-describedby="launch-label-hint"
+                  onChange={(event) => {
+                    setLabel(event.target.value);
+                  }}
+                />
+              </label>
+              <label className="field">
+                <span>Budget (USD)</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  value={budgetText}
+                  placeholder="none"
+                  aria-describedby="launch-budget-hint"
+                  onChange={(event) => {
+                    setBudgetText(event.target.value);
+                  }}
+                />
+              </label>
+            </div>
+            <p className="hint">
+              <span id="launch-label-hint">The label names the run under Runs.</span>{' '}
+              <span id="launch-budget-hint">A budget stops a run once it has spent that much.</span>
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="launch-bar">
+        <span id="launch-summary" className="launch-summary">
           {summary}
         </span>
         {budget.ok ? null : (
@@ -231,10 +293,9 @@ export function LaunchFormView(props: {
             {budget.error}
           </span>
         )}
-        <span className="spacer" />
         <button
           type="button"
-          className="primary"
+          className="primary launch-go"
           disabled={!canLaunch}
           aria-describedby="launch-summary"
           onClick={() => {
