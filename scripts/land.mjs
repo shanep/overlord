@@ -13,7 +13,7 @@
 // found a blocking problem.
 import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { linkSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
@@ -23,8 +23,16 @@ import { review } from './review.mjs';
 
 const POLL_MS = 1000;
 const ATTEMPTS = 5;
-/** Git's own line for a ref the remote turned away, not words in the hook's output. */
-const GIT_REJECTED = /^ ! \[(?:remote )?rejected\]/mu;
+/**
+ * Git's own lines for a push that lost a race: the branch moved first
+ * ("fetch first", "non-fast-forward") or moved while the server updated it
+ * ("cannot lock ref"). Other rejections, such as a protected branch, are not
+ * races, and words in the hook's output never match.
+ */
+const RACED = [
+  /^ ! \[rejected\] .*\((?:fetch first|non-fast-forward)\)$/mu,
+  /^ ! \[remote rejected\] .*\(cannot lock ref/mu,
+];
 const flags = new Set(process.argv.slice(2));
 const cwd = process.cwd();
 
@@ -90,25 +98,28 @@ function holderOf(lock) {
 }
 
 /**
- * Clears a lock whose holder died. Renaming it away is atomic, so when two
- * sessions both see the dead holder only one moves the file, and a lock a
- * live session took in between is put back.
+ * Clears a lock whose holder died. Only one session clears at a time, under a
+ * short reap lock, and it checks the holder again first, so a lock a live
+ * session took in between is never removed.
  */
 function takeBack(lock, deadPid) {
-  const moved = `${lock}.${String(process.pid)}`;
+  const reap = `${lock}.reap`;
+  const reaper = holderOf(reap);
+  if (reaper !== null && !alive(reaper.pid)) {
+    rmSync(reap, { force: true });
+  }
   try {
-    renameSync(lock, moved);
+    writeFileSync(reap, JSON.stringify({ pid: process.pid }), { flag: 'wx' });
   } catch {
     return;
   }
-  if (holderOf(moved)?.pid !== deadPid) {
-    try {
-      linkSync(moved, lock);
-    } catch {
-      // Someone else holds it now, and they keep it.
+  try {
+    if (holderOf(lock)?.pid === deadPid) {
+      rmSync(lock, { force: true });
     }
+  } finally {
+    rmSync(reap, { force: true });
   }
-  rmSync(moved, { force: true });
 }
 
 /** Waits for the lock. A lock whose holder died is taken back. */
@@ -144,22 +155,33 @@ function release(lock) {
   }
 }
 
-/** Pushes HEAD with the hooks running and the output shown. True when it went through. */
+/** The full output of the last push, so a failed check can be read after the fact. */
+function pushLog() {
+  return path.join(path.resolve(cwd, must(['rev-parse', '--git-dir'])), 'land-push.log');
+}
+
+/** Pushes HEAD with the hooks running and the output shown and saved. */
 async function push(branch) {
+  const log = pushLog();
   return new Promise((resolve) => {
     const child = spawn('git', ['push', 'origin', `HEAD:refs/heads/${branch}`], {
       cwd,
-      stdio: ['ignore', 'inherit', 'pipe'],
+      stdio: ['ignore', 'pipe', 'pipe'],
     });
     let output = '';
+    child.stdout.on('data', (chunk) => {
+      output += chunk;
+      process.stdout.write(chunk);
+    });
     child.stderr.on('data', (chunk) => {
       output += chunk;
       process.stderr.write(chunk);
     });
     child.on('exit', (code) => {
+      writeFileSync(log, output);
       resolve({
         ok: code === 0,
-        raced: GIT_REJECTED.test(output),
+        raced: RACED.some((pattern) => pattern.test(output)),
       });
     });
   });
@@ -200,7 +222,9 @@ async function land(lock, branch) {
       return 1;
     }
     if (!result.raced) {
-      say('the push failed. Fix what the check reported, commit and land again.');
+      say(
+        `the push failed. The whole output is in ${pushLog()}. Fix what it reports, commit and land again.`,
+      );
       return 1;
     }
     // Someone pushed without the lock. Rebase on what they landed and try again.

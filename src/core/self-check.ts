@@ -11,7 +11,7 @@ import path from 'node:path';
 import { overlordHome } from './overlord-home.js';
 import type { ClaudePaths } from './paths.js';
 
-export interface ViewCheck {
+interface ViewCheck {
   readonly view: string;
   readonly ok: boolean;
   /** Time to build the state the second time, once the caches had loaded. */
@@ -21,7 +21,7 @@ export interface ViewCheck {
   readonly error: string | null;
 }
 
-export interface CheckedError {
+interface CheckedError {
   readonly source: string;
   readonly message: string;
 }

@@ -3,10 +3,11 @@
 // development host would reload on every `npm run build`. A reload ends every
 // Launcher run, so a new build waits for them to finish.
 
-import { statSync, unwatchFile, watchFile } from 'node:fs';
+import { readFileSync, statSync, unwatchFile, watchFile } from 'node:fs';
 import path from 'node:path';
 import * as vscode from 'vscode';
 
+import { isPlainObject } from '../core/knobs/json.js';
 import type { ClaudePaths } from '../core/paths.js';
 import type { SelfCheckReport } from '../core/self-check.js';
 import { selfCheckPath, writeSelfCheck } from '../core/self-check.js';
@@ -88,6 +89,17 @@ export function reloadOnUpdate(
   };
 }
 
+/** The bundle mtime the last self-check ran on, or null when there is none. */
+function checkedBundle(file: string): number | null {
+  try {
+    const saved: unknown = JSON.parse(readFileSync(file, 'utf8'));
+    const mtime = isPlainObject(saved) ? saved['bundleMtimeMs'] : null;
+    return typeof mtime === 'number' ? mtime : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Runs the self-check once, a moment after an installed build loads, and
  * writes the result for the install script. A development host skips it.
@@ -104,10 +116,17 @@ export function selfCheckOnLoad(
   }
   const bundle = path.join(context.extensionUri.fsPath, 'dist', 'extension.cjs');
   const bundleMtimeMs = statSync(bundle, { throwIfNoEntry: false })?.mtimeMs ?? 0;
+  const file = selfCheckPath(paths);
+  // Only the first load of a new build checks itself. Later windows and reloads skip it.
+  if (checkedBundle(file) === bundleMtimeMs) {
+    return new vscode.Disposable(() => {
+      // Nothing was started.
+    });
+  }
   const timer = setTimeout(() => {
     // Like the markers, the check only feeds the install script, so a failure stays quiet.
     run()
-      .then(async (report) => writeSelfCheck(selfCheckPath(paths), { ...report, bundleMtimeMs }))
+      .then(async (report) => writeSelfCheck(file, { ...report, bundleMtimeMs }))
       .catch(ignore);
   }, CHECK_DELAY_MS);
   return new vscode.Disposable(() => {

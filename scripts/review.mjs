@@ -9,6 +9,7 @@
 // found a blocking problem. LAND_REVIEW_MODEL picks the model (sonnet by
 // default, to go easy on the usage limit), and changes under
 // LAND_REVIEW_MIN_LINES changed lines (30) are not reviewed.
+// cspell:words numstat
 import { spawn, spawnSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
