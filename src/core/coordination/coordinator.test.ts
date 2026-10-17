@@ -255,15 +255,19 @@ describe('Coordinator', () => {
       const { coordinator } = setUp([worktree({ id: 'a' }), worktree({ id: 'b' })], tools);
       coordinator.handle(start('a', '/wt/a'));
       coordinator.handle(start('b', '/wt/b'));
-      const patch = '*** Begin Patch\n*** Update File: src/x.ts\n@@\n-a\n+b\n*** End Patch';
+      const patch =
+        '*** Begin Patch\n*** Update File: src/x.ts\n*** Delete File: z.ts\n*** End Patch';
       coordinator.handle(edited('b', '/wt/b', { command: patch }, 'apply_patch'));
-      const both = {
+      const all = {
         ...edit('a', '/wt/a', ''),
         tool_name: 'apply_patch',
         tool_input: { command: `*** Begin Patch\n*** Add File: y.ts\n${patch}` },
       };
-      expect(denyReason(coordinator.handle(both))).toContain('also changing src/x.ts');
-      expect(coordinator.handle(both)).toBeNull();
+      const reason = denyReason(coordinator.handle(all));
+      expect(reason).toContain('also changing src/x.ts');
+      expect(reason).toContain('also changing z.ts');
+      expect(reason).not.toContain('y.ts');
+      expect(coordinator.handle(all)).toBeNull();
     });
 
     it('ignores other tools, unknown sessions and files outside the workspace', () => {

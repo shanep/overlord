@@ -237,14 +237,9 @@ export class Coordinator {
       return null;
     }
     const cwd = this.sessions.get(id)?.cwd ?? '';
-    // A patch can write many files. It pauses on the first one a peer is changing.
-    for (const raw of files) {
-      const block = this.pauseFor(id, path.resolve(cwd, raw), found);
-      if (block !== null) {
-        return { block };
-      }
-    }
-    return null;
+    // A patch can write many files, so one pause names every file a peer is changing.
+    const warnings = files.flatMap((raw) => this.pauseFor(id, path.resolve(cwd, raw), found) ?? []);
+    return warnings.length === 0 ? null : { block: warnings.join('\n\n') };
   }
 
   /** The warning for an edit to a file a peer is changing, the first time only, or null. */

@@ -192,7 +192,7 @@ export interface HookDialect {
 }
 
 /** Reads every file a tool call writes from its whole input, such as the headers of a patch. */
-export type PathExtractor = (input: unknown) => readonly string[];
+type PathExtractor = (input: unknown) => readonly string[];
 
 /**
  * Tool names that write files. Each one has the input fields that can hold
