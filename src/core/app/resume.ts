@@ -12,7 +12,9 @@ import type { SurfaceSession } from '../../shared/protocol.js';
 import { openClaudeTab } from './claude-tabs.js';
 import { messageOf } from './errors.js';
 import type { Runtime } from './runtime.js';
-import { heldWorktreeEnv, startSession, worktreeRoot } from './worktrees.js';
+import { ranOnBridge } from './session-backend.js';
+import type { Backend } from './worktrees.js';
+import { bridgeBackend, CLAUDE, heldWorktreeEnv, startSession, worktreeRoot } from './worktrees.js';
 
 export const UPDATE = 'Bring up to date';
 export const AS_IS = 'Continue as is';
@@ -135,7 +137,12 @@ type Plan = { readonly kind: 'stop' } | { readonly kind: 'resume'; readonly prom
  * that. A session in the shared checkout continues as a copy in a new
  * worktree right here, since a session cannot move.
  */
-async function settleGaps(rt: Runtime, at: Continuing, gaps: readonly Gap[]): Promise<Plan> {
+async function settleGaps(
+  rt: Runtime,
+  at: Continuing,
+  gaps: readonly Gap[],
+  bridge: boolean,
+): Promise<Plan> {
   const { session, cwd, name } = at;
   const title = session.title === '' ? 'This session' : `"${session.title}"`;
   const message = [
@@ -157,6 +164,7 @@ async function settleGaps(rt: Runtime, at: Continuing, gaps: readonly Gap[]): Pr
       forkOf: session.id,
       prompt: refreshPrompt([moved]),
       agent: session.agent,
+      bridge,
     };
     await startSession(rt, cwd, start);
     return { kind: 'stop' };
@@ -171,17 +179,28 @@ async function settleGaps(rt: Runtime, at: Continuing, gaps: readonly Gap[]): Pr
 /** Continues a session in its folder, after saying what it is missing when it is missing something. */
 export async function continueHere(rt: Runtime, at: Continuing): Promise<void> {
   const { session, cwd, name, restored } = at;
+  // A session goes back to the backend it ran on, so a Boise State one stays on the bridge.
+  const bridge = await ranOnBridge(rt.paths, cwd, session.id);
+  const backend: Backend | null = bridge ? await bridgeBackend(rt) : CLAUDE;
+  if (backend === null) {
+    await letGo(rt, session.id);
+    return;
+  }
   const entry = await rt.worktrees.entryFor(cwd);
   if (entry !== null && !restored) {
     await holdWorktree(rt, session.id, entry.id);
   }
   const gaps = await findGaps(rt, cwd, restored);
-  const plan: Plan = gaps.length === 0 ? { kind: 'resume' } : await settleGaps(rt, at, gaps);
+  const plan: Plan =
+    gaps.length === 0 ? { kind: 'resume' } : await settleGaps(rt, at, gaps, bridge);
   if (plan.kind === 'stop') {
     return;
   }
-  const env = await heldWorktreeEnv(rt, session.id);
+  const held = await heldWorktreeEnv(rt, session.id);
+  const env =
+    held === undefined && backend.env === undefined ? undefined : { ...held, ...backend.env };
   await openClaudeTab(rt, {
+    ...backend,
     agent: session.agent,
     name,
     cwd,

@@ -134,19 +134,19 @@ const PLAIN_START: SessionStart = { name: 'Claude Code' };
 const BRIDGE_START: SessionStart = { name: 'Boise State', bridge: true };
 
 /** What a tab adds for where its session runs: nothing, or the bridge's env and args. */
-interface Backend {
+export interface Backend {
   readonly env?: Readonly<Record<string, string>>;
   readonly args?: readonly string[];
   readonly foreground?: boolean;
 }
 
-const CLAUDE: Backend = {};
+export const CLAUDE: Backend = {};
 
 /**
  * The bridge's env and args, or null after saying why it cannot start. Its
  * sessions run in their tab, since the sidecar goes away with the window.
  */
-async function bridgeBackend(rt: Runtime): Promise<Backend | null> {
+export async function bridgeBackend(rt: Runtime): Promise<Backend | null> {
   const resolve = rt.host.resolveBridgeEnv;
   if (resolve === undefined) {
     rt.host.showInfo('The Boise State bridge is not available in this window.');

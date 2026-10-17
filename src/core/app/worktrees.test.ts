@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 
 import { fakeQueries, resultMessage } from '../../../test/fake-claude/fake-query.js';
 import { BOISESTATE_PROFILE } from '../bridge/boisestate.js';
+import { transcriptPathFor } from '../surfaces/desktop.js';
 import type { Exec } from '../sync/exec.js';
 import { SETUP_SCRIPT } from '../worktrees/setup.js';
 import {
@@ -675,6 +676,32 @@ describe('worktrees in the app', { timeout: 30_000 }, () => {
         'Overlord could not update the branch: The worktree has uncommitted changes. Commit or discard them first.',
       );
       expect(lastTerminal(test).args[2]).toContain('and could not:');
+    });
+
+    it('go back to Boise State when that is where they ran', async () => {
+      const test = await bridged();
+      const plain = path.join(world.dir, 'plain');
+      await mkdir(plain);
+      await endedSession(test, plain);
+      const transcript = transcriptPathFor(test.env.paths, plain, 'old');
+      await mkdir(path.dirname(transcript), { recursive: true });
+      const reply = { type: 'assistant', message: { model: 'global.anthropic.claude-opus-5-5' } };
+      await writeFile(transcript, `${JSON.stringify(reply)}\n`);
+      await continueOld(test, null);
+      expect(lastTerminal(test)).toMatchObject({
+        cwd: plain,
+        args: ['--model', 'claude-opus-5-5', '--strict-mcp-config', '--resume', 'old'],
+        env: { ANTHROPIC_BASE_URL: 'http://127.0.0.1:9', ANTHROPIC_AUTH_TOKEN: 'tok' },
+      });
+
+      const before = test.env.host.terminals.length;
+      test.env.host.resolveBridgeEnv = async (): Promise<Record<string, string>> => {
+        await Promise.resolve();
+        throw new Error('No Boise State API key is set.');
+      };
+      await continueOld(test, null);
+      expect(test.env.host.terminals).toHaveLength(before);
+      expect(test.env.host.warnings.at(-1)).toBe('No Boise State API key is set.');
     });
 
     it('say nothing when there is nothing missing', async () => {
