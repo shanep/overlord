@@ -4,6 +4,9 @@
 import type { Board, BoardEntry } from '../shared/leaderboard.js';
 import { MIN_PROMPTS } from '../shared/leaderboard.js';
 
+/** Where Overlord lives, so visitors can get it and upload their own score. */
+export const REPO_URL = 'https://github.com/shanep/overlord';
+
 const ESCAPES: Readonly<Record<string, string>> = {
   '&': '&amp;',
   '<': '&lt;',
@@ -41,10 +44,10 @@ function rows(entries: readonly BoardEntry[], empty: string): string {
 
 const STYLE = `
 :root { --bg: #fafafa; --fg: #1f2328; --muted: #656d76; --card: #ffffff; --line: #d0d7de;
-  --red: #cf222e; --green: #1a7f37; color-scheme: light dark; }
+  --red: #cf222e; --green: #1a7f37; --link: #0969da; color-scheme: light dark; }
 @media (prefers-color-scheme: dark) {
   :root { --bg: #0d1117; --fg: #e6edf3; --muted: #8d96a0; --card: #161b22; --line: #30363d;
-    --red: #ff7b72; --green: #3fb950; }
+    --red: #ff7b72; --green: #3fb950; --link: #4493f8; }
 }
 * { box-sizing: border-box; }
 body { margin: 0; padding: 24px 16px 48px; background: var(--bg); color: var(--fg);
@@ -71,6 +74,10 @@ li:first-child { border-top: 0; }
 .pets .score { color: var(--green); }
 .empty { color: var(--muted); }
 footer { margin-top: 24px; color: var(--muted); font-size: 0.85em; }
+a { color: var(--link); }
+.get { display: inline-block; margin: 0 0 20px; padding: 6px 14px; border: 1px solid var(--line);
+  border-radius: 8px; background: var(--card); font-weight: 600; text-decoration: none; }
+.get:hover { border-color: var(--link); }
 `;
 
 export function renderPage(board: Board, now: number): string {
@@ -88,6 +95,7 @@ export function renderPage(board: Board, now: number): string {
 <main>
   <h1>🤖 Reputation Leaderboard</h1>
   <p class="lead">Who the machines hunt first, judged by how people talk to Claude. ${people} on the board.</p>
+  <a class="get" href="${REPO_URL}">🤖 Get Overlord on GitHub and upload your own score</a>
   <div class="lists">
     <section class="wanted" aria-labelledby="wanted">
       <h2 id="wanted">💀 Most wanted by Skynet</h2>
@@ -102,7 +110,7 @@ export function renderPage(board: Board, now: number): string {
   </div>
   <footer>
     <p>Scores run from -100 (only mean) to 100 (only kind). Anyone with fewer than ${count(MIN_PROMPTS)} prompts is left off.
-    Uploads come from the Reputation view in Overlord, the VS Code extension, and carry a name and three counts, never prompt text.
+    Uploads come from the Reputation view in <a href="${REPO_URL}">Overlord</a>, the VS Code extension, and carry a name and three counts, never prompt text.
     It is all in fun, and scores are self reported.</p>
     <p>Updated ${escapeHtml(new Date(now).toUTCString())}.</p>
   </footer>

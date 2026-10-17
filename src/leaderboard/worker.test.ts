@@ -4,7 +4,7 @@ import type { Board, Standing } from '../shared/leaderboard.js';
 import { isBoard, isStanding, UPLOADS_PER_DAY } from '../shared/leaderboard.js';
 import { reputationScore } from '../shared/reputation.js';
 
-import { escapeHtml } from './page.js';
+import { escapeHtml, REPO_URL } from './page.js';
 import { cleanName, utcDay } from './store.js';
 import { fakeD1, fakeGitHub } from './test-helpers/fake-d1.js';
 import type { Deps } from './worker.js';
@@ -213,6 +213,7 @@ describe('leaderboard worker', () => {
     expect(html).not.toContain('<script>x');
     expect(html).toContain('1 person on the board');
     expect(html).toContain('Somebody say please.');
+    expect(html).toContain(`<a class="get" href="${REPO_URL}">`);
   });
 
   it('only asks GitHub when a token is sent, and 404s anything else', async () => {
