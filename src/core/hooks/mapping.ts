@@ -175,6 +175,22 @@ export function additionalContextOf(output: HookOutput | null): string | null {
 }
 
 /**
+ * Adds text to the systemMessage an output carries, which Claude Code shows
+ * the user rather than the model. Null text leaves output as it is.
+ */
+export function withSystemMessage(
+  output: HookOutput | null,
+  text: string | null,
+): HookOutput | null {
+  if (text === null) {
+    return output;
+  }
+  const before: unknown = output?.['systemMessage'];
+  const message = typeof before === 'string' && before !== '' ? `${before}\n\n${text}` : text;
+  return { ...output, systemMessage: message };
+}
+
+/**
  * Adds text to the additionalContext an output carries, or makes an output
  * for event that carries just the text. Null text leaves output as it is.
  */

@@ -7,10 +7,12 @@ import {
   permissionOutput,
   preToolUseDenyOutput,
   ruleDenyMessage,
+  sessionStartOutput,
   toAgentNode,
   toInstructionLoaded,
   toPermissionRequest,
   withContext,
+  withSystemMessage,
 } from './mapping.js';
 import type {
   InstructionsLoadedPayload,
@@ -245,6 +247,28 @@ describe('withContext', () => {
         permissionDecisionReason: 'no',
         additionalContext: 'check',
       },
+    });
+  });
+});
+
+describe('withSystemMessage', () => {
+  it('leaves the output alone without text', () => {
+    expect(withSystemMessage(null, null)).toBeNull();
+    const deny = preToolUseDenyOutput('no');
+    expect(withSystemMessage(deny, null)).toBe(deny);
+  });
+
+  it('adds the message to an output, or makes one', () => {
+    expect(withSystemMessage(null, 'seen')).toStrictEqual({ systemMessage: 'seen' });
+    expect(withSystemMessage(sessionStartOutput('ctx'), 'seen')).toStrictEqual({
+      hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: 'ctx' },
+      systemMessage: 'seen',
+    });
+  });
+
+  it('appends to a message already there', () => {
+    expect(withSystemMessage({ systemMessage: 'first' }, 'second')).toStrictEqual({
+      systemMessage: 'first\n\nsecond',
     });
   });
 });

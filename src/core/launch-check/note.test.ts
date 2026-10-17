@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { NOT_SET_UP_RULE, SET_UP_RULE, WARNING_RULE, compatNote } from './note.js';
+import { NOT_SET_UP_RULE, SET_UP_RULE, WARNING_RULE, compatNote, compatSummary } from './note.js';
 
 const at = (time: number): string => `t${String(time)}`;
 
@@ -68,5 +68,38 @@ describe('compatNote', () => {
         /^Start your first reply with one line saying you checked this project for Overlord compatibility/,
       );
     }
+  });
+});
+
+describe('compatSummary', () => {
+  it('keeps the verdict, what is not available and the warnings, not the notes or the rule', () => {
+    const note = compatNote(
+      {
+        folder: '/src/wt-apps',
+        checkedAt: 5,
+        findings: [
+          { level: 'info', text: 'Fine.' },
+          { level: 'warn', text: 'Odd.' },
+          { level: 'missing', text: 'Gone.' },
+        ],
+      },
+      at,
+    );
+    expect(compatSummary(note)).toBe(
+      [
+        'Overlord compatibility check for wt-apps at t5. This project is not fully set up for Overlord, so some Overlord features will not work in this session.',
+        'Not available:',
+        '- Gone.',
+        'Warnings:',
+        '- Odd.',
+      ].join('\n'),
+    );
+  });
+
+  it('keeps just the verdict when there is nothing to raise', () => {
+    const note = compatNote({ folder: '/r', checkedAt: 1, findings: [] }, at);
+    expect(compatSummary(note)).toBe(
+      'Overlord compatibility check for r at t1. This project is set up for Overlord.',
+    );
   });
 });

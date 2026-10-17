@@ -43,6 +43,18 @@ function ruleFor(absent: readonly Finding[], warnings: readonly Finding[]): stri
   return warnings.length > 0 ? WARNING_RULE : SET_UP_RULE;
 }
 
+/**
+ * The part of a compatibility note the user sees on screen as soon as the
+ * session starts, so the result does not depend on the model repeating it:
+ * the verdict, what is not available and the warnings, without the notes or
+ * the instruction to the model.
+ */
+export function compatSummary(note: string): string {
+  const lines = note.split('\n').slice(0, -1);
+  const notes = lines.indexOf('Notes:');
+  return (notes === -1 ? lines : lines.slice(0, notes)).join('\n');
+}
+
 export function compatNote(note: CompatNote, formatTime: (at: number) => string): string {
   const absent = note.findings.filter((finding) => finding.level === 'missing');
   const warnings = note.findings.filter((finding) => finding.level === 'warn');
