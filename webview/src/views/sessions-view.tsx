@@ -6,6 +6,7 @@ import type { ReactElement } from 'react';
 
 import type { Surface } from '../../../src/shared/model.js';
 import type { HandoffKind, SessionsState, SurfaceSession } from '../../../src/shared/protocol.js';
+import { knowsClaude, useAgent, useAgents } from '../agents.js';
 import { useNow } from '../clock.js';
 import { Badge, SurfaceBadge } from '../components/badge.js';
 import type { Column } from '../components/data-table.js';
@@ -121,12 +122,15 @@ function SessionTitle(props: { readonly entry: SurfaceSession }): ReactElement {
 function HandoffButtons(props: { readonly entry: SurfaceSession }): ReactElement {
   const post = usePostAction();
   const { entry } = props;
-  if (entry.handoffs.length === 0) {
+  // Only the handoffs the session's agent offers, whatever the surface reports.
+  const offered = useAgent(entry.agent).capabilities.handoffs;
+  const handoffs = entry.handoffs.filter((kind) => offered.includes(kind));
+  if (handoffs.length === 0) {
     return <span className="muted">none</span>;
   }
   return (
     <span className="actions">
-      {entry.handoffs.map((kind) => (
+      {handoffs.map((kind) => (
         <button
           key={kind}
           type="button"
@@ -260,6 +264,7 @@ export function SessionsView(props: { readonly state: SessionsState }): ReactEle
   const [surface, setSurface] = usePersistentState('sessions.surface', 'all', isSurfaceFilter);
   const [archived, setArchived] = usePersistentState('sessions.archived', false, isBoolean);
   const filter = { text, surface, archived };
+  const claudeAi = knowsClaude(useAgents());
   const rows = filterSessions(state.sessions, filter);
   const groups = groupByProject(rows, state.projects);
   return (
@@ -270,18 +275,24 @@ export function SessionsView(props: { readonly state: SessionsState }): ReactEle
           {rows.length.toString()} of {state.sessions.length.toString()}
         </span>
         <span className="spacer" />
-        <span className="muted">
-          claude.ai import:{' '}
-          {state.claudeAiImportedAt === null ? 'never' : formatAgo(state.claudeAiImportedAt, now)}
-        </span>
-        <button
-          type="button"
-          onClick={() => {
-            post({ type: 'importClaudeAi' });
-          }}
-        >
-          Import claude.ai export
-        </button>
+        {claudeAi ? (
+          <>
+            <span className="muted">
+              claude.ai import:{' '}
+              {state.claudeAiImportedAt === null
+                ? 'never'
+                : formatAgo(state.claudeAiImportedAt, now)}
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                post({ type: 'importClaudeAi' });
+              }}
+            >
+              Import claude.ai export
+            </button>
+          </>
+        ) : null}
       </header>
       <Filters sessions={state.sessions} controls={{ filter, setText, setSurface, setArchived }} />
       {groups.length === 0 ? <p className="empty-line muted">No sessions match.</p> : null}

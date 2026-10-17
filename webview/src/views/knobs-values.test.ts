@@ -13,7 +13,6 @@ import {
   groupEntries,
   isEditableLayer,
   isKindFilter,
-  isPermissionMode,
   isRetired,
   matchesQuery,
   nullIfEmpty,
@@ -294,10 +293,8 @@ describe('env and args', () => {
 });
 
 describe('guards', () => {
-  it('knows editable layers and permission modes', () => {
+  it('knows editable layers', () => {
     expect(isEditableLayer('project-local')).toBe(true);
     expect(isEditableLayer('managed')).toBe(false);
-    expect(isPermissionMode('plan')).toBe(true);
-    expect(isPermissionMode('yolo')).toBe(false);
   });
 });

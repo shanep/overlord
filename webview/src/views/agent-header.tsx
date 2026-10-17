@@ -4,7 +4,9 @@
 import type { ReactElement } from 'react';
 import { useState } from 'react';
 
+import type { AgentInfo } from '../../../src/shared/agents.js';
 import type { AgentNode, ApiRequest, SessionSummary } from '../../../src/shared/model.js';
+import { NOT_REPORTED } from '../agents.js';
 import { useNow } from '../clock.js';
 import { StateBadge } from '../components/badge.js';
 import { StatTile, StatTiles } from '../components/card.js';
@@ -39,12 +41,62 @@ const CONFIRM: Readonly<Record<PendingAction, { message: string; label: string }
   stop: { message: 'Stop this session?', label: 'Stop' },
 };
 
+/** The cost tile, a dash when the agent does not report cost so it never reads as free. */
+function CostTile(props: {
+  readonly agent: AgentNode;
+  readonly session: SessionSummary | null;
+  readonly requests: readonly ApiRequest[];
+  readonly info: AgentInfo;
+}): ReactElement {
+  const { info } = props;
+  return info.capabilities.costUsd ? (
+    <StatTile
+      label="Cost"
+      value={formatCost(agentCost(props.agent, props.session, props.requests))}
+    />
+  ) : (
+    <StatTile label="Cost" value={NOT_REPORTED} title={`${info.short} does not report cost`} />
+  );
+}
+
+/** Continue, for a main thread with a local transcript whose agent can resume it here. */
+function ContinueButton(props: {
+  readonly agent: AgentNode;
+  readonly session: SessionSummary | null;
+  readonly info: AgentInfo;
+}): ReactElement | null {
+  const { session, info } = props;
+  const post = usePostAction();
+  if (
+    props.agent.parentAgentId !== null ||
+    session === null ||
+    !info.capabilities.handoffs.includes('resume-local') ||
+    !LOCAL_SURFACES.has(session.surface)
+  ) {
+    return null;
+  }
+  return (
+    <button
+      type="button"
+      className="primary"
+      title={`Continue this session in ${info.name}`}
+      onClick={() => {
+        post({ type: 'handoff', sessionId: session.id, kind: 'resume-local' });
+      }}
+    >
+      Continue
+    </button>
+  );
+}
+
 export function AgentHeader(props: {
   readonly agent: AgentNode;
   readonly session: SessionSummary | null;
   readonly requests: readonly ApiRequest[];
+  /** The agent CLI that runs the session. */
+  readonly info: AgentInfo;
 }): ReactElement {
-  const { agent, session, requests } = props;
+  const { agent, session, requests, info } = props;
   const now = useNow();
   const post = usePostAction();
   const [pending, setPending] = useState<PendingAction | null>(null);
@@ -69,7 +121,7 @@ export function AgentHeader(props: {
           value={formatDuration((agent.endedAt ?? now) - agent.startedAt)}
         />
         <StatTile label="Tokens" value={formatCompact(totalTokens(agent.usage))} />
-        <StatTile label="Cost" value={formatCost(agentCost(agent, session, requests))} />
+        <CostTile agent={agent} session={session} requests={requests} info={info} />
         <StatTile label="Tool calls" value={String(agent.toolCallCount)} />
       </StatTiles>
       <div className="toolbar agent-actions">
@@ -92,26 +144,17 @@ export function AgentHeader(props: {
           </button>
         )}
         <span className="spacer" />
-        {parent === null && session !== null && LOCAL_SURFACES.has(session.surface) ? (
+        <ContinueButton agent={agent} session={session} info={info} />
+        {info.capabilities.interrupt ? (
           <button
             type="button"
-            className="primary"
-            title="Continue this session in Claude Code"
             onClick={() => {
-              post({ type: 'handoff', sessionId: session.id, kind: 'resume-local' });
+              setPending('interrupt');
             }}
           >
-            Continue
+            Interrupt
           </button>
         ) : null}
-        <button
-          type="button"
-          onClick={() => {
-            setPending('interrupt');
-          }}
-        >
-          Interrupt
-        </button>
         <button
           type="button"
           onClick={() => {

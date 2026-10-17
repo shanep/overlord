@@ -17,6 +17,7 @@ export function rowMatches(row: FleetRow, needle: string): boolean {
     return `${row.title} ${row.detail}`.toLowerCase().includes(needle);
   }
   const haystack = [
+    row.agent,
     row.title,
     row.detail,
     row.summary ?? '',

@@ -27,6 +27,7 @@ function renderTable(state: FleetState, showSummary = true): HTMLElement {
       now={NOW}
       theme={theme}
       showSummary={showSummary}
+      showAgent={() => false}
       onSelect={noop}
       onActivate={noop}
       onKey={noop}

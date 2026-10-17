@@ -2,6 +2,7 @@
   "sessionId": "5f1c9a2e-7b44-4c0d-9a51-0e2d3c8f1b77",
   "session": {
     "id": "5f1c9a2e-7b44-4c0d-9a51-0e2d3c8f1b77",
+    "agent": "claude-code",
     "surface": "cli",
     "title": "Add registry search to the Connectors view",
     "cwd": "/Users/dev/repos/overlord",
@@ -103,6 +104,7 @@
   "pendingPermissions": [
     {
       "id": "p1",
+      "agent": "claude-code",
       "sessionId": "5f1c9a2e-7b44-4c0d-9a51-0e2d3c8f1b77",
       "agentId": "5f1c9a2e-7b44-4c0d-9a51-0e2d3c8f1b77",
       "toolName": "Bash",

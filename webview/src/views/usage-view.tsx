@@ -10,6 +10,7 @@ import type {
   PlanLimits,
   UsageState,
 } from '../../../src/shared/protocol.js';
+import { knowsClaude, useAgents } from '../agents.js';
 import { useChartTheme } from '../charts/chart-theme.js';
 import {
   buildDailyUsage,
@@ -205,6 +206,8 @@ function ClimateSection(props: { readonly climate: ClimateEstimate }): ReactElem
 export function UsageView(props: { readonly state: UsageState }): ReactElement {
   const { state } = props;
   const theme = useChartTheme();
+  // Plan limits are Claude Code's claude.ai plan, so they need Claude Code.
+  const claude = knowsClaude(useAgents());
   const daily = useMemo(() => buildDailyUsage(state.days, theme), [state.days, theme]);
   const heatmap = useMemo(
     () => buildHourHeatmap(state.hourCounts, theme),
@@ -223,7 +226,7 @@ export function UsageView(props: { readonly state: UsageState }): ReactElement {
           <Stat label="Days" value={state.days.length.toString()} />
         </dl>
       </header>
-      <PlanSection plan={state.plan} />
+      <PlanSection plan={claude ? state.plan : null} />
       <div className="charts chart-card">
         <ChartFigure
           title="Daily tokens by model"

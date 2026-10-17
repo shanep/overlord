@@ -8,7 +8,6 @@ import type {
   KnobDefinition,
   KnobKind,
   KnobValueType,
-  PermissionMode,
 } from '../../../src/shared/model.js';
 import { formatValue } from '../format.js';
 import { isStringArray } from '../guards.js';
@@ -28,22 +27,6 @@ export const APPLIES_LABELS: Readonly<Record<AppliesAt, string>> = {
   'next-turn': 'next turn',
   'next-launch': 'next launch',
 };
-
-export const PERMISSION_MODES: readonly PermissionMode[] = [
-  'default',
-  'acceptEdits',
-  'plan',
-  'auto',
-  'dontAsk',
-  'bypassPermissions',
-  'manual',
-];
-
-const MODE_SET: ReadonlySet<string> = new Set(PERMISSION_MODES);
-
-export function isPermissionMode(value: string): value is PermissionMode {
-  return MODE_SET.has(value);
-}
 
 export type ParseResult =
   { readonly ok: true; readonly value: unknown } | { readonly ok: false; readonly error: string };

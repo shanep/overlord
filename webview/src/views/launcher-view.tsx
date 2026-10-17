@@ -4,6 +4,7 @@
 import type { ReactElement } from 'react';
 
 import type { LauncherState } from '../../../src/shared/protocol.js';
+import { soleAgent, useAgents } from '../agents.js';
 
 import { LaunchFormView } from './launcher-form.js';
 import { PermissionInbox } from './launcher-permissions.js';
@@ -18,6 +19,7 @@ export function LauncherView(props: { readonly state: LauncherState }): ReactEle
   const waiting = state.pendingPermissions.length > 0;
   const inbox = <PermissionInbox requests={state.pendingPermissions} />;
   const active = state.runs.filter((run) => isActiveRun(run)).length;
+  const sole = soleAgent(useAgents());
   return (
     <div className="launcher">
       <header className="view-header">
@@ -40,9 +42,10 @@ export function LauncherView(props: { readonly state: LauncherState }): ReactEle
       <details className="about">
         <summary>How this works</summary>
         <p>
-          Hand one prompt to Claude and let it work on its own, with no chat. Pick several profiles
-          to run the same prompt with different models or settings and compare the results. To talk
-          with Claude back and forth instead, use the sparkle button.
+          Hand one prompt to {sole?.short ?? 'an agent'} and let it work on its own, with no chat.
+          Pick several profiles to run the same prompt with different models or settings and compare
+          the results. To talk with {sole?.short ?? 'an agent'} back and forth instead, use the
+          sparkle button.
         </p>
       </details>
       <LaunchFormView

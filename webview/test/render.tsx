@@ -7,7 +7,9 @@ import { run } from 'axe-core';
 import type { ReactElement } from 'react';
 import { expect } from 'vitest';
 
+import type { AgentInfo } from '../../src/shared/agents.js';
 import type { WebviewAction, WebviewToHost } from '../../src/shared/protocol.js';
+import { AgentsProvider } from '../src/agents.js';
 import { NowProvider } from '../src/clock.js';
 import type { VsCodeApi } from '../src/vscode-api.js';
 import { VsCodeProvider } from '../src/vscode-context.js';
@@ -41,12 +43,19 @@ export interface ViewRender extends RenderResult {
   readonly api: FakeApi;
 }
 
-export function renderView(ui: ReactElement, api: FakeApi = new FakeApi()): ViewRender {
+/** Renders a view the way the App does. An empty agents list stands for Claude Code alone. */
+export function renderView(
+  ui: ReactElement,
+  api: FakeApi = new FakeApi(),
+  agents: readonly AgentInfo[] = [],
+): ViewRender {
   const result = render(
     <VsCodeProvider api={api}>
-      <NowProvider now={NOW}>
-        <main>{ui}</main>
-      </NowProvider>
+      <AgentsProvider agents={agents}>
+        <NowProvider now={NOW}>
+          <main>{ui}</main>
+        </NowProvider>
+      </AgentsProvider>
     </VsCodeProvider>,
   );
   return { ...result, api };

@@ -5,6 +5,7 @@ import type { ReactElement } from 'react';
 
 import type { AgentNode } from '../../../src/shared/model.js';
 import type { AgentDetailState } from '../../../src/shared/protocol.js';
+import { useAgent } from '../agents.js';
 import { useNow } from '../clock.js';
 import { StateBadge } from '../components/badge.js';
 import { Card, CardGrid } from '../components/card.js';
@@ -65,18 +66,21 @@ function AgentChildren(props: { readonly agents: readonly AgentNode[] }): ReactE
 
 export function AgentView(props: { readonly state: AgentDetailState }): ReactElement {
   const { agent, session, children, feed, toolCalls, requests, compactions } = props.state;
+  const info = useAgent(session?.agent);
   if (agent === null) {
     return <EmptyState title="No agent selected" detail="Open an agent from the fleet view." />;
   }
   return (
     <section aria-label="Agent">
-      <AgentHeader agent={agent} session={session} requests={requests} />
-      <section className="section" aria-labelledby="agent-children">
-        <h2 id="agent-children" className="section-title">
-          Subagents <span className="count">{String(children.length)}</span>
-        </h2>
-        <AgentChildren agents={children} />
-      </section>
+      <AgentHeader agent={agent} session={session} requests={requests} info={info} />
+      {info.capabilities.subagents ? (
+        <section className="section" aria-labelledby="agent-children">
+          <h2 id="agent-children" className="section-title">
+            Subagents <span className="count">{String(children.length)}</span>
+          </h2>
+          <AgentChildren agents={children} />
+        </section>
+      ) : null}
       <section className="section" aria-labelledby="agent-charts">
         <h2 id="agent-charts" className="section-title">
           Activity
@@ -86,13 +90,14 @@ export function AgentView(props: { readonly state: AgentDetailState }): ReactEle
           requests={requests}
           compactions={compactions}
           model={agent.model}
+          cacheReads={info.capabilities.cacheReads}
         />
       </section>
       <section className="section" aria-labelledby="agent-feed">
         <h2 id="agent-feed" className="section-title">
           Feed <span className="count">{String(feed.length)}</span>
         </h2>
-        <AgentFeed feed={feed} />
+        <AgentFeed feed={feed} agentName={info.short} />
       </section>
     </section>
   );

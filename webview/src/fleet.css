@@ -211,6 +211,38 @@
   white-space: nowrap;
 }
 
+/* A menu at the left end of the toolbar opens to the right. */
+.view-menu-panel-start {
+  right: auto;
+  left: 0;
+}
+
+/* An agent in the New session menu: a plain row, not a filled button. */
+.view-menu-panel .menu-item {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 2px 4px;
+  border: none;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.view-menu-panel .menu-item:hover {
+  background: var(--ov-hover);
+}
+
+/* A group of radio choices under the checkboxes, such as which agent to show. */
+.view-menu-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--vscode-menu-separatorBackground, var(--ov-border));
+}
+
 .view-menu-keys {
   margin: 2px 0 0;
   white-space: nowrap;

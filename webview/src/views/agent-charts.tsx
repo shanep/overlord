@@ -93,6 +93,7 @@ function RequestCharts(props: {
   readonly compactions: readonly number[];
   readonly model: string | null;
   readonly theme: ChartTheme;
+  readonly cacheReads: boolean;
 }): ReactElement {
   const { requests, compactions, model, theme } = props;
   const options = useMemo(
@@ -127,12 +128,14 @@ function RequestCharts(props: {
         height={180}
         table={contextTable(requests)}
       />
-      <ChartFigure
-        title="Cache hit ratio"
-        option={options.cache}
-        height={180}
-        table={cacheTable(requests)}
-      />
+      {props.cacheReads ? (
+        <ChartFigure
+          title="Cache hit ratio"
+          option={options.cache}
+          height={180}
+          table={cacheTable(requests)}
+        />
+      ) : null}
     </>
   );
 }
@@ -142,6 +145,8 @@ export function AgentCharts(props: {
   readonly requests: readonly ApiRequest[];
   readonly compactions: readonly number[];
   readonly model: string | null;
+  /** False when the session's agent does not report cache reads, which leaves the cache chart out. */
+  readonly cacheReads?: boolean;
 }): ReactElement {
   const { toolCalls, requests, compactions, model } = props;
   const theme = useChartTheme();
@@ -156,7 +161,13 @@ export function AgentCharts(props: {
         height={Math.max(120, 40 + rows.length * 16)}
         table={timelineTable(rows)}
       />
-      <RequestCharts requests={requests} compactions={compactions} model={model} theme={theme} />
+      <RequestCharts
+        requests={requests}
+        compactions={compactions}
+        model={model}
+        theme={theme}
+        cacheReads={props.cacheReads ?? true}
+      />
     </div>
   );
 }

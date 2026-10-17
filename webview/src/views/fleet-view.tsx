@@ -3,35 +3,28 @@
 // and row actions.
 
 import type { KeyboardEvent, ReactElement } from 'react';
-import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useRef, useState } from 'react';
 
 import type { PermissionRequest } from '../../../src/shared/model.js';
 import type { FleetState } from '../../../src/shared/protocol.js';
 import { useChartTheme } from '../charts/chart-theme.js';
 import { useNow } from '../clock.js';
 import { ConfirmBar } from '../components/confirm-bar.js';
-import type { SortState } from '../components/data-table.js';
 import { Icon } from '../components/icon.js';
-import { isBoolean, isString, isStringArray } from '../guards.js';
-import { usePersistentState, usePostAction } from '../vscode-context.js';
+import { usePostAction } from '../vscode-context.js';
 
 import type { ProjectAction, RowEvent } from './fleet-actions.js';
+import { useFleetAgents } from './fleet-agents.js';
 import { filterTree } from './fleet-filter.js';
 import type { PermissionChoice } from './fleet-header.js';
 import { FleetHeader, PermissionBanner } from './fleet-header.js';
 import { historySamples, useRowHistory } from './fleet-history.js';
 import type { FleetCommand } from './fleet-keys.js';
 import { keyCommand } from './fleet-keys.js';
+import { NewSessionMenu } from './fleet-new-session.js';
+import { useFleetPreferences } from './fleet-preferences.js';
 import type { FleetRow, VisibleRow } from './fleet-rows.js';
-import {
-  buildFleetTree,
-  collapsedGroupOf,
-  DEFAULT_SORT,
-  flattenTree,
-  isSortState,
-  nextFleetSort,
-  sortTree,
-} from './fleet-rows.js';
+import { collapsedGroupOf, flattenTree, nextFleetSort, sortTree } from './fleet-rows.js';
 import { FleetTable } from './fleet-table.js';
 import { FleetViewMenu } from './fleet-view-menu.js';
 
@@ -61,8 +54,6 @@ function confirmMessage(confirm: PendingConfirm): string {
     ? `Stop ${title} and remove it from the fleet?`
     : `Remove ${title} from the fleet?`;
 }
-
-const NO_KEYS: readonly string[] = [];
 
 /** The host action each project row button posts. */
 const PROJECT_ACTIONS = {
@@ -105,42 +96,6 @@ function FleetEmpty(props: {
   );
 }
 
-function useFleetPreferences(): {
-  readonly sort: SortState;
-  readonly setSort: (next: SortState) => void;
-  readonly filter: string;
-  readonly setFilter: (next: string) => void;
-  readonly hideDone: boolean;
-  readonly setHideDone: (next: boolean) => void;
-  readonly collapsed: readonly string[];
-  readonly setCollapsed: (next: readonly string[]) => void;
-  readonly grouped: boolean;
-  readonly setGrouped: (next: boolean) => void;
-  readonly showSummary: boolean;
-  readonly setShowSummary: (next: boolean) => void;
-} {
-  const [sort, setSort] = usePersistentState<SortState>('fleet.sort', DEFAULT_SORT, isSortState);
-  const [filter, setFilter] = usePersistentState('fleet.filter', '', isString);
-  const [hideDone, setHideDone] = usePersistentState('fleet.hideDone', false, isBoolean);
-  const [collapsed, setCollapsed] = usePersistentState('fleet.collapsed', NO_KEYS, isStringArray);
-  const [grouped, setGrouped] = usePersistentState('fleet.groupByProject', true, isBoolean);
-  const [showSummary, setShowSummary] = usePersistentState('fleet.showSummary', true, isBoolean);
-  return {
-    sort,
-    setSort,
-    filter,
-    setFilter,
-    hideDone,
-    setHideDone,
-    collapsed,
-    setCollapsed,
-    grouped,
-    setGrouped,
-    showSummary,
-    setShowSummary,
-  };
-}
-
 export function FleetView(props: { readonly state: FleetState }): ReactElement {
   const { state } = props;
   const post = usePostAction();
@@ -154,10 +109,9 @@ export function FleetView(props: { readonly state: FleetState }): ReactElement {
   /** The row key of the focused terminal's session, until that row is selected and scrolled to. */
   const following = useRef<string | null>(null);
 
-  const tree = useMemo(
-    () => buildFleetTree(state, preferences.grouped),
-    [state, preferences.grouped],
-  );
+  const agentFilter = preferences.agent;
+  const byAgent = useFleetAgents(state, preferences.grouped, agentFilter, preferences.setAgent);
+  const { tree } = byAgent;
   const history = useRowHistory(historySamples(tree), state);
   const filtered = filterTree(tree, { text: preferences.filter, hideDone: preferences.hideDone });
   const collapsed = new Set(preferences.collapsed);
@@ -326,6 +280,7 @@ export function FleetView(props: { readonly state: FleetState }): ReactElement {
         />
       ) : null}
       <div className="toolbar">
+        <NewSessionMenu agents={byAgent.offered} />
         <label
           className="filter"
           data-tip="Show only rows whose title, state, model, tool or folder has this text"
@@ -352,7 +307,7 @@ export function FleetView(props: { readonly state: FleetState }): ReactElement {
           <span className="toolbar-label">Open project</span>
         </button>
         <FleetViewMenu
-          hiding={preferences.hideDone ? ['done hidden'] : []}
+          hiding={[...(preferences.hideDone ? ['done hidden'] : []), ...byAgent.hiding]}
           choices={[
             {
               label: 'Hide done',
@@ -373,7 +328,9 @@ export function FleetView(props: { readonly state: FleetState }): ReactElement {
               onChange: preferences.setShowSummary,
             },
           ]}
-        />
+        >
+          {byAgent.filter}
+        </FleetViewMenu>
       </div>
       {confirm === null ? null : (
         <ConfirmBar
@@ -389,11 +346,14 @@ export function FleetView(props: { readonly state: FleetState }): ReactElement {
       {rows.length === 0 ? (
         <FleetEmpty
           filtering={
-            preferences.filter !== '' || (preferences.hideDone && state.sessions.length > 0)
+            preferences.filter !== '' ||
+            agentFilter !== '' ||
+            (preferences.hideDone && state.sessions.length > 0)
           }
           onClear={() => {
             preferences.setFilter('');
             preferences.setHideDone(false);
+            preferences.setAgent('');
           }}
           onLaunch={() => {
             post({ type: 'openView', view: 'launcher' });
@@ -412,6 +372,7 @@ export function FleetView(props: { readonly state: FleetState }): ReactElement {
           now={now}
           theme={theme}
           showSummary={preferences.showSummary}
+          showAgent={byAgent.showAgent}
           onSelect={setSelected}
           onActivate={activate}
           onKey={onKey}

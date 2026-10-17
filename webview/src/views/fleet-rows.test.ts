@@ -178,6 +178,7 @@ describe('buildFleetTree', () => {
     expect(row).toStrictEqual({
       key: 's:s1',
       kind: 'session',
+      agent: 'claude-code',
       sessionId: 's1',
       agentId: 's1',
       sessionTitle: 'Refactor parser',

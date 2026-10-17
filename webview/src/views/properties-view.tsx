@@ -1,11 +1,13 @@
-// Properties panel beside a Claude CLI tab: what the session is working on,
+// Properties panel beside an agent's CLI tab: what the session is working on,
 // the facts about it grouped like an IDE property sheet, and its subagents.
 
 import type { ReactElement } from 'react';
 
+import type { AgentInfo } from '../../../src/shared/agents.js';
 import type { SessionHealth } from '../../../src/shared/health.js';
 import type { AgentNode, PermissionRequest, SessionSummary } from '../../../src/shared/model.js';
 import type { PropertiesState } from '../../../src/shared/protocol.js';
+import { NOT_REPORTED, soleAgent, useAgent, useAgents } from '../agents.js';
 import { useNow } from '../clock.js';
 import { StateBadge, SurfaceBadge } from '../components/badge.js';
 import { EmptyState } from '../components/empty-state.js';
@@ -21,7 +23,7 @@ function orUnknown(value: string | number | null): string {
   return value === null ? 'unknown' : String(value);
 }
 
-function sessionRows(session: SessionSummary, now: number): readonly Row[] {
+function sessionRows(session: SessionSummary, agent: AgentInfo, now: number): readonly Row[] {
   return [
     [
       'Id',
@@ -32,7 +34,7 @@ function sessionRows(session: SessionSummary, now: number): readonly Row[] {
     ['Surface', <SurfaceBadge key="surface" surface={session.surface} />],
     ['Started', formatDateTime(session.startedAt)],
     ['Last activity', formatAgo(session.updatedAt, now)],
-    ['Claude Code', orUnknown(session.version)],
+    [agent.name, orUnknown(session.version)],
     ['Process', orUnknown(session.pid)],
   ];
 }
@@ -49,23 +51,30 @@ function workspaceRows(session: SessionSummary): readonly Row[] {
   ];
 }
 
-function modelRows(session: SessionSummary): readonly Row[] {
+/** Effort and permission mode only show for an agent that has them. */
+function modelRows(session: SessionSummary, agent: AgentInfo): readonly Row[] {
   return [
     ['Model', orUnknown(session.model)],
-    ['Effort', orUnknown(session.effort)],
-    ['Permissions', orUnknown(session.permissionMode)],
+    ...(agent.effortLevels.length === 0
+      ? []
+      : ([['Effort', orUnknown(session.effort)]] satisfies Row[])),
+    ...(agent.permissionModes.length === 0
+      ? []
+      : ([['Permissions', orUnknown(session.permissionMode)]] satisfies Row[])),
   ];
 }
 
-function usageRows(session: SessionSummary): readonly Row[] {
+/** Cache and cost rows the agent does not report read as a dash, not as 0. */
+function usageRows(session: SessionSummary, agent: AgentInfo): readonly Row[] {
   const { usage } = session;
+  const { cacheReads, cacheWrites, costUsd } = agent.capabilities;
   return [
     ['Tokens', formatCompact(totalTokens(usage))],
     ['Input', formatCompact(usage.input)],
     ['Output', formatCompact(usage.output)],
-    ['Cache read', formatCompact(usage.cacheRead)],
-    ['Cache write', formatCompact(usage.cacheCreation)],
-    ['Cost', formatCost(session.costUsd)],
+    ['Cache read', cacheReads ? formatCompact(usage.cacheRead) : NOT_REPORTED],
+    ['Cache write', cacheWrites ? formatCompact(usage.cacheCreation) : NOT_REPORTED],
+    ['Cost', costUsd ? formatCost(session.costUsd) : NOT_REPORTED],
   ];
 }
 
@@ -165,6 +174,7 @@ function SessionProperties(props: {
   const { session } = props;
   const now = useNow();
   const post = usePostAction();
+  const agent = useAgent(session.agent);
   return (
     <>
       <header className="props-header">
@@ -193,27 +203,37 @@ function SessionProperties(props: {
       <WorkingOn session={session} now={now} />
       <Waiting requests={props.pending} now={now} />
       {props.health === null ? null : <HealthSection health={props.health} />}
-      <Group title="Session" rows={sessionRows(session, now)} />
+      <Group title="Session" rows={sessionRows(session, agent, now)} />
       <Group title="Workspace" rows={workspaceRows(session)} />
-      <Group title="Model" rows={modelRows(session)} />
-      <Group title="Usage" rows={usageRows(session)} />
-      <Subagents sessionId={session.id} agents={props.agents} />
+      <Group title="Model" rows={modelRows(session, agent)} />
+      <Group title="Usage" rows={usageRows(session, agent)} />
+      {agent.capabilities.subagents ? (
+        <Subagents sessionId={session.id} agents={props.agents} />
+      ) : null}
     </>
   );
 }
 
 export function PropertiesView(props: { readonly state: PropertiesState }): ReactElement {
   const { sessionId, session, agents, pendingPermissions, health } = props.state;
+  // With no session yet the agent is unknown, so the text names it only when there is just one.
+  const sole = soleAgent(useAgents());
   if (sessionId === null) {
-    return (
-      <EmptyState title="No Claude tab" detail="Focus a Claude Code tab to see its properties." />
+    return sole === null ? (
+      <EmptyState title="No agent tab" detail="Focus an agent's CLI tab to see its properties." />
+    ) : (
+      <EmptyState
+        title={`No ${sole.short} tab`}
+        detail={`Focus a ${sole.name} tab to see its properties.`}
+      />
     );
   }
   if (session === null) {
+    const name = sole?.name ?? 'the agent';
     return (
       <EmptyState
-        title="Waiting for Claude Code"
-        detail={`Session ${sessionId} shows up here once Claude Code reports it, usually after the first prompt.`}
+        title={`Waiting for ${name}`}
+        detail={`Session ${sessionId} shows up here once ${name} reports it, usually after the first prompt.`}
       />
     );
   }

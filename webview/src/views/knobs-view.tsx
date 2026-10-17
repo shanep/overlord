@@ -5,6 +5,7 @@
 import type { ReactElement } from 'react';
 
 import type { KnobsState } from '../../../src/shared/protocol.js';
+import { knowsClaude, useAgents } from '../agents.js';
 import { Badge } from '../components/badge.js';
 import type { SegmentedOption } from '../components/card.js';
 import { Segmented } from '../components/card.js';
@@ -161,13 +162,23 @@ function KeysTab(props: {
 
 export function KnobsView(props: { readonly state: KnobsState }): ReactElement {
   const { state } = props;
-  const [tab, setTab] = usePersistentState<KnobsTab>('knobs.tab', 'keys', isKnobsTab);
+  const [saved, setTab] = usePersistentState<KnobsTab>('knobs.tab', 'keys', isKnobsTab);
+  // The feature flags are Claude Code's server cache, so the tab needs Claude Code.
+  const flags = knowsClaude(useAgents());
+  const tab = saved === 'flags' && !flags ? 'keys' : saved;
   const entries = knobEntries(state.catalog, state.effective, state.profiles);
   const setCount = entries.filter((entry) => isSet(entry)).length;
   const tabs: readonly SegmentedOption<KnobsTab>[] = [
     { value: 'keys', label: 'Keys' },
     { value: 'profiles', label: `Launch profiles (${String(state.profiles.length)})` },
-    { value: 'flags', label: `Feature flags (${String(Object.keys(state.featureFlags).length)})` },
+    ...(flags
+      ? [
+          {
+            value: 'flags',
+            label: `Feature flags (${String(Object.keys(state.featureFlags).length)})`,
+          } satisfies SegmentedOption<KnobsTab>,
+        ]
+      : []),
   ];
   return (
     <div className="knobs">

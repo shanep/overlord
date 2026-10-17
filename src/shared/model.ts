@@ -407,6 +407,8 @@ export interface LaunchProfile {
 }
 
 export interface LaunchSpec {
+  /** The agent for a run with no profile, when the Launcher offered a pick. Unset is Claude Code. */
+  readonly agent?: AgentId;
   readonly prompt: string;
   readonly cwd: string;
   readonly profileId: string | null;

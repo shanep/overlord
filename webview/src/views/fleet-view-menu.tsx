@@ -1,7 +1,7 @@
 // The Fleet's View menu: the choices about what the list shows, folded
 // behind one button so the toolbar keeps room for the filter.
 
-import type { ReactElement } from 'react';
+import type { PointerEvent as ReactPointerEvent, ReactElement, ReactNode, RefObject } from 'react';
 import { useEffect, useId, useRef, useState } from 'react';
 
 import { Icon } from '../components/icon.js';
@@ -21,19 +21,18 @@ function summary(hidden: readonly string[]): string {
     : `Choose what the list shows. Now: ${hidden.join(', ')}`;
 }
 
-export function FleetViewMenu(props: {
-  readonly choices: readonly ViewChoice[];
-  /** Short notes on choices that hide rows, such as "done hidden". */
-  readonly hiding: readonly string[];
-}): ReactElement {
-  const { choices, hiding } = props;
-  const [open, setOpen] = useState(false);
-  const panelId = useId();
-  const button = useRef<HTMLButtonElement>(null);
+/**
+ * Closes an open toolbar menu on a click anywhere else or on Escape, which
+ * also puts focus back on its button. The menu's wrapper takes the returned
+ * handler as onPointerDown.
+ */
+export function useMenuDismiss(
+  open: boolean,
+  setOpen: (open: boolean) => void,
+  button: RefObject<HTMLButtonElement | null>,
+): (event: ReactPointerEvent) => void {
   /** The last press inside the menu, which reaches the document after React has seen it. */
   const pressInside = useRef<Event | null>(null);
-
-  // A click anywhere else or Escape closes the menu. Escape puts focus back on the button.
   useEffect(() => {
     if (!open) {
       return;
@@ -55,15 +54,26 @@ export function FleetViewMenu(props: {
       document.removeEventListener('pointerdown', onPointer);
       document.removeEventListener('keydown', onKey);
     };
-  }, [open]);
+  }, [open, setOpen, button]);
+  return (event) => {
+    pressInside.current = event.nativeEvent;
+  };
+}
 
+export function FleetViewMenu(props: {
+  readonly choices: readonly ViewChoice[];
+  /** Short notes on choices that hide rows, such as "done hidden". */
+  readonly hiding: readonly string[];
+  /** More choices under the checkboxes, such as the agent filter. */
+  readonly children?: ReactNode;
+}): ReactElement {
+  const { choices, hiding } = props;
+  const [open, setOpen] = useState(false);
+  const panelId = useId();
+  const button = useRef<HTMLButtonElement>(null);
+  const onPointerDown = useMenuDismiss(open, setOpen, button);
   return (
-    <div
-      className="view-menu"
-      onPointerDown={(event) => {
-        pressInside.current = event.nativeEvent;
-      }}
-    >
+    <div className="view-menu" onPointerDown={onPointerDown}>
       <button
         type="button"
         ref={button}
@@ -93,6 +103,7 @@ export function FleetViewMenu(props: {
               {choice.label}
             </label>
           ))}
+          {props.children}
           <p className="view-menu-keys muted">
             <kbd>{'↑'}</kbd> <kbd>{'↓'}</kbd> move, <kbd>Enter</kbd> open, <kbd>k</kbd> interrupt,{' '}
             <kbd>m</kbd> project

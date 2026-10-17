@@ -816,6 +816,23 @@ fieldset.chips {
   color: var(--ov-purple);
 }
 
+/* The agent CLI behind a session, in front of its title. */
+.agent-mark {
+  display: inline-flex;
+  gap: 3px;
+  align-items: baseline;
+  margin-right: 6px;
+  color: var(--ov-muted);
+  font-size: 0.85em;
+  white-space: nowrap;
+}
+
+.agent-mark .icon {
+  align-self: center;
+  width: 12px;
+  height: 12px;
+}
+
 /* A session the Launcher started gets a stripe down its left edge. */
 .tree-table tr[data-launched='true'] > td:first-child {
   box-shadow: inset 3px 0 0 var(--ov-purple);

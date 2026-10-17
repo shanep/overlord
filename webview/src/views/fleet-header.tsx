@@ -4,6 +4,7 @@ import type { ReactElement } from 'react';
 
 import type { PermissionRequest, SessionSummary } from '../../../src/shared/model.js';
 import type { FleetState } from '../../../src/shared/protocol.js';
+import { knownAgents, knowsClaude, useAgents } from '../agents.js';
 import { Badge } from '../components/badge.js';
 import { Meter } from '../components/meter.js';
 import { formatCost, formatDuration, formatValue, truncate } from '../format.js';
@@ -29,6 +30,12 @@ export function FleetHeader(props: {
   readonly now: number;
 }): ReactElement {
   const { state, now } = props;
+  const agents = useAgents();
+  const known = knownAgents(agents);
+  const anySubagents = known.some((agent) => agent.capabilities.subagents);
+  const anyCost = known.some((agent) => agent.capabilities.costUsd);
+  // The 5 hour and 7 day windows are Claude Code's plan limits.
+  const claudeLimits = knowsClaude(agents);
   const count = (wanted: string): number =>
     state.sessions.filter((session) => session.state === wanted).length;
   const subagents = state.agents.filter(
@@ -58,17 +65,19 @@ export function FleetHeader(props: {
             {unplaced.toString()}
           </Stat>
         )}
-        <Stat label="Subagents">{`${subagents.toString()} running`}</Stat>
-        <Stat label="Spend per hour">{formatCost(state.spendPerHourUsd)}</Stat>
-        <Stat label="5 hour limit">
-          <Meter label="5 hour limit used" ratio={normalizeRatio(fiveHourPct)} />
-        </Stat>
-        {sevenDayPct === null ? null : (
+        {anySubagents ? <Stat label="Subagents">{`${subagents.toString()} running`}</Stat> : null}
+        {anyCost ? <Stat label="Spend per hour">{formatCost(state.spendPerHourUsd)}</Stat> : null}
+        {claudeLimits ? (
+          <Stat label="5 hour limit">
+            <Meter label="5 hour limit used" ratio={normalizeRatio(fiveHourPct)} />
+          </Stat>
+        ) : null}
+        {!claudeLimits || sevenDayPct === null ? null : (
           <Stat label="7 day limit">
             <Meter label="7 day limit used" ratio={normalizeRatio(sevenDayPct)} />
           </Stat>
         )}
-        {resetsAt === null ? null : (
+        {!claudeLimits || resetsAt === null ? null : (
           <Stat label="Resets in">{formatDuration(Math.max(0, resetsAt - now))}</Stat>
         )}
       </dl>

@@ -3,8 +3,15 @@
 
 import type { ReactElement } from 'react';
 
+import type { AgentInfo } from '../../../src/shared/agents.js';
 import type { HealthLevel } from '../../../src/shared/health.js';
-import { Badge, LaunchedMarker, PlaceMarker, WindowlessMarker } from '../components/badge.js';
+import {
+  AgentMark,
+  Badge,
+  LaunchedMarker,
+  PlaceMarker,
+  WindowlessMarker,
+} from '../components/badge.js';
 import type { Tone } from '../labels.js';
 
 import type { RowEvent } from './fleet-actions.js';
@@ -73,6 +80,8 @@ function HealthBadge(props: {
 
 export function TitleCell(props: {
   readonly visible: VisibleRow;
+  /** The agent to name in front of the title, or null to leave it out. */
+  readonly agent: AgentInfo | null;
   readonly showSummary: boolean;
   readonly tabIndex: number;
   readonly onToggle: (visible: VisibleRow) => void;
@@ -87,6 +96,7 @@ export function TitleCell(props: {
         {isLaunched(row) ? <LaunchedMarker /> : null}
         {row.place === null ? null : <PlaceMarker place={row.place} />}
         {isWindowless(row) ? <WindowlessMarker /> : null}
+        {props.agent === null ? null : <AgentMark agent={props.agent} />}
         <span className="row-title">{row.title}</span>
       </span>{' '}
       {row.kind === 'session' && row.needsProject ? (

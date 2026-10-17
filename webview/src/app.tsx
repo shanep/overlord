@@ -6,6 +6,7 @@ import type { ReactElement } from 'react';
 import type { HostToWebview, ViewId } from '../../src/shared/protocol.js';
 import { isViewId } from '../../src/shared/protocol.js';
 
+import { AgentsProvider } from './agents.js';
 import { EmptyState } from './components/empty-state.js';
 import { ErrorBoundary } from './components/error-boundary.js';
 import { TooltipLayer } from './components/tooltip.js';
@@ -144,7 +145,9 @@ export function App(props: { readonly view: ViewId }): ReactElement {
         {message === null ? (
           <EmptyState title="Waiting for data" detail="Overlord is loading this view." />
         ) : (
-          <ViewSwitch message={message} />
+          <AgentsProvider agents={message.agents}>
+            <ViewSwitch message={message} />
+          </AgentsProvider>
         )}
       </ErrorBoundary>
       <TooltipLayer />

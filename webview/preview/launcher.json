@@ -81,6 +81,7 @@
     {
       "id": "p-opus",
       "name": "Opus, high effort",
+      "agent": "claude-code",
       "model": "opus",
       "effort": "high",
       "permissionMode": "acceptEdits",
@@ -90,6 +91,7 @@
     {
       "id": "p-sonnet",
       "name": "Sonnet, quick",
+      "agent": "claude-code",
       "model": "sonnet",
       "effort": "low",
       "permissionMode": null,
@@ -107,6 +109,7 @@
   "pendingPermissions": [
     {
       "id": "q1",
+      "agent": "claude-code",
       "sessionId": "sess-r1",
       "agentId": "sess-r1",
       "toolName": "Bash",

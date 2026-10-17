@@ -4,22 +4,19 @@
 import type { ReactElement } from 'react';
 import { useState } from 'react';
 
+import type { AgentInfo, ModeOption } from '../../../src/shared/agents.js';
 import { CLAUDE_CODE } from '../../../src/shared/agents.js';
 import type { LaunchProfile } from '../../../src/shared/model.js';
+import { findAgent, offeredAgents, useAgents } from '../agents.js';
+import { CLAUDE_FALLBACK } from '../claude-fallback.js';
 import { usePostAction } from '../vscode-context.js';
 
-import {
-  formatEnv,
-  isPermissionMode,
-  nullIfEmpty,
-  parseArgs,
-  parseEnv,
-  PERMISSION_MODES,
-} from './knobs-values.js';
+import { formatEnv, nullIfEmpty, parseArgs, parseEnv } from './knobs-values.js';
 
 interface ProfileDraft {
-  /** Kept from the profile so a save does not change it. The form does not show them. */
+  /** The form shows a pick only when there is more than one agent to choose. */
   readonly agent: string;
+  /** Kept from the profile so a save does not change it. The form does not show it. */
   readonly backend: string;
   readonly name: string;
   readonly model: string;
@@ -42,7 +39,12 @@ export function toDraft(profile: LaunchProfile): ProfileDraft {
   };
 }
 
-export function fromDraft(id: string, draft: ProfileDraft): LaunchProfile {
+/** The profile the form holds. A mode the agent does not have is dropped. */
+export function fromDraft(
+  id: string,
+  draft: ProfileDraft,
+  modes: readonly ModeOption[] = CLAUDE_FALLBACK.permissionModes,
+): LaunchProfile {
   return {
     id,
     name: draft.name.trim(),
@@ -50,7 +52,7 @@ export function fromDraft(id: string, draft: ProfileDraft): LaunchProfile {
     ...(draft.backend === '' ? {} : { backend: draft.backend }),
     model: nullIfEmpty(draft.model),
     effort: nullIfEmpty(draft.effort),
-    permissionMode: isPermissionMode(draft.mode) ? draft.mode : null,
+    permissionMode: modes.some((mode) => mode.id === draft.mode) ? draft.mode : null,
     env: parseEnv(draft.env),
     extraArgs: parseArgs(draft.args),
   };
@@ -78,6 +80,39 @@ const TEXT_FIELDS: readonly { readonly field: TextField; readonly label: string 
   { field: 'args', label: 'Extra args' },
 ];
 
+/** The agent pick, shown when there is more than one to choose or the profile is for another agent. */
+function AgentPick(props: {
+  readonly offered: readonly AgentInfo[];
+  readonly agent: AgentInfo;
+  readonly onChange: (agent: AgentInfo) => void;
+}): ReactElement | null {
+  const { offered, agent } = props;
+  const choices = offered.some((item) => item.id === agent.id) ? offered : [...offered, agent];
+  if (choices.length < 2) {
+    return null;
+  }
+  return (
+    <label className="field">
+      <span>Agent</span>
+      <select
+        value={agent.id}
+        onChange={(event) => {
+          const picked = choices.find((item) => item.id === event.target.value);
+          if (picked !== undefined) {
+            props.onChange(picked);
+          }
+        }}
+      >
+        {choices.map((item) => (
+          <option key={item.id} value={item.id}>
+            {item.name}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 function ProfileForm(props: {
   readonly profile: LaunchProfile;
   /** False for a new profile that only lives in this form so far. */
@@ -86,12 +121,27 @@ function ProfileForm(props: {
   const { profile } = props;
   const post = usePostAction();
   const [draft, setDraft] = useState<ProfileDraft>(() => toDraft(profile));
+  const agents = useAgents();
+  const agent = findAgent(agents, draft.agent);
+  const modes = agent.permissionModes;
+  // Effort is free text, but only for an agent that has effort levels.
+  const fields = TEXT_FIELDS.filter(
+    ({ field }) => field !== 'effort' || agent.effortLevels.length > 0,
+  );
   const title = profile.name === '' ? 'New profile' : profile.name;
   return (
     <fieldset className="card profile-card">
       <legend className="card-title">{title}</legend>
       <div className="form-grid">
-        {TEXT_FIELDS.map(({ field, label }) => (
+        <AgentPick
+          offered={offeredAgents(agents)}
+          agent={agent}
+          onChange={(picked) => {
+            // Another agent's modes and levels mean something else, so they start over.
+            setDraft({ ...draft, agent: picked.id, effort: '', mode: '' });
+          }}
+        />
+        {fields.map(({ field, label }) => (
           <label key={field} className="field">
             <span>{label}</span>
             <input
@@ -103,22 +153,24 @@ function ProfileForm(props: {
             />
           </label>
         ))}
-        <label className="field">
-          <span>Permission mode</span>
-          <select
-            value={draft.mode}
-            onChange={(event) => {
-              setDraft({ ...draft, mode: event.target.value });
-            }}
-          >
-            <option value="">none</option>
-            {PERMISSION_MODES.map((mode) => (
-              <option key={mode} value={mode}>
-                {mode}
-              </option>
-            ))}
-          </select>
-        </label>
+        {modes.length === 0 ? null : (
+          <label className="field">
+            <span>Permission mode</span>
+            <select
+              value={draft.mode}
+              onChange={(event) => {
+                setDraft({ ...draft, mode: event.target.value });
+              }}
+            >
+              <option value="">none</option>
+              {modes.map((mode) => (
+                <option key={mode.id} value={mode.id} title={mode.label}>
+                  {mode.id}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
       </div>
       <label className="field profile-env">
         <span>Env vars, one KEY=VALUE per line</span>
@@ -147,7 +199,7 @@ function ProfileForm(props: {
           className="primary"
           disabled={draft.name.trim() === ''}
           onClick={() => {
-            post({ type: 'saveProfile', profile: fromDraft(profile.id, draft) });
+            post({ type: 'saveProfile', profile: fromDraft(profile.id, draft, modes) });
           }}
         >
           Save profile

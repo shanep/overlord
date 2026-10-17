@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react';
 
+import type { AgentInfo } from '../../../src/shared/agents.js';
 import type { SessionPlace, SessionState, Surface } from '../../../src/shared/model.js';
 import type { Tone } from '../labels.js';
 import {
@@ -10,7 +11,7 @@ import {
   WINDOWLESS_INFO,
 } from '../labels.js';
 
-import { Icon } from './icon.js';
+import { agentIcon, Icon } from './icon.js';
 
 export function Badge(props: {
   readonly label: string;
@@ -80,6 +81,18 @@ export function LaunchedMarker(): ReactElement {
       data-tip={`${LAUNCHED_INFO.label}: ${LAUNCHED_INFO.description}`}
     >
       <Icon name="launched" />
+    </span>
+  );
+}
+
+/** The agent CLI behind a session: its icon and short name, quiet so the title still leads. */
+export function AgentMark(props: { readonly agent: AgentInfo }): ReactElement {
+  const { agent } = props;
+  const version = agent.version === null ? '' : ` ${agent.version}`;
+  return (
+    <span className="agent-mark" data-tip={`Agent: ${agent.name}${version}`}>
+      <Icon name={agentIcon(agent.icon)} />
+      <span className="agent-mark-name">{agent.short}</span>
     </span>
   );
 }

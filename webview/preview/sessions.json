@@ -2,6 +2,7 @@
   "sessions": [
     {
       "id": "s1",
+      "agent": "claude-code",
       "surface": "cli",
       "title": "Add the MCP registry search to the Connectors view",
       "cwd": "/Users/shane/repos/overlord",
@@ -11,6 +12,7 @@
     },
     {
       "id": "s2",
+      "agent": "claude-code",
       "surface": "overlord",
       "title": "Fix the flaky date parser test",
       "cwd": "/Users/shane/.overlord/worktrees/overlord-3093d58c/7a1b",
@@ -20,6 +22,7 @@
     },
     {
       "id": "s3",
+      "agent": "claude-code",
       "surface": "desktop-code",
       "title": "Draft the CS 452 lab on page tables",
       "cwd": "/Users/shane/teaching/cs452",
@@ -29,6 +32,7 @@
     },
     {
       "id": "s4",
+      "agent": "claude-code",
       "surface": "cloud",
       "title": "Bump dependencies and fix the build",
       "cwd": "/Users/shane/repos/overlord",
@@ -38,6 +42,7 @@
     },
     {
       "id": "s5",
+      "agent": "claude-code",
       "surface": "claude-ai",
       "title": "Ideas for the paper related work",
       "cwd": null,
@@ -47,6 +52,7 @@
     },
     {
       "id": "s6",
+      "agent": "claude-code",
       "surface": "cli",
       "title": "Refactor",
       "cwd": "/Users/shane/research/tech-lag-abandonment",
@@ -56,6 +62,7 @@
     },
     {
       "id": "s7",
+      "agent": "claude-code",
       "surface": "cowork",
       "title": "Plan the week",
       "cwd": null,
@@ -65,6 +72,7 @@
     },
     {
       "id": "s8",
+      "agent": "claude-code",
       "surface": "cli",
       "title": "Old experiment with the grading script",
       "cwd": "/Users/shane/teaching/cs452",
@@ -74,6 +82,7 @@
     },
     {
       "id": "s9",
+      "agent": "claude-code",
       "surface": "sdk",
       "title": "Nightly mutation run",
       "cwd": "/Users/shane/repos/overlord",

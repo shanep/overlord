@@ -79,13 +79,13 @@ export class ContextViews {
     const job: Job = { base, observedCount: observed.length };
     const done = this.results.get(key);
     if (done !== undefined && sameJob(done, job)) {
-      return { ...state, snapshot: done.merged };
+      return { ...state, agent: session.agent, snapshot: done.merged };
     }
     if (!sameJob(this.running.get(key), job)) {
       this.running.set(key, job);
       void this.compute(key, { base, session, agentId, observed: [...observed] }, job);
     }
-    return { ...state, snapshot: base };
+    return { ...state, agent: session.agent, snapshot: base };
   }
 
   /** A load the InstructionsLoaded hook reported. */

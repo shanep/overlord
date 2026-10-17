@@ -142,6 +142,8 @@ export interface PropertiesState {
 }
 
 export interface ContextState {
+  /** The agent of the snapshot's session. Unset is Claude Code. */
+  readonly agent?: AgentId;
   readonly snapshot: ContextSnapshot | null;
   readonly sessions: readonly { readonly id: string; readonly title: string }[];
 }

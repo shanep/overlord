@@ -1,6 +1,7 @@
 // Pure logic for the fleet tree: build project, session and subagent rows,
 // sort and flatten them for display. fleet-filter.ts filters them.
 
+import type { AgentId } from '../../../src/shared/agents.js';
 import type { HealthLevel } from '../../../src/shared/health.js';
 import type {
   AgentNode,
@@ -22,6 +23,8 @@ import { workingOn } from './working-on.js';
 export interface FleetRow {
   readonly key: string;
   readonly kind: 'project' | 'session' | 'agent';
+  /** The agent CLI that runs the row's session, empty on a project's row. */
+  readonly agent: AgentId;
   readonly sessionId: string;
   readonly agentId: string;
   readonly sessionTitle: string;
@@ -104,6 +107,7 @@ function sessionRow(
   return {
     key: `s:${session.id}`,
     kind: 'session',
+    agent: session.agent,
     sessionId: session.id,
     agentId: session.id,
     sessionTitle: title,
@@ -139,6 +143,7 @@ function agentRow(agent: AgentNode, session: FleetRow): FleetRow {
   return {
     key: `a:${agent.sessionId}:${agent.id}`,
     kind: 'agent',
+    agent: session.agent,
     sessionId: agent.sessionId,
     agentId: agent.id,
     sessionTitle: session.sessionTitle,
@@ -189,10 +194,21 @@ function agentNodes(level: readonly AgentNode[], context: TreeContext): FleetNod
   return nodes;
 }
 
-function sessionNode(session: SessionSummary, state: SessionLookups): FleetNode {
+/** Whether sessions of an agent can have subagents, so their rows nest under the session. */
+type SubagentsFor = (agent: AgentId) => boolean;
+
+const ALWAYS: SubagentsFor = () => true;
+
+function sessionNode(
+  session: SessionSummary,
+  state: SessionLookups,
+  subagentsFor: SubagentsFor,
+): FleetNode {
   const agents = state.agents.filter((agent) => agent.sessionId === session.id);
   const row = sessionRow(session, agents, state);
-  const subagents = agents.filter((agent) => agent.id !== session.id);
+  const subagents = subagentsFor(session.agent)
+    ? agents.filter((agent) => agent.id !== session.id)
+    : [];
   const ids = new Set(subagents.map((agent) => agent.id));
   const roots = subagents.filter(
     (agent) => agent.parentAgentId === null || !ids.has(agent.parentAgentId),
@@ -256,6 +272,7 @@ function projectRow(
   return {
     key: projectKey(project?.id ?? null),
     kind: 'project',
+    agent: '',
     sessionId: '',
     agentId: '',
     sessionTitle: title,
@@ -313,8 +330,12 @@ function groupByProject(sessions: readonly FleetNode[], state: FleetState): Flee
  * One node per session, with its subagents nested by parent agent id. Grouped,
  * the sessions sit under a row for their project.
  */
-export function buildFleetTree(state: FleetState, grouped = false): FleetNode[] {
-  const sessions = state.sessions.map((session) => sessionNode(session, state));
+export function buildFleetTree(
+  state: FleetState,
+  grouped = false,
+  subagentsFor: SubagentsFor = ALWAYS,
+): FleetNode[] {
+  const sessions = state.sessions.map((session) => sessionNode(session, state, subagentsFor));
   return grouped ? groupByProject(sessions, state) : sessions;
 }
 

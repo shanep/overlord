@@ -5,9 +5,13 @@
 //
 //   node scripts/preview-view.mjs connectors
 //   node scripts/preview-view.mjs connectors --click "Install…" --state my-state.json
+//   node scripts/preview-view.mjs fleet --state webview/preview/fleet-agents.json --agents webview/preview/agents-list.json
 //
 // The state comes from webview/preview/<view>.json unless --state names
 // another file. It is the view's state as src/shared/protocol.ts types it.
+// --agents names a JSON file with the AgentInfo list every host message
+// carries. Without it the list is empty, which the views read as Claude Code
+// alone.
 // Each --click presses the first button with that text, in order, so a
 // screenshot can show an open form or a menu. --narrow sets the narrow width,
 // such as 320 for a view that lives in the sidebar.
@@ -95,7 +99,7 @@ function themeCss() {
     .join('\n');
 }
 
-function page(view, clicks) {
+function page(view, clicks, agents) {
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -114,7 +118,7 @@ window.acquireVsCodeApi = () => ({
   postMessage: async (message) => {
     if (message.type !== 'ready') return;
     const state = await (await fetch('./state.json')).json();
-    window.postMessage({ type: 'state', view: ${JSON.stringify(view)}, state, agents: [] }, '*');
+    window.postMessage({ type: 'state', view: ${JSON.stringify(view)}, state, agents: ${agents} }, '*');
   },
 });
 const clicks = ${JSON.stringify(clicks)};
@@ -193,6 +197,7 @@ async function main() {
     allowPositionals: true,
     options: {
       state: { type: 'string' },
+      agents: { type: 'string' },
       click: { type: 'string', multiple: true, default: [] },
       out: { type: 'string', default: path.join(root, '.cache', 'preview') },
       height: { type: 'string', default: '1600' },
@@ -230,7 +235,8 @@ async function main() {
       '--logLevel',
       'warn',
     ]);
-    writeFileSync(path.join(site, 'index.html'), page(view, values.click));
+    const agents = values.agents === undefined ? '[]' : readFileSync(values.agents, 'utf8').trim();
+    writeFileSync(path.join(site, 'index.html'), page(view, values.click, agents));
     writeFileSync(path.join(site, 'state.json'), readFileSync(stateFile));
     mkdirSync(values.out, { recursive: true });
     const server = await serve(site);

@@ -80,6 +80,16 @@ const SHAPES = {
 
 export type IconName = keyof typeof SHAPES;
 
+/** The webview has no codicon font, so an agent's codicon id maps to a drawn shape, a prompt by default. */
+const AGENT_ICONS: Readonly<Record<string, IconName>> = {
+  sparkle: 'newSession',
+  terminal: 'window',
+};
+
+export function agentIcon(codicon: string): IconName {
+  return AGENT_ICONS[codicon] ?? 'prompt';
+}
+
 export function Icon(props: { readonly name: IconName }): ReactElement {
   return (
     <svg

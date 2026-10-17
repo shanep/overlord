@@ -5,6 +5,8 @@
 import type { KeyboardEvent, ReactElement, RefObject } from 'react';
 import { useMemo } from 'react';
 
+import type { AgentId } from '../../../src/shared/agents.js';
+import { NOT_REPORTED, soleAgent, useAgent, useAgents } from '../agents.js';
 import type { ChartTheme } from '../charts/chart-theme.js';
 import { EChart } from '../charts/chart.js';
 import { buildSparkline } from '../charts/sparkline.js';
@@ -61,6 +63,8 @@ function RowActions(props: {
   readonly onProjectAction: (projectId: string, action: ProjectAction) => void;
 }): ReactElement {
   const { row, tabIndex, onAction, onProjectAction } = props;
+  const agents = useAgents();
+  const agent = useAgent(row.agent);
   const iconButton = (
     action: RowAction | ProjectAction,
     onClick: () => void,
@@ -72,7 +76,7 @@ function RowActions(props: {
       className="icon-button"
       tabIndex={tabIndex}
       disabled={disabled}
-      data-tip={actionTip(action)}
+      data-tip={actionTip(action, soleAgent(agents)?.name ?? null)}
       aria-label={`${ACTION_LABELS[action]} ${row.title}`}
       onClick={onClick}
     >
@@ -114,7 +118,7 @@ function RowActions(props: {
           {button('move')}
           {button('relocate')}
           {button('combine')}
-          {button('interrupt', !row.sessionActive)}
+          {button('interrupt', !row.sessionActive || !agent.capabilities.interrupt)}
           {button('stop', !row.sessionActive)}
           {isLaunched(row) ? button('remove') : null}
         </>
@@ -131,6 +135,8 @@ interface FleetTableRowProps {
   readonly theme: ChartTheme;
   /** Whether a session's row shows the line on what it is working on. */
   readonly showSummary: boolean;
+  /** Whether a session's row names its agent in front of the title. */
+  readonly showAgent: (agent: AgentId) => boolean;
   readonly rowRef: RefObject<HTMLTableRowElement | null> | undefined;
   readonly onSelect: (key: string) => void;
   /** A click on the row itself, not one of its buttons. */
@@ -153,6 +159,7 @@ function ProjectCells(props: FleetTableRowProps): ReactElement {
       <td role="gridcell" className="col-surface" />
       <TitleCell
         visible={visible}
+        agent={null}
         showSummary={props.showSummary}
         tabIndex={selected ? 0 : -1}
         onToggle={props.onToggle}
@@ -186,10 +193,34 @@ function ProjectCells(props: FleetTableRowProps): ReactElement {
   );
 }
 
+/**
+ * A number cell for what the row's agent may not report: the value when it
+ * does, and a dash with a tooltip saying why when it does not, so it never
+ * reads as 0.
+ */
+function ReportedCell(props: {
+  readonly column: string;
+  readonly reported: boolean;
+  readonly why: string;
+  readonly children: string;
+}): ReactElement {
+  return props.reported ? (
+    <td role="gridcell" className={`col-${props.column} num`}>
+      {props.children}
+    </td>
+  ) : (
+    <td role="gridcell" className={`col-${props.column} num`} data-tip={props.why}>
+      {NOT_REPORTED}
+    </td>
+  );
+}
+
 function SessionCells(props: FleetTableRowProps): ReactElement {
   const { visible, selected, now, history, theme } = props;
   const { row } = visible;
   const session = row.kind === 'session';
+  const agent = useAgent(row.agent);
+  const { cacheReads, costUsd } = agent.capabilities;
   return (
     <>
       <td role="gridcell" className="col-state">
@@ -200,6 +231,7 @@ function SessionCells(props: FleetTableRowProps): ReactElement {
       </td>
       <TitleCell
         visible={visible}
+        agent={session && props.showAgent(row.agent) ? agent : null}
         showSummary={props.showSummary}
         tabIndex={selected ? 0 : -1}
         onToggle={props.onToggle}
@@ -209,7 +241,7 @@ function SessionCells(props: FleetTableRowProps): ReactElement {
         {row.model ?? ''}
       </td>
       <td role="gridcell" className="col-effort">
-        {row.effort ?? ''}
+        {agent.effortLevels.length === 0 ? '' : (row.effort ?? '')}
       </td>
       <td role="gridcell" className="col-elapsed num">
         {formatDuration(elapsedMs(row, now))}
@@ -223,15 +255,23 @@ function SessionCells(props: FleetTableRowProps): ReactElement {
       <td role="gridcell" className="col-tokens num">
         {`${formatCompact(row.tokensIn)} / ${formatCompact(row.tokensOut)}`}
       </td>
-      <td role="gridcell" className="col-cache num">
+      <ReportedCell
+        column="cache"
+        reported={cacheReads}
+        why={`${agent.short} does not report cache reads`}
+      >
         {formatPercent(row.cacheHit)}
-      </td>
+      </ReportedCell>
       <td role="gridcell" className="col-context">
         {session ? <Meter label={`Context used by ${row.title}`} ratio={row.contextFill} /> : null}
       </td>
-      <td role="gridcell" className="col-cost num">
+      <ReportedCell
+        column="cost"
+        reported={!session || costUsd}
+        why={`${agent.short} does not report cost`}
+      >
         {session ? formatCost(row.costUsd) : ''}
-      </td>
+      </ReportedCell>
       <td role="gridcell" className="col-trend">
         <FleetSparkline history={history} theme={theme} label={`Token trend for ${row.title}`} />
       </td>
@@ -334,6 +374,7 @@ export function FleetTable(props: FleetTableProps): ReactElement {
               history={props.historyByKey.get(visible.row.key) ?? EMPTY}
               theme={props.theme}
               showSummary={props.showSummary}
+              showAgent={props.showAgent}
               rowRef={selected ? props.selectedRef : undefined}
               onSelect={props.onSelect}
               onActivate={props.onActivate}

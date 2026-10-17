@@ -5,6 +5,7 @@
 import type { ReactElement, ReactNode } from 'react';
 
 import type { ContextState } from '../../../src/shared/protocol.js';
+import { useAgent } from '../agents.js';
 import { StatTile, StatTiles } from '../components/card.js';
 import { EmptyState } from '../components/empty-state.js';
 import { Fold } from '../components/fold.js';
@@ -65,6 +66,10 @@ function plural(count: number, one: string, many: string): string {
 
 export function ContextView(props: { readonly state: ContextState }): ReactElement {
   const { snapshot, sessions } = props.state;
+  const agent = useAgent(props.state.agent);
+  // Instruction files and skills come from the agent's folders. The rest needs
+  // the full context capture only some agents give.
+  const { contextInspector: full, subagents } = agent.capabilities;
   return (
     <section aria-label="Context">
       <div className="view-header">
@@ -90,9 +95,11 @@ export function ContextView(props: { readonly state: ContextState }): ReactEleme
             <StatTile label="Skills" value={String(snapshot.skills.length)} />
             <StatTile label="MCP servers" value={String(snapshot.mcpServers.length)} />
           </StatTiles>
-          <Section id="ctx-weights" title="Where the tokens go">
-            <WeightTreemap weights={snapshot.weights} />
-          </Section>
+          {full ? (
+            <Section id="ctx-weights" title="Where the tokens go">
+              <WeightTreemap weights={snapshot.weights} />
+            </Section>
+          ) : null}
           <Section id="ctx-loaded" title="Memory files loaded" count={snapshot.loaded.length}>
             <div className="panel">
               <LoadedTable loaded={snapshot.loaded} />
@@ -108,47 +115,57 @@ export function ContextView(props: { readonly state: ContextState }): ReactEleme
               <SkillsTable skills={snapshot.skills} />
             </div>
           </Section>
-          <Fold
-            id="ctx-prompt"
-            title="System prompt"
-            note={
-              snapshot.systemPrompt === null
-                ? 'not captured'
-                : plural(snapshot.systemPrompt.length, 'block', 'blocks')
-            }
-          >
-            <SystemPrompt blocks={snapshot.systemPrompt} />
-          </Fold>
-          <Fold
-            id="ctx-mcp"
-            title="MCP instructions"
-            note={plural(snapshot.mcpServers.length, 'server', 'servers')}
-          >
-            <McpInstructions servers={snapshot.mcpServers} />
-          </Fold>
-          <Fold
-            id="ctx-agents"
-            title="Agent types"
-            note={plural(snapshot.agentTypes.length, 'type', 'types')}
-          >
-            <PlainList label="Agent types" items={snapshot.agentTypes} />
-          </Fold>
-          <Fold
-            id="ctx-deferred"
-            title="Deferred tools"
-            note={plural(snapshot.deferredTools.length, 'tool', 'tools')}
-          >
-            <PlainList label="Deferred tools" items={snapshot.deferredTools} />
-          </Fold>
-          <Fold
-            id="ctx-env"
-            title="Environment"
-            note={plural(Object.keys(snapshot.environment).length, 'value', 'values')}
-          >
-            <div className="panel">
-              <EnvironmentTable environment={snapshot.environment} />
-            </div>
-          </Fold>
+          {full ? (
+            <>
+              <Fold
+                id="ctx-prompt"
+                title="System prompt"
+                note={
+                  snapshot.systemPrompt === null
+                    ? 'not captured'
+                    : plural(snapshot.systemPrompt.length, 'block', 'blocks')
+                }
+              >
+                <SystemPrompt blocks={snapshot.systemPrompt} />
+              </Fold>
+              <Fold
+                id="ctx-mcp"
+                title="MCP instructions"
+                note={plural(snapshot.mcpServers.length, 'server', 'servers')}
+              >
+                <McpInstructions servers={snapshot.mcpServers} />
+              </Fold>
+            </>
+          ) : null}
+          {full && subagents ? (
+            <Fold
+              id="ctx-agents"
+              title="Agent types"
+              note={plural(snapshot.agentTypes.length, 'type', 'types')}
+            >
+              <PlainList label="Agent types" items={snapshot.agentTypes} />
+            </Fold>
+          ) : null}
+          {full ? (
+            <>
+              <Fold
+                id="ctx-deferred"
+                title="Deferred tools"
+                note={plural(snapshot.deferredTools.length, 'tool', 'tools')}
+              >
+                <PlainList label="Deferred tools" items={snapshot.deferredTools} />
+              </Fold>
+              <Fold
+                id="ctx-env"
+                title="Environment"
+                note={plural(Object.keys(snapshot.environment).length, 'value', 'values')}
+              >
+                <div className="panel">
+                  <EnvironmentTable environment={snapshot.environment} />
+                </div>
+              </Fold>
+            </>
+          ) : null}
         </>
       )}
     </section>

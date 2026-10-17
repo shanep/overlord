@@ -1,0 +1,446 @@
+{
+  "sessions": [
+    {
+      "id": "s1",
+      "agent": "claude-code",
+      "surface": "cli",
+      "title": "Restyle the Fleet view per the webview design skill",
+      "cwd": "/Users/shane/repos/overlord/.claude/worktrees/fleet",
+      "state": "running",
+      "startedAt": 1792205344715,
+      "updatedAt": 1792207864715,
+      "usage": {
+        "input": 820000,
+        "output": 96000,
+        "cacheRead": 7400000,
+        "cacheCreation": 410000,
+        "thinking": 0
+      },
+      "costUsd": 18.42,
+      "model": "claude-opus-5-5",
+      "effort": "high",
+      "permissionMode": "auto",
+      "pid": 4242,
+      "transcriptPath": null,
+      "gitBranch": "master",
+      "version": "2.6.1",
+      "agentCount": 0,
+      "contextFill": 0.58,
+      "recap": {
+        "text": "Rewriting the fleet header as stat tiles and checking the sidebar at 360 px.",
+        "at": 1792207864715
+      },
+      "lastPrompt": null,
+      "lastPromptAt": 1792205344715
+    },
+    {
+      "id": "s2",
+      "agent": "codex",
+      "surface": "cli",
+      "title": "Add a leaderboard to Reputation",
+      "cwd": "/Users/shane/repos/overlord/.claude/worktrees/leaderboard",
+      "state": "waiting",
+      "startedAt": 1792202164715,
+      "updatedAt": 1792207744715,
+      "usage": {
+        "input": 1250000,
+        "output": 140000,
+        "cacheRead": 12000000,
+        "cacheCreation": 700000,
+        "thinking": 0
+      },
+      "costUsd": null,
+      "model": "gpt-5.5-codex",
+      "effort": null,
+      "permissionMode": "auto",
+      "pid": 4242,
+      "transcriptPath": null,
+      "gitBranch": "master",
+      "version": "2.6.1",
+      "agentCount": 0,
+      "contextFill": 0.81,
+      "recap": {
+        "text": "Waiting to run the D1 migration for the scores table.",
+        "at": 1792207744715
+      },
+      "lastPrompt": null,
+      "lastPromptAt": 1792202164715
+    },
+    {
+      "id": "s3",
+      "agent": "claude-code",
+      "surface": "cli",
+      "title": "Rename Connectors to Connectors (MCP)",
+      "cwd": "/Users/shane/repos/overlord",
+      "state": "done",
+      "startedAt": 1792192264715,
+      "updatedAt": 1792194064715,
+      "usage": {
+        "input": 210000,
+        "output": 18000,
+        "cacheRead": 1900000,
+        "cacheCreation": 90000,
+        "thinking": 0
+      },
+      "costUsd": 2.31,
+      "model": "claude-sonnet-5-5",
+      "effort": "medium",
+      "permissionMode": "auto",
+      "pid": null,
+      "transcriptPath": null,
+      "gitBranch": "master",
+      "version": "2.6.1",
+      "agentCount": 0,
+      "contextFill": 0.22,
+      "recap": null,
+      "lastPrompt": null,
+      "lastPromptAt": 1792192264715
+    },
+    {
+      "id": "s4",
+      "agent": "codex",
+      "surface": "cli",
+      "title": "Draft related work for the tech lag paper",
+      "cwd": "/Users/shane/research/tech-lag-abandonment",
+      "state": "idle",
+      "startedAt": 1792200064715,
+      "updatedAt": 1792206364715,
+      "usage": {
+        "input": 640000,
+        "output": 72000,
+        "cacheRead": 5100000,
+        "cacheCreation": 300000,
+        "thinking": 0
+      },
+      "costUsd": null,
+      "model": "gpt-5.5-codex",
+      "effort": null,
+      "permissionMode": "auto",
+      "pid": 4242,
+      "transcriptPath": null,
+      "gitBranch": "main",
+      "version": "2.6.1",
+      "agentCount": 0,
+      "contextFill": 0.44,
+      "recap": {
+        "text": "Finished the dependency update section; next is abandonment.",
+        "at": 1792206364715
+      },
+      "lastPrompt": null,
+      "lastPromptAt": 1792200064715
+    },
+    {
+      "id": "s5",
+      "agent": "claude-code",
+      "surface": "cli",
+      "title": "Run the abandonment model on the full dataset",
+      "cwd": "/Users/shane/research/tech-lag-abandonment",
+      "state": "failed",
+      "startedAt": 1792189864715,
+      "updatedAt": 1792191064715,
+      "usage": {
+        "input": 90000,
+        "output": 6000,
+        "cacheRead": 400000,
+        "cacheCreation": 30000,
+        "thinking": 0
+      },
+      "costUsd": 0.94,
+      "model": "claude-sonnet-5-5",
+      "effort": "medium",
+      "permissionMode": "auto",
+      "pid": null,
+      "transcriptPath": null,
+      "gitBranch": "main",
+      "version": "2.6.1",
+      "agentCount": 0,
+      "contextFill": 0.09,
+      "recap": null,
+      "lastPrompt": null,
+      "lastPromptAt": 1792189864715
+    },
+    {
+      "id": "s6",
+      "agent": "claude-code",
+      "surface": "overlord",
+      "title": "",
+      "cwd": "/Users/shane/scratch/canvas-grades",
+      "state": "running",
+      "startedAt": 1792207384715,
+      "updatedAt": 1792207864715,
+      "usage": {
+        "input": 40000,
+        "output": 5200,
+        "cacheRead": 160000,
+        "cacheCreation": 20000,
+        "thinking": 0
+      },
+      "costUsd": 0.38,
+      "model": "claude-sonnet-5-5",
+      "effort": "low",
+      "permissionMode": "auto",
+      "pid": 4242,
+      "transcriptPath": null,
+      "gitBranch": null,
+      "version": "2.6.1",
+      "agentCount": 0,
+      "contextFill": 0.06,
+      "recap": {
+        "text": "Writing a script to pull grades from Canvas into a CSV.",
+        "at": 1792207864715
+      },
+      "lastPrompt": null,
+      "lastPromptAt": 1792207384715
+    }
+  ],
+  "agents": [
+    {
+      "id": "s1",
+      "sessionId": "s1",
+      "parentAgentId": null,
+      "parentToolUseId": null,
+      "agentType": "main",
+      "description": "",
+      "spawnDepth": 0,
+      "background": false,
+      "state": "running",
+      "startedAt": 1792205344715,
+      "endedAt": null,
+      "transcriptPath": null,
+      "usage": {
+        "input": 1,
+        "output": 1,
+        "cacheRead": 1,
+        "cacheCreation": 1,
+        "thinking": 0
+      },
+      "toolCallCount": 212,
+      "currentTool": "Edit",
+      "model": "claude-sonnet-5-5"
+    },
+    {
+      "id": "a1",
+      "sessionId": "s1",
+      "parentAgentId": "s1",
+      "parentToolUseId": null,
+      "agentType": "Explore",
+      "description": "Find every fleet CSS rule the sidebar overrides",
+      "spawnDepth": 0,
+      "background": false,
+      "state": "done",
+      "startedAt": 1792206064715,
+      "endedAt": 1792206244715,
+      "transcriptPath": null,
+      "usage": {
+        "input": 60000,
+        "output": 4000,
+        "cacheRead": 300000,
+        "cacheCreation": 10000,
+        "thinking": 0
+      },
+      "toolCallCount": 18,
+      "currentTool": null,
+      "model": "claude-sonnet-5-5"
+    },
+    {
+      "id": "a2",
+      "sessionId": "s1",
+      "parentAgentId": "s1",
+      "parentToolUseId": null,
+      "agentType": "general-purpose",
+      "description": "Write sample state for the fleet preview",
+      "spawnDepth": 0,
+      "background": false,
+      "state": "running",
+      "startedAt": 1792207504715,
+      "endedAt": null,
+      "transcriptPath": null,
+      "usage": {
+        "input": 80000,
+        "output": 7000,
+        "cacheRead": 420000,
+        "cacheCreation": 15000,
+        "thinking": 0
+      },
+      "toolCallCount": 9,
+      "currentTool": "Write",
+      "model": "claude-sonnet-5-5"
+    },
+    {
+      "id": "a3",
+      "sessionId": "s1",
+      "parentAgentId": "a2",
+      "parentToolUseId": null,
+      "agentType": "scout",
+      "description": "Check the FleetState type for missing fields",
+      "spawnDepth": 1,
+      "background": false,
+      "state": "running",
+      "startedAt": 1792207744715,
+      "endedAt": null,
+      "transcriptPath": null,
+      "usage": {
+        "input": 12000,
+        "output": 900,
+        "cacheRead": 60000,
+        "cacheCreation": 2000,
+        "thinking": 0
+      },
+      "toolCallCount": 4,
+      "currentTool": "Grep",
+      "model": "claude-sonnet-5-5"
+    },
+    {
+      "id": "s2",
+      "sessionId": "s2",
+      "parentAgentId": null,
+      "parentToolUseId": null,
+      "agentType": "main",
+      "description": "",
+      "spawnDepth": 0,
+      "background": false,
+      "state": "waiting",
+      "startedAt": 1792202164715,
+      "endedAt": null,
+      "transcriptPath": null,
+      "usage": {
+        "input": 1,
+        "output": 1,
+        "cacheRead": 1,
+        "cacheCreation": 1,
+        "thinking": 0
+      },
+      "toolCallCount": 388,
+      "currentTool": null,
+      "model": "claude-sonnet-5-5"
+    },
+    {
+      "id": "s4",
+      "sessionId": "s4",
+      "parentAgentId": null,
+      "parentToolUseId": null,
+      "agentType": "main",
+      "description": "",
+      "spawnDepth": 0,
+      "background": false,
+      "state": "idle",
+      "startedAt": 1792200064715,
+      "endedAt": null,
+      "transcriptPath": null,
+      "usage": {
+        "input": 1,
+        "output": 1,
+        "cacheRead": 1,
+        "cacheCreation": 1,
+        "thinking": 0
+      },
+      "toolCallCount": 140,
+      "currentTool": null,
+      "model": "claude-sonnet-5-5"
+    },
+    {
+      "id": "s6",
+      "sessionId": "s6",
+      "parentAgentId": null,
+      "parentToolUseId": null,
+      "agentType": "main",
+      "description": "",
+      "spawnDepth": 0,
+      "background": false,
+      "state": "running",
+      "startedAt": 1792207384715,
+      "endedAt": null,
+      "transcriptPath": null,
+      "usage": {
+        "input": 1,
+        "output": 1,
+        "cacheRead": 1,
+        "cacheCreation": 1,
+        "thinking": 0
+      },
+      "toolCallCount": 31,
+      "currentTool": "Bash",
+      "model": "claude-sonnet-5-5"
+    }
+  ],
+  "pendingPermissions": [
+    {
+      "id": "p1",
+      "agent": "codex",
+      "sessionId": "s2",
+      "agentId": "s2",
+      "toolName": "Bash",
+      "input": {
+        "command": "npx wrangler d1 migrations apply leaderboard --remote"
+      },
+      "requestedAt": 1792207744715,
+      "source": "hook"
+    }
+  ],
+  "activeSessionId": "s1",
+  "activeVersion": 1,
+  "places": {
+    "s1": "vscode",
+    "s2": "terminal",
+    "s4": "background",
+    "s6": "vscode"
+  },
+  "projects": [
+    {
+      "id": "git:/Users/shane/repos/overlord",
+      "name": "overlord",
+      "kind": "git",
+      "folder": "/Users/shane/repos/overlord"
+    },
+    {
+      "id": "git:/Users/shane/research/tech-lag-abandonment",
+      "name": "tech-lag-abandonment",
+      "kind": "git",
+      "folder": "/Users/shane/research/tech-lag-abandonment"
+    }
+  ],
+  "sessionProjects": {
+    "s1": {
+      "projectId": "git:/Users/shane/repos/overlord",
+      "folder": "/Users/shane/repos/overlord",
+      "ignored": false
+    },
+    "s2": {
+      "projectId": "git:/Users/shane/repos/overlord",
+      "folder": "/Users/shane/repos/overlord",
+      "ignored": false
+    },
+    "s3": {
+      "projectId": "git:/Users/shane/repos/overlord",
+      "folder": "/Users/shane/repos/overlord",
+      "ignored": false
+    },
+    "s4": {
+      "projectId": "git:/Users/shane/research/tech-lag-abandonment",
+      "folder": "/Users/shane/research/tech-lag-abandonment",
+      "ignored": false
+    },
+    "s5": {
+      "projectId": "git:/Users/shane/research/tech-lag-abandonment",
+      "folder": "/Users/shane/research/tech-lag-abandonment",
+      "ignored": false
+    },
+    "s6": {
+      "projectId": null,
+      "folder": "/Users/shane/scratch/canvas-grades",
+      "ignored": false
+    }
+  },
+  "workspaceProjects": ["git:/Users/shane/repos/overlord"],
+  "rateLimits": {
+    "fiveHourPct": 62,
+    "sevenDayPct": 38,
+    "resetsAt": 1792213564715
+  },
+  "spendPerHourUsd": 14.6,
+  "health": {
+    "s2": "watch",
+    "s4": "degraded"
+  },
+  "launched": ["s6"]
+}

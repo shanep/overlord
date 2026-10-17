@@ -37,8 +37,8 @@
   max-width: none;
 }
 
-/* Toolbar buttons are icons alone here, named for screen readers and in their tooltips. */
-#root[data-layout='sidebar'] .toolbar-label {
+/* Toolbar buttons and agent marks are icons alone here, named for screen readers and in their tooltips. */
+#root[data-layout='sidebar'] :is(.toolbar-label, .agent-mark-name) {
   position: absolute;
   width: 1px;
   height: 1px;

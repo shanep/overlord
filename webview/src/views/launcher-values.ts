@@ -1,6 +1,7 @@
 // Pure helpers for the launcher: budget parsing and turning the form into
 // one launch spec per selected profile (a matrix run).
 
+import type { AgentId } from '../../../src/shared/agents.js';
 import type { LaunchProfile, LaunchSpec } from '../../../src/shared/model.js';
 import type { LaunchFolder, LaunchRun } from '../../../src/shared/protocol.js';
 import { formatUsd, truncate } from '../format.js';
@@ -40,9 +41,17 @@ export function runLabel(form: LaunchForm): string {
   return truncate(form.prompt.trim().split('\n', 1).join(''), 40);
 }
 
-/** One spec per selected profile, or one with no profile when none is selected. */
-export function buildSpecs(form: LaunchForm, selected: readonly LaunchProfile[]): LaunchSpec[] {
+/**
+ * One spec per selected profile, or one with no profile when none is
+ * selected. The agent goes on each spec only when the form offered a pick.
+ */
+export function buildSpecs(
+  form: LaunchForm,
+  selected: readonly LaunchProfile[],
+  agent?: AgentId,
+): LaunchSpec[] {
   const base = {
+    ...(agent === undefined ? {} : { agent }),
     prompt: form.prompt,
     cwd: form.cwd.trim(),
     worktree: form.worktree,

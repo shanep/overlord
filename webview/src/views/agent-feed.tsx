@@ -46,9 +46,9 @@ function FeedBody(props: { readonly item: FeedItem }): ReactElement {
   }
 }
 
-const KIND_LABELS: Readonly<Record<FeedItem['kind'], string>> = {
+/** What each kind of item is called. The agent's own words go under its short name. */
+const KIND_LABELS: Readonly<Record<Exclude<FeedItem['kind'], 'text'>, string>> = {
   user: 'You',
-  text: 'Claude',
   thinking: 'Thinking',
   tool_use: 'Tool call',
   tool_result: 'Result',
@@ -65,8 +65,12 @@ function feedClass(item: FeedItem): string {
   return `feed-${item.kind}`;
 }
 
-export function AgentFeed(props: { readonly feed: readonly FeedItem[] }): ReactElement {
-  const { feed } = props;
+export function AgentFeed(props: {
+  readonly feed: readonly FeedItem[];
+  /** The agent's short name, which labels what it wrote. */
+  readonly agentName: string;
+}): ReactElement {
+  const { feed, agentName } = props;
   if (feed.length === 0) {
     return <p className="muted">Nothing in the feed yet.</p>;
   }
@@ -76,7 +80,9 @@ export function AgentFeed(props: { readonly feed: readonly FeedItem[] }): ReactE
       {ordered.map((item) => (
         <li key={item.id} className={feedClass(item)}>
           <div className="feed-meta">
-            <span className="feed-kind">{KIND_LABELS[item.kind]}</span>
+            <span className="feed-kind">
+              {item.kind === 'text' ? agentName : KIND_LABELS[item.kind]}
+            </span>
             <time dateTime={new Date(item.at).toISOString()}>{formatClock(item.at)}</time>
           </div>
           <FeedBody item={item} />

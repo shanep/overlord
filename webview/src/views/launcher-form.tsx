@@ -5,7 +5,11 @@
 import type { ReactElement } from 'react';
 import { useEffect, useState } from 'react';
 
+import type { AgentId, AgentInfo } from '../../../src/shared/agents.js';
+import { CLAUDE_CODE } from '../../../src/shared/agents.js';
 import type { LauncherState } from '../../../src/shared/protocol.js';
+import { offeredAgents, useAgents } from '../agents.js';
+import { Segmented } from '../components/card.js';
 import { isNumber, isString, isStringArray } from '../guards.js';
 import { usePersistentState, usePostAction } from '../vscode-context.js';
 
@@ -100,6 +104,52 @@ function ProfilePicker(props: {
   );
 }
 
+/** Which agent runs the prompt, when more than one can. */
+function AgentStep(props: {
+  readonly agents: readonly AgentInfo[];
+  readonly value: string;
+  readonly onChange: (id: string) => void;
+}): ReactElement {
+  return (
+    <div className="launch-group">
+      <h3 className="launch-step">Which agent?</h3>
+      <Segmented
+        label="Agent"
+        options={props.agents.map((agent) => ({ value: agent.id, label: agent.name }))}
+        value={props.value}
+        onChange={props.onChange}
+      />
+    </div>
+  );
+}
+
+interface AgentPick {
+  /** The agent step, or null with only one agent to run. */
+  readonly step: ReactElement | null;
+  /** The profiles for the picked agent, or every profile with no pick. */
+  readonly profiles: LauncherState['profiles'];
+  /** The agent to put on each spec, unset with no pick. */
+  readonly agent: AgentId | undefined;
+}
+
+/**
+ * The agent a run uses. The pick shows only with more than one agent that
+ * can launch, and then the profiles are the picked agent's.
+ */
+function useAgentPick(profiles: LauncherState['profiles']): AgentPick {
+  const [saved, setSaved] = usePersistentState('launcher.agent', CLAUDE_CODE, isString);
+  const launchable = offeredAgents(useAgents()).filter((agent) => agent.capabilities.launch);
+  if (launchable.length < 2) {
+    return { step: null, profiles, agent: undefined };
+  }
+  const agent = launchable.some((item) => item.id === saved) ? saved : CLAUDE_CODE;
+  return {
+    step: <AgentStep agents={launchable} value={agent} onChange={setSaved} />,
+    profiles: profiles.filter((profile) => profile.agent === agent),
+    agent,
+  };
+}
+
 function FolderPicker(props: {
   readonly folders: LauncherState['folders'];
   readonly folder: string;
@@ -159,6 +209,7 @@ export function LaunchFormView(props: {
     [],
     isStringArray,
   );
+  const pick = useAgentPick(profiles);
   const [worktree, setWorktree] = useState(true);
   const [budgetText, setBudgetText] = useState('');
   // A folder picked with Browse arrives with the next state, so select it once.
@@ -169,9 +220,9 @@ export function LaunchFormView(props: {
     }
   }, [browsed, browsedAt, setCwd, setBrowsedAt]);
   const budget = parseBudget(budgetText);
-  const selected = profiles.filter((profile) => checked.includes(profile.id));
+  const selected = pick.profiles.filter((profile) => checked.includes(profile.id));
   const maxBudgetUsd = budget.ok ? budget.value : null;
-  const specs = buildSpecs({ prompt, label, cwd, worktree, maxBudgetUsd }, selected);
+  const specs = buildSpecs({ prompt, label, cwd, worktree, maxBudgetUsd }, selected, pick.agent);
   const canLaunch = prompt.trim() !== '' && budget.ok;
   const folder = cwd.trim() === '' ? defaultFolder : cwd.trim();
   const summary = launchSummary({
@@ -217,13 +268,14 @@ export function LaunchFormView(props: {
         </div>
 
         <div className="launch-side">
+          {pick.step}
           <div className="launch-group">
             <h3 className="launch-step">Which profiles?</h3>
             <p id="launch-profiles-hint" className="hint">
               Each profile you pick runs the same prompt with its own model and settings, so you can
               compare them. Pick none for 1 run with your usual settings.
             </p>
-            <ProfilePicker profiles={profiles} checked={checked} onChange={setChecked} />
+            <ProfilePicker profiles={pick.profiles} checked={checked} onChange={setChecked} />
           </div>
 
           <div className="launch-group">

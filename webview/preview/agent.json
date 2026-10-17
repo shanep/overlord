@@ -25,6 +25,7 @@
   },
   "session": {
     "id": "s1",
+    "agent": "claude-code",
     "surface": "cli",
     "title": "Add the MCP registry search to the Connectors view",
     "cwd": "/Users/shane/repos/overlord",

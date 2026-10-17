@@ -42,13 +42,18 @@ const ACTION_TIPS: Readonly<Record<RowAction | ProjectAction, string>> = {
   move: 'Put this session in another project',
   relocate: 'Continue a copy of this session in another folder',
   combine: 'Start one new session from a digest of this and others',
-  newSession: 'Start Claude Code in this project, in its own worktree',
+  newSession: 'Start a session in this project, in its own worktree',
   openFolder: 'Reveal the folder this project works in',
   setFolder: 'Pick the folder this project works in',
   rename: 'Give this project a new name',
   delete: 'Remove the project, its sessions stay',
 };
 
-export function actionTip(action: RowAction | ProjectAction): string {
-  return `${ACTION_LABELS[action]}: ${ACTION_TIPS[action]}`;
+/** The tip for a button. New session names the agent it starts when only one is on offer. */
+export function actionTip(action: RowAction | ProjectAction, agentName: string | null): string {
+  const tip =
+    action === 'newSession' && agentName !== null
+      ? `Start ${agentName} in this project, in its own worktree`
+      : ACTION_TIPS[action];
+  return `${ACTION_LABELS[action]}: ${tip}`;
 }
