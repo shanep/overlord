@@ -115,6 +115,7 @@ export function uploadMessage(server: string, body: ScoreUpload): string {
     `The server works out your score (${String(Math.round(score * 100))}) and rank (${rankFor(score).name}) from these counts.`,
     'To know it is you, it checks your GitHub sign-in once and keeps only your GitHub id and login, never the token.',
     'The achievements are the ids of the trophies you have unlocked, shown next to your name on the board.',
+    "tokensPerDay is your average tokens a day over the last 60 days, from Claude Code's usage stats.",
     'No prompt text, words, session titles or folder names are sent.',
   ].join('\n');
 }
@@ -123,6 +124,8 @@ async function upload(rt: Runtime): Promise<void> {
   if (!ready(rt)) {
     return;
   }
+  // Read the usage stats now, so the token average is current even if the Usage view never loaded them.
+  await rt.caches.usage.refresh();
   const state = buildReputation(rt);
   if (state.scannedAt === null) {
     rt.host.showWarning('Wait for the first scan of your prompts, then upload.');
@@ -143,6 +146,7 @@ async function upload(rt: Runtime): Promise<void> {
     mean: state.mean,
     prompts: state.prompts,
     achievements: unlockedIds(state),
+    tokensPerDay: state.tokensPerDay,
   };
   const server = rt.host.settings.leaderboardUrl;
   if (!(await rt.host.confirm(uploadMessage(server, body), 'Upload'))) {

@@ -43,6 +43,7 @@ const EMPTY: ReputationState = {
   topMean: [],
   recent: [],
   scannedAt: null,
+  tokensPerDay: 0,
   leaderboard: {
     enabled: false,
     pageUrl: '',
@@ -107,6 +108,7 @@ const STATE: ReputationState = {
     },
   ],
   scannedAt: NOW - 5 * MINUTE,
+  tokensPerDay: 187_500_000,
   leaderboard: {
     enabled: false,
     pageUrl: '',
@@ -237,6 +239,7 @@ describe('ReputationView', () => {
     expect(getByText(MEAN_LABEL, { selector: 'dt' }).nextElementSibling?.textContent).toBe('30');
     expect(getByText(GENERAL_LABEL, { selector: 'dt' }).nextElementSibling?.textContent).toBe('2');
     expect(getByText('Prompts on file').nextElementSibling?.textContent).toBe('400');
+    expect(getByText('Tokens a day').nextElementSibling?.textContent).toBe('188M');
     expect(getByText('5m ago').closest('time')?.getAttribute('dateTime')).toBe(
       new Date(NOW - 5 * MINUTE).toISOString(),
     );

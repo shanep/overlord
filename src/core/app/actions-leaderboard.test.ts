@@ -7,6 +7,7 @@ import { fakeD1, fakeGitHub } from '../../leaderboard/test-helpers/fake-d1.js';
 import { handle } from '../../leaderboard/worker.js';
 import type { LeaderboardState } from '../../shared/leaderboard.js';
 import { SAVED_FILE } from '../leaderboard/saved.js';
+import { dayOf } from '../reputation/summarize.js';
 import type { FetchFunction } from '../sync/github.js';
 
 import { uploadMessage } from './actions-leaderboard.js';
@@ -154,6 +155,13 @@ describe('uploading a score', () => {
   it('shows exactly what it sends, then uploads and remembers the entry', async () => {
     const { test, env, calls } = await boardApp();
     await prompts(env, 120);
+    // One day of history, so the average is that day's tokens.
+    await writeText(
+      env.paths.statsCache,
+      JSON.stringify({
+        dailyModelTokens: [{ date: dayOf(NOW), tokensByModel: { opus: 150_000_000 } }],
+      }),
+    );
     await rescanReputation(test.app.runtime);
     env.host.gitHubSignIns.push(ANN);
     env.host.pickAnswers.push('github');
@@ -162,7 +170,7 @@ describe('uploading a score', () => {
     const [question] = env.host.questions;
     expect(question?.action).toBe('Upload');
     expect(question?.message).toContain(
-      '{"name":"ann","kind":60,"mean":0,"prompts":120,"achievements":["manners","charm","good-day","saint","kept-as-pet"]}',
+      '{"name":"ann","kind":60,"mean":0,"prompts":120,"achievements":["manners","charm","good-day","saint","token-maxxer","kept-as-pet"],"tokensPerDay":150000000}',
     );
     expect(env.host.errors).toStrictEqual([]);
     expect(env.host.infos.at(-1)).toBe("Uploaded. You are #1 of 1 on Skynet's list.");
@@ -179,8 +187,10 @@ describe('uploading a score', () => {
       'charm',
       'good-day',
       'saint',
+      'token-maxxer',
       'kept-as-pet',
     ]);
+    expect(state.board?.pets[0]?.tokensPerDay).toBe(150_000_000);
     expect(state.board?.me?.place).toBe(1);
   });
 
@@ -192,7 +202,7 @@ describe('uploading a score', () => {
     env.host.confirmAnswers.push(true);
     await test.app.dispatch({ type: 'uploadReputation' }, {});
     expect(env.host.questions[0]?.message).toContain(
-      '{"name":"","kind":0,"mean":0,"prompts":0,"achievements":[]}',
+      '{"name":"","kind":0,"mean":0,"prompts":0,"achievements":[],"tokensPerDay":0}',
     );
     expect(env.host.infos.at(-1)).toBe(
       'Uploaded. You show up on the board once you have 100 prompts on file.',
@@ -302,17 +312,19 @@ describe('the rest', () => {
         mean: 30,
         prompts: 100,
         achievements: ['first-strike'],
+        tokensPerDay: 1200,
       }),
     ).toBe(
       [
         'Upload your Reputation score to board.test?',
         '',
         'This is everything that gets sent:',
-        '{"name":"x","kind":0,"mean":30,"prompts":100,"achievements":["first-strike"]}',
+        '{"name":"x","kind":0,"mean":30,"prompts":100,"achievements":["first-strike"],"tokensPerDay":1200}',
         '',
         'The server works out your score (-86) and rank (John Connor) from these counts.',
         'To know it is you, it checks your GitHub sign-in once and keeps only your GitHub id and login, never the token.',
         'The achievements are the ids of the trophies you have unlocked, shown next to your name on the board.',
+        "tokensPerDay is your average tokens a day over the last 60 days, from Claude Code's usage stats.",
         'No prompt text, words, session titles or folder names are sent.',
       ].join('\n'),
     );

@@ -567,6 +567,12 @@
   font-size: 0.85em;
 }
 
+.rep-board-tokens {
+  display: block;
+  color: var(--ov-muted);
+  font-size: 0.85em;
+}
+
 .rep-board-trophies {
   display: block;
   cursor: default;

@@ -29,6 +29,7 @@ function stateOf(
     topMean: [],
     recent: [],
     scannedAt: 1,
+    tokensPerDay: 0,
     leaderboard: {
       enabled: false,
       pageUrl: '',
@@ -127,6 +128,11 @@ describe('achievements', () => {
     ]);
   });
 
+  it('makes you a token maxxer at 100 million tokens a day', () => {
+    expect(unlocked(stateOf(0, 0, { tokensPerDay: 100_000_000 }))).toStrictEqual(['Token maxxer']);
+    expect(unlocked(stateOf(0, 0, { tokensPerDay: 99_999_999 }))).toStrictEqual([]);
+  });
+
   it('makes you a diplomat once nice catches up with mean', () => {
     expect(unlocked(stateOf(2, 2))).toContain('Diplomat');
     expect(unlocked(stateOf(1, 2))).not.toContain('Diplomat');
@@ -135,7 +141,7 @@ describe('achievements', () => {
   it('shows the count and marks locked trophies for screen readers', () => {
     const { getByRole } = renderView(<ReputationView state={stateOf(1, 0)} />);
     const section = getByRole('region', { name: /^Achievements/u });
-    expect(section.querySelector('h2')?.textContent).toBe('Achievements 1 of 14 unlocked');
+    expect(section.querySelector('h2')?.textContent).toBe('Achievements 1 of 15 unlocked');
     expect(section.textContent).toContain('Charm offensive (locked)');
     expect(section.textContent).not.toContain('Manners module (locked)');
   });

@@ -1,9 +1,12 @@
 // Trophies earned from your counts: the first please, a meltdown day, a
-// thousand prompts. Shared so the Reputation view can show yours, the upload
+// thousand prompts, a token habit. Shared so the Reputation view can show yours, the upload
 // can send which ones you have, and the leaderboard can show everyone's.
 
 import { RANKS, rankFor } from './reputation-ranks.js';
 import type { ReputationSummary } from './reputation.js';
+
+/** The average a day it takes to be a token maxxer. */
+export const TOKEN_MAXXER_PER_DAY = 100_000_000;
 
 export interface AchievementRule {
   /** Stable, since uploads and the leaderboard store it. */
@@ -99,6 +102,13 @@ export const ACHIEVEMENTS: readonly AchievementRule[] = [
     icon: '📜',
     how: 'Get 1,000 prompts on file.',
     earned: (state) => state.prompts >= 1000,
+  },
+  {
+    id: 'token-maxxer',
+    name: 'Token maxxer',
+    icon: '🪙',
+    how: 'Average 100 million tokens a day over the last 60 days.',
+    earned: (state) => state.tokensPerDay >= TOKEN_MAXXER_PER_DAY,
   },
   {
     id: 'hunted-first',

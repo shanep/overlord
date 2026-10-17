@@ -10,6 +10,7 @@ import { scanInto } from '../../reputation/scan.js';
 import type { ReputationIndex } from '../../reputation/store.js';
 import { loadIndex, saveIndex } from '../../reputation/store.js';
 import { summarize } from '../../reputation/summarize.js';
+import { averageTokensPerDay } from '../../reputation/tokens.js';
 import { messageOf } from '../errors.js';
 import type { Runtime } from '../runtime.js';
 
@@ -27,6 +28,7 @@ export const EMPTY_REPUTATION: ReputationState = {
   topMean: [],
   recent: [],
   scannedAt: null,
+  tokensPerDay: 0,
   leaderboard: EMPTY_LEADERBOARD,
 };
 
@@ -112,9 +114,11 @@ function titles(rt: Runtime, index: ReputationIndex): (sessionId: string) => str
 
 function stateOf(rt: Runtime, entry: Entry): ReputationState {
   const leaderboard = buildLeaderboard(rt);
-  return entry.index === null
-    ? { ...EMPTY_REPUTATION, leaderboard }
-    : { ...summarize(entry.index, titles(rt, entry.index)), leaderboard };
+  if (entry.index === null) {
+    return { ...EMPTY_REPUTATION, leaderboard };
+  }
+  const tokensPerDay = averageTokensPerDay(rt.caches.usage.value.days, rt.clock());
+  return { ...summarize(entry.index, titles(rt, entry.index), tokensPerDay), leaderboard };
 }
 
 export function buildReputation(rt: Runtime): ReputationState {

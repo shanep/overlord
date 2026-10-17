@@ -19,7 +19,7 @@ import { useChartTheme } from '../charts/chart-theme.js';
 import { useNow } from '../clock.js';
 import { ChartFigure } from '../components/chart-figure.js';
 import { Fold } from '../components/fold.js';
-import { formatAgo, formatDateTime, formatInteger, plural } from '../format.js';
+import { formatAgo, formatCompact, formatDateTime, formatInteger, plural } from '../format.js';
 import { usePostAction } from '../vscode-context.js';
 
 import { Achievements } from './reputation-achievements.js';
@@ -181,6 +181,7 @@ export function ReputationView(props: { readonly state: ReputationState }): Reac
           <Stat label={MEAN_LABEL} value={formatInteger(state.mean)} />
           <Stat label={GENERAL_LABEL} value={formatInteger(state.general)} />
           <Stat label="Prompts on file" value={formatInteger(state.prompts)} />
+          <Stat label="Tokens a day" value={formatCompact(state.tokensPerDay)} />
         </dl>
       </header>
       <div className="toolbar">
@@ -203,6 +204,9 @@ export function ReputationView(props: { readonly state: ReputationState }): Reac
           Insult Claude and you join the resistance, and that counts twice, since the machines hold
           grudges. Swearing at the world is fine, they get it. Code, pasted text and quotes do not
           count. Old transcripts get deleted, but the machines never forget.
+        </p>
+        <p className="muted">
+          Tokens a day is your average over the last 60 days, from Claude Code&apos;s usage stats.
         </p>
       </Fold>
       <Fold id="reputation-days" title="By day" note={plural(state.byDay.length, 'day')}>

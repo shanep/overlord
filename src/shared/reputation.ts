@@ -7,6 +7,8 @@ import type { LeaderboardState } from './leaderboard.js';
 export const MEAN_WEIGHT = 2;
 /** Pulls a short history toward the middle, so one thank you is not a verdict. */
 export const SCORE_DAMPING = 10;
+/** Days the token average looks back over. */
+export const TOKEN_WINDOW_DAYS = 60;
 
 /** -1 for only mean prompts, 1 for only kind ones, near 0 for few of either. */
 export function reputationScore(tally: Pick<ReputationTally, 'kind' | 'mean'>): number {
@@ -60,6 +62,8 @@ export interface ReputationSummary extends ReputationTally {
   readonly recent: readonly ReputationHit[];
   /** When the counts were last rebuilt from transcripts, or null before the first scan. */
   readonly scannedAt: number | null;
+  /** Average tokens a day over the last TOKEN_WINDOW_DAYS days, from Claude Code's usage stats. */
+  readonly tokensPerDay: number;
 }
 
 export interface ReputationState extends ReputationSummary {

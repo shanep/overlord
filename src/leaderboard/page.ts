@@ -24,6 +24,15 @@ function count(value: number): string {
   return value.toLocaleString('en-US');
 }
 
+const COMPACT = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 });
+
+/** The counts under a name, with the token average once there is one. */
+function counts(entry: BoardEntry): string {
+  const tokens = entry.tokensPerDay ?? 0;
+  const base = `${count(entry.kind)} nice, ${count(entry.mean)} mean`;
+  return tokens > 0 ? `${base}, ${COMPACT.format(tokens)} tokens a day` : base;
+}
+
 function trophies(ids: readonly string[]): string {
   const earned = achievementsOf(ids);
   if (earned.length === 0) {
@@ -49,7 +58,7 @@ function rows(entries: readonly BoardEntry[], empty: string): string {
           <span class="rank">${escapeHtml(entry.rank)}</span>
           ${trophies(entry.achievements ?? [])}
         </span>
-        <span class="counts">${count(entry.kind)} nice, ${count(entry.mean)} mean</span>
+        <span class="counts">${counts(entry)}</span>
         <span class="score">${String(Math.round(entry.score * 100))}</span>
       </li>`,
   );
@@ -125,7 +134,7 @@ export function renderPage(board: Board, now: number): string {
   </div>
   <footer>
     <p>Scores run from -100 (only mean) to 100 (only kind). Anyone with fewer than ${count(MIN_PROMPTS)} prompts is left off.
-    Uploads come from the Reputation view in <a href="${REPO_URL}">Overlord</a>, the VS Code extension, and carry a name, three counts and the achievements unlocked, never prompt text.
+    Uploads come from the Reputation view in <a href="${REPO_URL}">Overlord</a>, the VS Code extension, and carry a name, three counts, the average tokens a day over 60 days and the achievements unlocked, never prompt text.
     It is all in fun, and scores are self reported.</p>
     <p>Updated ${escapeHtml(new Date(now).toUTCString())}.</p>
   </footer>

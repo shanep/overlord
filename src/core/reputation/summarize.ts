@@ -1,5 +1,6 @@
 // Turns the index into the view state: totals, the score, a row per day, a
 // row per session, the most common kind and mean terms and the newest hits.
+// The token average comes from the usage stats, so the caller passes it in.
 
 import type { ReputationHit, ReputationSummary } from '../../shared/reputation.js';
 import { reputationScore } from '../../shared/reputation.js';
@@ -94,6 +95,7 @@ function sessionRows(
 export function summarize(
   index: ReputationIndex,
   titleOf: (sessionId: string) => string,
+  tokensPerDay: number,
 ): ReputationSummary {
   const total: Tally = { prompts: 0, kind: 0, mean: 0, general: 0 };
   const days = new Map<string, Tally>();
@@ -124,5 +126,6 @@ export function summarize(
     topMean: topTerms(hits.filter((hit) => hit.tone !== 'kind')),
     recent: hits.toSorted((left, right) => right.at - left.at).slice(0, RECENT_HITS),
     scannedAt: index.scannedAt,
+    tokensPerDay,
   };
 }

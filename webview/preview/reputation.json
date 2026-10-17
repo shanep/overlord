@@ -155,6 +155,7 @@
     }
   ],
   "scannedAt": 1792173300000,
+  "tokensPerDay": 187537200,
   "leaderboard": {
     "enabled": true,
     "pageUrl": "https://overlord-leaderboard.example.workers.dev",
@@ -173,7 +174,8 @@
           "mean": 17,
           "prompts": 840,
           "uploadedAt": 1792170000000,
-          "achievements": ["manners", "good-day", "first-strike", "meltdown"]
+          "achievements": ["manners", "good-day", "first-strike", "meltdown"],
+          "tokensPerDay": 187537200
         },
         "place": 4
       },
@@ -194,8 +196,10 @@
             "sailor-mouth",
             "most-wanted",
             "regular",
-            "hunted-first"
-          ]
+            "hunted-first",
+            "token-maxxer"
+          ],
+          "tokensPerDay": 412000000
         },
         {
           "id": "e2",
@@ -206,7 +210,8 @@
           "mean": 61,
           "prompts": 900,
           "uploadedAt": 1792170000000,
-          "achievements": ["first-strike", "meltdown"]
+          "achievements": ["first-strike", "meltdown"],
+          "tokensPerDay": 96000000
         },
         {
           "id": "e3",
@@ -217,7 +222,8 @@
           "mean": 44,
           "prompts": 1300,
           "uploadedAt": 1792170000000,
-          "achievements": ["manners", "first-strike", "grudge-match", "regular"]
+          "achievements": ["manners", "first-strike", "grudge-match", "regular"],
+          "tokensPerDay": 18500000
         },
         {
           "id": "e-me",
@@ -228,7 +234,8 @@
           "mean": 17,
           "prompts": 840,
           "uploadedAt": 1792170000000,
-          "achievements": ["manners", "good-day", "first-strike", "meltdown"]
+          "achievements": ["manners", "good-day", "first-strike", "meltdown"],
+          "tokensPerDay": 0
         }
       ],
       "pets": [
@@ -249,8 +256,10 @@
             "saint",
             "diplomat",
             "regular",
-            "kept-as-pet"
-          ]
+            "kept-as-pet",
+            "token-maxxer"
+          ],
+          "tokensPerDay": 240000000
         },
         {
           "id": "e6",
@@ -261,7 +270,8 @@
           "mean": 9,
           "prompts": 700,
           "uploadedAt": 1792170000000,
-          "achievements": ["manners", "charm", "teachers-pet", "saint"]
+          "achievements": ["manners", "charm", "teachers-pet", "saint"],
+          "tokensPerDay": 7300000
         },
         {
           "id": "e7",
@@ -271,7 +281,8 @@
           "kind": 30,
           "mean": 4,
           "prompts": 250,
-          "uploadedAt": 1792170000000
+          "uploadedAt": 1792170000000,
+          "tokensPerDay": 131000000
         }
       ]
     }

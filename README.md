@@ -219,13 +219,22 @@ once you have one.
 
 Uploading is a button. It asks how you want to show up (your GitHub login, a name you pick, or
 Anonymous), then shows the exact JSON it will send and waits for you to confirm. That JSON is a
-name, three counts and the ids of the achievements you have unlocked:
+name, three counts, your average tokens a day over the last 60 days (from Claude Code's
+`~/.claude/stats-cache.json`) and the ids of the achievements you have unlocked:
 
 ```json
-{ "name": "shanep", "kind": 6, "mean": 21, "prompts": 1998, "achievements": ["manners", "regular"] }
+{
+  "name": "shanep",
+  "kind": 6,
+  "mean": 21,
+  "prompts": 1998,
+  "achievements": ["manners", "regular"],
+  "tokensPerDay": 187537200
+}
 ```
 
-The board shows each person's achievements as a row of trophies next to their name.
+The board shows each person's achievements as a row of trophies next to their name, and their
+tokens a day under it. Average 100 million tokens a day and you unlock **Token maxxer**.
 
 Never prompt text, matched words, session titles or folder names. The server works out the
 score and rank from the counts. To know who is uploading, it checks your GitHub sign-in once

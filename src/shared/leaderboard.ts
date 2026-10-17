@@ -1,7 +1,7 @@
 // The global Reputation leaderboard, shared by the Cloudflare Worker that
 // serves it, the extension that uploads to it and the view that shows it.
-// An upload carries a display name, three counts and the ids of the
-// achievements you have unlocked, nothing else.
+// An upload carries a display name, three counts, your average tokens a day
+// and the ids of the achievements you have unlocked, nothing else.
 
 /** The Cloudflare Worker that serves the board, the default for overlord.leaderboard.url. */
 export const LEADERBOARD_URL = 'https://overlord-leaderboard.shane-f34.workers.dev';
@@ -18,6 +18,8 @@ export const MAX_NAME_LENGTH = 40;
  * it back would make a cycle. achievements.test.ts keeps the list under it.
  */
 export const MAX_ACHIEVEMENTS = 64;
+/** A trillion tokens a day is past anything one person runs, so anything above it is junk. */
+export const MAX_TOKENS_PER_DAY = 1_000_000_000_000;
 /** Shown for anyone who uploads without a name. */
 export const ANONYMOUS = 'Anonymous';
 
@@ -29,6 +31,8 @@ export interface ScoreUpload {
   readonly prompts: number;
   /** Ids from ACHIEVEMENTS. Missing from builds older than achievements on the board. */
   readonly achievements?: readonly string[];
+  /** Average tokens a day over the last 60 days. Missing from builds older than tokens on the board. */
+  readonly tokensPerDay?: number;
 }
 
 /** One person on the board. The id is random, not their GitHub id. */
@@ -43,6 +47,8 @@ export interface BoardEntry {
   readonly uploadedAt: number;
   /** Unlocked achievement ids, in list order. Missing from a server older than achievements on the board. */
   readonly achievements?: readonly string[];
+  /** 0 for an upload without it. Missing from a server older than tokens on the board. */
+  readonly tokensPerDay?: number;
 }
 
 /** Where one entry stands. Place is counted from the most wanted, and is null below MIN_PROMPTS. */
@@ -89,6 +95,10 @@ function isList(value: unknown): value is readonly unknown[] {
   return Array.isArray(value);
 }
 
+function isTokens(value: unknown, max: number): boolean {
+  return value === undefined || (isCount(value) && value <= max);
+}
+
 function isIdList(value: unknown, max: number): value is readonly string[] {
   return (
     isList(value) &&
@@ -106,7 +116,8 @@ export function isScoreUpload(value: unknown): value is ScoreUpload {
     isCount(value['mean']) &&
     isCount(value['prompts']) &&
     value['kind'] + value['mean'] <= value['prompts'] &&
-    (value['achievements'] === undefined || isIdList(value['achievements'], MAX_ACHIEVEMENTS))
+    (value['achievements'] === undefined || isIdList(value['achievements'], MAX_ACHIEVEMENTS)) &&
+    isTokens(value['tokensPerDay'], MAX_TOKENS_PER_DAY)
   );
 }
 
@@ -121,7 +132,8 @@ function isBoardEntry(value: unknown): value is BoardEntry {
     isCount(value['mean']) &&
     isCount(value['prompts']) &&
     typeof value['uploadedAt'] === 'number' &&
-    (value['achievements'] === undefined || isIdList(value['achievements'], Infinity))
+    (value['achievements'] === undefined || isIdList(value['achievements'], Infinity)) &&
+    isTokens(value['tokensPerDay'], Infinity)
   );
 }
 

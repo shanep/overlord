@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
 import type { Board, Standing } from '../shared/leaderboard.js';
-import { isBoard, isStanding, MAX_ACHIEVEMENTS, UPLOADS_PER_DAY } from '../shared/leaderboard.js';
+import {
+  isBoard,
+  isStanding,
+  MAX_ACHIEVEMENTS,
+  MAX_TOKENS_PER_DAY,
+  UPLOADS_PER_DAY,
+} from '../shared/leaderboard.js';
 import { reputationScore } from '../shared/reputation.js';
 
 import { escapeHtml, REPO_URL } from './page.js';
@@ -123,6 +129,10 @@ describe('leaderboard worker', () => {
       { ...MEAN, achievements: 'manners' },
       { ...MEAN, achievements: [1] },
       { ...MEAN, achievements: Array.from({ length: MAX_ACHIEVEMENTS + 1 }, () => 'manners') },
+      { ...MEAN, tokensPerDay: -1 },
+      { ...MEAN, tokensPerDay: 2.5 },
+      { ...MEAN, tokensPerDay: '100' },
+      { ...MEAN, tokensPerDay: MAX_TOKENS_PER_DAY + 1 },
     ];
     const statuses = await Promise.all(
       bad.map(async (body) => await w.status('POST', '/api/scores', 'token-ann', body)),
@@ -144,6 +154,7 @@ describe('leaderboard worker', () => {
         prompts: 400,
         uploadedAt: START,
         achievements: [],
+        tokensPerDay: 0,
       },
       place: 1,
     });
@@ -164,6 +175,18 @@ describe('leaderboard worker', () => {
     expect(html).toContain('<span title="Meltdown">🌋</span>');
     const again = await w.upload('token-ann', MEAN);
     expect(again.entry.achievements).toStrictEqual([]);
+  });
+
+  it('keeps the token average, shows it on the page and resets it when an upload leaves it out', async () => {
+    const w = world();
+    const standing = await w.upload('token-ann', { ...MEAN, tokensPerDay: 187_537_200 });
+    expect(standing.entry.tokensPerDay).toBe(187_537_200);
+    const board = await w.board();
+    expect(board.mostWanted[0]?.tokensPerDay).toBe(187_537_200);
+    const page = await w.call('GET', '/');
+    expect(await page.text()).toContain('2 nice, 30 mean, 187.5M tokens a day');
+    const again = await w.upload('token-ann', MEAN);
+    expect(again.entry.tokensPerDay).toBe(0);
   });
 
   it('replaces an account’s last upload and keeps its id', async () => {

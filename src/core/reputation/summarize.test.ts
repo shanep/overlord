@@ -59,7 +59,7 @@ describe('dayOf', () => {
 
 describe('summarize', () => {
   it('is empty for an empty index', () => {
-    expect(summarize(emptyIndex(), title)).toStrictEqual({
+    expect(summarize(emptyIndex(), title, 0)).toStrictEqual({
       prompts: 0,
       kind: 0,
       mean: 0,
@@ -71,6 +71,7 @@ describe('summarize', () => {
       topMean: [],
       recent: [],
       scannedAt: null,
+      tokensPerDay: 0,
     });
   });
 
@@ -90,7 +91,7 @@ describe('summarize', () => {
     put(index, 'f', { sessionId: 's4', at: DAY1 }, { mean: hit('claude', 'idiot') });
     put(index, 'g', { sessionId: 's4', at: DAY1 });
     put(index, 'h', { sessionId: 's5', at: DAY1 });
-    const state = summarize(index, title);
+    const state = summarize(index, title, 0);
     expect(state).toMatchObject({ prompts: 8, kind: 2, mean: 2, general: 2, scannedAt: 9 });
     expect(state.score).toBe(reputationScore({ kind: 2, mean: 2 }));
     expect(state.byDay).toStrictEqual([
@@ -161,7 +162,7 @@ describe('summarize', () => {
     const index = emptyIndex();
     put(index, 'a', { sessionId: 'zz', at: DAY1 }, { mean: hit('claude', 'x') });
     put(index, 'b', { sessionId: 'aa', at: DAY1 }, { mean: hit('claude', 'x') });
-    expect(summarize(index, title).bySession.map((row) => row.sessionId)).toStrictEqual([
+    expect(summarize(index, title, 0).bySession.map((row) => row.sessionId)).toStrictEqual([
       'aa',
       'zz',
     ]);
@@ -177,7 +178,7 @@ describe('summarize', () => {
         { mean: hit('general', `t${String(count % 12)}`) },
       );
     }
-    const state = summarize(index, title);
+    const state = summarize(index, title, 0);
     expect(state.recent).toHaveLength(RECENT_HITS);
     expect(state.recent[0]?.id).toBe('p50:general');
     expect(state.recent.at(-1)?.id).toBe('p1:general');
@@ -194,6 +195,6 @@ describe('summarize', () => {
     const index = emptyIndex();
     index.hits.set('lost', hit('claude', 'x'));
     index.kind.set('lost', { terms: ['please'], excerpt: 'please' });
-    expect(summarize(index, title)).toMatchObject({ recent: [], mean: 0, kind: 0 });
+    expect(summarize(index, title, 0)).toMatchObject({ recent: [], mean: 0, kind: 0 });
   });
 });

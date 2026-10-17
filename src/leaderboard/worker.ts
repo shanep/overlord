@@ -77,14 +77,14 @@ async function upload(request: Request, env: Env, deps: Deps): Promise<Response>
   if (!isScoreUpload(body)) {
     return fail(
       400,
-      'The upload needs a short name, whole, non-negative counts and a short list of achievements.',
+      'The upload needs a short name, whole, non-negative counts, a sane token average and a short list of achievements.',
     );
   }
   // Only these fields are kept, whatever else the body holds.
-  const { name, kind, mean, prompts, achievements = [] } = body;
+  const { name, kind, mean, prompts, achievements = [], tokensPerDay = 0 } = body;
   const saved = await saveScore(env.DB, {
     account,
-    upload: { name, kind, mean, prompts, achievements },
+    upload: { name, kind, mean, prompts, achievements, tokensPerDay },
     now: deps.now(),
     newId: deps.newId,
   });

@@ -47,6 +47,7 @@ const views: readonly ViewStateMessage[] = [
       topMean: [],
       recent: [],
       scannedAt: null,
+      tokensPerDay: 0,
       leaderboard: {
         enabled: false,
         pageUrl: '',

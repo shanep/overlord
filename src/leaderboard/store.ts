@@ -27,7 +27,8 @@ export interface Account {
   readonly login: string;
 }
 
-const COLUMNS = 'entry_id, name, kind, mean, prompts, score, uploaded_at, achievements';
+const COLUMNS =
+  'entry_id, name, kind, mean, prompts, score, uploaded_at, achievements, tokens_per_day';
 const LISTED = `prompts >= ${String(MIN_PROMPTS)}`;
 
 function text(row: Row, key: string): string {
@@ -60,6 +61,7 @@ function entryOf(row: Row): BoardEntry {
     uploadedAt: number_(row, 'uploaded_at'),
     // Dropping unknown ids means a retired achievement just stops showing.
     achievements: knownIds(text(row, 'achievements').split(',')),
+    tokensPerDay: number_(row, 'tokens_per_day'),
   };
 }
 
@@ -159,13 +161,13 @@ export async function saveScore(database: D1Database, save: Save): Promise<SaveR
   const score = reputationScore(upload);
   await database
     .prepare(
-      `INSERT INTO scores (github_id, login, entry_id, name, kind, mean, prompts, score, uploaded_at, upload_day, uploads_today, achievements)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `INSERT INTO scores (github_id, login, entry_id, name, kind, mean, prompts, score, uploaded_at, upload_day, uploads_today, achievements, tokens_per_day)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT (github_id) DO UPDATE SET
          login = excluded.login, name = excluded.name, kind = excluded.kind, mean = excluded.mean,
          prompts = excluded.prompts, score = excluded.score, uploaded_at = excluded.uploaded_at,
          upload_day = excluded.upload_day, uploads_today = excluded.uploads_today,
-         achievements = excluded.achievements`,
+         achievements = excluded.achievements, tokens_per_day = excluded.tokens_per_day`,
     )
     .bind(
       account.githubId,
@@ -180,6 +182,7 @@ export async function saveScore(database: D1Database, save: Save): Promise<SaveR
       day,
       uploadsToday + 1,
       knownIds(upload.achievements ?? []).join(','),
+      upload.tokensPerDay ?? 0,
     )
     .run();
   const row = await database
