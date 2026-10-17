@@ -16,13 +16,17 @@ function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+function isList(value: unknown): value is readonly unknown[] {
+  return Array.isArray(value);
+}
+
 /** The service.name of an export's first resource, or null when it has none. */
 export function serviceName(signal: OtlpSignal, body: unknown): string | null {
   const groups = isRecord(body) ? body[GROUPS[signal]] : undefined;
-  const first: unknown = Array.isArray(groups) ? groups[0] : undefined;
+  const first = isList(groups) ? groups[0] : undefined;
   const resource = isRecord(first) ? first['resource'] : undefined;
   const list = isRecord(resource) ? resource['attributes'] : undefined;
-  return Array.isArray(list) ? readString(attributesOf(list), 'service.name') : null;
+  return isList(list) ? readString(attributesOf(list), 'service.name') : null;
 }
 
 /** A decoder that hands each export to the decoder its service.name picks, else to the fallback. */
