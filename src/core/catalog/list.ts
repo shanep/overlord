@@ -25,7 +25,7 @@ export interface FoundEntry {
 }
 
 /** Frontmatter files fetched at once while listing a collection. */
-const READ_AT_ONCE = 8;
+const READ_AT_ONCE = 16;
 const DESCRIPTION_LIMIT = 300;
 const SEARCH_LIMIT = 50;
 const SEARCH_TIMEOUT_MS = 15_000;

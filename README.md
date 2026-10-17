@@ -64,9 +64,10 @@ See [PLAN.md](PLAN.md) for the full design and the decisions behind it.
 - **Skills** and **Agents**: every skill or agent installed in user, project and plugin scope,
   with **New skill** or **New agent** to make one from a template or have Claude draft it. Below
   that you can browse premade ones and install them. Skills come from Anthropic's own collection
-  (anthropics/skills), Superpowers (obra/superpowers) and the skills in wshobson/agents, or you
+  (anthropics/skills), Everything Claude Code (affaan-m/ECC), Superpowers (obra/superpowers) and
+  the skills in wshobson/agents, or you
   can search skills.sh, which tracks every public skill and how often people install it. Agents
-  come from VoltAgent/awesome-claude-code-subagents and wshobson/agents. **Install** asks where it
+  come from VoltAgent/awesome-claude-code-subagents, Everything Claude Code and wshobson/agents. **Install** asks where it
   goes the same way New does, copies the skill's whole folder (scripts and references included)
   or the agent's file from GitHub, links it into `~/.claude` when the config repo holds it, and
   opens it so you can read it first. A skill can carry scripts Claude runs, so read before you

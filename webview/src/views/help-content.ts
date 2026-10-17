@@ -70,13 +70,13 @@ export const SIDEBAR_GROUPS: readonly SidebarGroup[] = [
         name: 'Skills',
         icon: 'Light bulb',
         meaning:
-          'Every skill installed in user, project and plugin scope, and New skill to make one. Browse premade skills from Anthropic, Superpowers and wshobson/agents, or search skills.sh, and install one where you pick.',
+          'Every skill installed in user, project and plugin scope, and New skill to make one. Browse premade skills from Anthropic, Everything Claude Code, Superpowers and wshobson/agents, or search skills.sh, and install one where you pick.',
       },
       {
         name: 'Agents',
         icon: 'Robot head',
         meaning:
-          'Every agent installed in user, project and plugin scope, and New agent to make one. Browse premade agents from the VoltAgent and wshobson/agents collections and install one where you pick.',
+          'Every agent installed in user, project and plugin scope, and New agent to make one. Browse premade agents from the VoltAgent, Everything Claude Code and wshobson/agents collections and install one where you pick.',
       },
       {
         name: 'Usage',

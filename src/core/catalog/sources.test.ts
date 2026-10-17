@@ -14,12 +14,14 @@ describe('catalog sources', () => {
   it('offers the skills.sh search for skills only', () => {
     expect(catalogSources('skill').map((entry) => entry.id)).toStrictEqual([
       'anthropics/skills',
+      'affaan-m/ECC',
       'obra/superpowers',
       'wshobson/agents',
       SKILLS_SH,
     ]);
     expect(catalogSources('agent').map((entry) => [entry.id, entry.search])).toStrictEqual([
       ['VoltAgent/awesome-claude-code-subagents', false],
+      ['affaan-m/ECC', false],
       ['wshobson/agents', false],
     ]);
   });
@@ -32,6 +34,15 @@ describe('catalog sources', () => {
     const plugins = source('skill', 'wshobson/agents');
     expect(entryGroup(plugins, 'plugins/python/skills/async/SKILL.md')).toBe('python');
     expect(entryGroup(plugins, 'plugins/python/agents/pro.md')).toBeNull();
+  });
+
+  it('finds Everything Claude Code skills and agents at the top level only', () => {
+    const skills = source('skill', 'affaan-m/ECC');
+    expect(entryGroup(skills, 'skills/api-design/SKILL.md')).toBe('');
+    expect(entryGroup(skills, '.cursor/skills/api-design/SKILL.md')).toBeNull();
+    const agents = source('agent', 'affaan-m/ECC');
+    expect(entryGroup(agents, 'agents/architect.md')).toBe('');
+    expect(entryGroup(agents, '.claude/agents/architect.md')).toBeNull();
   });
 
   it('finds agent files, drops category numbers and skips READMEs', () => {

@@ -24,6 +24,16 @@ const SKILL_SOURCES: readonly RepoSource[] = [
     match: /^skills\/[^/]+\/SKILL\.md$/u,
   },
   {
+    id: 'affaan-m/ECC',
+    kind: 'skill',
+    label: 'Everything Claude Code',
+    description:
+      'A large collection of skills for coding work: languages and frameworks, API and backend patterns, testing, security, writing and research.',
+    url: 'https://github.com/affaan-m/ECC',
+    search: false,
+    match: /^skills\/[^/]+\/SKILL\.md$/u,
+  },
+  {
     id: 'obra/superpowers',
     kind: 'skill',
     label: 'Superpowers',
@@ -55,6 +65,16 @@ const AGENT_SOURCES: readonly RepoSource[] = [
     url: 'https://github.com/VoltAgent/awesome-claude-code-subagents',
     search: false,
     match: /^categories\/\d+-([^/]+)\/(?!README\.md$)[^/]+\.md$/u,
+  },
+  {
+    id: 'affaan-m/ECC',
+    kind: 'agent',
+    label: 'Everything Claude Code',
+    description:
+      'General coding agents: architects, planners, reviewers for many languages, build error fixers and security reviewers.',
+    url: 'https://github.com/affaan-m/ECC',
+    search: false,
+    match: /^agents\/[^/]+\.md$/u,
   },
   {
     id: 'wshobson/agents',
