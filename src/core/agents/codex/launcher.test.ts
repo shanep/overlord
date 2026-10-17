@@ -111,6 +111,7 @@ describe('a Launcher run on a Codex profile', () => {
       toolName: 'exec_command',
       input: { command: 'touch approved.txt', cwd: '/work/repo' },
       source: 'runtime',
+      choices: ['allow', 'deny', 'cancel'],
     });
     expect(launcher.runs()[0]).toMatchObject({ state: 'running', sessionId: RECORDED_THREAD });
     inbox.resolve(request.id, { behavior: 'deny', message: 'not now', ruleId: null });

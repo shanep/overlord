@@ -100,7 +100,7 @@ describe('the Codex runtime over the recorded app-server exchange', () => {
     const asked: unknown[] = [];
     const started = start(loadRecording(), {
       canUseTool: async (name, input, context) => {
-        asked.push({ name, input, toolUseId: context.toolUseId });
+        asked.push({ name, input, toolUseId: context.toolUseId, choices: context.choices });
         await Promise.resolve();
         return { behavior: 'deny', message: 'no' };
       },
@@ -115,6 +115,7 @@ describe('the Codex runtime over the recorded app-server exchange', () => {
         name: 'exec_command',
         input: { command: 'touch approved.txt', cwd: '/work/repo' },
         toolUseId: 'exec-9959b8d0-b2ce-4976-be20-e57cc35a4027',
+        choices: ['allow', 'deny', 'cancel'],
       },
     ]);
     expect(server.replies()).toStrictEqual([{ decision: 'decline' }]);

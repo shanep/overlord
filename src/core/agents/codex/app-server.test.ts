@@ -48,6 +48,7 @@ describe('CodexTranslator', () => {
         reason: 'edit',
       },
       toolUseId: 'fileChange-1',
+      choices: ['allow', 'allow_session', 'deny', 'cancel'],
     });
     const done = item('fileChange', {
       changes: [{ path: 'notes.txt', kind: { type: 'update', move_path: null }, diff: '' }],
@@ -181,7 +182,15 @@ describe('the app-server shapes', () => {
         reason: 'needs the network',
       },
       toolUseId: 'p1',
+      choices: ['allow', 'allow_session', 'deny'],
     });
+    expect(
+      approvalReply('item/permissions/requestApproval', params, {
+        behavior: 'allow',
+        updatedInput: {},
+        scope: 'session',
+      }),
+    ).toStrictEqual({ permissions: { network: { enabled: true } }, scope: 'session' });
     expect(
       approvalReply('item/permissions/requestApproval', params, {
         behavior: 'allow',
@@ -198,5 +207,28 @@ describe('the app-server shapes', () => {
     expect(approvalAsk('item/fileChange/requestApproval', {}, translator)).toBeNull();
     expect(approvalAsk('item/commandExecution/requestApproval', {}, translator)).toBeNull();
     expect(approvalAsk('execCommandApproval', {}, translator)).toBeNull();
+  });
+
+  it('answers once, for the session, with a decline or by cancelling the turn', () => {
+    const method = 'item/commandExecution/requestApproval';
+    expect(approvalReply(method, {}, { behavior: 'allow', updatedInput: {} })).toStrictEqual({
+      decision: 'accept',
+    });
+    expect(
+      approvalReply(method, {}, { behavior: 'allow', updatedInput: {}, scope: 'session' }),
+    ).toStrictEqual({ decision: 'acceptForSession' });
+    expect(approvalReply(method, {}, { behavior: 'deny', message: 'no' })).toStrictEqual({
+      decision: 'decline',
+    });
+    expect(
+      approvalReply(method, {}, { behavior: 'deny', message: 'stop', interrupt: true }),
+    ).toStrictEqual({ decision: 'cancel' });
+    const translator = new CodexTranslator('m');
+    const ask = (availableDecisions: unknown): unknown =>
+      approvalAsk(method, { itemId: 'e', command: 'ls', availableDecisions }, translator);
+    expect(ask(['accept', { acceptWithExecpolicyAmendment: {} }, 'cancel'])).toMatchObject({
+      choices: ['allow', 'deny', 'cancel'],
+    });
+    expect(ask(null)).toMatchObject({ choices: ['allow', 'allow_session', 'deny', 'cancel'] });
   });
 });

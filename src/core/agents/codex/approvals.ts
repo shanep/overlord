@@ -1,10 +1,12 @@
 // The approvals `codex app-server` asks for, as permission inbox questions,
-// and the answers it takes back. A command or file change offers accept,
-// acceptForSession, decline and cancel. A permissions request takes the
-// grant itself.
+// and the answers it takes back. A command or file change takes accept,
+// acceptForSession, decline or cancel, which are the inbox's allow, allow for
+// the session, deny, and deny and stop the turn. A permissions request takes
+// the grant itself, for the turn or the session.
 
 import { z } from 'zod';
 
+import type { PermissionChoice } from '../../../shared/model.js';
 import type { ToolPermissionResult } from '../shared/runtime.js';
 
 import type { CodexTranslator } from './app-server.js';
@@ -20,6 +22,36 @@ export interface ApprovalAsk {
   readonly input: Record<string, unknown>;
   /** The item the approval is about, which the feed shows as the tool call. */
   readonly toolUseId: string;
+  readonly choices: readonly PermissionChoice[];
+}
+
+/** Codex's word for each answer the inbox offers. */
+const CHOICES: Readonly<Record<string, PermissionChoice>> = {
+  accept: 'allow',
+  acceptForSession: 'allow_session',
+  decline: 'deny',
+  cancel: 'cancel',
+};
+
+/** What a file change always offers, since its request lists none. */
+const ALL_CHOICES: readonly PermissionChoice[] = ['allow', 'allow_session', 'deny', 'cancel'];
+
+/**
+ * The answers availableDecisions lists, as the inbox's choices. Deny is always
+ * there: 0.163.0 takes decline even when it leaves it off the list. Answers
+ * with a policy amendment have no inbox choice yet, so they are left out.
+ */
+function offered(decisions: readonly unknown[] | null | undefined): readonly PermissionChoice[] {
+  if (decisions === null || decisions === undefined) {
+    return ALL_CHOICES;
+  }
+  const named = new Set(
+    decisions.flatMap((entry) => {
+      const choice = typeof entry === 'string' ? CHOICES[entry] : undefined;
+      return choice === undefined ? [] : [choice];
+    }),
+  );
+  return ALL_CHOICES.filter((choice) => choice === 'deny' || named.has(choice));
 }
 
 const commandSchema = z.object({
@@ -27,6 +59,7 @@ const commandSchema = z.object({
   command: z.string().nullish(),
   cwd: z.string().nullish(),
   reason: z.string().nullish(),
+  availableDecisions: z.array(z.unknown()).nullish(),
 });
 
 const fileSchema = z.object({
@@ -54,14 +87,19 @@ function commandAsk(params: unknown, translator: CodexTranslator): ApprovalAsk |
   if (!parsed.success) {
     return null;
   }
-  const { itemId, command, cwd, reason } = parsed.data;
+  const { itemId, command, cwd, reason, availableDecisions } = parsed.data;
   const known = translator.tool(itemId)?.input ?? {};
   const asked = present({
     command: command === null || command === undefined ? undefined : shellScript(command),
     cwd,
     reason,
   });
-  return { toolName: 'exec_command', input: { ...known, ...asked }, toolUseId: itemId };
+  return {
+    toolName: 'exec_command',
+    input: { ...known, ...asked },
+    toolUseId: itemId,
+    choices: offered(availableDecisions),
+  };
 }
 
 function fileAsk(params: unknown, translator: CodexTranslator): ApprovalAsk | null {
@@ -75,6 +113,7 @@ function fileAsk(params: unknown, translator: CodexTranslator): ApprovalAsk | nu
     toolName: 'apply_patch',
     input: { ...known, ...present({ reason, grantRoot }) },
     toolUseId: itemId,
+    choices: ALL_CHOICES,
   };
 }
 
@@ -88,6 +127,8 @@ function permissionsAsk(params: unknown): ApprovalAsk | null {
     toolName: 'request_permissions',
     input: present({ permissions: present(permissions), cwd, reason }),
     toolUseId: itemId,
+    // A grant can last the turn or the session. Denying grants nothing and the turn goes on.
+    choices: ['allow', 'allow_session', 'deny'],
   };
 }
 
@@ -113,13 +154,14 @@ export function approvalAsk(
   }
 }
 
-/**
- * accept or decline for now. Workstream N1 is adding allow for the session
- * and cancel the turn to PermissionDecision. Once ToolPermissionResult
- * carries them, map them to acceptForSession and cancel here.
- */
-function decision(result: ToolPermissionResult): 'accept' | 'decline' {
-  return result.behavior === 'allow' ? 'accept' : 'decline';
+/** The inbox's answer in Codex's words: once or for the session, decline, or cancel the turn. */
+function decision(
+  result: ToolPermissionResult,
+): 'accept' | 'acceptForSession' | 'decline' | 'cancel' {
+  if (result.behavior === 'allow') {
+    return result.scope === 'session' ? 'acceptForSession' : 'accept';
+  }
+  return result.interrupt === true ? 'cancel' : 'decline';
 }
 
 /** The reply to an approval request, given the inbox's answer. */
@@ -131,8 +173,10 @@ export function approvalReply(
   if (method !== PERMISSIONS_APPROVAL) {
     return { decision: decision(result) };
   }
-  // A grant for this turn only, which is the narrowest scope Codex takes.
   const parsed = permissionsSchema.safeParse(params);
   const asked = parsed.success ? present(parsed.data.permissions) : {};
-  return { permissions: result.behavior === 'allow' ? asked : {}, scope: 'turn' };
+  if (result.behavior === 'deny') {
+    return { permissions: {}, scope: 'turn' };
+  }
+  return { permissions: asked, scope: result.scope === 'session' ? 'session' : 'turn' };
 }

@@ -381,6 +381,7 @@ class CodexRun implements AgentRun {
         signal: abort.signal,
         toolUseId: ask.toolUseId,
         agentId: null,
+        choices: ask.choices,
       });
     } catch (error) {
       result = { behavior: 'deny', message: messageOf(error) };
