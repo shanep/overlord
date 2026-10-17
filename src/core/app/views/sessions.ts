@@ -1,5 +1,5 @@
 // The all-sessions view: every surface, plus each agent observer's sessions
-// on disk and the claude.ai export the user imported.
+// on disk, cloud sessions and the claude.ai export the user imported.
 
 import { CLAUDE_CODE } from '../../../shared/agents.js';
 import type { SessionSummary } from '../../../shared/model.js';
@@ -17,9 +17,11 @@ import type {
 import type { ClaudePaths } from '../../paths.js';
 import type { OverlordStore } from '../../store/store.js';
 import type { ClaudeAiConversation } from '../../surfaces/claude-ai-export.js';
+import { checkoutsByRepo, cloudToSurface } from '../../surfaces/cloud.js';
+import type { CloudCache, CloudDeps, CloudSession } from '../../surfaces/cloud.js';
 import type { ExecFunction, IsAlive } from '../../surfaces/process.js';
 import type { ExtraSource } from '../../surfaces/sessions.js';
-import { listAllSessions } from '../../surfaces/sessions.js';
+import { dedupeSessions, listAllSessions } from '../../surfaces/sessions.js';
 import type { SessionPeek } from '../../transcripts/peek.js';
 import { messageOf } from '../errors.js';
 import type { StoredImport } from '../storage.js';
@@ -46,6 +48,8 @@ export interface SessionsLoadDeps {
   readonly peeks: PeekCache;
   /** The observers whose sessions are listed. Claude's alone when left out. */
   readonly observers?: readonly ObserverFacet[];
+  /** Where cloud sessions come from. None are listed when left out. */
+  readonly cloud?: { readonly cache: CloudCache; readonly deps: CloudDeps };
 }
 
 const SOURCE = 'sessions';
@@ -122,20 +126,56 @@ async function storedImport(deps: SessionsLoadDeps): Promise<StoredImport | null
   }
 }
 
+async function cloudSessions(deps: SessionsLoadDeps): Promise<readonly CloudSession[]> {
+  if (deps.cloud === undefined) {
+    return [];
+  }
+  try {
+    return await deps.cloud.cache.get(deps.cloud.deps);
+  } catch (error) {
+    deps.report(SOURCE, `cloud: ${messageOf(error)}`);
+    return [];
+  }
+}
+
+/** Cloud rows join the rest, each placed in the local checkout of its repo when there is one. */
+async function withCloud(
+  sessions: readonly SurfaceSession[],
+  cloud: readonly CloudSession[],
+  readFile: CloudDeps['readFile'],
+): Promise<readonly SurfaceSession[]> {
+  if (cloud.length === 0) {
+    return sessions;
+  }
+  const folders = sessions.flatMap((session) => (session.cwd === null ? [] : [session.cwd]));
+  const checkouts = await checkoutsByRepo(folders, readFile);
+  const rows = cloud.map((session) =>
+    cloudToSurface(session, session.repo === null ? null : (checkouts.get(session.repo) ?? null)),
+  );
+  return dedupeSessions([...sessions, ...rows]);
+}
+
 export async function loadSessions(deps: SessionsLoadDeps): Promise<SessionsData> {
   const stored = await storedImport(deps);
-  const list = await listAllSessions({
-    paths: deps.paths,
-    exec: deps.exec,
-    isAlive: deps.isAlive,
-    agentsOptions: { claudeBin: deps.claudeBin },
-    claudeAi: (stored?.sessions ?? []).map((session) => toConversation(session)),
-    extraSources: observedSources(deps),
-  });
+  const [list, cloud] = await Promise.all([
+    listAllSessions({
+      paths: deps.paths,
+      exec: deps.exec,
+      isAlive: deps.isAlive,
+      agentsOptions: { claudeBin: deps.claudeBin },
+      claudeAi: (stored?.sessions ?? []).map((session) => toConversation(session)),
+      extraSources: observedSources(deps),
+    }),
+    cloudSessions(deps),
+  ]);
   for (const error of list.errors) {
     deps.report(SOURCE, `${error.source}: ${error.message}`);
   }
-  return { sessions: list.sessions, importedAt: stored?.importedAt ?? null };
+  const sessions =
+    deps.cloud === undefined
+      ? list.sessions
+      : await withCloud(list.sessions, cloud, deps.cloud.deps.readFile);
+  return { sessions, importedAt: stored?.importedAt ?? null };
 }
 
 /** Each worktree folder maps to its repository, so its sessions group with the repo. */

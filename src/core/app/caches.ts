@@ -5,6 +5,7 @@ import type { AgentInfo } from '../../shared/agents.js';
 import type { PlanLimits } from '../../shared/protocol.js';
 import { agents } from '../agents/index.js';
 import { agentInfo, detectAgents } from '../agents/registry.js';
+import { CloudCache } from '../surfaces/cloud.js';
 import { EMPTY_USAGE } from '../surfaces/usage.js';
 
 import { AsyncValue } from './async-value.js';
@@ -28,10 +29,22 @@ function repoDir(rt: CacheRuntime): string {
   return configRepoDir(rt.host.settings.configRepoPath, rt.paths.home);
 }
 
+// The sessions list refreshes every 30 seconds, so the cloud list is asked for less often.
+const CLOUD_REFRESH_MS = 120_000;
+
 export function createCaches(rt: CacheRuntime): Caches {
   const common = { onUpdate: rt.notify, onError: rt.report };
   const { host } = rt;
   const peeks = new PeekCache();
+  const cloud = new CloudCache(CLOUD_REFRESH_MS);
+  const cloudDeps = {
+    paths: rt.paths,
+    platform: rt.platform,
+    exec: rt.exec,
+    fetch: rt.fetch,
+    readFile: async (file: string): Promise<string | null> => rt.fs.readFile(file),
+    clock: rt.clock,
+  };
   return {
     knobs: new AsyncValue({
       ...common,
@@ -74,6 +87,7 @@ export function createCaches(rt: CacheRuntime): Caches {
           report: rt.report,
           peeks,
           observers: agents.list().flatMap((adapter) => adapter.observer ?? []),
+          cloud: { cache: cloud, deps: cloudDeps },
         }),
     }),
     config: new AsyncValue({
