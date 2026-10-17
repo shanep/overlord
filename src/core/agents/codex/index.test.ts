@@ -4,9 +4,36 @@ import path from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
+import { CLAUDE_CODE, CODEX } from '../../../shared/agents.js';
+import { resolveContext } from '../../context/resolve.js';
+import { CWD, resolveInput } from '../../context/test-helpers/fixtures.js';
 import { agents } from '../index.js';
 
+import { codexInstructions } from './instructions.js';
+
 import { codex } from './index.js';
+
+describe('the context resolver for a Codex session', () => {
+  const tree = {
+    files: {
+      '/home/u/.codex/AGENTS.md': 'codex user file',
+      [`${CWD}/CLAUDE.md`]: 'claude project file',
+      [`${CWD}/AGENTS.override.md`]: 'codex override',
+      [`${CWD}/AGENTS.md`]: 'shadowed by the override',
+    },
+  };
+
+  it("runs Codex's instruction policy, not Claude's", async () => {
+    expect(codex.instructions).toBe(codexInstructions);
+    const result = await resolveContext(resolveInput(tree, { agentId: CODEX }));
+    expect(result.expected.map((item) => item.path)).toStrictEqual([
+      '/home/u/.codex/AGENTS.md',
+      `${CWD}/AGENTS.override.md`,
+    ]);
+    const claude = await resolveContext(resolveInput(tree, { agentId: CLAUDE_CODE }));
+    expect(claude.expected.map((item) => item.path)).toContain(`${CWD}/CLAUDE.md`);
+  });
+});
 
 describe('codex', () => {
   let dir: string;

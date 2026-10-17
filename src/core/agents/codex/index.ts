@@ -13,6 +13,7 @@ import {
   CODEX_PERMISSION_MODES,
   CODEX_SHORT,
 } from './capabilities.js';
+import { codexInstructions } from './instructions.js';
 import { codexModels } from './models.js';
 import { codexObserverFacet } from './observer.js';
 import { codexTerminal } from './terminal.js';
@@ -37,4 +38,5 @@ export const codex: AgentAdapter = {
   models: codexModels,
   terminal: codexTerminal,
   observer: codexObserverFacet,
+  instructions: codexInstructions,
 };
