@@ -1,13 +1,14 @@
-// The launch check's findings from what sessions read: CLAUDE.md files and
+// The compatibility check's findings from what sessions read: CLAUDE.md files and
 // auto memory. It quotes the lines that decide how work lands, and the ones
-// that tell a session to make a worktree Overlord already made.
+// that tell a session to make its own worktree.
 
 import path from 'node:path';
 
 import type { FileSystem } from '../context/fs.js';
 import { encodeProjectDir } from '../paths.js';
 
-export type FindingLevel = 'warn' | 'info';
+/** missing: an Overlord feature that does not work here. warn: worth raising. info: fine as it is. */
+export type FindingLevel = 'missing' | 'warn' | 'info';
 
 export interface Finding {
   readonly level: FindingLevel;
@@ -44,6 +45,10 @@ const OPENS_PR = [
   /\bgh pr create\b/u,
 ];
 const MAKES_WORKTREE = [/\bEnterWorktree\b/u, /\bgit worktree add\b/u];
+
+export function missing(text: string): Finding {
+  return { level: 'missing', text };
+}
 
 export function warn(text: string): Finding {
   return { level: 'warn', text };
@@ -191,7 +196,7 @@ export async function memoryFindings(
   if (told !== undefined) {
     findings.push(
       warn(
-        `${quoteOf(told)} tells sessions to make a worktree, but Overlord already made this one. Work here and do not make another.`,
+        `${quoteOf(told)} tells sessions to make their own worktree. A session Overlord starts already has one, so it should work there and not make another.`,
       ),
     );
   }

@@ -150,25 +150,39 @@ about the others so it can steer clear:
 
 Turn this off with `overlord.coordination.enabled`.
 
-### Launch check
+### Compatibility check
 
-Every time Overlord hands a worktree to a session, it checks the repo in the background (about
-half a second) and the session starts with the result. Warnings go to you at the top of the
-session's first reply. The check looks for:
+Every new Claude Code session gets a compatibility check of its project, wherever it started: in
+an Overlord worktree, in a checkout Overlord never touched, or in a folder outside git. Projects
+started or worked on outside Overlord are the ones it is for. When a project is not fully set up,
+the session starts its first reply by saying so and listing the Overlord features that will not
+work there and how to fix each one:
 
-- Instructions that disagree on how work lands, such as `~/.claude/CLAUDE.md` saying no pull
-  requests while the repo's `CLAUDE.md` says to open one. Both lines are quoted.
-- Branch protection on the default branch, and required checks an admin's direct push skips.
-- Git hooks on commit and push, or a hook manager that is set up but not installed.
-- Build tools with no shim in `~/.claude/shims`, so their heavy commands do not take turns.
-- Fixed ports in launch settings, Vite, compose or `.env` files when nothing reads
-  `OVERLORD_PORT_BASE`.
-- Memory or instructions that tell a session to make its own worktree.
-- How much auto memory the session shares with the main checkout, and worktrees made outside
-  Overlord that may hold unlanded work.
+- **Git**: a folder outside git gets no worktrees, coordination or landing.
+- **Own worktree**: a session started outside Overlord works in the checkout itself, with no
+  `OVERLORD_SLOT`, no `OVERLORD_PORT_BASE` and nothing for the Worktrees table to land.
+- **Session coordination**: in a repo Overlord has never made a worktree for, sessions are not told
+  about each other and clashing edits are not paused.
+- **Landing**: with no default branch on origin, worktrees branch from the local HEAD and Land
+  cannot push.
+- **Worktree files**: ignored files such as `.env` stay behind when the repo has no
+  `.worktreeinclude`.
+- **Worktree setup**: dependencies other than `node_modules` (dotnet, cargo, Python and so on) are
+  not restored when the repo has no `.overlord/setup.sh`.
+- **Checks on commit and push**: no git hooks, or a hook manager that is not installed.
+- **Separate ports per session**: fixed ports in launch settings, Vite, compose or `.env` files
+  when nothing reads `OVERLORD_PORT_BASE`.
 
-A result stays fresh for 10 minutes. A session that starts while the check is still running gets
-it with its first prompt or tool call instead. Turn this off with `overlord.worktrees.launchCheck`.
+It also warns about instructions that disagree on how work lands (both lines quoted), required
+checks an admin's direct push skips, build tools with no shim in `~/.claude/shims`, and memory or
+instructions that tell a session to make its own worktree. Notes the session keeps to itself cover
+the auto memory it shares with the main checkout and worktrees made outside Overlord.
+
+The check runs in the background, in about half a second, so a session never waits on it. A
+worktree Overlord hands out starts its repo's check before the session is up, so that session
+hears the result at once. Elsewhere, the first session in a folder hears it with its first prompt
+or tool call, and later ones at once while the result is under 10 minutes old. Resumed sessions
+and sessions in your home folder are skipped. Turn this off with `overlord.worktrees.launchCheck`.
 
 ## New machine
 

@@ -360,7 +360,7 @@
         "overlord.worktrees.launchCheck": {
           "type": "boolean",
           "default": true,
-          "description": "Check the repository each time a session starts in one of Overlord's worktrees: whether the instructions agree on how work lands, what git hooks and branch protection check a push, whether heavy commands take turns, whether the app's ports clash between sessions, and what memory and stray worktrees come along. The session hears the result and raises any warning first."
+          "description": "Give every new Claude Code session a compatibility check of its project, including projects started outside Overlord. When the project is not fully set up for Overlord (no git, no Overlord worktree, no origin default branch, no .worktreeinclude or .overlord/setup.sh when one is needed, no git hooks, fixed ports), the session tells you which Overlord features will not work there and how to fix each, along with warnings such as instructions that disagree on how work lands."
         },
         "overlord.telemetry.port": {
           "type": "number",

@@ -226,8 +226,8 @@ describe('probeRepo git hooks', () => {
 
   it('warns when a hook manager is set up but not installed', async () => {
     const list = await findings({ [`${REPO}/lefthook.yml`]: 'pre-commit:\n' });
-    expect(texts(list, 'warn')).toContain(
-      'lefthook.yml sets up git hooks, but none is installed, so commits and pushes run no checks. Install the hooks before committing.',
+    expect(texts(list, 'missing')).toContain(
+      'Checks on commit and push: lefthook.yml sets up git hooks, but none is installed, so nothing checks a commit before it lands. Install the hooks.',
     );
   });
 
@@ -236,7 +236,11 @@ describe('probeRepo git hooks', () => {
       {},
       { 'git rev-parse --path-format=absolute --git-common-dir': ok('') },
     );
-    expect(texts(list, 'warn').some((text) => text.startsWith('No git hooks'))).toBe(true);
+    expect(
+      texts(list, 'missing').some((text) =>
+        text.startsWith('Checks on commit and push: the repo has no git hooks'),
+      ),
+    ).toBe(true);
   });
 });
 
@@ -296,8 +300,8 @@ describe('probeRepo ports', () => {
     const base = deps({});
     const { exec } = recordingExec(grep, answering({ 'git remote get-url origin': ok('') }));
     const check = await probeRepo({ ...base, exec }, { repoRoot: REPO, target: null });
-    expect(texts(check.findings, 'warn')).toContain(
-      "Fixed ports (5240 in web/Properties/launchSettings.json, 4473 in web/Properties/launchSettings.json) and nothing reads $OVERLORD_PORT_BASE, so two sessions running the app at once collide. Use this session's ports, from $OVERLORD_PORT_BASE up, when you start it.",
+    expect(texts(check.findings, 'missing')).toContain(
+      "Separate ports per session: the app uses fixed ports (5240 in web/Properties/launchSettings.json, 4473 in web/Properties/launchSettings.json) and nothing reads $OVERLORD_PORT_BASE, so two sessions running it at once collide. Use this session's ports, from $OVERLORD_PORT_BASE up, when you start it, and have the app read that variable.",
     );
   });
 });
@@ -313,7 +317,7 @@ describe('probeRepo memory and worktrees', () => {
       'Auto memory: 2 entries in ~/.claude/projects/-src-app/memory, shared with the main checkout.',
     );
     expect(texts(list, 'warn')).toContain(
-      '~/.claude/projects/-src-app/memory/one.md:1 ("At session start, run EnterWorktree.") tells sessions to make a worktree, but Overlord already made this one. Work here and do not make another.',
+      '~/.claude/projects/-src-app/memory/one.md:1 ("At session start, run EnterWorktree.") tells sessions to make their own worktree. A session Overlord starts already has one, so it should work there and not make another.',
     );
   });
 
@@ -340,6 +344,58 @@ describe('probeRepo memory and worktrees', () => {
     );
     expect(texts(list, 'info')).toContain(
       'Worktrees made outside Overlord, which may hold unlanded work: .claude/worktrees/old.',
+    );
+  });
+});
+
+describe('probeRepo setup for worktrees', () => {
+  const ignored = 'git ls-files --others --ignored --exclude-standard --directory';
+  const lsFiles = 'git ls-files';
+
+  it('says Land cannot work without a default branch on origin', async () => {
+    const list = await findings({}, {}, null);
+    expect(texts(list, 'missing')[0]).toMatch(
+      /^Landing: the repo has no default branch on origin/u,
+    );
+    expect(texts(await findings({}), 'missing').some((text) => text.startsWith('Landing'))).toBe(
+      false,
+    );
+  });
+
+  it('names ignored local files a worktree would miss without .worktreeinclude', async () => {
+    const list = await findings(
+      {},
+      {
+        [ignored]: ok(
+          '.env\n.claude/settings.local.json\nnode_modules/\nweb/appsettings.Development.json\nbin/\nnotes.txt\n',
+        ),
+      },
+    );
+    expect(texts(list, 'missing')).toContain(
+      'Worktree files: ignored files the app needs (.env, web/appsettings.Development.json) stay in the main checkout, and new worktrees start without them because the repo has no .worktreeinclude. List them there, in gitignore syntax, and Overlord copies them in.',
+    );
+  });
+
+  it('says nothing is restored for tools other than npm without a setup script', async () => {
+    const list = await findings({}, { [lsFiles]: ok('app.slnx\npackage.json\nMakefile\n') });
+    expect(texts(list, 'missing')).toContain(
+      'Worktree setup: Overlord only clones node_modules into a new worktree, and the repo has no .overlord/setup.sh, so nothing restores its dotnet dependencies. The first build in each worktree has to, or add that script to do it.',
+    );
+    const npmOnly = await findings({}, { [lsFiles]: ok('package.json\n') });
+    expect(texts(npmOnly, 'missing').some((text) => text.startsWith('Worktree setup'))).toBe(false);
+  });
+
+  it('notes the files that set up new worktrees', async () => {
+    const list = await findings(
+      {
+        [`${REPO}/.worktreeinclude`]: '.env\n',
+        [`${REPO}/.overlord/setup.sh`]: 'dotnet restore\n',
+      },
+      { [ignored]: ok('.env\n'), [lsFiles]: ok('app.slnx\n') },
+    );
+    expect(texts(list, 'missing').some((text) => text.startsWith('Worktree'))).toBe(false);
+    expect(texts(list, 'info')).toContain(
+      'New worktrees are set up by .worktreeinclude and .overlord/setup.sh.',
     );
   });
 });
