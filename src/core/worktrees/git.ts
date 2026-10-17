@@ -166,6 +166,43 @@ export class WorktreeGit {
     return { id, repoRoot, path: worktreePath, branch, baseCommit, target };
   }
 
+  /**
+   * Makes a worktree again at the path a removed one had, so a session that
+   * ran there can resume. Its old branch comes back when it is still around,
+   * and otherwise a new branch overlord/<id> starts from the default branch.
+   */
+  async restore(repoRoot: string, worktreePath: string, id: string): Promise<WorktreeInfo> {
+    const short = path.basename(worktreePath).slice(path.basename(repoRoot).length + 1);
+    if (!ID_PATTERN.test(id) || !ID_PATTERN.test(short)) {
+      throw new Error(`${worktreePath} is not where an Overlord worktree lives`);
+    }
+    // A record git still keeps for the old folder blocks a new worktree there.
+    await this.exec('git', ['worktree', 'prune'], { cwd: repoRoot });
+    const target = await this.defaultBranch(repoRoot);
+    if (target !== null) {
+      await this.exec('git', ['fetch', '--quiet', 'origin', target], { cwd: repoRoot });
+    }
+    const base = await this.baseCommit(repoRoot, target);
+    const kept = lines(
+      await this.git(repoRoot, [
+        'for-each-ref',
+        '--format=%(refname:short)',
+        `refs/heads/${BRANCH_PREFIX}${short}*`,
+      ]),
+    );
+    const [branch] = kept;
+    if (kept.length === 1 && branch !== undefined) {
+      await this.git(repoRoot, ['worktree', 'add', worktreePath, branch]);
+      const merged = await this.git(repoRoot, ['merge-base', branch, base]);
+      const baseCommit = merged.trim();
+      const keptId = branch.slice(BRANCH_PREFIX.length);
+      return { id: keptId, repoRoot, path: worktreePath, branch, baseCommit, target };
+    }
+    const fresh = `${BRANCH_PREFIX}${id}`;
+    await this.git(repoRoot, ['worktree', 'add', '-b', fresh, worktreePath, base]);
+    return { id, repoRoot, path: worktreePath, branch: fresh, baseCommit: base, target };
+  }
+
   async status(info: WorktreeInfo): Promise<WorktreeStatus> {
     const probe = await this.exec('git', ['rev-parse', '--is-inside-work-tree'], {
       cwd: info.path,
@@ -225,6 +262,37 @@ export class WorktreeGit {
         throw new Error(`git push failed: ${push.stderr.trim()}`);
       }
     }
+  }
+
+  /**
+   * How many commits the latest target has that the branch does not, after a
+   * fetch. Zero offline, with no origin, or when the worktree is gone.
+   */
+  async behind(info: WorktreeInfo): Promise<number> {
+    if (info.target === null) {
+      return 0;
+    }
+    await this.exec('git', ['fetch', '--quiet', 'origin', info.target], { cwd: info.path });
+    const count = await this.exec('git', ['rev-list', '--count', `HEAD..origin/${info.target}`], {
+      cwd: info.path,
+    });
+    return count.code === 0 ? Number(count.stdout.trim()) : 0;
+  }
+
+  /** Rebases the branch onto the latest target without pushing, so its session works on current code. */
+  async update(info: WorktreeInfo): Promise<void> {
+    if (info.target === null) {
+      throw new Error(`${info.repoRoot} has no origin branch to update from.`);
+    }
+    const status = await this.status(info);
+    if (!status.exists) {
+      throw new Error(`The worktree at ${info.path} is gone.`);
+    }
+    if (status.dirty > 0) {
+      throw new Error('The worktree has uncommitted changes. Commit or discard them first.');
+    }
+    await this.git(info.path, ['fetch', '--quiet', 'origin', info.target]);
+    await this.rebase(info.path, `origin/${info.target}`);
   }
 
   /** Deletes the worktree and its branch. Parts that are already gone are skipped. */

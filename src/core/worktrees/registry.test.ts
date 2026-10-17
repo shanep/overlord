@@ -236,6 +236,45 @@ describe('registry with git', { timeout: 30_000 }, () => {
       await expect(reg.hold('nope')).rejects.toThrow('Overlord has no worktree nope.');
     });
 
+    it('restores a removed worktree only where one of its own lived', async () => {
+      const reg = registry();
+      const lease = await reg.acquire({
+        cwd: world.repo,
+        id: 'w1',
+        kind: 'session',
+        label: 'Chat',
+      });
+      await lease.ready;
+      expect(await reg.entryFor(path.join(lease.entry.path, 'src'))).toStrictEqual(lease.entry);
+      expect(await reg.entryFor(world.repo)).toBeNull();
+      expect(await reg.adopt('w1')).toMatchObject({ entry: lease.entry });
+      expect(await registry(ME + 1).adopt('w1')).toBeNull();
+      await reg.release('w1');
+      expect(existsSync(lease.entry.path)).toBe(false);
+      const request = {
+        path: lease.entry.path,
+        id: 'w2',
+        kind: 'session' as const,
+        label: 'Again',
+      };
+      expect(
+        await reg.restore({ ...request, path: path.join(world.root, 'elsewhere') }),
+      ).toBeNull();
+      expect(
+        await reg.restore({ ...request, path: path.join(lease.entry.path, 'deeper') }),
+      ).toBeNull();
+      const back = await reg.restore(request);
+      await back?.ready;
+      expect(back?.entry).toMatchObject({
+        id: 'w2',
+        path: lease.entry.path,
+        label: 'Again',
+        holderPid: ME,
+      });
+      expect(await reg.behind('w2')).toBe(0);
+      await reg.update('w2');
+    });
+
     it('skips unreadable or malformed records and survives a missing folder', async () => {
       const reg = registry();
       expect(await reg.entries()).toStrictEqual([]);

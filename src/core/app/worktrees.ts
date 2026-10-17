@@ -14,7 +14,7 @@ import { liveEntries } from '../surfaces/places.js';
 import type { IsAlive } from '../surfaces/process.js';
 import type { Exec } from '../sync/exec.js';
 import { NotARepoError, WorktreeGit } from '../worktrees/git.js';
-import { type Lease, WorktreeRegistry } from '../worktrees/registry.js';
+import { type Lease, WorktreeRegistry, worktreeEnv } from '../worktrees/registry.js';
 
 import type { ClaudeTab } from './claude-tabs.js';
 import { openClaudeTab } from './claude-tabs.js';
@@ -191,6 +191,51 @@ export async function newSession(rt: Runtime, folder: string | null): Promise<vo
 /** Opens a new session in a worktree that is still around, to finish its work. */
 export async function openWorktree(rt: Runtime, id: string): Promise<void> {
   await openSession(rt, await rt.worktrees.hold(id), randomUUID(), PLAIN_START);
+}
+
+/**
+ * Makes a session's worktree again at its old path after it was tidied away,
+ * since Claude Code finds a session by the folder it ran in. The worktree is
+ * held for the session like a new one, so it goes again once its tab closes
+ * with nothing left to land. False when the folder was never one of
+ * Overlord's worktrees, or git could not make it.
+ */
+export async function restoreWorktree(
+  rt: Runtime,
+  sessionId: string,
+  folder: string,
+  title: string,
+): Promise<boolean> {
+  let lease: Lease | null;
+  try {
+    lease = await rt.worktrees.restore({
+      path: folder,
+      id: randomUUID(),
+      kind: 'session',
+      label: `Continued ${title}`,
+    });
+  } catch (error: unknown) {
+    rt.report(SOURCE, messageOf(error));
+    return false;
+  }
+  if (lease === null) {
+    return false;
+  }
+  rt.sessionWorktrees.set(sessionId, lease.entry.id);
+  void showSetupWarnings(rt, lease);
+  void rt.caches.worktrees.refresh();
+  return true;
+}
+
+/** The variables a session gets from the worktree this window holds for it, if any. */
+export async function heldWorktreeEnv(
+  rt: Runtime,
+  sessionId: string,
+): Promise<Readonly<Record<string, string>> | undefined> {
+  const id = rt.sessionWorktrees.get(sessionId);
+  const entries = id === undefined ? [] : await rt.worktrees.entries();
+  const entry = entries.find((item) => item.id === id);
+  return entry === undefined ? undefined : worktreeEnv(entry);
 }
 
 /**

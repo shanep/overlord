@@ -58,8 +58,20 @@ export interface AcquireRequest {
   readonly label: string;
 }
 
+export interface RestoreRequest {
+  /** Where the removed worktree was. */
+  readonly path: string;
+  /** The id a new branch takes when the old one is gone too. */
+  readonly id: string;
+  readonly kind: WorktreeKind;
+  readonly label: string;
+}
+
 /** The git operations the registry uses, so tests can stand in for git. */
-type WorktreeGitPort = Pick<WorktreeGit, 'repoRoot' | 'create' | 'status' | 'land' | 'remove'>;
+type WorktreeGitPort = Pick<
+  WorktreeGit,
+  'repoRoot' | 'create' | 'restore' | 'status' | 'behind' | 'update' | 'land' | 'remove'
+>;
 
 export interface RegistryDeps {
   readonly git: WorktreeGitPort;
@@ -231,10 +243,41 @@ export class WorktreeRegistry {
    */
   async acquire(request: AcquireRequest): Promise<Lease> {
     const repoRoot = await this.deps.git.repoRoot(request.cwd);
-    const entries = await this.entries();
-    const slot = freeSlot(entries.filter((entry) => this.held(entry)).map((entry) => entry.slot));
     const info = await this.lock.run(repoRoot, async () =>
       this.deps.git.create(request.cwd, request.id),
+    );
+    return this.register(info, request);
+  }
+
+  /**
+   * Makes a removed worktree again at its old path and holds it, so a session
+   * that worked there can resume. Null when the path is not where one of
+   * Overlord's worktrees lived.
+   */
+  async restore(request: RestoreRequest): Promise<Lease | null> {
+    // Another window may have made the worktree, so read what it remembered.
+    await this.load();
+    const [folder, name, ...rest] = path.relative(this.deps.root, request.path).split(path.sep);
+    const repoRoot = folder === undefined ? undefined : this.repos[folder];
+    if (repoRoot === undefined || name === undefined || rest.length > 0) {
+      return null;
+    }
+    const info = await this.lock.run(repoRoot, async () =>
+      this.deps.git.restore(repoRoot, request.path, request.id),
+    );
+    return this.register(info, request);
+  }
+
+  /** Records a worktree git just made as held here, and starts its setup. */
+  private async register(
+    info: WorktreeInfo,
+    request: Pick<AcquireRequest, 'kind' | 'label'>,
+  ): Promise<Lease> {
+    const entries = await this.entries();
+    const slot = freeSlot(
+      entries
+        .filter((entry) => entry.id !== info.id && this.held(entry))
+        .map((entry) => entry.slot),
     );
     const entry: WorktreeEntry = {
       ...info,
@@ -264,6 +307,35 @@ export class WorktreeRegistry {
     await this.save(entry);
     this.announce(entry);
     return { entry, env: worktreeEnv(entry), ready: Promise.resolve([]) };
+  }
+
+  /** The worktree a folder is in, or null when it is in none of Overlord's. */
+  async entryFor(folder: string): Promise<WorktreeEntry | null> {
+    const entries = await this.entries();
+    return entries.find((entry) => isInside(folder, entry.path)) ?? null;
+  }
+
+  /**
+   * Holds a worktree for a session that continues in it, so it gets a slot
+   * and its variables. Null when another live window holds it already.
+   */
+  async adopt(id: string): Promise<Lease | null> {
+    const entry = await this.find(id);
+    if (entry.holderPid === this.deps.pid) {
+      return { entry, env: worktreeEnv(entry), ready: Promise.resolve([]) };
+    }
+    return this.held(entry) ? null : this.hold(id);
+  }
+
+  /** How many commits the worktree's branch is behind the latest default branch. */
+  async behind(id: string): Promise<number> {
+    return this.deps.git.behind(await this.find(id));
+  }
+
+  /** Rebases a worktree's branch onto the latest default branch, without pushing it. */
+  async update(id: string): Promise<void> {
+    const entry = await this.find(id);
+    await this.lock.run(entry.repoRoot, async () => this.deps.git.update(entry));
   }
 
   /** Lets go of a worktree and removes it when everything in it has landed. */

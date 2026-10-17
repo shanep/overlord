@@ -196,6 +196,53 @@ describe('WorktreeGit', { timeout: 30_000 }, () => {
     });
   });
 
+  describe('WorktreeGit.restore', () => {
+    it('brings back the old branch when it is still around, else starts a new one', async () => {
+      const made = await manager.create(world.repo, 'keep-1234');
+      const mine = await commitFile(made.path, 'c.txt', 'mine\n');
+      await rm(made.path, { recursive: true, force: true });
+      const kept = await manager.restore(world.repo, made.path, 'unused');
+      expect(kept).toStrictEqual({ ...made, id: 'keep-1234' });
+      expect(await git(kept.path, 'rev-parse', 'HEAD')).toBe(mine);
+
+      await manager.remove(kept);
+      const fresh = await manager.restore(world.repo, made.path, 'new-1');
+      expect(fresh).toMatchObject({ id: 'new-1', path: made.path, branch: 'overlord/new-1' });
+      expect(await git(fresh.path, 'branch', '--show-current')).toBe('overlord/new-1');
+    });
+
+    it('refuses a folder that is not named like one of its worktrees', async () => {
+      await expect(manager.restore(world.repo, '/wt/x/other', 'w1')).rejects.toThrow(
+        '/wt/x/other is not where an Overlord worktree lives',
+      );
+      await expect(manager.restore(world.repo, '/wt/x/repo-ok', '../evil')).rejects.toThrow(
+        'is not where',
+      );
+    });
+  });
+
+  describe('WorktreeGit.behind and update', () => {
+    it('count and take in what landed upstream, and refuse without an origin or a worktree', async () => {
+      const info = await manager.create(world.repo, 'w1');
+      expect(await manager.behind(info)).toBe(0);
+      await commitFile(world.other, 'b.txt', 'two\n');
+      await git(world.other, 'push', '-q', 'origin', 'main');
+      expect(await manager.behind(info)).toBe(1);
+      await manager.update(info);
+      expect(await manager.behind(info)).toBe(0);
+      expect(existsSync(path.join(info.path, 'b.txt'))).toBe(true);
+
+      const local = { ...info, target: null };
+      expect(await manager.behind(local)).toBe(0);
+      await expect(manager.update(local)).rejects.toThrow('has no origin branch to update from');
+      const gone = { ...info, path: path.join(world.dir, 'gone') };
+      expect(await manager.behind(gone)).toBe(0);
+      await expect(manager.update(gone)).rejects.toThrow('is gone');
+      await writeFile(path.join(info.path, 'a.txt'), 'edited\n');
+      await expect(manager.update(info)).rejects.toThrow('uncommitted changes');
+    });
+  });
+
   describe('WorktreeGit.status', () => {
     it('counts edits, commits and changed files', async () => {
       const info = await manager.create(world.repo, 'w1');

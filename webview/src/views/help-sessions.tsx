@@ -406,6 +406,8 @@ export function SessionsSection(): ReactElement {
         shows. Once the process is gone, the worktree check removes a worktree whose work all
         landed. A tab that runs claude itself ends its session when it closes. Closing or reloading
         VS Code stops nothing, and the Fleet picks background sessions up again when it opens.
+        Continue makes a removed worktree again at its old path, and when a session is missing what
+        a new one gets, such as its own worktree or a current branch, Bring up to date fixes that.
       </p>
       <CloseDiagram />
     </section>

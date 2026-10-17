@@ -15,11 +15,12 @@ import type { LiveProcess } from '../surfaces/live.js';
 import { buildLiveProcessTable } from '../surfaces/live.js';
 
 import type { ActionHandlers } from './action-types.js';
-import { openClaudeTab } from './claude-tabs.js';
 import { stopJob } from './idle-stop.js';
+import { continueHere } from './resume.js';
 import type { Runtime } from './runtime.js';
 import { shortId } from './text.js';
 import { clearOtherCopy } from './transfer.js';
+import { restoreWorktree } from './worktrees.js';
 
 type SessionActions =
   | 'openSession'
@@ -177,8 +178,12 @@ export async function canHandOff(
     return true;
   }
   // Claude Code finds a session by the folder it ran in, so resuming
-  // anywhere else fails with a confusing "no conversation found".
-  if ((await rt.fs.kind(cwd)) !== 'directory') {
+  // anywhere else fails with a confusing "no conversation found". An
+  // Overlord worktree tidied away once its work landed comes back instead.
+  if (
+    (await rt.fs.kind(cwd)) !== 'directory' &&
+    !(await restoreWorktree(rt, session.id, cwd, session.title))
+  ) {
     rt.host.showWarning(`Cannot continue "${session.title}": its folder ${cwd} no longer exists.`);
     return false;
   }
@@ -339,11 +344,12 @@ export const sessionActions: ActionHandlers<SessionActions> = {
       return;
     }
     const cwd = cwdFor(rt, session.id, session.cwd);
+    const missing = (await rt.fs.kind(cwd)) !== 'directory';
     if (!(await canHandOff(rt, action.kind, session, cwd))) {
       return;
     }
     if (action.kind === 'resume-local') {
-      await openClaudeTab(rt, { name: tabName(rt, session, cwd), cwd, resume: session.id });
+      await continueHere(rt, { session, cwd, name: tabName(rt, session, cwd), restored: missing });
       return;
     }
     const tracked = TRACKED_HANDOFFS.has(action.kind);

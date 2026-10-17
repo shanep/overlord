@@ -16,6 +16,7 @@ import {
 } from '../worktrees/test-helpers/git-world.js';
 
 import { HERE_ID } from './actions-open-project.js';
+import { AS_IS, UPDATE } from './resume.js';
 import {
   makeApp,
   makeEnv,
@@ -116,6 +117,31 @@ async function finishedSession(
   const id = test.app.runtime.caches.worktrees.value.at(-1)?.id;
   await summaries(test);
   return id ?? terminal.sessionId ?? '';
+}
+
+/** A Claude Code session that worked in cwd and has ended, as the session registry lists it. */
+async function endedSession(test: TestApp, cwd: string): Promise<void> {
+  const entry = { pid: 999, sessionId: 'old', cwd, name: 'Old work' };
+  await writeJson(path.join(test.env.paths.sessionsDir, '999.json'), entry);
+}
+
+async function continueOld(test: TestApp, answer: string | null): Promise<void> {
+  test.env.host.askAnswers.push(answer);
+  await test.app.dispatch({ type: 'handoff', sessionId: 'old', kind: 'resume-local' }, {});
+}
+
+/** The folder of a session's worktree after its tab closed with nothing left, which removes it. */
+async function tidiedAway(test: TestApp): Promise<string> {
+  await newSession(test);
+  const terminal = lastTerminal(test);
+  await test.app.sessionClosed(terminal.sessionId ?? '');
+  expect(existsSync(terminal.cwd)).toBe(false);
+  return terminal.cwd;
+}
+
+async function landUpstream(): Promise<void> {
+  await commitFile(world.other, 'b.txt', 'two\n');
+  await git(world.other, 'push', '-q', 'origin', 'main');
 }
 
 // Each test runs real git many times, which takes far longer than usual on a busy machine.
@@ -517,6 +543,119 @@ describe('worktrees in the app', { timeout: 30_000 }, () => {
       expect(await summaries(test)).toMatchObject([{ id, state: 'active', path: terminal.cwd }]);
       await test.app.sessionClosed(terminal.sessionId ?? '');
       expect(await summaries(test)).toMatchObject([{ id, state: 'dirty' }]);
+    });
+  });
+
+  describe('continued sessions', () => {
+    const PREFIX = '"Old work" may be missing Overlord features.';
+
+    it('get their tidied-away worktree back at the same path', async () => {
+      const test = await setup();
+      const folder = await tidiedAway(test);
+      await endedSession(test, folder);
+      await continueOld(test, AS_IS);
+      expect(test.env.host.asks.at(-1)).toStrictEqual({
+        message: `${PREFIX} Its worktree was removed once its work landed, so Overlord made it again from the latest main, and files it remembers may have changed.`,
+        actions: [UPDATE, AS_IS],
+      });
+      expect(lastTerminal(test)).toMatchObject({
+        cwd: folder,
+        args: ['--resume', 'old'],
+        sessionId: 'old',
+        env: { OVERLORD_SLOT: '0' },
+      });
+      expect(existsSync(path.join(folder, 'a.txt'))).toBe(true);
+      expect(await summaries(test)).toMatchObject([{ state: 'active', path: folder }]);
+      await test.app.sessionClosed('old');
+      expect(existsSync(folder)).toBe(false);
+    });
+
+    it('look at the code again first when brought up to date', async () => {
+      const test = await setup();
+      const folder = await tidiedAway(test);
+      await endedSession(test, folder);
+      await continueOld(test, UPDATE);
+      const terminal = lastTerminal(test);
+      expect(terminal.args.slice(0, 2)).toStrictEqual(['--resume', 'old']);
+      expect(terminal.args[2]).toContain(
+        'Overlord brought this session up to date before you continue:\n- Its worktree was removed',
+      );
+      expect(terminal.args[2]).toContain('git status and git log');
+    });
+
+    it('let go of the worktree again when the warning is dismissed', async () => {
+      const test = await setup();
+      const folder = await tidiedAway(test);
+      await endedSession(test, folder);
+      const before = test.env.host.terminals.length;
+      await continueOld(test, null);
+      expect(test.env.host.terminals).toHaveLength(before);
+      expect(existsSync(folder)).toBe(false);
+      expect(test.app.runtime.sessionWorktrees.size).toBe(0);
+    });
+
+    it('move out of the shared checkout into a worktree of their own, leaving the original', async () => {
+      const test = await setup();
+      await endedSession(test, world.repo);
+      await continueOld(test, AS_IS);
+      expect(test.env.host.asks.at(-1)?.message).toBe(
+        `${PREFIX} It works in ${world.repo} itself, not its own worktree, so other sessions can change its files and it has no port slot.`,
+      );
+      expect(lastTerminal(test)).toMatchObject({ cwd: world.repo, args: ['--resume', 'old'] });
+      expect(lastTerminal(test).env).toBeUndefined();
+
+      await continueOld(test, UPDATE);
+      const terminal = lastTerminal(test);
+      expect(terminal.cwd.startsWith(worktreeRoot(test.env.paths))).toBe(true);
+      expect(terminal.args.slice(0, 4)).toStrictEqual([
+        '--resume',
+        'old',
+        '--fork-session',
+        '--session-id',
+      ]);
+      expect(terminal.args.at(-1)).toContain(`The original stays in ${world.repo}`);
+    });
+
+    it('rebase a branch that fell behind, and say when it cannot', async () => {
+      const test = await setup();
+      const id = await finishedSession(test, async (worktree) =>
+        commitFile(worktree, 'c.txt', 'mine\n'),
+      );
+      await summaries(test);
+      const kept = test.app.runtime.caches.worktrees.value.find((row) => row.id === id);
+      const folder = { path: kept?.path ?? '' };
+      await landUpstream();
+      await endedSession(test, folder.path);
+      await continueOld(test, UPDATE);
+      expect(test.env.host.asks.at(-1)?.message).toBe(
+        `${PREFIX} Its branch is 1 commit behind origin/main.`,
+      );
+      expect(existsSync(path.join(folder.path, 'b.txt'))).toBe(true);
+      const terminal = lastTerminal(test);
+      expect(terminal).toMatchObject({ cwd: folder.path, env: { OVERLORD_SLOT: '0' } });
+      expect(terminal.args[2]).toContain(
+        "Rebased this worktree's branch onto the latest origin/main, which had 1 new commit.",
+      );
+      await test.app.sessionClosed('old');
+
+      await writeFile(path.join(folder.path, 'c.txt'), 'edited\n');
+      await commitFile(world.other, 'd.txt', 'three\n');
+      await git(world.other, 'push', '-q', 'origin', 'main');
+      await continueOld(test, UPDATE);
+      expect(test.env.host.warnings.at(-1)).toBe(
+        'Overlord could not update the branch: The worktree has uncommitted changes. Commit or discard them first.',
+      );
+      expect(lastTerminal(test).args[2]).toContain('and could not:');
+    });
+
+    it('say nothing when there is nothing missing', async () => {
+      const test = await setup();
+      const plain = path.join(world.dir, 'plain');
+      await mkdir(plain);
+      await endedSession(test, plain);
+      await continueOld(test, null);
+      expect(test.env.host.asks).toStrictEqual([]);
+      expect(lastTerminal(test)).toMatchObject({ cwd: plain, args: ['--resume', 'old'] });
     });
   });
 });
