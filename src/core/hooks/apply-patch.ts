@@ -20,13 +20,15 @@ export function patchPaths(patch: string): readonly string[] {
 /** The fields that can hold the patch: a string, or an argv like ["apply_patch", patch]. */
 const PATCH_FIELDS: ReadonlySet<string> = new Set(['command', 'patch', 'input']);
 
+function isList(value: unknown): value is readonly unknown[] {
+  return Array.isArray(value);
+}
+
 function texts(value: unknown): readonly string[] {
   if (typeof value === 'string') {
     return [value];
   }
-  return Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === 'string')
-    : [];
+  return isList(value) ? value.filter((item): item is string => typeof item === 'string') : [];
 }
 
 /** The files an apply_patch call writes, read from its input as a hook reports it. */
@@ -37,7 +39,8 @@ export function applyPatchPaths(input: unknown): readonly string[] {
   if (input === null || typeof input !== 'object') {
     return [];
   }
-  const paths = Object.entries(input)
+  const fields: readonly (readonly [string, unknown])[] = Object.entries(input);
+  const paths = fields
     .filter(([field]) => PATCH_FIELDS.has(field))
     .flatMap(([, value]) => texts(value).flatMap((patch) => patchPaths(patch)));
   return [...new Set(paths)];
