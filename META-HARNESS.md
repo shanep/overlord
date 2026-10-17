@@ -4,7 +4,7 @@
 
 Overlord grew up as htop for Claude Code. This plan turns it into a meta
 harness: one place to launch, watch, approve and tune any agent CLI (Claude
-Code, Codex CLI, Copilot CLI, Gemini CLI, and anything that speaks ACP),
+Code, Copilot CLI, Codex CLI, and anything that speaks ACP),
 with Claude Code as the first adapter instead of the whole program.
 
 The plan is split so many sessions can work on it at once. Phase 0 is small
@@ -21,7 +21,7 @@ covered under Workstream N0.
 ## Words used in this plan
 
 - **Agent**: a coding agent CLI that runs tools, such as Claude Code, Codex,
-  Copilot or Gemini. Code calls this `AgentId`. We say agent, not provider, so
+  Copilot or Codex. Code calls this `AgentId`. We say agent, not provider, so
   it does not get mixed up with the model backend.
 - **Backend**: the model endpoint behind an agent. Today that is the Anthropic
   API or the boisestate.ai bridge. boisestate.ai is a backend for Claude Code,
@@ -72,7 +72,7 @@ Appendix A has the full inventory, file by file.
 From the research pass on 2026-10-16. Sources are in Appendix B. Each
 agent's worker should recheck them, since these CLIs move fast.
 
-|                     | Copilot CLI                                                                                                                        | Codex CLI                                                                                   | Gemini CLI                                                     |
+|                     | Copilot CLI                                                                                                                        | Codex CLI                                                                                   | Gemini CLI (out of scope)                                      |
 | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
 | Installed here      | Yes, 1.0.89                                                                                                                        | No                                                                                          | No (but `~/.gemini` exists)                                    |
 | Best driver         | `@github/copilot-sdk` (JSON-RPC to the CLI's headless server) or `copilot --acp`                                                   | `codex app-server` (JSON-RPC over stdio)                                                    | `gemini --acp`                                                 |
@@ -90,18 +90,18 @@ agent's worker should recheck them, since these CLIs move fast.
 
 Two findings shape the design:
 
-1. **ACP is a good common driver but not a common observer.** Copilot and
-   Gemini speak the Agent Client Protocol natively and Codex and Claude have
+1. **ACP is a good common driver but not a common observer.** Copilot
+   speaks the Agent Client Protocol natively and Codex and Claude have
    adapters. ACP covers start, prompt, stream, approve, cancel, resume and set
    mode. It cannot see sessions Overlord did not start and its usage data is
    thin. So we build one generic ACP runtime that any agent can use, use
    native drivers where they are much richer, and write a native observer per
    agent.
-2. **Gemini CLI is being retired for consumer accounts** in favor of
-   Antigravity CLI (`agy`), which reportedly has no ACP or JSON mode. It still
-   works with API keys and Code Assist. This plan treats Gemini as "the
-   generic ACP adapter plus a transcript reader" so it costs little, and
-   leaves `agy` for later (see Open questions).
+2. **Gemini is out of scope.** Google is moving consumer accounts from
+   Gemini CLI to Antigravity CLI (`agy`), which reportedly has no ACP or JSON
+   mode, so this plan skips both. The Gemini column above stays only for
+   reference. If Gemini comes back later, it should be the generic ACP
+   runtime (N1) plus a transcript reader, or a custom ACP agent (N4).
 
 ## Target design
 
@@ -113,7 +113,6 @@ export type AgentId = string;
 export const CLAUDE_CODE: AgentId = 'claude-code';
 export const CODEX: AgentId = 'codex';
 export const COPILOT: AgentId = 'copilot';
-export const GEMINI: AgentId = 'gemini';
 
 export interface ModeOption {
   readonly id: string; // what we pass to the agent
@@ -226,9 +225,7 @@ The facets, in the shape the current code needs:
 - **ObserverFacet**: `scan()`, `childFiles()`, `makeAccumulator()`,
   `liveProcesses?()`, `digest?()`, `userPrompts?()` (for Reputation). A
   generic `TailingWatcher` built from `transcripts/watcher.ts` and
-  `IncrementalReader` runs any observer. Gemini writes whole-file JSON in
-  some versions, so the watcher must support "reread on change" as well as
-  "tail".
+  `IncrementalReader` runs any observer.
 - **HooksFacet**: `install(cmd)`, `uninstall()`, `normalize(raw):
 NormalizedHookEvent`, `answer(event, decision | context): unknown`, and
   `editTools` (the tool names and input fields the coordinator watches). The
@@ -238,7 +235,7 @@ NormalizedHookEvent`, `answer(event, decision | context): unknown`, and
 body)` returns `ApiRequest[]`. `otel/receiver.ts` and `otlp.ts` are shared.
 - **InjectFacet**: how coordination notes, the launch check and the
   connector briefing reach a session. Order of preference: hook output
-  (Claude, and Codex, Gemini or Copilot where their hooks allow it), then a
+  (Claude, and Codex or Copilot where their hooks allow it), then a
   launch argument (`--append-system-prompt`, `-c developer_instructions=`),
   then a prefix on the first ACP prompt.
 - **InstructionPolicy**: file names per directory, walk direction, byte cap,
@@ -270,7 +267,7 @@ backend only work from the Launcher.
   `enabled`. `claudePath` wins over `agents["claude-code"].path` when set.
 - Add `overlord.agents.custom`: a list of `{ id, name, command, args }` for
   any ACP agent the user wants to bring. This is what makes Overlord a meta
-  harness instead of a list of four.
+  harness instead of a fixed list.
 - Keep every command id (`overlord.newClaudeSession`,
   `overlord.importClaudeAi`) because people bind keys to them. Add
   `overlord.newSession`, which asks which agent when more than one is
@@ -449,12 +446,12 @@ Notes per workstream:
   chosen agent's lists.
 - **E3.** List servers by reading each agent's MCP file directly instead of
   scraping `claude mcp list`. Add through the agent's own CLI where it has
-  one (`claude mcp add-json`, `codex mcp add`, `gemini mcp add`), and write
+  one (`claude mcp add-json`, `codex mcp add`), and write
   the JSON file directly for Copilot. The `'claude.ai'` connector kind and
   Claude in Chrome stay Claude-only. The registry browser offers "add to"
   with a pick of agents.
 - **E4.** Skills are spreading as `SKILL.md`. Copilot reads `.claude/skills`
-  and `.github/skills`, Codex and Gemini read `.agents/skills`. Keep one
+  and `.github/skills`, Codex reads `.agents/skills`. Keep one
   skill schema and let each agent list its folders. Agent definitions
   differ per agent (Copilot uses `.github/agents/*.agent.md`), so the agent
   schema becomes per adapter. The `/overlord` transfer skill installs into
@@ -494,8 +491,7 @@ types. Each part plugs in as its Phase 1 seam lands.
 | N1  | Generic ACP runtime | `src/core/agents/acp/*`                                  | A for plug-in                    |
 | N2  | Copilot CLI         | `src/core/agents/copilot/*`, `test/fake-agents/copilot/` | N0, then A, B, C, D, E1, E3      |
 | N3  | Codex CLI           | `src/core/agents/codex/*`, `test/fake-agents/codex/`     | N0, then A, B, C, D, E1, E2, E3  |
-| N4  | Gemini CLI          | `src/core/agents/gemini/*`, `test/fake-agents/gemini/`   | N0, N1, then C, E1, E3           |
-| N5  | Custom ACP agents   | `agents/custom.ts`, the `overlord.agents.custom` setting | N1, G                            |
+| N4  | Custom ACP agents   | `agents/custom.ts`, the `overlord.agents.custom` setting | N1, G                            |
 
 Each agent lands in milestones, and each milestone is a separate commit
 that ships on its own:
@@ -516,11 +512,10 @@ that ships on its own:
 
 Per agent notes:
 
-- **N0.** Copilot is installed here, so its fixtures come first. Codex and
-  Gemini install with `npm i -g @openai/codex` and `npm i -g
-@google/gemini-cli` (or into a scratch prefix). Signing in to each is the
-  one manual step, since it opens a browser login that only Shane can
-  finish. Record a short scripted session per agent (one prompt, one shell
+- **N0.** Copilot is installed here, so its fixtures come first. Codex
+  installs with `npm i -g @openai/codex` (or into a scratch prefix). Signing
+  in to Codex is the one manual step, since it opens a browser login that
+  only Shane can finish. Record a short scripted session per agent (one prompt, one shell
   tool call, one file edit, one denied approval) and save the transcript,
   the stream output, hook payloads and OTel bodies. Scrub tokens, emails and
   home paths before committing.
@@ -548,12 +543,7 @@ Per agent notes:
   follows the rule under Target design: profile settings as `-c` overrides,
   MCP through `codex mcp add`, hooks in `~/.codex/hooks.json`, and only the
   `[otel]` block through the targeted editor.
-- **N4 Gemini.** Runtime is N1 with `gemini --acp`. The observer must handle
-  both the older whole-file JSON and the newer JSONL chats, and work out the
-  project hash (sha256 of the path did not match the folders on this Mac).
-  No effort levels. Keep it to milestones 1 to 3 until the Antigravity
-  question is settled.
-- **N5.** Any command that speaks ACP becomes an agent with milestone 3
+- **N4.** Any command that speaks ACP becomes an agent with milestone 3
   only: launch, drive, approve. No observer, hooks or config. This is the
   "add any agent" path.
 
@@ -580,7 +570,7 @@ Phase 1                    +-- A  B  C  D  E1  E2  E3  E4  E5  F  G  H   (12 in 
                            |
 Phase 2                    +-- N0 fixtures --+-- N2 Copilot  (parsers now, plug in as seams land)
                            |                 +-- N3 Codex
-                           +-- N1 ACP -------+-- N4 Gemini -- N5 custom ACP
+                           +-- N1 ACP -------+-- N4 custom ACP
                            |
 Phase 3                    +-- help, README, PLAN.md, package.json (after G and one agent at M2)
 ```
@@ -590,18 +580,16 @@ else can run beside it. A sensible first wave is P0.1, P0.2, P0.3 and N0.
 The second wave is all of Phase 1 plus N1 and the parser halves of N2 and
 N3.
 
-## Open questions
+## Decisions
 
-These have defaults in the plan, so work can start without an answer.
+Decided with Shane on 2026-10-16. Nothing is open.
 
-1. **Gemini CLI or Antigravity CLI?** Default: Gemini CLI through ACP, to
-   milestone 3, and look at `agy` once it has a machine-readable mode.
-2. **Which agent comes first?** Default: Copilot, since it is installed and
-   ships its own event schema. Codex second.
-
-Decided: Overlord edits `config.toml` only through small targeted edits that
-keep the rest of the file, never a full rewrite (see "Editing Codex's
-config.toml").
+1. **Gemini is out.** No Gemini CLI or Antigravity CLI adapter. Anyone who
+   wants it later can add it as a custom ACP agent (N4).
+2. **Copilot first, then Codex.** Copilot is installed and ships its own
+   event schema.
+3. **`config.toml` gets targeted edits only**, never a full rewrite (see
+   "Editing Codex's config.toml").
 
 ## Appendix A: inventory of Claude assumptions
 
