@@ -1,8 +1,9 @@
 // The graph of messages between sessions: one node per session, sized by how
 // many messages pass through it, and one arrow per route, thicker for more
-// messages. The sessions sit on a ring, busiest at the top, with each label on
-// the outside of its node, so labels never pile up the way a force layout
-// piles them. Subagent traffic stays out, since it only runs between a session
+// messages. The sessions sit still on a ring with each label on the outside of
+// its node, so labels never pile up the way a force layout piles them.
+// Sessions that talk to each other sit together, with a gap before the next
+// group, so arrows stay short instead of crossing the whole ring. Subagent traffic stays out, since it only runs between a session
 // and its own agents and would draw a star around every session. The figure's
 // table twin lists every route.
 
@@ -29,8 +30,6 @@ const MAX_NODE = 40;
 
 /** Room beside the ring for labels of LABEL_CHARS characters at 11 px. */
 const LABEL_ROOM = 180;
-/** Nodes this close to straight up or down get their label above or below instead. */
-const SIDEWAYS = 0.35;
 
 export interface GraphNode {
   readonly name: string;
@@ -88,10 +87,66 @@ export function ringPlace(index: number, count: number): RingPlace {
   const angle = -Math.PI / 2 + (2 * Math.PI * index) / count;
   const x = Math.round(Math.cos(angle) * 1000) / 10;
   const y = Math.round(Math.sin(angle) * 1000) / 10;
-  if (Math.abs(x) < SIDEWAYS * 100) {
+  // Only the node nearest straight up or down labels above or below; two
+  // neighbors doing it put their labels on top of each other.
+  if (Math.abs(x) < 50 * Math.sin(Math.PI / count)) {
     return { x, y, side: y < 0 ? 'top' : 'bottom' };
   }
   return { x, y, side: x > 0 ? 'right' : 'left' };
+}
+
+function neighborsOf(routes: readonly MessageRoute[]): Map<string, Map<string, number>> {
+  const neighbors = new Map<string, Map<string, number>>();
+  const add = (from: string, to: string, count: number): void => {
+    const around = neighbors.get(from) ?? new Map<string, number>();
+    around.set(to, (around.get(to) ?? 0) + count);
+    neighbors.set(from, around);
+  };
+  for (const route of routes) {
+    add(route.from, route.to, route.count);
+    add(route.to, route.from, route.count);
+  }
+  return neighbors;
+}
+
+/**
+ * The ring, in order: each group of sessions that talk to each other, the
+ * busiest group first, and null for the gap after each group when there is
+ * more than one. A group starts at its busiest session and takes in the rest
+ * by who it talks to most, so close partners sit side by side.
+ */
+export function ringSlots(routes: readonly MessageRoute[]): readonly (GraphNode | null)[] {
+  const nodes = graphNodes(routes).toSorted((left, right) => right.traffic - left.traffic);
+  const byName = new Map(nodes.map((node) => [node.name, node]));
+  const neighbors = neighborsOf(routes);
+  const placed = new Set<string>();
+  const groups: GraphNode[][] = [];
+  for (const start of nodes) {
+    if (placed.has(start.name)) {
+      continue;
+    }
+    placed.add(start.name);
+    const group: GraphNode[] = [];
+    const queue = [start];
+    for (let node = queue.shift(); node !== undefined; node = queue.shift()) {
+      group.push(node);
+      const next = [...(neighbors.get(node.name) ?? new Map<string, number>()).entries()]
+        .filter(([name]) => !placed.has(name))
+        .toSorted((left, right) => right[1] - left[1]);
+      for (const [name] of next) {
+        const neighbor = byName.get(name);
+        if (neighbor !== undefined) {
+          placed.add(name);
+          queue.push(neighbor);
+        }
+      }
+    }
+    groups.push(group);
+  }
+  const total = (group: readonly GraphNode[]): number =>
+    group.reduce((sum, node) => sum + node.traffic, 0);
+  const ordered = groups.toSorted((left, right) => total(right) - total(left));
+  return ordered.length === 1 ? ordered.flat() : ordered.flatMap((group) => [...group, null]);
 }
 
 function plural(count: number): string {
@@ -103,7 +158,8 @@ export function buildRouteGraph(
   theme: ChartTheme,
 ): EChartsOption {
   const routes = graphRoutes(allRoutes);
-  const nodes = graphNodes(routes).toSorted((left, right) => right.traffic - left.traffic);
+  const slots = ringSlots(routes);
+  const nodes = slots.filter((node) => node !== null);
   const busiest = Math.max(0, ...nodes.map((node) => node.traffic));
   const heaviest = Math.max(0, ...routes.map((route) => route.count));
   const text = { color: theme.foreground, fontFamily: theme.fontFamily, fontSize: 11 };
@@ -122,8 +178,9 @@ export function buildRouteGraph(
         bottom: 40,
         left: LABEL_ROOM,
         right: LABEL_ROOM,
-        roam: true,
-        draggable: true,
+        // A graph that moves under the mouse is hard to read, so it holds still.
+        roam: false,
+        draggable: false,
         edgeSymbol: ['none', 'arrow'],
         edgeSymbolSize: [0, 7],
         label: { show: true, position: 'right', ...text },
@@ -131,18 +188,23 @@ export function buildRouteGraph(
         itemStyle: { color: seriesColor(theme, 0), borderColor: theme.surface, borderWidth: 2 },
         lineStyle: { color: theme.muted, opacity: 0.7, curveness: 0.15 },
         emphasis: { focus: 'adjacency' },
-        data: nodes.map((node, index) => {
-          const place = ringPlace(index, nodes.length);
-          return {
-            id: node.name,
-            name: nodeLabel(node.name),
-            value: node.traffic,
-            x: place.x,
-            y: place.y,
-            symbolSize: nodeSize(node.traffic, busiest),
-            label: { position: place.side },
-            tooltip: { formatter: `${node.name}: ${plural(node.traffic)}` },
-          };
+        data: slots.flatMap((node, index) => {
+          if (node === null) {
+            return [];
+          }
+          const place = ringPlace(index, slots.length);
+          return [
+            {
+              id: node.name,
+              name: nodeLabel(node.name),
+              value: node.traffic,
+              x: place.x,
+              y: place.y,
+              symbolSize: nodeSize(node.traffic, busiest),
+              label: { position: place.side },
+              tooltip: { formatter: `${node.name}: ${plural(node.traffic)}` },
+            },
+          ];
         }),
         links: routes.map((route) => ({
           source: route.from,

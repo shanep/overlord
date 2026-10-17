@@ -15,6 +15,7 @@ import {
   nodeLabel,
   nodeSize,
   ringPlace,
+  ringSlots,
 } from './messages-graph.js';
 // Registers the graph series with ECharts.
 import './messages-view.js';
@@ -90,6 +91,8 @@ describe('buildRouteGraph', () => {
           type: 'graph',
           name: 'Messages between sessions',
           layout: 'none',
+          roam: false,
+          draggable: false,
           edgeSymbol: ['none', 'arrow'],
           edgeLabel: { show: true, formatter: '{c}', color: theme.muted },
           label: { show: true, color: theme.foreground },
@@ -143,6 +146,49 @@ describe('buildRouteGraph', () => {
     expect(ringPlace(3, 4)).toMatchObject({ x: -100, side: 'left' });
     expect(ringPlace(1, 6).side).toBe('right');
     expect(ringPlace(4, 6).side).toBe('left');
+    // On a big ring, the neighbors of the bottom node label to the side.
+    expect(ringPlace(9, 18).side).toBe('bottom');
+    expect(ringPlace(8, 18).side).toBe('right');
+    expect(ringPlace(10, 18).side).toBe('left');
+  });
+
+  it('keeps sessions that talk together side by side, with a gap before the next group', () => {
+    const split: readonly MessageRoute[] = [
+      { from: 'Vault', to: 'Testing', count: 2, lastAt: 0 },
+      { from: 'Hub', to: 'Quiet', count: 1, lastAt: 0 },
+      { from: 'Hub', to: 'Loud', count: 5, lastAt: 0 },
+      { from: 'Loud', to: 'Hub', count: 1, lastAt: 0 },
+      { from: 'Docs', to: 'Testing', count: 1, lastAt: 0 },
+    ];
+    expect(ringSlots(split).map((slot) => slot?.name ?? null)).toStrictEqual([
+      'Hub',
+      'Loud',
+      'Quiet',
+      null,
+      'Testing',
+      'Vault',
+      'Docs',
+      null,
+    ]);
+    expect(ringSlots(routes).map((slot) => slot?.name)).toStrictEqual([
+      'Release prep',
+      'Docs pass',
+      LONG,
+    ]);
+    expect(ringSlots([])).toStrictEqual([]);
+    // The gaps take ring places but draw no node.
+    const data = (
+      buildRouteGraph(split, theme).series as { data: { id: string; x: number }[] }[]
+    )[0]?.data;
+    expect(data?.map((node) => node.id)).toStrictEqual([
+      'Hub',
+      'Loud',
+      'Quiet',
+      'Testing',
+      'Vault',
+      'Docs',
+    ]);
+    expect(data?.[3]?.x).toBe(ringPlace(4, 8).x);
   });
 
   it('handles no routes', () => {
