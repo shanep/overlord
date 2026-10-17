@@ -133,9 +133,47 @@ describe('combinePrompt', () => {
   });
 });
 
-/** Answers `claude agents` with nothing, so a session is live only through the registry. */
-function agentsResponder(call: ExecCall): ReturnType<typeof ok> | undefined {
-  return call.args[0] === 'agents' ? ok('[]') : undefined;
+interface Job {
+  readonly id: string;
+  readonly pid: number;
+}
+
+/**
+ * Answers `claude agents` with the given jobs, none by default, so a session
+ * is live only through the registry. `claude stop` ends the job's process.
+ */
+function agentsResponder(jobs: readonly Job[], ended: Set<number>) {
+  return (call: ExecCall): ReturnType<typeof ok> | undefined => {
+    if (call.args[0] === 'agents') {
+      return ok(JSON.stringify(jobs));
+    }
+    const job = jobs.find((entry) => call.args[0] === 'stop' && entry.id === call.args[1]);
+    if (job === undefined) {
+      return undefined;
+    }
+    ended.add(job.pid);
+    return ok('');
+  };
+}
+
+/** A background job still waiting for its first prompt, which Claude Code names after its id. */
+function emptyJob(
+  id: string,
+  pid: number,
+  cwd: string,
+  startedAt: number,
+): Job & Record<string, unknown> {
+  return {
+    id,
+    pid,
+    cwd,
+    kind: 'background',
+    startedAt,
+    sessionId: `empty-${id}`,
+    name: id,
+    status: 'idle',
+    state: 'blocked',
+  };
 }
 
 interface World {
@@ -144,19 +182,25 @@ interface World {
   readonly folder: string;
 }
 
-async function world(live: readonly number[] = [], repo = false): Promise<World> {
+async function world(
+  live: readonly number[] = [],
+  repo = false,
+  jobs: (folder: string) => readonly Job[] = () => [],
+): Promise<World> {
   const env = await makeEnv({ workspace: true });
   const folder = path.join(env.root, 'notes');
   await mkdir(folder, { recursive: true });
+  const ended = new Set<number>();
   // With repo set, git calls the session folder a repository, so it is a project of its own.
   const gitRepo = (call: ExecCall): ReturnType<typeof ok> | undefined =>
     repo && call.args.includes('--git-common-dir') && call.options.cwd === folder
       ? ok(`${folder}/.git\n${folder}\n`)
       : undefined;
   const test = makeApp(env, {
-    deps: { isAlive: (pid) => live.includes(pid) },
-    responders: [agentsResponder, gitRepo],
+    deps: { isAlive: (pid) => live.includes(pid) && !ended.has(pid) },
+    responders: [agentsResponder(jobs(folder), ended), gitRepo],
   });
+  await test.app.runtime.jobs.refresh();
   return { test, env, folder };
 }
 
@@ -201,7 +245,7 @@ describe('combineSessions', () => {
     expect(w.env.host.infos).toStrictEqual([
       'Overlord has no transcript for that session, so it cannot combine it.',
       'Overlord has no transcript for that session, so it cannot combine it.',
-      'There is no other session with a transcript to combine it with.',
+      'There is no other session to combine it with.',
     ]);
     expect(w.env.host.picks).toStrictEqual([]);
   });
@@ -314,5 +358,65 @@ describe('combineSessions', () => {
     expect(w.env.host.infos).toStrictEqual([
       '2 of them are not running on this machine, so Overlord left them alone.',
     ]);
+  });
+
+  it('combines into a new session that has had no prompt, in its folder, and stops it', async () => {
+    const w = await world([456], false, (folder) => [emptyJob('e1e1e1e1', 456, folder, NOW)]);
+    await addSession(w, 'old', 'plan it', { title: 'Old', state: 'done', cwd: w.env.root });
+    w.env.host.pickManyAnswers.push(['old']);
+    await w.test.app.dispatch({ type: 'combineSessions', sessionId: 'empty-e1e1e1e1' }, {});
+    expect(w.env.host.picks[0]).toStrictEqual({
+      placeholder: 'Combine "New session" with',
+      items: [{ id: 'old', label: 'Old', description: 'No project · done' }],
+    });
+    const terminal = w.env.host.terminals.at(-1);
+    expect(terminal).toMatchObject({ name: TAB_NAME, cwd: w.folder });
+    const prompt = terminal?.args.at(-1) ?? '';
+    expect(prompt).toContain('picks up from 1 earlier Claude Code sessions');
+    expect(prompt).toContain('## Session 1: Old');
+    expect(prompt).not.toContain('empty-e1e1e1e1');
+    expect(w.test.calls.some((call) => call.args.join(' ') === 'stop e1e1e1e1')).toBe(true);
+    // The empty one goes without a question, and the old one had already finished.
+    expect(w.env.host.questions).toStrictEqual([]);
+  });
+
+  it('offers a new session in the picker and starts the combined one in its place', async () => {
+    const w = await world([456, 457], false, () => [
+      emptyJob('e1e1e1e1', 456, '/nowhere', NOW - 100),
+      emptyJob('e2e2e2e2', 457, '/nowhere', NOW),
+    ]);
+    await addSession(w, 'old', 'plan it', { title: 'Old', state: 'done', updatedAt: NOW - 9000 });
+    w.env.host.pickManyAnswers.push(['empty-e1e1e1e1', 'empty-e2e2e2e2']);
+    await w.test.app.dispatch({ type: 'combineSessions', sessionId: 'old' }, {});
+    expect(w.env.host.picks[0]?.items.map((item) => item.description)).toStrictEqual([
+      'No project · no prompt yet, the combined session takes its place',
+      'No project · no prompt yet, the combined session takes its place',
+    ]);
+    // The newest empty session's folder is gone, so it starts in the workspace.
+    expect(w.env.host.terminals.at(-1)).toMatchObject({
+      name: TAB_NAME,
+      cwd: w.env.host.workspace,
+    });
+    const stops = w.test.calls
+      .filter((call) => call.args[0] === 'stop')
+      .map((call) => call.args[1]);
+    expect(stops.toSorted((left = '', right = '') => left.localeCompare(right))).toStrictEqual([
+      'e1e1e1e1',
+      'e2e2e2e2',
+    ]);
+  });
+
+  it('starts nothing when none of the picked sessions has had a prompt', async () => {
+    const w = await world([456, 457], false, () => [
+      emptyJob('e1e1e1e1', 456, '/nowhere', NOW - 100),
+      emptyJob('e2e2e2e2', 457, '/nowhere', NOW),
+    ]);
+    w.env.host.pickManyAnswers.push(['empty-e1e1e1e1']);
+    await w.test.app.dispatch({ type: 'combineSessions', sessionId: 'empty-e2e2e2e2' }, {});
+    expect(w.env.host.infos).toStrictEqual([
+      'None of those sessions has had a prompt yet, so there is nothing to combine.',
+    ]);
+    expect(started(w)).toStrictEqual([]);
+    expect(w.test.calls.some((call) => call.args[0] === 'stop')).toBe(false);
   });
 });

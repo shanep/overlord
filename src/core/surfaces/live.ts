@@ -23,6 +23,7 @@ const registrySchema = z.object({
   startedAt: z.number().nullish(),
   updatedAt: z.number().nullish(),
   name: z.string().nullish(),
+  jobId: z.string().nullish(),
   version: z.string().nullish(),
   messagingSocketPath: z.string().nullish(),
 });
@@ -116,6 +117,17 @@ function normalizeKind(kind: string | null): string | null {
   return kind === 'bg' ? 'background' : kind;
 }
 
+/**
+ * Claude Code names a background session after its job id until the first
+ * prompt gives it a real name, so that placeholder counts as no name.
+ */
+function realName(
+  name: string | null | undefined,
+  jobId: string | null | undefined,
+): string | null {
+  return name === jobId ? null : (name ?? null);
+}
+
 function toRegistryEntry(raw: z.infer<typeof registrySchema>): RegistryEntry {
   return {
     pid: raw.pid,
@@ -127,7 +139,7 @@ function toRegistryEntry(raw: z.infer<typeof registrySchema>): RegistryEntry {
     statusUpdatedAt: raw.statusUpdatedAt ?? null,
     startedAt: raw.startedAt ?? null,
     updatedAt: raw.updatedAt ?? null,
-    name: raw.name ?? null,
+    name: realName(raw.name, raw.jobId),
     version: raw.version ?? null,
     messagingSocketPath: raw.messagingSocketPath ?? null,
   };
@@ -140,7 +152,7 @@ function toAgentEntry(raw: z.infer<typeof agentSchema>): AgentEntry {
     sessionId: raw.sessionId,
     cwd: raw.cwd ?? null,
     kind: normalizeKind(raw.kind ?? null),
-    name: raw.name ?? null,
+    name: realName(raw.name, raw.id),
     state: raw.state ?? null,
     status: raw.status ?? null,
     startedAt: raw.startedAt ?? null,

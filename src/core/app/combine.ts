@@ -1,7 +1,9 @@
 // Combining sessions. Claude Code cannot join two conversations, so Overlord
 // starts one new session whose first message is a digest of the others: what
 // the user asked, what each one changed and where it left off. Then it offers
-// to stop the ones still running.
+// to stop the ones still running. A new session that has not had a prompt yet
+// has nothing to digest, so combining into it starts the combined session in
+// its project and stops it in its place.
 
 import type { SessionSummary } from '../../shared/model.js';
 import type { FleetState } from '../../shared/protocol.js';
@@ -123,28 +125,52 @@ function isActive(session: SessionSummary): boolean {
   return session.state !== 'done' && session.state !== 'failed';
 }
 
+/**
+ * Sessions still waiting for their first prompt: background jobs with no
+ * transcript that Claude Code has not named yet.
+ */
+function emptySessions(rt: Runtime, fleet: FleetState): ReadonlySet<string> {
+  const unnamed = new Set(
+    rt.jobs.value
+      .filter((job) => job.name === null && job.state !== 'done')
+      .map((job) => job.sessionId),
+  );
+  return new Set(
+    fleet.sessions
+      .filter((session) => session.transcriptPath === null && unnamed.has(session.id))
+      .map((session) => session.id),
+  );
+}
+
 function projectName(fleet: FleetState, sessionId: string): string {
   const projectId = fleet.sessionProjects[sessionId]?.projectId ?? null;
   return fleet.projects.find((item) => item.id === projectId)?.name ?? 'No project';
 }
 
-/** Every other session with a transcript: the anchor's project first, then the most recent. */
-function candidates(fleet: FleetState, anchor: SessionSummary): Transcribed[] {
+/** Every other session with a transcript or none yet: the anchor's project first, then the most recent. */
+function candidates(
+  fleet: FleetState,
+  anchor: SessionSummary,
+  empty: ReadonlySet<string>,
+): SessionSummary[] {
   const project = fleet.sessionProjects[anchor.id]?.projectId ?? null;
   const sameProject = (session: SessionSummary): number =>
     Number((fleet.sessionProjects[session.id]?.projectId ?? null) !== project);
   return fleet.sessions
-    .filter((session): session is Transcribed => hasTranscript(session) && session.id !== anchor.id)
+    .filter(
+      (session) => (hasTranscript(session) || empty.has(session.id)) && session.id !== anchor.id,
+    )
     .toSorted(
       (left, right) => sameProject(left) - sameProject(right) || right.updatedAt - left.updatedAt,
     );
 }
 
-function pickItem(fleet: FleetState, session: SessionSummary): PickItem {
+function pickItem(fleet: FleetState, session: SessionSummary, empty: boolean): PickItem {
+  const state = empty ? 'no prompt yet, the combined session takes its place' : session.state;
   return {
     id: session.id,
     label: session.title === '' ? session.cwd : session.title,
-    description: `${projectName(fleet, session.id)} · ${session.state}`,
+    description: `${projectName(fleet, session.id)} · ${state}`,
   };
 }
 
@@ -184,33 +210,46 @@ async function offerStop(rt: Runtime, combined: readonly SessionSummary[]): Prom
 
 async function combine(rt: Runtime, sessionId: string): Promise<void> {
   const fleet = fleetFor(rt);
+  const empty = emptySessions(rt, fleet);
   const anchor = fleet.sessions.find((session) => session.id === sessionId);
-  if (anchor === undefined || !hasTranscript(anchor)) {
+  if (anchor === undefined || !(hasTranscript(anchor) || empty.has(anchor.id))) {
     rt.host.showInfo('Overlord has no transcript for that session, so it cannot combine it.');
     return;
   }
-  const others = candidates(fleet, anchor);
+  const others = candidates(fleet, anchor, empty);
   if (others.length === 0) {
-    rt.host.showInfo('There is no other session with a transcript to combine it with.');
+    rt.host.showInfo('There is no other session to combine it with.');
     return;
   }
   const label = anchor.title === '' ? 'this session' : `"${anchor.title}"`;
   const picked = await rt.host.quickPickMany(
-    others.map((session) => pickItem(fleet, session)),
+    others.map((session) => pickItem(fleet, session, empty.has(session.id))),
     `Combine ${label} with`,
   );
   if (picked === null || picked.length === 0) {
     return;
   }
-  const chosen = [anchor, ...others.filter((session) => picked.includes(session.id))].toSorted(
-    (left, right) => left.startedAt - right.startedAt,
-  );
-  const sources = await Promise.all(chosen.map(async (session) => readSource(rt, session)));
-  await startSession(rt, await startFolder(rt, anchor), {
+  const chosen = [anchor, ...others.filter((session) => picked.includes(session.id))];
+  const transcribed = chosen
+    .filter((session) => hasTranscript(session))
+    .toSorted((left, right) => left.startedAt - right.startedAt);
+  if (transcribed.length === 0) {
+    rt.host.showInfo(
+      'None of those sessions has had a prompt yet, so there is nothing to combine.',
+    );
+    return;
+  }
+  // The newest empty session is the one the user just opened to combine into.
+  const replaced = chosen
+    .filter((session) => empty.has(session.id))
+    .toSorted((left, right) => right.startedAt - left.startedAt);
+  const sources = await Promise.all(transcribed.map(async (session) => readSource(rt, session)));
+  await startSession(rt, await startFolder(rt, replaced[0] ?? anchor), {
     name: TAB_NAME,
     prompt: combinePrompt(sources),
   });
-  await offerStop(rt, chosen);
+  await Promise.all(replaced.map(async (session) => stopNow(rt, session.id)));
+  await offerStop(rt, transcribed);
 }
 
 export const combineActions: ActionHandlers<'combineSessions'> = {

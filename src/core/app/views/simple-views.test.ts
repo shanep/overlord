@@ -23,6 +23,7 @@ import {
 import {
   buildFleet,
   fleetHealth,
+  NEW_SESSION_TITLE,
   normalizeRateLimits,
   toFraction,
   withJobStates,
@@ -244,7 +245,13 @@ describe('fleet view', () => {
       session('finished', { state: 'done', model: 'opus' }),
     );
     expect(byId.get('gone')).toStrictEqual(
-      session('gone', { title: '', cwd: '', state: 'failed', startedAt: 0, updatedAt: 0 }),
+      session('gone', {
+        title: NEW_SESSION_TITLE,
+        cwd: '',
+        state: 'failed',
+        startedAt: 0,
+        updatedAt: 0,
+      }),
     );
   });
 
@@ -258,6 +265,10 @@ describe('fleet view', () => {
     expect(withJobStates([], [{ ...job, state: 'waiting' }])).toStrictEqual([
       session('a', { title: 'A', cwd: '/w', state: 'waiting', startedAt: 5, updatedAt: 5 }),
     ]);
+    // A new session waiting for its first prompt has no name from Claude Code yet.
+    expect(withJobStates([], [{ ...job, name: null, state: 'waiting' }])[0]?.title).toBe(
+      NEW_SESSION_TITLE,
+    );
   });
 
   it('takes the session and weekly rows from the plan over rate limit events', () => {

@@ -48,13 +48,19 @@ export function withPlanLimits(limits: RateLimits, plan: PlanLimits | null): Rat
   };
 }
 
-/** A row for a job whose transcript is gone, from what Claude Code still knows. */
+/** What the fleet calls a session that has not had its first prompt, so Claude Code has not named it. */
+export const NEW_SESSION_TITLE = 'New session';
+
+/**
+ * A row for a job with no transcript, from what Claude Code knows: one whose
+ * transcript is gone, or a new one that has not had a prompt yet.
+ */
 function jobSession(job: BackgroundJob): SessionSummary {
   const startedAt = job.startedAt ?? 0;
   return {
     id: job.sessionId,
     surface: 'cli',
-    title: job.name ?? '',
+    title: job.name ?? NEW_SESSION_TITLE,
     cwd: job.cwd ?? '',
     state: job.state,
     startedAt,

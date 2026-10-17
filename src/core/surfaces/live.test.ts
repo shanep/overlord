@@ -76,10 +76,13 @@ describe('readSessionRegistry', () => {
     const home = await makeScratchHome();
     await home.writeJson('.claude/sessions/4765.json', FULL_REGISTRY);
     await home.writeJson('.claude/sessions/10.json', { pid: 10, sessionId: 'session-10' });
+    // A background session is named after its job id until its first prompt.
     await home.writeJson('.claude/sessions/9.json', {
       pid: 9,
       sessionId: 'session-b',
       kind: 'bg',
+      name: '8c3efb13',
+      jobId: '8c3efb13',
     });
     await home.writeText('.claude/sessions/4765.abcdef.key', 'secret');
     await home.makeDir('.claude/sessions/99.json');
@@ -153,7 +156,7 @@ describe('parseAgentsJson', () => {
         status: 'busy',
         state: 'working',
       },
-      { id: 'bg-2', kind: 'bg', sessionId: 's-stopped', state: 'stopped', pid: null },
+      { id: 'bg-2', kind: 'bg', sessionId: 's-stopped', state: 'stopped', pid: null, name: 'bg-2' },
     ]);
     expect(parseAgentsJson(stdout)).toStrictEqual({
       items: [

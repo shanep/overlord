@@ -65,7 +65,7 @@ export const ROW_BUTTONS: readonly RowButton[] = [
     icon: 'combine',
     name: 'Combine sessions',
     meaning:
-      "Picks other sessions to combine with this one, then starts one new session in this session's project that begins from a digest of them all: what you asked, the files they edited, the commits they made and their last reply. Then it offers to stop the ones still running.",
+      "Picks other sessions to combine with this one, then starts one new session in this session's project that begins from a digest of them all: what you asked, the files they edited, the commits they made and their last reply. Then it offers to stop the ones still running. A new session that has not had a prompt yet can be one of them: the combined session starts in its project and takes its place.",
   },
   {
     icon: 'interrupt',
