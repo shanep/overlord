@@ -35,6 +35,7 @@
   --ov-error: var(--vscode-errorForeground, #e51400);
   --ov-warning-bg: var(--vscode-inputValidation-warningBackground, rgb(237 161 0 / 15%));
   --ov-warning-border: var(--vscode-inputValidation-warningBorder, var(--ov-yellow));
+  --ov-find: var(--vscode-editor-findMatchHighlightBackground, rgb(234 92 0 / 33%));
   --ov-mono: var(--vscode-editor-font-family, ui-monospace, monospace);
   --ov-font: var(--vscode-font-family, system-ui, sans-serif);
   --ov-size: var(--vscode-font-size, 13px);
@@ -1017,6 +1018,29 @@ fieldset.chips {
 
 .help-toc a:hover {
   text-decoration: underline;
+}
+
+.help-search {
+  display: flex;
+  flex: 0 1 320px;
+  align-self: center;
+  min-width: 180px;
+}
+
+.help-search input[type='search'] {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 8px;
+}
+
+/* What a help search hid stays hidden even where a class sets display, like cards. */
+.help [hidden] {
+  display: none !important;
+}
+
+/* The words a help search found, in the editor's own find colors. */
+::highlight(help-search) {
+  background-color: var(--ov-find);
 }
 
 .help-section {

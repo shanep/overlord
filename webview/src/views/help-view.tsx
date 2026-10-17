@@ -1,8 +1,10 @@
 // The help page: what every icon and badge means, where each view lives, and
 // how a day with Overlord usually goes, how a session lives and ends, and a map of where Overlord can grow. Badges render with the real
-// components, so the page cannot drift from what the other views show.
+// components, so the page cannot drift from what the other views show. The
+// search box in the header cuts the page down to what matches (help-search.ts).
 
 import type { ReactElement, ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 import type { SessionPlace, SessionState, Surface } from '../../../src/shared/model.js';
 import type { HandoffKind } from '../../../src/shared/protocol.js';
@@ -31,6 +33,7 @@ import {
 import { ExtendSection } from './help-extend.js';
 import { ROW_BUTTONS } from './help-row-buttons.js';
 import { SCREEN_MAP_ID, ScreenSection } from './help-screen.js';
+import { searchHelp } from './help-search.js';
 import { SessionsSection } from './help-sessions.js';
 import { HANDOFF_LABELS } from './sessions-view.js';
 
@@ -313,12 +316,14 @@ const CONTENTS: readonly (readonly [id: string, title: string])[] = [
   ['help-extend', 'Extending Overlord'],
 ];
 
-function Contents(): ReactElement {
+/** The contents, cut down to the sections a search left showing. */
+function Contents(props: { readonly shown: ReadonlySet<string> | null }): ReactElement {
+  const { shown } = props;
   return (
     <nav className="help-toc" aria-label="On this page">
       <span className="muted">On this page</span>
       <ul>
-        {CONTENTS.map(([id, title]) => (
+        {CONTENTS.filter(([id]) => shown === null || shown.has(id)).map(([id, title]) => (
           <li key={id}>
             <a href={`#${id}`}>{title}</a>
           </li>
@@ -328,18 +333,73 @@ function Contents(): ReactElement {
   );
 }
 
-export function HelpView(): ReactElement {
+function isFindKey(event: KeyboardEvent): boolean {
+  return (event.metaKey || event.ctrlKey) && !event.altKey && event.key.toLowerCase() === 'f';
+}
+
+/** The search box. Cmd+F or Ctrl+F jumps to it, and Escape clears it. */
+function SearchBox(props: {
+  readonly query: string;
+  readonly onChange: (query: string) => void;
+}): ReactElement {
+  const input = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent): void => {
+      if (isFindKey(event)) {
+        event.preventDefault();
+        input.current?.focus();
+        input.current?.select();
+      }
+    };
+    globalThis.addEventListener('keydown', onKey);
+    return (): void => {
+      globalThis.removeEventListener('keydown', onKey);
+    };
+  }, []);
   return (
-    <article className="help" aria-labelledby="help-title">
+    <div className="help-search" role="search">
+      <input
+        ref={input}
+        type="search"
+        aria-label="Search help"
+        placeholder="Search help: worktree, stop, badge…"
+        value={props.query}
+        onChange={(event) => {
+          props.onChange(event.target.value);
+        }}
+      />
+    </div>
+  );
+}
+
+export function HelpView(): ReactElement {
+  const page = useRef<HTMLElement>(null);
+  const [query, setQuery] = useState('');
+  const [shown, setShown] = useState<ReadonlySet<string> | null>(null);
+  useLayoutEffect(() => {
+    if (page.current !== null) {
+      const sections = searchHelp(page.current, query);
+      setShown(query.trim() === '' ? null : sections);
+    }
+  }, [query]);
+  return (
+    <article ref={page} className="help" aria-labelledby="help-title">
       <header className="view-header">
         <h1 id="help-title">Overlord help</h1>
+        <span className="spacer" />
+        <SearchBox query={query} onChange={setQuery} />
       </header>
       <p className="help-lede">
         Overlord is htop for Claude Code. It shows every session and subagent you have running, what
         is in their context, and every knob you can turn. It also runs agents itself, so you can
         launch a batch of prompts and watch them side by side.
       </p>
-      <Contents />
+      <Contents shown={shown} />
+      {shown?.size === 0 ? (
+        <p className="empty-line muted" role="status">
+          Nothing in help matches &quot;{query.trim()}&quot;.
+        </p>
+      ) : null}
       <WorkflowSection />
       <ScreenSection />
       <SessionsSection />
