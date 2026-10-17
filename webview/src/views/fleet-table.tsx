@@ -7,7 +7,7 @@ import { useMemo } from 'react';
 
 import type { AgentId } from '../../../src/shared/agents.js';
 import { CLAUDE_CODE } from '../../../src/shared/agents.js';
-import type { Backend } from '../../../src/shared/backends.js';
+import type { ModelBackend } from '../../../src/shared/backends.js';
 import { backendOf } from '../../../src/shared/backends.js';
 import { NOT_REPORTED, soleAgent, useAgent, useAgents } from '../agents.js';
 import type { ChartTheme } from '../charts/chart-theme.js';
@@ -222,7 +222,7 @@ function ReportedCell(props: {
 }
 
 /** The backend logo a Claude Code session row shows, or null on every other row. */
-function rowBackend(row: FleetRow): Backend | null {
+function rowBackend(row: FleetRow): ModelBackend | null {
   return row.kind === 'session' && row.agent === CLAUDE_CODE ? backendOf(row.model) : null;
 }
 

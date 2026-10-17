@@ -14,11 +14,11 @@ export const BOISESTATE_MODEL_IDS = [
 ] as const;
 
 /** Anthropic's own API, or the boisestate.ai bridge. */
-export type Backend = 'anthropic' | 'boisestate';
+export type ModelBackend = 'anthropic' | 'boisestate';
 
 const BOISESTATE_MODELS: ReadonlySet<string> = new Set(BOISESTATE_MODEL_IDS);
 
 /** The backend behind a reply's model. A session with no reply yet counts as Anthropic. */
-export function backendOf(model: string | null): Backend {
+export function backendOf(model: string | null): ModelBackend {
   return model !== null && BOISESTATE_MODELS.has(model) ? 'boisestate' : 'anthropic';
 }

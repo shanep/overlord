@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react';
 
 import type { AgentInfo } from '../../../src/shared/agents.js';
-import type { Backend } from '../../../src/shared/backends.js';
+import type { ModelBackend } from '../../../src/shared/backends.js';
 import type { SessionPlace, SessionState, Surface } from '../../../src/shared/model.js';
 import boisestateLogo from '../assets/boisestate.png';
 import clawdLogo from '../assets/clawd.svg';
@@ -88,18 +88,18 @@ export function LaunchedMarker(): ReactElement {
   );
 }
 
-const BACKENDS: Readonly<Record<Backend, { readonly logo: string; readonly name: string }>> = {
+const BACKENDS: Readonly<Record<ModelBackend, { readonly logo: string; readonly name: string }>> = {
   anthropic: { logo: clawdLogo, name: 'Anthropic' },
   boisestate: { logo: boisestateLogo, name: 'boisestate.ai' },
 };
 
 /** Clawd for a session on Anthropic, the Boise State B for one on the boisestate.ai bridge. */
-function BackendLogo(props: { readonly backend: Backend }): ReactElement {
+function BackendLogo(props: { readonly backend: ModelBackend }): ReactElement {
   return <img className="backend-logo" src={BACKENDS[props.backend].logo} alt="" />;
 }
 
 /** The backend a Claude Code session talks to, as its logo alone. */
-export function BackendMark(props: { readonly backend: Backend }): ReactElement {
+export function BackendMark(props: { readonly backend: ModelBackend }): ReactElement {
   return (
     <span className="backend-mark" data-tip={`Backend: ${BACKENDS[props.backend].name}`}>
       <BackendLogo backend={props.backend} />
@@ -113,7 +113,7 @@ export function BackendMark(props: { readonly backend: Backend }): ReactElement 
  */
 export function AgentMark(props: {
   readonly agent: AgentInfo;
-  readonly backend?: Backend | null;
+  readonly backend?: ModelBackend | null;
 }): ReactElement {
   const { agent, backend = null } = props;
   const version = agent.version === null ? '' : ` ${agent.version}`;

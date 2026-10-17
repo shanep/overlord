@@ -4,7 +4,7 @@
 import type { ReactElement } from 'react';
 
 import type { AgentInfo } from '../../../src/shared/agents.js';
-import type { Backend } from '../../../src/shared/backends.js';
+import type { ModelBackend } from '../../../src/shared/backends.js';
 import {
   AgentMark,
   BackendMark,
@@ -47,7 +47,7 @@ function Twisty(props: {
 /** The agent and its backend logo, or the logo alone when rows do not name their agent. */
 function RowMark(props: {
   readonly agent: AgentInfo | null;
-  readonly backend: Backend | null;
+  readonly backend: ModelBackend | null;
 }): ReactElement | null {
   if (props.agent !== null) {
     return <AgentMark agent={props.agent} backend={props.backend} />;
@@ -87,7 +87,7 @@ export function TitleCell(props: {
   /** The agent to name in front of the title, or null to leave it out. */
   readonly agent: AgentInfo | null;
   /** The backend logo to show in front of the title, or null (the default) for none. */
-  readonly backend?: Backend | null;
+  readonly backend?: ModelBackend | null;
   readonly showSummary: boolean;
   readonly tabIndex: number;
   readonly onToggle: (visible: VisibleRow) => void;
