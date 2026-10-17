@@ -1,0 +1,228 @@
+{
+  "connectors": [
+    {
+      "id": "chrome:claude-in-chrome",
+      "name": "Claude in Chrome",
+      "kind": "chrome",
+      "target": "",
+      "status": "ok",
+      "detail": "Connected to 1 browser.",
+      "fix": null
+    },
+    {
+      "id": "headless:chrome",
+      "name": "Headless Chrome",
+      "kind": "headless",
+      "target": "/Applications/Google Chrome.app",
+      "status": "ok",
+      "detail": "Chrome can run headless.",
+      "fix": null
+    },
+    {
+      "id": "claude.ai:claude.ai Gmail",
+      "name": "claude.ai Gmail",
+      "kind": "claude.ai",
+      "target": "https://gmail.mcp.claude.com/mcp",
+      "status": "ok",
+      "detail": "Connected.",
+      "fix": null
+    },
+    {
+      "id": "claude.ai:claude.ai Google Drive",
+      "name": "claude.ai Google Drive",
+      "kind": "claude.ai",
+      "target": "https://drive.mcp.claude.com/mcp",
+      "status": "ok",
+      "detail": "Connected.",
+      "fix": null
+    },
+    {
+      "id": "mcp:issue-tracker",
+      "name": "issue-tracker",
+      "kind": "mcp",
+      "target": "https://mcp.issues.example/mcp",
+      "status": "needs-auth",
+      "detail": "Needs a sign in before a session can use it.",
+      "fix": "sign-in"
+    },
+    {
+      "id": "mcp:jupyter",
+      "name": "jupyter",
+      "kind": "mcp",
+      "target": "uvx jupyter-mcp",
+      "status": "failed",
+      "detail": "Failed to connect: spawn uvx ENOENT.",
+      "fix": null
+    }
+  ],
+  "checkedAt": 1792000000000,
+  "checking": false,
+  "folder": null,
+  "registry": {
+    "query": "",
+    "searching": false,
+    "results": [
+      {
+        "name": "io.github.example/issue-tracker-mcp",
+        "title": "Issue Tracker",
+        "description": "Search, open and comment on issues across your projects, with saved queries and labels.",
+        "version": "2.4.0",
+        "repository": "https://github.com/example/issue-tracker-mcp",
+        "suggestedName": "issue-tracker",
+        "options": [
+          {
+            "kind": "http",
+            "summary": "https://mcp.issues.example/mcp",
+            "inputs": []
+          },
+          {
+            "kind": "npm",
+            "summary": "npx -y @example/issue-tracker-mcp@2.4.0",
+            "inputs": [
+              {
+                "id": "env:TRACKER_TOKEN",
+                "label": "TRACKER_TOKEN",
+                "description": "An API token from Settings, then Tokens.",
+                "required": true,
+                "secret": true,
+                "initial": "",
+                "placeholder": ""
+              },
+              {
+                "id": "env:TRACKER_HOST",
+                "label": "TRACKER_HOST",
+                "description": "",
+                "required": false,
+                "secret": false,
+                "initial": "issues.example",
+                "placeholder": ""
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "io.github.example/postgres-mcp",
+        "title": "Postgres",
+        "description": "Read-only SQL against a Postgres database, with schema browsing and query plans.",
+        "version": "0.9.1",
+        "repository": "https://github.com/example/postgres-mcp",
+        "suggestedName": "postgres",
+        "options": [
+          {
+            "kind": "pypi",
+            "summary": "uvx postgres-mcp==0.9.1",
+            "inputs": [
+              {
+                "id": "env:DATABASE_URL",
+                "label": "DATABASE_URL",
+                "description": "A connection string for a role that cannot write.",
+                "required": true,
+                "secret": true,
+                "initial": "",
+                "placeholder": ""
+              }
+            ]
+          },
+          {
+            "kind": "docker",
+            "summary": "docker run -i --rm -e DATABASE_URL={DATABASE_URL} ghcr.io/example/postgres-mcp:0.9.1",
+            "inputs": [
+              {
+                "id": "env:DATABASE_URL",
+                "label": "DATABASE_URL",
+                "description": "A connection string for a role that cannot write.",
+                "required": true,
+                "secret": true,
+                "initial": "",
+                "placeholder": ""
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "com.example.weather/forecast",
+        "title": "Forecast",
+        "description": "Hourly and daily forecasts for any place, plus severe weather alerts.",
+        "version": "1.0.3",
+        "repository": null,
+        "suggestedName": "forecast",
+        "options": [
+          {
+            "kind": "http",
+            "summary": "https://weather.example/mcp",
+            "inputs": []
+          }
+        ]
+      },
+      {
+        "name": "io.github.example/notes",
+        "title": "io.github.example/notes",
+        "description": "Keep notes in plain Markdown files and search them by text or tag.",
+        "version": "0.3.0",
+        "repository": "https://github.com/example/notes",
+        "suggestedName": "notes",
+        "options": [
+          {
+            "kind": "npm",
+            "summary": "npx -y example-notes@0.3.0 {notes_dir}",
+            "inputs": [
+              {
+                "id": "var:notes_dir",
+                "label": "notes_dir",
+                "description": "The folder that holds the notes.",
+                "required": true,
+                "secret": false,
+                "initial": "",
+                "placeholder": ""
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "io.github.example/calendar",
+        "title": "Calendar",
+        "description": "Read and create events on a CalDAV calendar.",
+        "version": "1.2.0",
+        "repository": "https://github.com/example/calendar",
+        "suggestedName": "calendar",
+        "options": [
+          {
+            "kind": "sse",
+            "summary": "https://cal.example/sse",
+            "inputs": [
+              {
+                "id": "var:api_key",
+                "label": "api_key",
+                "description": "Your calendar API key.",
+                "required": true,
+                "secret": true,
+                "initial": "",
+                "placeholder": ""
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "io.github.example/desktop-bundle",
+        "title": "Desktop Bundle",
+        "description": "Only ships as a desktop bundle, so it cannot be installed from here.",
+        "version": "0.1.0",
+        "repository": null,
+        "suggestedName": "desktop-bundle",
+        "options": []
+      }
+    ],
+    "more": true,
+    "loadingMore": false,
+    "error": null,
+    "installing": null,
+    "notice": {
+      "ok": true,
+      "text": "Added forecast for every project. New sessions get it. Checking it now."
+    }
+  }
+}
