@@ -1,7 +1,8 @@
 // The normalized request both front-end routes reduce to, and the mapping onto
 // the backend's api-converse request. Centralizing it keeps the OpenAI and
-// Anthropic routes honest about what the backend actually supports: no tools,
-// no images, and no sampling controls.
+// Anthropic routes honest about what the backend actually supports: no native
+// tools, no images, and no sampling controls. Tools go through text instead
+// (see tools.ts).
 
 import type { ConverseMessage, ConverseRequest } from './upstream.js';
 
@@ -11,6 +12,8 @@ export interface NormalizedChat {
   readonly systemPrompt: string | null;
   readonly maxTokens: number | null;
   readonly stream: boolean;
+  /** The client's tools, whose calls the reply may hold as text. Empty for plain chat. */
+  readonly toolNames: readonly string[];
 }
 
 export function toConverseRequest(chat: NormalizedChat): ConverseRequest {

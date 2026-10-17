@@ -36,17 +36,6 @@ export const BOISESTATE_PROFILE: LaunchProfile = {
   extraArgs: [],
 };
 
-/**
- * The system prompt a bridge session gets in place of Claude Code's own. The
- * backend runs no tools, so the session gets none either, and the tool
- * instructions that made up most of each request go away.
- */
-export const BRIDGE_CHAT_PROMPT =
-  'You are chatting through the Boise State AI gateway, which runs no tools. ' +
-  'You cannot read or write files, run commands or browse the web here, so put any code, ' +
-  'commands or text the user needs right in your reply. Skip any instruction that only ' +
-  'makes sense with tools, such as running checks, committing or reporting on the project setup.';
-
 /** True when a launch env opts into the bridge through the placeholder URL. */
 export function needsBridge(env: Readonly<Record<string, string>>): boolean {
   return env['ANTHROPIC_BASE_URL'] === BRIDGE_BASE_URL;
@@ -70,19 +59,12 @@ export function bearerEnv(env: Readonly<Record<string, string>>): Record<string,
   return token === undefined ? rest : { ...rest, ANTHROPIC_AUTH_TOKEN: token };
 }
 
-/** CLI args for a chat tab: the bridge's model and chat prompt, no tools and no MCP servers. */
+/**
+ * CLI args for a bridge tab: the bridge's model, and no MCP servers, since the
+ * bridge sends every tool's definition as text in each request.
+ */
 export function chatArgs(sessionId: string): readonly string[] {
-  return [
-    '--session-id',
-    sessionId,
-    '--model',
-    BRIDGE_MODEL,
-    '--system-prompt',
-    BRIDGE_CHAT_PROMPT,
-    '--tools',
-    '',
-    '--strict-mcp-config',
-  ];
+  return ['--session-id', sessionId, '--model', BRIDGE_MODEL, '--strict-mcp-config'];
 }
 
 const readySchema = z.object({ ready: z.literal(true), port: z.number().int().positive() });

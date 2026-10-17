@@ -22,7 +22,7 @@ function options(overrides: Partial<QueryOptions> = {}): QueryOptions {
     extraArgs: {},
     maxBudgetUsd: null,
     executablePath: null,
-    chatPrompt: null,
+    noMcp: false,
     ...overrides,
   };
 }
@@ -76,16 +76,16 @@ describe('toSdkOptions', () => {
     expect(sdk.settingSources).toStrictEqual(['user', 'project', 'local']);
   });
 
-  it('runs a chat session with its own prompt, no tools and no MCP servers', () => {
-    const sdk = toSdkOptions(options({ chatPrompt: 'Just chat.' }));
-    expect(sdk.systemPrompt).toBe('Just chat.');
-    expect(sdk.tools).toStrictEqual([]);
+  it('runs a session without MCP servers, keeping the prompt and tools', () => {
+    const sdk = toSdkOptions(options({ noMcp: true }));
+    expect(sdk.systemPrompt).toStrictEqual({ type: 'preset', preset: 'claude_code' });
+    expect(sdk.tools).toBeUndefined();
     expect(sdk.strictMcpConfig).toBe(true);
     expect(sdk.mcpServers).toStrictEqual({});
     expect(sdk.settingSources).toStrictEqual(['user', 'project', 'local']);
   });
 
-  it('leaves tools and MCP alone outside chat sessions', () => {
+  it('leaves tools and MCP alone otherwise', () => {
     const sdk = toSdkOptions(options());
     expect(sdk.tools).toBeUndefined();
     expect(sdk.strictMcpConfig).toBeUndefined();

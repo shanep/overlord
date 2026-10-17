@@ -48,7 +48,7 @@ describe('parseAnthropicRequest', () => {
     expect(result.status).toBe(400);
   });
 
-  it('flattens text and tool_result blocks, ignoring tool_use and images', () => {
+  it('flattens text and tool results, skipping a tool_use with no name and images', () => {
     const result = parseAnthropicRequest({
       model: 'opus',
       messages: [
@@ -66,7 +66,9 @@ describe('parseAnthropicRequest', () => {
     if (!result.ok) {
       throw new Error('expected ok');
     }
-    expect(result.chat.messages).toStrictEqual([{ role: 'user', content: 'ar' }]);
+    expect(result.chat.messages).toStrictEqual([
+      { role: 'user', content: 'a\n<tool_result name="tool">\nr\n</tool_result>' },
+    ]);
   });
 
   it('reads tool_result array content and ignores non-array content', () => {
@@ -84,8 +86,10 @@ describe('parseAnthropicRequest', () => {
     if (!arrayResult.ok || !numberResult.ok) {
       throw new Error('expected ok');
     }
-    expect(arrayResult.chat.messages[0]?.content).toBe('x');
-    expect(numberResult.chat.messages[0]?.content).toBe('');
+    expect(arrayResult.chat.messages[0]?.content).toContain('\nx\n');
+    expect(numberResult.chat.messages[0]?.content).toBe(
+      '<tool_result name="tool">\n\n</tool_result>',
+    );
   });
 
   it('reads a system prompt as a string or an array of blocks', () => {
@@ -294,6 +298,141 @@ describe('makeAnthropicHandler (streaming)', () => {
       responder,
     );
     expect(names(rec.events)).not.toContain('content_block_delta');
+  });
+});
+
+describe('tool calls through text', () => {
+  const TOOLS = [
+    { name: 'Read', description: 'Reads a file.', input_schema: { type: 'object' } },
+    { name: 'web_search', type: 'web_search_20250305' },
+  ];
+  const CALL = '<tool_call>\n{"name": "Read", "input": {"file_path": "/a.txt"}}\n</tool_call>';
+
+  it('adds the tools to the prompt and writes earlier calls and results as text', () => {
+    const result = parseAnthropicRequest({
+      system: 'be brief',
+      tools: TOOLS,
+      messages: [
+        { role: 'user', content: 'Show /a.txt' },
+        {
+          role: 'assistant',
+          content: [
+            { type: 'text', text: 'Reading it.' },
+            { type: 'tool_use', id: 'toolu_1', name: 'Read', input: { file_path: '/a.txt' } },
+          ],
+        },
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'tool_result',
+              tool_use_id: 'toolu_1',
+              content: [{ type: 'text', text: 'one' }],
+            },
+            { type: 'tool_result', tool_use_id: 'toolu_9', content: 'lost', is_error: true },
+            { type: 'text', text: 'a reminder' },
+          ],
+        },
+      ],
+    });
+    if (!result.ok) {
+      throw new Error('expected ok');
+    }
+    expect(result.chat.toolNames).toStrictEqual(['Read']);
+    expect(result.chat.systemPrompt).toMatch(/^be brief\n\n# Calling tools\n/u);
+    expect(result.chat.systemPrompt).toContain('## Read\nReads a file.');
+    expect(result.chat.systemPrompt).not.toContain('web_search');
+    expect(result.chat.messages).toStrictEqual([
+      { role: 'user', content: 'Show /a.txt' },
+      {
+        role: 'assistant',
+        content:
+          'Reading it.\n<tool_call>\n{"name":"Read","input":{"file_path":"/a.txt"}}\n</tool_call>',
+      },
+      {
+        role: 'user',
+        content:
+          'a reminder\n<tool_result name="Read">\none\n</tool_result>\n<tool_result name="tool">\nError: lost\n</tool_result>',
+      },
+    ]);
+  });
+
+  it('returns calls in a reply as tool_use blocks', () => {
+    const body = messageBody({ ...okResponse(), content: `Looking.\n${CALL}` }, 'm', ['Read']);
+    expect(body).toMatchObject({
+      stop_reason: 'tool_use',
+      content: [
+        { type: 'text', text: 'Looking.' },
+        { type: 'tool_use', name: 'Read', input: { file_path: '/a.txt' } },
+      ],
+    });
+    const bare = messageBody({ ...okResponse(), content: CALL }, 'm', ['Read']);
+    expect(bare['content']).toMatchObject([{ type: 'tool_use' }]);
+    const plain = messageBody({ ...okResponse(), content: CALL }, 'm');
+    expect(plain).toMatchObject({
+      stop_reason: 'end_turn',
+      content: [{ type: 'text', text: CALL }],
+    });
+  });
+
+  it('streams the text, then each call as its own block', async () => {
+    const [head, tail] = [CALL.slice(0, 7), CALL.slice(7)];
+    const opening = `Looking.\n${head}`;
+    stubFetch(() =>
+      sseResponse([
+        `event: content_block_delta\ndata: ${JSON.stringify({ type: 'text', text: opening })}`,
+        `event: content_block_delta\ndata: ${JSON.stringify({ type: 'text', text: tail })}`,
+        'event: message_stop\ndata: {"stopReason":"end_turn"}',
+      ]),
+    );
+    const { responder, rec } = fakeResponder();
+    await makeAnthropicHandler(CONFIG)(
+      { messages: [{ role: 'user', content: 'hi' }], tools: TOOLS, stream: true },
+      responder,
+    );
+    expect(names(rec.events)).toStrictEqual([
+      'message_start',
+      'content_block_start',
+      'ping',
+      'content_block_delta',
+      'content_block_stop',
+      'content_block_start',
+      'content_block_delta',
+      'content_block_stop',
+      'message_delta',
+      'message_stop',
+    ]);
+    const data = rec.events.map((event) => parseData(event.data));
+    expect(data[3]).toMatchObject({ index: 0, delta: { text: 'Looking.\n' } });
+    expect(data[5]).toMatchObject({
+      index: 1,
+      content_block: { type: 'tool_use', name: 'Read', input: {} },
+    });
+    expect(data[6]).toMatchObject({
+      index: 1,
+      delta: { type: 'input_json_delta', partial_json: '{"file_path":"/a.txt"}' },
+    });
+    expect(data[8]).toMatchObject({ delta: { stop_reason: 'tool_use' } });
+  });
+
+  it('streams a garbled call as text at the end', async () => {
+    stubFetch(() =>
+      sseResponse([
+        'event: content_block_delta\ndata: {"type":"text","text":"<tool_call>{oops}</tool_call>"}',
+        'event: message_stop\ndata: {"stopReason":"end_turn"}',
+      ]),
+    );
+    const { responder, rec } = fakeResponder();
+    await makeAnthropicHandler(CONFIG)(
+      { messages: [{ role: 'user', content: 'hi' }], tools: TOOLS, stream: true },
+      responder,
+    );
+    const deltas = rec.events.filter((event) => event.name === 'content_block_delta');
+    expect(deltas.map((event) => parseData(event.data))).toMatchObject([
+      { delta: { text: '<tool_call>{oops}</tool_call>' } },
+    ]);
+    const end = rec.events.find((event) => event.name === 'message_delta');
+    expect(parseData(end?.data ?? '')).toMatchObject({ delta: { stop_reason: 'end_turn' } });
   });
 });
 

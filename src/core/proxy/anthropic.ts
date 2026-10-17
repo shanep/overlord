@@ -1,8 +1,8 @@
 // The Anthropic-compatible route: POST /v1/messages, plus a count_tokens stub
 // and a models list. This is the front-end Claude Code uses through
-// ANTHROPIC_BASE_URL. Inbound tool definitions, images and sampling controls
-// are dropped because the backend does not support them, so a session still
-// runs, it just cannot call tools: a one-shot chat, as intended.
+// ANTHROPIC_BASE_URL. The backend has no native tools, so the client's tools
+// go through text (see tools.ts) and come back as tool_use blocks. Images and
+// sampling controls are dropped because the backend does not support them.
 
 import { randomUUID } from 'node:crypto';
 
@@ -10,6 +10,8 @@ import { z } from 'zod';
 
 import { MODEL_IDS, resolveModelId } from './models.js';
 import type { Responder, RouteHandler } from './server.js';
+import type { ParsedReply, ToolCall, ToolSpec } from './tools.js';
+import { callText, parseReply, resultText, ToolCallSplitter, toolPrompt } from './tools.js';
 import type { NormalizedChat } from './translate.js';
 import { estimateTokens, toConverseRequest } from './translate.js';
 import type { ConverseMessage, ConverseResponse, UpstreamConfig } from './upstream.js';
@@ -19,6 +21,13 @@ const blockSchema = z.object({
   type: z.string(),
   text: z.string().optional(),
   content: z.unknown().optional(),
+  // tool_use blocks
+  id: z.string().optional(),
+  name: z.string().optional(),
+  input: z.unknown().optional(),
+  // tool_result blocks
+  tool_use_id: z.string().optional(),
+  is_error: z.boolean().optional(),
 });
 // Claude Code sends a `system` role inside the messages array (a system
 // reminder) alongside the top-level `system` field, so accept it here and fold
@@ -28,7 +37,14 @@ const messageSchema = z.object({
   content: z.union([z.string(), z.array(blockSchema)]),
 });
 const systemBlockSchema = z.object({ type: z.string(), text: z.string().optional() });
+// Server tools such as web search have no input schema, and the backend cannot run them.
+const toolSchema = z.object({
+  name: z.string(),
+  description: z.string().optional(),
+  input_schema: z.unknown().optional(),
+});
 const requestSchema = z.object({
+  tools: z.array(toolSchema).optional(),
   model: z.string().optional(),
   max_tokens: z.number().int().positive().optional(),
   messages: z.array(messageSchema).min(1),
@@ -58,20 +74,51 @@ function toolResultText(content: unknown): string {
   return parts.join('');
 }
 
-function flattenContent(content: MessageContent): string {
+type ToolNames = ReadonlyMap<string, string>;
+
+/** Every tool_use id in the conversation with its tool's name, which a tool_result lacks. */
+function toolNamesById(messages: readonly z.infer<typeof messageSchema>[]): ToolNames {
+  const names = new Map<string, string>();
+  for (const message of messages) {
+    if (typeof message.content === 'string') {
+      continue;
+    }
+    for (const block of message.content) {
+      if (block.type === 'tool_use' && block.id !== undefined && block.name !== undefined) {
+        names.set(block.id, block.name);
+      }
+    }
+  }
+  return names;
+}
+
+/** A message's blocks as text: calls and results as the tagged text the model writes and reads. */
+function flattenContent(content: MessageContent, names: ToolNames): string {
   if (typeof content === 'string') {
     return content;
   }
-  const parts: string[] = [];
+  let text = '';
+  const tagged: string[] = [];
   for (const block of content) {
     if (block.type === 'text' && block.text !== undefined) {
-      parts.push(block.text);
+      text += block.text;
+    } else if (block.type === 'tool_use' && block.name !== undefined) {
+      tagged.push(callText(block.name, block.input ?? {}));
     } else if (block.type === 'tool_result') {
-      parts.push(toolResultText(block.content));
+      const name = names.get(block.tool_use_id ?? '') ?? 'tool';
+      tagged.push(resultText(name, toolResultText(block.content), block.is_error === true));
     }
-    // tool_use, image and other blocks carry nothing the backend can use.
+    // Image, thinking and other blocks carry nothing the backend can use.
   }
-  return parts.join('');
+  return [text, ...tagged].filter((part) => part !== '').join('\n');
+}
+
+function toolSpecs(tools: z.infer<typeof requestSchema>['tools']): ToolSpec[] {
+  return (tools ?? []).flatMap((tool) =>
+    tool.input_schema === undefined
+      ? []
+      : [{ name: tool.name, description: tool.description ?? '', inputSchema: tool.input_schema }],
+  );
 }
 
 // Claude Code starts its system prompt with this line, which Anthropic's API
@@ -110,8 +157,9 @@ export function parseAnthropicRequest(body: unknown): ParseResult {
   if (topSystem !== null) {
     systemParts.push(topSystem);
   }
+  const names = toolNamesById(data.messages);
   for (const message of data.messages) {
-    const text = flattenContent(message.content);
+    const text = flattenContent(message.content, names);
     if (message.role === 'system') {
       if (text !== '') {
         systemParts.push(text);
@@ -119,6 +167,10 @@ export function parseAnthropicRequest(body: unknown): ParseResult {
     } else {
       messages.push({ role: message.role, content: text });
     }
+  }
+  const tools = toolSpecs(data.tools);
+  if (tools.length > 0) {
+    systemParts.push(toolPrompt(tools));
   }
   return {
     ok: true,
@@ -128,6 +180,7 @@ export function parseAnthropicRequest(body: unknown): ParseResult {
       systemPrompt: systemParts.length === 0 ? null : systemParts.join('\n\n'),
       maxTokens: data.max_tokens ?? null,
       stream: data.stream ?? false,
+      toolNames: tools.map((tool) => tool.name),
     },
   };
 }
@@ -166,20 +219,59 @@ export function anthropicError(message: string, status: number): Record<string, 
   return { type: 'error', error: { type: errorType(status), message } };
 }
 
-export function messageBody(response: ConverseResponse, model: string): Record<string, unknown> {
+function toolUseBlock(call: ToolCall): Record<string, unknown> {
+  return { type: 'tool_use', id: call.id, name: call.name, input: call.input };
+}
+
+/** The reply's content blocks: its text, then any calls. */
+function contentBlocks(reply: ParsedReply): Record<string, unknown>[] {
+  const text =
+    reply.text === '' && reply.calls.length > 0 ? [] : [{ type: 'text', text: reply.text }];
+  return [...text, ...reply.calls.map((call) => toolUseBlock(call))];
+}
+
+export function messageBody(
+  response: ConverseResponse,
+  model: string,
+  toolNames: readonly string[] = [],
+): Record<string, unknown> {
+  const reply =
+    toolNames.length === 0
+      ? { text: response.content, calls: [] }
+      : parseReply(response.content, new Set(toolNames));
   return {
     id: `msg_${randomUUID()}`,
     type: 'message',
     role: 'assistant',
     model,
-    content: [{ type: 'text', text: response.content }],
-    stop_reason: mapStopReason(response.stop_reason),
+    content: contentBlocks(reply),
+    stop_reason: reply.calls.length > 0 ? 'tool_use' : mapStopReason(response.stop_reason),
     stop_sequence: null,
     usage: {
       input_tokens: response.usage.inputTokens,
       output_tokens: response.usage.outputTokens,
     },
   };
+}
+
+type Emit = (name: string, data: Readonly<Record<string, unknown>>) => void;
+
+/** Each call as a tool_use block of its own after the text block, with its input in one delta. */
+function emitCalls(emit: Emit, calls: readonly ToolCall[]): void {
+  for (const [offset, call] of calls.entries()) {
+    const index = offset + 1;
+    emit('content_block_start', {
+      type: 'content_block_start',
+      index,
+      content_block: { ...toolUseBlock(call), input: {} },
+    });
+    emit('content_block_delta', {
+      type: 'content_block_delta',
+      index,
+      delta: { type: 'input_json_delta', partial_json: JSON.stringify(call.input) },
+    });
+    emit('content_block_stop', { type: 'content_block_stop', index });
+  }
 }
 
 async function streamAnthropic(
@@ -190,7 +282,7 @@ async function streamAnthropic(
   const sse = responder.beginSse();
   const id = `msg_${randomUUID()}`;
   const inputTokens = estimateTokens(chat);
-  const emit = (name: string, data: Readonly<Record<string, unknown>>): void => {
+  const emit: Emit = (name, data) => {
     sse.send(name, JSON.stringify(data));
   };
   emit('message_start', {
@@ -213,6 +305,16 @@ async function streamAnthropic(
   });
   emit('ping', { type: 'ping' });
 
+  const sendText = (text: string): void => {
+    if (text !== '') {
+      emit('content_block_delta', {
+        type: 'content_block_delta',
+        index: 0,
+        delta: { type: 'text_delta', text },
+      });
+    }
+  };
+  const splitter = new ToolCallSplitter(new Set(chat.toolNames));
   let stopReason = 'end_turn';
   let outputTokens: number | null = null;
   let characters = 0;
@@ -223,11 +325,7 @@ async function streamAnthropic(
     switch (event.kind) {
       case 'text': {
         characters += event.text.length;
-        emit('content_block_delta', {
-          type: 'content_block_delta',
-          index: 0,
-          delta: { type: 'text_delta', text: event.text },
-        });
+        sendText(chat.toolNames.length === 0 ? event.text : splitter.push(event.text));
         break;
       }
       case 'stop': {
@@ -251,7 +349,13 @@ async function streamAnthropic(
     }
   }
 
+  const reply = splitter.finish();
+  sendText(reply.text);
   emit('content_block_stop', { type: 'content_block_stop', index: 0 });
+  emitCalls(emit, reply.calls);
+  if (reply.calls.length > 0) {
+    stopReason = 'tool_use';
+  }
   emit('message_delta', {
     type: 'message_delta',
     delta: { stop_reason: stopReason, stop_sequence: null },
@@ -275,7 +379,7 @@ export function makeAnthropicHandler(config: UpstreamConfig): RouteHandler {
     }
     const result = await callOnce(config, toConverseRequest(chat));
     if (result.ok) {
-      responder.json(200, messageBody(result.response, chat.modelId));
+      responder.json(200, messageBody(result.response, chat.modelId, chat.toolNames));
     } else {
       responder.json(
         result.error.status,

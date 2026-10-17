@@ -1,8 +1,8 @@
-// Opens a Boise State chat: Claude Code in a tab of its own, talking to the
-// boisestate.ai bridge sidecar this window runs. The backend has no tools, so
-// the tab is a chat with Claude Code's screen, history and follow-ups, but it
-// cannot edit files or run commands. It runs claude in the tab itself, not as
-// a background session, since the sidecar goes away with the window.
+// Opens a Boise State session: Claude Code in a tab of its own, talking to the
+// boisestate.ai bridge sidecar this window runs. The bridge carries tool calls
+// as text, so the session edits files and runs commands like any other. It
+// runs claude in the tab itself, not as a background session, since the
+// sidecar goes away with the window.
 
 import { randomUUID } from 'node:crypto';
 
@@ -27,7 +27,7 @@ async function openBridgeChat(rt: Runtime): Promise<void> {
   }
   const sessionId = randomUUID();
   rt.host.runInTerminal({
-    name: 'Boise State Chat',
+    name: 'Boise State',
     command: rt.host.settings.claudePath,
     args: chatArgs(sessionId),
     cwd: rt.host.workspaceFolder() ?? rt.paths.home,

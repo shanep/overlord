@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { BRIDGE_BASE_URL, BRIDGE_CHAT_PROMPT } from '../bridge/boisestate.js';
+import { BRIDGE_BASE_URL } from '../bridge/boisestate.js';
 
 import { makeApp, makeEnv } from './test-helpers/fixtures.js';
 
 describe('newBridgeChat', () => {
-  it('opens claude in a tab pointed at the bridge, as chat with no tools', async () => {
+  it('opens claude in a tab pointed at the bridge, with its tools but no MCP servers', async () => {
     const env = await makeEnv({ workspace: true });
     const asked: Readonly<Record<string, string>>[] = [];
     env.host.resolveBridgeEnv = async (launch): Promise<Record<string, string>> => {
@@ -18,7 +18,7 @@ describe('newBridgeChat', () => {
     expect(asked).toStrictEqual([{ ANTHROPIC_BASE_URL: BRIDGE_BASE_URL }]);
     const [terminal] = env.host.terminals;
     expect(env.host.terminals).toHaveLength(1);
-    expect(terminal?.name).toBe('Boise State Chat');
+    expect(terminal?.name).toBe('Boise State');
     expect(terminal?.command).toBe(env.host.settings.claudePath);
     expect(terminal?.cwd).toBe(env.host.workspace);
     expect(terminal?.env).toStrictEqual({
@@ -26,7 +26,8 @@ describe('newBridgeChat', () => {
       ANTHROPIC_AUTH_TOKEN: 'tok',
     });
     expect(terminal?.args.slice(0, 2)).toStrictEqual(['--session-id', terminal?.sessionId]);
-    expect(terminal?.args).toContain(BRIDGE_CHAT_PROMPT);
+    expect(terminal?.args).toContain('--strict-mcp-config');
+    expect(terminal?.args).not.toContain('--tools');
   });
 
   it('starts in home when the window has no folder', async () => {

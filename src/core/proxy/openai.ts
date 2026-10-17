@@ -111,6 +111,7 @@ export function parseOpenAiRequest(body: unknown): ParseResult {
       systemPrompt: systemParts.length === 0 ? null : systemParts.join('\n\n'),
       maxTokens: data.max_tokens ?? data.max_completion_tokens ?? null,
       stream: data.stream ?? false,
+      toolNames: [],
     },
   };
 }

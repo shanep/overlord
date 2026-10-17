@@ -12,7 +12,7 @@ import {
 } from '../../../test/fake-claude/fake-query.js';
 import type { LaunchProfile, LaunchSpec } from '../../shared/model.js';
 import type { LaunchRun } from '../../shared/protocol.js';
-import { BOISESTATE_PROFILE, BRIDGE_CHAT_PROMPT } from '../bridge/boisestate.js';
+import { BOISESTATE_PROFILE } from '../bridge/boisestate.js';
 import { EventBus } from '../bus.js';
 
 import { PermissionInbox } from './inbox.js';
@@ -439,10 +439,10 @@ describe('Launcher bridge env', () => {
     await launcher.idle();
     expect(queries[0]?.options.env['ROUTED']).toBe('yes');
     expect(queries[0]?.options.env['FROM_PROFILE']).toBe('yes');
-    expect(queries[0]?.options.chatPrompt).toBeNull();
+    expect(queries[0]?.options.noMcp).toBe(false);
   });
 
-  it('runs a bridge profile as chat, with the env rewritten', async () => {
+  it('runs a bridge profile without MCP servers, with the env rewritten', async () => {
     const { launcher, queries } = setup(1, {
       resolveBridgeEnv: async (env) => {
         await Promise.resolve();
@@ -452,7 +452,7 @@ describe('Launcher bridge env', () => {
     const bridged: LaunchProfile = { ...PROFILE, id: 'bsu', env: BOISESTATE_PROFILE.env };
     launcher.launch([spec('ok:0', { profileId: 'bsu' })], [bridged]);
     await launcher.idle();
-    expect(queries[0]?.options.chatPrompt).toBe(BRIDGE_CHAT_PROMPT);
+    expect(queries[0]?.options.noMcp).toBe(true);
     expect(queries[0]?.options.env['ANTHROPIC_BASE_URL']).toBe('http://127.0.0.1:1');
   });
 });

@@ -52,10 +52,11 @@ export interface QueryOptions {
   /** A Claude Code binary or a .js/.mjs script, which the SDK runs with node. */
   readonly executablePath: string | null;
   /**
-   * A plain chat session: this replaces Claude Code's system prompt, and every
-   * built-in tool and MCP server is off. Null keeps the full CLI setup.
+   * Runs with Claude Code's own prompt and built-in tools but no MCP servers,
+   * as a bridge session does, since every tool's definition goes into each
+   * request as text.
    */
-  readonly chatPrompt: string | null;
+  readonly noMcp: boolean;
 }
 
 /** The running query: an async stream of raw SDK messages plus control calls. */
@@ -83,9 +84,9 @@ const CLI_DEFAULTS = {
   settingSources: ['user', 'project', 'local'],
 } as const satisfies Options;
 
-/** What a chat session turns off. CLAUDE.md and hooks still load, so Overlord tracks it. */
-function chatOptions(prompt: string): Options {
-  return { systemPrompt: prompt, tools: [], strictMcpConfig: true, mcpServers: {} };
+/** What a session without MCP servers turns off. CLAUDE.md and hooks still load. */
+function noMcpOptions(): Options {
+  return { strictMcpConfig: true, mcpServers: {} };
 }
 
 export function toSdkOptions(options: QueryOptions): Options {
@@ -93,7 +94,7 @@ export function toSdkOptions(options: QueryOptions): Options {
   return {
     systemPrompt: { ...CLI_DEFAULTS.systemPrompt },
     settingSources: [...CLI_DEFAULTS.settingSources],
-    ...(options.chatPrompt === null ? {} : chatOptions(options.chatPrompt)),
+    ...(options.noMcp ? noMcpOptions() : {}),
     cwd: options.cwd,
     sessionId: options.sessionId,
     env: { ...options.env },

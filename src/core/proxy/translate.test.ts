@@ -10,6 +10,7 @@ function chat(overrides: Partial<NormalizedChat> = {}): NormalizedChat {
     systemPrompt: null,
     maxTokens: null,
     stream: false,
+    toolNames: [],
     ...overrides,
   };
 }

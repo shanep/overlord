@@ -110,7 +110,7 @@
       },
       {
         "command": "overlord.newBoisestateChat",
-        "title": "New Boise State Chat",
+        "title": "New Boise State Session",
         "category": "Overlord",
         "icon": "$(comment-discussion)"
       },

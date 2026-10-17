@@ -5,7 +5,6 @@ import {
   bearerEnv,
   BOISESTATE_PROFILE,
   BRIDGE_BASE_URL,
-  BRIDGE_CHAT_PROMPT,
   chatArgs,
   needsBridge,
   parseReadyLine,
@@ -76,16 +75,12 @@ describe('bearerEnv', () => {
 });
 
 describe('chatArgs', () => {
-  it('starts the session on the bridge model as chat, with no tools or MCP servers', () => {
+  it('starts the session on the bridge model, with no MCP servers', () => {
     expect(chatArgs('sid')).toStrictEqual([
       '--session-id',
       'sid',
       '--model',
       BOISESTATE_PROFILE.model,
-      '--system-prompt',
-      BRIDGE_CHAT_PROMPT,
-      '--tools',
-      '',
       '--strict-mcp-config',
     ]);
   });
