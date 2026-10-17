@@ -1,14 +1,19 @@
 // VS Code entry point. Builds the app, the panels, the sidebar and the
 // status bar, and maps every contributed command onto the app.
 
+import path from 'node:path';
 import * as vscode from 'vscode';
 
 import { OverlordApp } from '../core/app/app.js';
 import type { PanelParams } from '../core/app/host-port.js';
+import { storagePath } from '../core/app/storage.js';
 import { parseTransferUri } from '../core/app/transfer.js';
 import { fleetSessionName } from '../core/app/views/fleet.js';
+import { BOISESTATE_KEY_SECRET, BOISESTATE_PROFILE } from '../core/bridge/boisestate.js';
+import { listProfiles, saveProfile } from '../core/knobs/profiles.js';
 import type { HostToWebview, ViewId, WebviewAction } from '../shared/protocol.js';
 
+import { BoisestateBridge } from './boisestate-bridge.js';
 import { CliTabs } from './cli-tabs.js';
 import { createVscodeHostPort } from './host-port.js';
 import { keepAwake } from './keep-awake.js';
@@ -70,8 +75,16 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const panelHolder: { current: PanelManager | null } = { current: null };
   const propertiesHolder: { current: SidebarView | null } = { current: null };
   const tabsHolder: { current: CliTabs | null } = { current: null };
+  const bridge = new BoisestateBridge({
+    proxyPath: path.join(context.extensionUri.fsPath, 'dist', 'overlord-proxy.cjs'),
+    getKey: async (): Promise<string | undefined> => {
+      const key = await context.secrets.get(BOISESTATE_KEY_SECRET);
+      return key;
+    },
+  });
   const host = createVscodeHostPort({
     context,
+    resolveBridgeEnv: bridge.resolveEnv.bind(bridge),
     openPanel: (view, params) => {
       // Session properties live in the sidebar, beside the Fleet, not in a panel.
       const properties = propertiesHolder.current;
@@ -153,6 +166,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     panels,
     tabs,
     status,
+    bridge,
     reloadOnUpdate(context, overlord.paths),
     keepAwake(),
     fleetSidebar,
@@ -193,6 +207,27 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         }
         await overlord.continueSession(sessionId);
       },
+    }),
+    register('overlord.setBoisestateKey', async (): Promise<void> => {
+      const key = await vscode.window.showInputBox({
+        title: 'Boise State API Key',
+        prompt: 'Stored in VS Code SecretStorage and sent only to the bridge.',
+        password: true,
+        ignoreFocusOut: true,
+      });
+      if (key === undefined || key.trim() === '') {
+        return;
+      }
+      await context.secrets.store(BOISESTATE_KEY_SECRET, key.trim());
+      const profilesFile = storagePath(host.storageDir, 'profiles');
+      const { profiles } = await listProfiles(profilesFile);
+      if (!profiles.some((profile) => profile.id === BOISESTATE_PROFILE.id)) {
+        await saveProfile(profilesFile, BOISESTATE_PROFILE);
+        await overlord.refresh();
+      }
+      void vscode.window.showInformationMessage(
+        'Boise State API key saved. Launch with the "Boise State (Opus 5.5)" profile.',
+      );
     }),
     register('overlord.installHooks', async (): Promise<void> => overlord.setup.installHooks()),
     register('overlord.uninstallHooks', async () => overlord.setup.uninstallHooks()),

@@ -120,6 +120,14 @@ export interface HostPort {
   readonly saveSetting: (key: string, value: string) => Promise<void>;
   /** VS Code SecretStorage, which is the OS keychain. */
   readonly secrets: SecretStore;
+  /**
+   * Rewrite a launch env that opts into the boisestate.ai bridge, starting the
+   * sidecar if needed and pointing the env at it. Returns the env unchanged when
+   * it does not opt in. Absent when the host does not provide a bridge.
+   */
+  readonly resolveBridgeEnv?: (
+    env: Readonly<Record<string, string>>,
+  ) => Promise<Record<string, string>>;
   readonly workspaceFolder: () => string | null;
   /** The extension's global storage folder. */
   readonly storageDir: string;

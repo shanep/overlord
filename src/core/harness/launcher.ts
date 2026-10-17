@@ -38,6 +38,10 @@ export interface LauncherDeps {
   readonly baseEnv?: () => Promise<Readonly<Record<string, string | undefined>>>;
   /** Picks the claude binary, given the loaded base environment. Defaults to the SDK's own. */
   readonly executablePath?: (env: Readonly<Record<string, string | undefined>>) => string | null;
+  /** Rewrites a session's env to point at the boisestate.ai bridge when it opts in. */
+  readonly resolveBridgeEnv?: (
+    env: Readonly<Record<string, string>>,
+  ) => Promise<Record<string, string>>;
   readonly now?: () => number;
   readonly newId?: () => string;
 }
@@ -224,6 +228,11 @@ export class Launcher {
       this.finish(record, 'stopped', null);
       return;
     }
+    const mergedEnv = { ...settings.env, ...lease?.env };
+    const env =
+      this.deps.resolveBridgeEnv === undefined
+        ? mergedEnv
+        : await this.deps.resolveBridgeEnv(mergedEnv);
     const session = SdkSession.start(
       {
         queryFunction: this.deps.queryFunction,
@@ -234,7 +243,7 @@ export class Launcher {
       },
       {
         ...settings,
-        env: { ...settings.env, ...lease?.env },
+        env,
         cwd: lease?.path ?? spec.cwd,
         title: spec.label,
         executablePath: this.deps.executablePath?.(baseEnv) ?? null,

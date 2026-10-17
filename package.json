@@ -109,6 +109,11 @@
         "category": "Overlord"
       },
       {
+        "command": "overlord.setBoisestateKey",
+        "title": "Set Boise State API Key",
+        "category": "Overlord"
+      },
+      {
         "command": "overlord.installHooks",
         "title": "Install Hooks",
         "category": "Overlord"

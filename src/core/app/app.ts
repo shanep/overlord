@@ -127,6 +127,7 @@ export class OverlordApp {
         baseEnv: launchEnv,
         executablePath: (runEnv): string | null =>
           executableFor(host.settings.claudePath, runEnv, platform),
+        ...(host.resolveBridgeEnv === undefined ? {} : { resolveBridgeEnv: host.resolveBridgeEnv }),
         now: clock,
       },
       concurrencyFrom(host.settings.maxConcurrency),

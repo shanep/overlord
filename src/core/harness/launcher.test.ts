@@ -424,3 +424,18 @@ describe('Launcher concurrency', () => {
     );
   });
 });
+
+describe('Launcher bridge env', () => {
+  it('routes the launch env through resolveBridgeEnv before starting', async () => {
+    const { launcher, queries } = setup(1, {
+      resolveBridgeEnv: async (env) => {
+        await Promise.resolve();
+        return { ...env, ROUTED: 'yes' };
+      },
+    });
+    launcher.launch([spec('ok:0', { profileId: 'p1' })], [PROFILE]);
+    await launcher.idle();
+    expect(queries[0]?.options.env['ROUTED']).toBe('yes');
+    expect(queries[0]?.options.env['FROM_PROFILE']).toBe('yes');
+  });
+});

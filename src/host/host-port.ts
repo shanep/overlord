@@ -127,6 +127,10 @@ export interface VscodeHostPortOptions {
   readonly onSessionTerminal: (terminal: vscode.Terminal, sessionId: string) => void;
   /** Focuses the tab Overlord opened for a session. False when there is none. */
   readonly showSessionTerminal: (sessionId: string) => boolean;
+  /** Resolves a launch env through the boisestate.ai bridge, when it opts in. */
+  readonly resolveBridgeEnv?: (
+    env: Readonly<Record<string, string>>,
+  ) => Promise<Record<string, string>>;
 }
 
 async function terminalWithProcess(processId: number): Promise<vscode.Terminal | undefined> {
@@ -258,6 +262,9 @@ export function createVscodeHostPort(options: VscodeHostPortOptions): HostPort {
         await context.secrets.delete(name);
       },
     },
+    ...(options.resolveBridgeEnv === undefined
+      ? {}
+      : { resolveBridgeEnv: options.resolveBridgeEnv }),
     workspaceFolder: (): string | null =>
       vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? null,
     storageDir: context.globalStorageUri.fsPath,
