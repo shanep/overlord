@@ -2,6 +2,7 @@
 // append that never conflicts.
 
 import { claudeCode } from './claude/index.js';
+import { codex } from './codex/index.js';
 import { AgentRegistry } from './registry.js';
 
-export const agents = new AgentRegistry([claudeCode]);
+export const agents = new AgentRegistry([claudeCode, codex]);

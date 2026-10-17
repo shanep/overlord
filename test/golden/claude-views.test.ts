@@ -154,6 +154,26 @@ async function writeRunningSession(claudeDir: string): Promise<void> {
   await touch(layout.transcriptPath, T0 + 8 * MINUTE + 1000);
 }
 
+/**
+ * Only Claude Code's entry in the agents list, so registering another
+ * adapter does not change the Claude snapshots.
+ */
+function claudeOnly(state: unknown): unknown {
+  if (
+    state === null ||
+    typeof state !== 'object' ||
+    !('agents' in state) ||
+    !isArray(state.agents)
+  ) {
+    return state;
+  }
+  const agents = state.agents.filter(
+    (agent: unknown) =>
+      agent !== null && typeof agent === 'object' && 'id' in agent && agent.id === 'claude-code',
+  );
+  return { ...state, agents };
+}
+
 /** Keys in code unit order at every level, with any pid hidden, so the JSON is stable. */
 function stable(value: unknown): unknown {
   if (isArray(value)) {
@@ -182,7 +202,7 @@ async function viewsJson(
   await app.start();
   await settle();
   return views.map(([view, params]) => {
-    const json = JSON.stringify(stable(app.stateFor(view, params)), null, 2);
+    const json = JSON.stringify(stable(claudeOnly(app.stateFor(view, params))), null, 2);
     return `${json.replaceAll(env.root, '<root>')}\n`;
   });
 }

@@ -472,9 +472,13 @@ describe('OverlordApp', () => {
     const before = app.stateFor('fleet', {}).agents;
     expect(before.map((agent) => [agent.id, agent.installed])).toStrictEqual([
       ['claude-code', false],
+      ['codex', false],
     ]);
     await app.runtime.caches.agents.refresh();
-    expect(app.stateFor('help', {}).agents.map((agent) => agent.installed)).toStrictEqual([true]);
+    expect(app.stateFor('help', {}).agents.map((agent) => agent.installed)).toStrictEqual([
+      true,
+      false,
+    ]);
   });
 
   it('refreshes everything on demand and applies new settings', async () => {
