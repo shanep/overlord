@@ -1,3 +1,5 @@
+// cspell:words execpolicy
+
 import { describe, expect, it } from 'vitest';
 
 import { CodexTranslator, initEvent, rateLimitEvent } from './app-server.js';
