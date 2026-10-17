@@ -70,6 +70,37 @@ function movableApp(env: TestEnv): { readonly test: TestApp; readonly killed: No
   return { test, killed };
 }
 
+/** pid 123 is background job agent-7, which exits on `claude stop` when `stops` allows it. */
+function jobApp(env: TestEnv, stops = true): TestApp {
+  let stopped = false;
+  const job = { id: 'agent-7', pid: 123, sessionId: 'bg', kind: 'background' };
+  return makeApp(env, {
+    deps: {
+      isAlive: (pid) => pid === 123 && !stopped,
+      delay: async (): Promise<void> => {
+        await Promise.resolve();
+      },
+    },
+    responders: [
+      (call): ExecResult | undefined => {
+        const listed = stopped ? [] : [job];
+        return call.args[0] === 'agents' ? ok(JSON.stringify(listed)) : undefined;
+      },
+      (call): ExecResult | undefined => {
+        if (call.args[0] !== 'stop' || !stops) {
+          return undefined;
+        }
+        stopped = true;
+        return ok();
+      },
+    ],
+  });
+}
+
+function stopCalls(test: TestApp): (readonly string[])[] {
+  return test.calls.filter((call) => call.args[0] === 'stop').map((call) => call.args);
+}
+
 async function launched(test: TestApp): Promise<string> {
   test.app.runtime.launcher.launch([SPEC], []);
   await waitFor(() => test.queries.queries.length === 1);
@@ -199,6 +230,42 @@ describe('stopNow', () => {
     expect(await stopNow(test.app.runtime, 'nobody')).toBe(false);
     expect(test.kills).toStrictEqual([{ pid: 123, signal: 'SIGTERM' }]);
     expect(env.host.questions).toStrictEqual([]);
+  });
+
+  it('stops a background job through claude stop instead of SIGTERM', async () => {
+    const env = await makeEnv();
+    await registry(env, { pid: 123, sessionId: 'bg', cwd: '/bg', kind: 'bg' });
+    const test = jobApp(env);
+    expect(await stopNow(test.app.runtime, 'bg')).toBe(true);
+    expect(stopCalls(test)).toStrictEqual([['stop', 'agent-7']]);
+    expect(test.kills).toStrictEqual([]);
+  });
+});
+
+describe('stopping a background job', () => {
+  it('asks, then stops it through claude stop so Claude Code does not respawn it', async () => {
+    const env = await makeEnv();
+    await registry(env, { pid: 123, sessionId: 'bg', cwd: '/bg', kind: 'bg' });
+    const test = jobApp(env);
+    env.host.confirmAnswers.push(true);
+    await test.app.dispatch({ type: 'stop', sessionId: 'bg' }, {});
+    expect(env.host.questions).toStrictEqual([
+      { message: 'Stop Claude session bg (pid 123)?', action: 'Stop' },
+    ]);
+    expect(stopCalls(test)).toStrictEqual([['stop', 'agent-7']]);
+    expect(test.kills).toStrictEqual([]);
+    expect(env.host.warnings).toStrictEqual([]);
+  });
+
+  it('warns when claude stop fails', async () => {
+    const env = await makeEnv();
+    await registry(env, { pid: 123, sessionId: 'bg', cwd: '/bg', kind: 'bg' });
+    const test = jobApp(env, false);
+    env.host.confirmAnswers.push(true);
+    await test.app.dispatch({ type: 'stop', sessionId: 'bg' }, {});
+    expect(stopCalls(test)).toStrictEqual([['stop', 'agent-7']]);
+    expect(test.kills).toStrictEqual([]);
+    expect(env.host.warnings).toStrictEqual(['Claude Code did not stop session bg.']);
   });
 });
 

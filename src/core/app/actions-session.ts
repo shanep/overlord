@@ -16,6 +16,7 @@ import { buildLiveProcessTable } from '../surfaces/live.js';
 
 import type { ActionContext, ActionHandlers } from './action-types.js';
 import { openClaudeTab } from './claude-tabs.js';
+import { stopJob } from './idle-stop.js';
 import type { Runtime } from './runtime.js';
 import { shortId } from './text.js';
 import { clearOtherCopy } from './transfer.js';
@@ -88,26 +89,44 @@ function tabName(rt: Runtime, session: SurfaceSession, cwd: string): string {
   return sessionName(fleetSession(rt, session.id) ?? { title: session.title, cwd });
 }
 
-async function signal(
+type Running = LiveProcess & { readonly pid: number };
+
+function running(live: LiveProcess | undefined): Running | null {
+  return live === undefined || live.pid === null || !live.alive ? null : { ...live, pid: live.pid };
+}
+
+/** The live process behind a session once the user agrees to act on it. */
+async function agreed(
   context: ActionContext,
   sessionId: string,
-  kind: { readonly verb: string; readonly signal: NodeJS.Signals },
-): Promise<void> {
+  verb: string,
+): Promise<Running | null> {
   const { rt } = context;
-  const live = await liveProcess(rt, sessionId);
-  if (live === undefined || live.pid === null || !live.alive) {
+  const live = running(await liveProcess(rt, sessionId));
+  if (live === null) {
     rt.host.showInfo(NOT_LOCAL);
-    return;
+    return null;
   }
-  const question = `${kind.verb} Claude session ${shortId(sessionId)} (pid ${String(live.pid)})?`;
-  if (await rt.host.confirm(question, kind.verb)) {
-    rt.kill(live.pid, kind.signal);
+  const question = `${verb} Claude session ${shortId(sessionId)} (pid ${String(live.pid)})?`;
+  return (await rt.host.confirm(question, verb)) ? live : null;
+}
+
+/**
+ * Claude Code takes SIGTERM to a background job's process for a crash and
+ * respawns it, so a background job stops through `claude stop`. Any other
+ * claude gets SIGTERM. True when it stopped.
+ */
+async function terminate(rt: Runtime, live: Running): Promise<boolean> {
+  if (live.kind !== 'background' || live.agentId === null) {
+    rt.kill(live.pid, 'SIGTERM');
+    return true;
   }
+  return stopJob(rt, await rt.claudeCli(), { id: live.agentId, pid: live.pid });
 }
 
 /**
  * Stop a session without asking, for a caller that already asked. False when
- * it is not running on this machine.
+ * it is not running on this machine or would not stop.
  */
 export async function stopNow(rt: Runtime, sessionId: string): Promise<boolean> {
   const target = sdkTarget(rt, sessionId);
@@ -115,12 +134,8 @@ export async function stopNow(rt: Runtime, sessionId: string): Promise<boolean> 
     rt.launcher.stopRun(target.run.id);
     return true;
   }
-  const live = await liveProcess(rt, sessionId);
-  if (live === undefined || live.pid === null || !live.alive) {
-    return false;
-  }
-  rt.kill(live.pid, 'SIGTERM');
-  return true;
+  const live = running(await liveProcess(rt, sessionId));
+  return live !== null && (await terminate(rt, live));
 }
 
 export const IN_LAUNCHER = 'This session is running in the Overlord launcher. Stop the run first.';
@@ -239,18 +254,25 @@ export const sessionActions: ActionHandlers<SessionActions> = {
   interrupt: async (context, action) => {
     const target = sdkTarget(context.rt, action.sessionId);
     if (target === null) {
-      await signal(context, action.sessionId, { verb: 'Interrupt', signal: 'SIGINT' });
+      const live = await agreed(context, action.sessionId, 'Interrupt');
+      if (live !== null) {
+        context.rt.kill(live.pid, 'SIGINT');
+      }
       return;
     }
     await target.session.interrupt();
   },
   stop: async (context, action) => {
-    const target = sdkTarget(context.rt, action.sessionId);
-    if (target === null) {
-      await signal(context, action.sessionId, { verb: 'Stop', signal: 'SIGTERM' });
+    const { rt } = context;
+    const target = sdkTarget(rt, action.sessionId);
+    if (target !== null) {
+      rt.launcher.stopRun(target.run.id);
       return;
     }
-    context.rt.launcher.stopRun(target.run.id);
+    const live = await agreed(context, action.sessionId, 'Stop');
+    if (live !== null && !(await terminate(rt, live))) {
+      rt.host.showWarning(`Claude Code did not stop session ${shortId(action.sessionId)}.`);
+    }
   },
   setModel: async ({ rt }, action) => {
     const target = sdkTarget(rt, action.sessionId);
