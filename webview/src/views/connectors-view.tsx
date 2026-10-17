@@ -1,6 +1,7 @@
 // Every connector a session could reach for: MCP servers, claude.ai
 // connectors, Claude in Chrome and a headless Chrome, with whether each one
-// works right now and a button for the ones Overlord can fix.
+// works right now and a button for the ones Overlord can fix, plus a search
+// of the public MCP registry to add more.
 
 import type { ReactElement } from 'react';
 
@@ -18,6 +19,8 @@ import { DataTable } from '../components/data-table.js';
 import { formatAgo, formatDateTime } from '../format.js';
 import type { Tone } from '../labels.js';
 import { usePostAction } from '../vscode-context.js';
+
+import { RegistrySection } from './connectors-registry.js';
 
 export const STATUS_INFO: Readonly<Record<ConnectorStatus, { label: string; tone: Tone }>> = {
   ok: { label: 'Ready', tone: 'good' },
@@ -161,6 +164,7 @@ export function ConnectorsView(props: { readonly state: ConnectorsState }): Reac
         rowKey={(row) => row.id}
         empty={state.checking ? 'Checking…' : 'No connectors found.'}
       />
+      <RegistrySection registry={state.registry} />
     </section>
   );
 }

@@ -37,6 +37,7 @@ import { SessionPlaces } from './places.js';
 import type { FileWatchFunction, IntervalFunction } from './process.js';
 import { toSurfacesExec } from './process.js';
 import { createProjectIndex } from './projects.js';
+import { RegistrySearch } from './registry-search.js';
 import type { Runtime } from './runtime.js';
 import { SetupCommands } from './setup.js';
 import { once, readLoginShellEnv } from './shell-env.js';
@@ -204,7 +205,8 @@ export class OverlordApp {
     };
     const context = new ContextViews({ ...base, onUpdate: notify, onError: report });
     const activity = createActivity(base, machine.interval);
-    this.rt = { ...base, caches: createCaches(base), context, activity };
+    const registry = new RegistrySearch({ fetch: base.fetch, notify });
+    this.rt = { ...base, caches: createCaches(base), context, activity, registry };
     this.cleanups.push(store.onChange(notify), launcher.onChange(notify));
     const coordinator = createCoordinator(this.rt);
     const launchCheck = createLaunchChecker(this.rt);

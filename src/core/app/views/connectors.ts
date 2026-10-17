@@ -11,7 +11,7 @@ export const CONNECTORS_REFRESH_MS = 10 * 60 * 1000;
 
 export function buildConnectors(rt: Runtime): ConnectorsState {
   const { connectors } = rt.caches;
-  return { ...connectors.value, checking: connectors.loading };
+  return { ...connectors.value, checking: connectors.loading, registry: rt.registry.view() };
 }
 
 export function clockTime(at: number): string {

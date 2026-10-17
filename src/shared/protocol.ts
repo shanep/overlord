@@ -442,6 +442,18 @@ export type WebviewAction =
   | { readonly type: 'trackTip'; readonly tipId: string; readonly on: boolean }
   | { readonly type: 'recheckConnectors' }
   | { readonly type: 'fixConnector'; readonly connectorId: string }
+  | { readonly type: 'searchRegistry'; readonly query: string }
+  | {
+      readonly type: 'installConnector';
+      /** The registry name of the server. */
+      readonly server: string;
+      /** Which of the server's install options. */
+      readonly option: number;
+      /** The name to give it in Claude Code. */
+      readonly name: string;
+      /** What the user typed, keyed by input id. */
+      readonly values: Readonly<Record<string, string>>;
+    }
   | { readonly type: 'setInboundPolicy'; readonly value: string | null }
   | { readonly type: 'newSession' }
   | { readonly type: 'landWorktree'; readonly id: string }

@@ -100,7 +100,7 @@ export const SIDEBAR_GROUPS: readonly SidebarGroup[] = [
         name: 'Connectors (MCP)',
         icon: 'Plug',
         meaning:
-          'Every MCP server and claude.ai connector, plus Claude in Chrome and a headless Chrome, with whether each works right now. Sign in or Open Chrome fixes the common problems. Each new session is told what is ready and asked to check what its task needs before it starts.',
+          'Every MCP server and claude.ai connector, plus Claude in Chrome and a headless Chrome, with whether each works right now. Sign in or Open Chrome fixes the common problems. Search the public MCP registry at the bottom to add a server for every project. Each new session is told what is ready and asked to check what its task needs before it starts.',
       },
       { name: 'Help', icon: 'Question mark', meaning: 'This page.' },
     ],

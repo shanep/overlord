@@ -28,6 +28,7 @@ import type { PermissionHub } from './permissions.js';
 import type { SessionPlaces } from './places.js';
 import type { KillFunction } from './process.js';
 import type { ProjectIndex } from './projects.js';
+import type { RegistrySearch } from './registry-search.js';
 import type { Draft } from './storage.js';
 import type { ConnectorsData } from './views/connectors-data.js';
 import type { ContextViews } from './views/context.js';
@@ -82,8 +83,10 @@ export interface Runtime {
   readonly projects: ProjectIndex;
   readonly caches: Caches;
   readonly context: ContextViews;
+  /** The MCP registry search in the Connectors view. */
+  readonly registry: RegistrySearch;
   readonly configSync: ConfigSyncHandle;
-  /** Calls the GitHub REST API. Tests pass a fake so nothing reaches the network. */
+  /** Calls the GitHub REST API and the MCP registry. Tests pass a fake so nothing reaches the network. */
   readonly fetch: FetchFunction;
   /** CPU, memory, disk and network per session, sampled while the Activity view is open. */
   readonly activity: ActivityMonitor;

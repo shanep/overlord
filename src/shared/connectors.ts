@@ -1,6 +1,7 @@
 // What the Connectors view shows: every MCP server and claude.ai connector
 // Claude Code knows about, plus Claude in Chrome and a headless Chrome, each
-// with whether a session could use it right now.
+// with whether a session could use it right now, and a search of the public
+// MCP registry for servers to add.
 
 /** Where a connector comes from. */
 export type ConnectorKind = 'mcp' | 'claude.ai' | 'chrome' | 'headless';
@@ -29,6 +30,74 @@ export interface Connector {
   readonly fix: ConnectorFix | null;
 }
 
+/** How a server from the MCP registry runs: a remote URL, or a package run on this machine. */
+export type InstallKind = 'http' | 'sse' | 'npm' | 'pypi' | 'docker';
+
+/** A value the user fills in before an install: an API key, a header or a path. */
+export interface InstallInput {
+  /** Unique within its option: env:NAME, header:NAME, arg:NAME or var:NAME. */
+  readonly id: string;
+  readonly label: string;
+  readonly description: string;
+  readonly required: boolean;
+  readonly secret: boolean;
+  /** The registry's default, filled in to start with. */
+  readonly initial: string;
+  readonly placeholder: string;
+}
+
+/** One way to install a server. A server can offer a remote URL and a package. */
+export interface InstallOption {
+  readonly kind: InstallKind;
+  /** The URL it connects to, or the command it runs. */
+  readonly summary: string;
+  readonly inputs: readonly InstallInput[];
+}
+
+/** A server from the MCP registry, with the ways Overlord knows how to install it. */
+export interface RegistryServer {
+  /** The registry name, such as io.github.getsentry/sentry-mcp. */
+  readonly name: string;
+  readonly title: string;
+  readonly description: string;
+  readonly version: string;
+  readonly repository: string | null;
+  /** The name to give it in Claude Code, which the user can change. */
+  readonly suggestedName: string;
+  /** Empty when every way it ships is one Overlord cannot install, such as an .mcpb bundle. */
+  readonly options: readonly InstallOption[];
+}
+
+/** How the last install went, shown above the search results. */
+export interface InstallNotice {
+  readonly ok: boolean;
+  readonly text: string;
+}
+
+/** The registry search in the Connectors view. */
+export interface RegistryState {
+  /** The query the results are for, or null before the first search. */
+  readonly query: string | null;
+  readonly searching: boolean;
+  readonly results: readonly RegistryServer[];
+  /** True when the registry has more matches than it sent. */
+  readonly more: boolean;
+  readonly error: string | null;
+  /** The registry name being installed right now. */
+  readonly installing: string | null;
+  readonly notice: InstallNotice | null;
+}
+
+export const EMPTY_REGISTRY: RegistryState = {
+  query: null,
+  searching: false,
+  results: [],
+  more: false,
+  error: null,
+  installing: null,
+  notice: null,
+};
+
 export interface ConnectorsState {
   readonly connectors: readonly Connector[];
   /** When the last check finished, or null before the first one. */
@@ -36,4 +105,5 @@ export interface ConnectorsState {
   readonly checking: boolean;
   /** The folder `claude mcp list` ran in, which decides the project scoped servers. */
   readonly folder: string | null;
+  readonly registry: RegistryState;
 }

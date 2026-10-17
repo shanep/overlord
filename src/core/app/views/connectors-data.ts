@@ -6,7 +6,7 @@ import { checkConnectors } from '../../connectors/check.js';
 import type { StdioToolCaller } from '../../connectors/stdio-mcp.js';
 import type { Exec } from '../../sync/exec.js';
 
-export type ConnectorsData = Omit<ConnectorsState, 'checking'>;
+export type ConnectorsData = Omit<ConnectorsState, 'checking' | 'registry'>;
 
 export const EMPTY_CONNECTORS: ConnectorsData = { connectors: [], checkedAt: null, folder: null };
 

@@ -3,6 +3,7 @@
 import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import { EMPTY_REGISTRY } from '../../src/shared/connectors.js';
 import type { HostToWebview } from '../../src/shared/protocol.js';
 import { NOW } from '../test/fixtures.js';
 import { FakeApi } from '../test/render.js';
@@ -77,7 +78,13 @@ const views: readonly HostToWebview[] = [
   {
     type: 'state',
     view: 'connectors',
-    state: { connectors: [], checkedAt: null, checking: false, folder: null },
+    state: {
+      connectors: [],
+      checkedAt: null,
+      checking: false,
+      folder: null,
+      registry: EMPTY_REGISTRY,
+    },
   },
 ];
 

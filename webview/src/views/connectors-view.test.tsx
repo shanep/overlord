@@ -2,6 +2,7 @@ import { fireEvent, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import type { Connector, ConnectorsState } from '../../../src/shared/connectors.js';
+import { EMPTY_REGISTRY } from '../../../src/shared/connectors.js';
 import { NOW } from '../../test/fixtures.js';
 import { expectAccessible, renderView } from '../../test/render.js';
 
@@ -26,6 +27,7 @@ const STATE: ConnectorsState = {
   checkedAt: NOW - 2 * 60_000,
   checking: false,
   folder: '/work/repo',
+  registry: EMPTY_REGISTRY,
   connectors: [
     connector({
       id: 'claude.ai:claude.ai Gmail',
@@ -82,15 +84,31 @@ describe('ConnectorsView', () => {
 
   it('shows a check in progress and a view that has not checked yet', () => {
     const checking = renderView(
-      <ConnectorsView state={{ connectors: [], checkedAt: null, checking: true, folder: null }} />,
+      <ConnectorsView
+        state={{
+          connectors: [],
+          checkedAt: null,
+          checking: true,
+          folder: null,
+          registry: EMPTY_REGISTRY,
+        }}
+      />,
     );
     expect(checking.container.textContent).toContain('Checking every connector.');
     expect(checking.container.textContent).toContain('Checking…');
     expect(checking.getByRole('button', { name: 'Recheck' })).toHaveProperty('disabled', true);
-    expect(checking.container.textContent).not.toContain(' from ');
+    expect(checking.container.textContent).not.toContain('sees them from');
     checking.unmount();
     const fresh = renderView(
-      <ConnectorsView state={{ connectors: [], checkedAt: null, checking: false, folder: null }} />,
+      <ConnectorsView
+        state={{
+          connectors: [],
+          checkedAt: null,
+          checking: false,
+          folder: null,
+          registry: EMPTY_REGISTRY,
+        }}
+      />,
     );
     expect(fresh.container.textContent).toContain('Not checked yet.');
     expect(fresh.container.textContent).toContain('No connectors found.');

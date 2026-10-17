@@ -2,6 +2,7 @@ import { connect } from 'node:net';
 
 import { describe, expect, it } from 'vitest';
 
+import { EMPTY_REGISTRY } from '../../../shared/connectors.js';
 import { installHooks } from '../../hooks/install.js';
 import { encodeMessage } from '../../hooks/protocol.js';
 import { CHROME_ATTACH_MS } from '../actions-connectors.js';
@@ -57,7 +58,11 @@ describe('the Connectors view', () => {
   it('starts empty, checks in the background and shows every connector', async () => {
     const { test } = await setup();
     const rt = test.app.runtime;
-    expect(buildConnectors(rt)).toStrictEqual({ ...EMPTY_CONNECTORS, checking: true });
+    expect(buildConnectors(rt)).toStrictEqual({
+      ...EMPTY_CONNECTORS,
+      checking: true,
+      registry: EMPTY_REGISTRY,
+    });
     await waitFor(() => rt.caches.connectors.peek().checkedAt !== null);
     const state = buildConnectors(rt);
     expect(state.checking).toBe(false);

@@ -77,7 +77,7 @@ See [PLAN.md](PLAN.md) for the full design and the decisions behind it.
   before, week by week, so you can see whether the advice made things better or worse. It
   checks the habit the tip is about, the cost per prompt, and the side effects its cons warn
   about. Setting a knob or creating a skill the tip names starts tracking on its own.
-- **Connectors**: every MCP server and claude.ai connector (Google Docs, Drive, Gmail and the
+- **Connectors (MCP)**: every MCP server and claude.ai connector (Google Docs, Drive, Gmail and the
   rest) as `claude mcp list` sees them, plus Claude in Chrome and a Chrome that can run headless,
   with whether each one works right now. Claude in Chrome is checked by asking its own server
   which browsers are attached, so a closed Chrome shows up before a session needs it. **Sign in**
@@ -85,7 +85,11 @@ See [PLAN.md](PLAN.md) for the full design and the decisions behind it.
   Overlord rechecks every ten minutes, and its SessionStart hook hands each new session the last
   result with an instruction to confirm the connectors its task needs before starting, so a
   missing one stops the work up front instead of halfway through a plan. Turn that off with
-  `overlord.connectors.briefSessions`.
+  `overlord.connectors.briefSessions`. **Add from the MCP registry** searches the public
+  registry at registry.modelcontextprotocol.io by name and installs a server for every project
+  with `claude mcp add-json --scope user`. It asks for the API keys, headers and paths the
+  registry says the server needs, and runs npm packages with `npx`, PyPI packages with `uvx` and
+  images with `docker run`.
 - **Keep awake**: while Overlord is open the computer does not sleep, so agents keep working and
   the machine stays reachable remotely. The display still turns off. Turn it off with
   `overlord.keepAwake`.
