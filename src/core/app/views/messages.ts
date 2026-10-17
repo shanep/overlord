@@ -52,10 +52,19 @@ export function sendMessageRules(rules: readonly AutoApproveRule[]): readonly Au
   return rules.filter((rule) => toolPatternMatches(rule.tool, SEND_MESSAGE_TOOL));
 }
 
+/** The fleet's session titles, which beat the ones a transcript holds. */
+function liveTitles(rt: Runtime): ReadonlyMap<string, string> {
+  return new Map(
+    rt.store
+      .fleetState(rt.clock())
+      .sessions.flatMap((item) => (item.title === '' ? [] : [[item.id, item.title] as const])),
+  );
+}
+
 async function load(rt: Runtime, cache: MessagesCache): Promise<void> {
   try {
     const [scan, layers] = await Promise.all([
-      cache.index.scan(),
+      cache.index.scan(liveTitles(rt)),
       loadLayers({ paths: rt.paths, projectDir: rt.host.workspaceFolder(), env: rt.env }),
     ]);
     cache.state = {

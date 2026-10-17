@@ -5,13 +5,11 @@ import path from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import type { AgentMessage } from '../../shared/protocol.js';
-
-import type { ExtractedMessage } from './extract.js';
 import { MAIN } from './extract.js';
+import { MAIN_NAME } from './names.js';
 
 import type { MessageScan } from './index.js';
-import { buildRoutes, DEFAULT_MESSAGE_LIMIT, MessageIndex } from './index.js';
+import { DEFAULT_MESSAGE_LIMIT, MessageIndex } from './index.js';
 
 function ids(scan: MessageScan): string[] {
   return scan.messages.map((message) => message.id);
@@ -63,23 +61,6 @@ async function writeMeta(session: string, agent: string, meta: unknown): Promise
   await writeFile(file, JSON.stringify(meta));
 }
 
-function entry(message: Partial<AgentMessage>, key: string): ExtractedMessage {
-  return {
-    message: {
-      id: 'x',
-      at: 0,
-      sessionId: 's',
-      from: MAIN,
-      to: 'a1',
-      kind: 'send',
-      preview: '',
-      blocked: false,
-      ...message,
-    },
-    textKey: key,
-  };
-}
-
 describe('messaging index', () => {
   beforeEach(async () => {
     root = await mkdtemp(path.join(os.tmpdir(), 'ovl-msg-'));
@@ -90,50 +71,10 @@ describe('messaging index', () => {
     await rm(root, { recursive: true, force: true });
   });
 
-  describe('buildRoutes', () => {
-    it('counts each pair, keeps the latest time, and sorts busiest first', () => {
-      const routes = buildRoutes([
-        entry({ id: '1', at: 5 }, 'k1'),
-        entry({ id: '2', at: 9 }, 'k2'),
-        entry({ id: '3', at: 7 }, 'k3'),
-        entry({ id: '4', from: 'a1', to: MAIN, kind: 'hand-back', at: 3 }, 'k4'),
-        entry({ id: '5', from: 'a2', to: MAIN, kind: 'hand-back', at: 4 }, 'k5'),
-      ]);
-      expect(routes).toStrictEqual([
-        { from: MAIN, to: 'a1', count: 3, lastAt: 9 },
-        { from: 'a2', to: MAIN, count: 1, lastAt: 4 },
-        { from: 'a1', to: MAIN, count: 1, lastAt: 3 },
-      ]);
-    });
-
-    it('does not count a delivery twice when its send is known', () => {
-      const routes = buildRoutes([
-        entry({ id: '1', kind: 'broadcast', to: '*' }, 'same'),
-        entry({ id: '2', kind: 'send', to: 'peer' }, 'sent'),
-        entry({ id: '3', kind: 'receive', from: MAIN, to: 'a1' }, 'sent'),
-        entry({ id: '4', kind: 'receive', from: 'p', to: MAIN }, 'same'),
-        entry({ id: '5', kind: 'hand-back', from: 'a1', to: MAIN }, 'sent'),
-      ]);
-      expect(routes.map((route) => [route.from, route.to, route.count])).toStrictEqual([
-        [MAIN, '*', 1],
-        [MAIN, 'peer', 1],
-        ['p', MAIN, 1],
-        ['a1', MAIN, 1],
-      ]);
-    });
-
-    it('keeps pairs apart even when the names contain separators', () => {
-      const routes = buildRoutes([
-        entry({ id: '1', from: 'a:b', to: 'c' }, 'k1'),
-        entry({ id: '2', from: 'a', to: 'b:c' }, 'k2'),
-      ]);
-      expect(routes).toHaveLength(2);
-    });
-  });
-
   describe('MessageIndex', () => {
-    it('scans main and subagent transcripts, newest first', async () => {
+    it('scans main and subagent transcripts, newest first, with readable names', async () => {
       await writeLines(sessionFile('s1'), [
+        JSON.stringify({ type: 'custom-title', customTitle: 'Audit run' }),
         sendLine('t1', 'a1', 'start the audit', 1),
         receiveLine(
           'q1',
@@ -146,7 +87,11 @@ describe('messaging index', () => {
         receiveLine('q2', { kind: 'coordinator' }, 'start the audit', 2),
         sendLine('t2', 'a2', 'ask a sibling', 3),
       ]);
-      await writeMeta('s1', 'a1', { agentType: 'general-purpose', parentAgentId: 's1' });
+      await writeMeta('s1', 'a1', {
+        agentType: 'general-purpose',
+        description: 'Audit the code',
+        parentAgentId: 's1',
+      });
       await writeLines(agentFile('s1', 'a2'), [
         receiveLine('q3', { kind: 'coordinator' }, 'nested hello', 4),
       ]);
@@ -156,22 +101,56 @@ describe('messaging index', () => {
       ]);
       const index = new MessageIndex({ projectsDir: projects });
       const scan = await index.scan();
-      expect(scan.messages.map((message) => [message.id, message.from, message.to])).toStrictEqual([
-        ['s1:q1', 'a1', MAIN],
-        ['s1:q4', MAIN, 'a3'],
-        ['s1:q3', 'a1', 'a2'],
-        ['s1:t2', 'a1', 'a2'],
-        ['s1:q2', MAIN, 'a1'],
-        ['s1:t1', MAIN, 'a1'],
+      // q2 is the delivery of t1, so only the send shows.
+      expect(
+        scan.messages.map((message) => [message.id, message.fromName, message.toName]),
+      ).toStrictEqual([
+        ['s1:q1', 'Audit the code', MAIN_NAME],
+        ['s1:q4', MAIN_NAME, 'a3'],
+        ['s1:q3', 'Audit the code', 'Explore'],
+        ['s1:t2', 'Audit the code', 'Explore'],
+        ['s1:t1', MAIN_NAME, 'Audit the code'],
       ]);
-      // q2 repeats the text of t1, so only the send counts on that route.
-      expect(scan.routes).toStrictEqual([
-        { from: 'a1', to: 'a2', count: 2, lastAt: Date.parse(at(4)) },
-        { from: 'a1', to: MAIN, count: 1, lastAt: Date.parse(at(9)) },
-        { from: MAIN, to: 'a3', count: 1, lastAt: Date.parse(at(5)) },
-        { from: MAIN, to: 'a1', count: 1, lastAt: Date.parse(at(1)) },
-      ]);
+      expect(scan.messages[0]).toMatchObject({ from: 'a1', to: MAIN, sessionTitle: 'Audit run' });
+      expect(scan.routes).toStrictEqual([]);
       expect(index.fileCount).toBe(4);
+    });
+
+    it('adds the session id to a title two sessions share', async () => {
+      const cwd = JSON.stringify({ type: 'user', cwd: '/work/app', message: { content: [] } });
+      await writeLines(sessionFile('s1'), [cwd, sendLine('t1', 'x', 'one', 1)]);
+      await writeLines(sessionFile('s2'), [cwd, sendLine('t1', 'x', 'two', 2)]);
+      await writeLines(sessionFile('s3'), [sendLine('t1', 'x', 'three', 3)]);
+      const scan = await new MessageIndex({ projectsDir: projects }).scan(new Map([['s3', 'app']]));
+      expect(scan.messages.map((message) => message.sessionTitle)).toStrictEqual([
+        'app (s3)',
+        'app (s2)',
+        'app (s1)',
+      ]);
+    });
+
+    it('names another session by its title once a send and its delivery match', async () => {
+      const socket = 'uds:/tmp/cc-socks/42.sock';
+      await writeLines(sessionFile('s1'), [
+        JSON.stringify({ type: 'user', cwd: '/work/app', message: { content: [] } }),
+        sendLine('t1', socket, 'hold off on pushes', 1),
+      ]);
+      await writeLines(sessionFile('s2'), [
+        receiveLine('q1', { kind: 'peer', from: socket, name: 'app-1' }, 'hold off on pushes', 2),
+        receiveLine('q2', { kind: 'peer', from: socket, name: 'app-1' }, 'all clear', 5),
+      ]);
+      const scan = await new MessageIndex({ projectsDir: projects }).scan(
+        new Map([['s2', 'Fleet title']]),
+      );
+      expect(
+        scan.messages.map((message) => [message.id, message.fromName, message.toName]),
+      ).toStrictEqual([
+        ['s2:q2', 'app', MAIN_NAME],
+        ['s1:t1', MAIN_NAME, 'Fleet title'],
+      ]);
+      expect(scan.routes).toStrictEqual([
+        { from: 'app', to: 'Fleet title', count: 2, lastAt: Date.parse(at(5)) },
+      ]);
     });
 
     it('rereads a file only when its size or time changes, and forgets removed files', async () => {

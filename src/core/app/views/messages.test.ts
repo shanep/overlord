@@ -85,7 +85,7 @@ describe('buildMessages', () => {
     const { rt, env, notified } = await harness();
     await writeText(
       path.join(env.paths.projectsDir, '-w', 's1.jsonl'),
-      `${sendLine('t1', 'a1')}\n`,
+      `${sendLine('t1', 'other-session')}\n`,
     );
     await writeJson(env.paths.userSettings, { crossSessionInbound: 'hold' });
     const first = buildMessages(rt);
@@ -96,7 +96,7 @@ describe('buildMessages', () => {
     await waitFor(() => notified() === 1);
     const filled = buildMessages(rt);
     expect(filled.messages.map((message) => message.id)).toStrictEqual(['s1:t1']);
-    expect(filled.routes).toMatchObject([{ from: 'main', to: 'a1', count: 1 }]);
+    expect(filled.routes).toMatchObject([{ from: 'Session s1', to: 'other-session', count: 1 }]);
     expect(filled.inboundPolicy).toBe('hold');
     expect(cachedMessages(rt)).toStrictEqual({ ...filled, rules: [] });
   });

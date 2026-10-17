@@ -3,21 +3,25 @@
 // forgets files that are gone. Ids are stable, so nothing is counted twice.
 
 import { stat } from 'node:fs/promises';
+import path from 'node:path';
 
 import type { AgentMessage, MessageRoute } from '../../shared/protocol.js';
+import { peekSession } from '../transcripts/peek.js';
 import { readAllLines } from '../transcripts/reader.js';
 import { scanSessions } from '../transcripts/scanner.js';
 import { listSubagentFiles, readSubagentMeta } from '../transcripts/subagents.js';
 
 import type { ExtractedMessage, FileContext } from './extract.js';
 import { extractMessages, MAIN } from './extract.js';
+import type { Directory } from './names.js';
+import { nameMessages } from './names.js';
 
 export const DEFAULT_MESSAGE_LIMIT = 500;
 
 export interface MessageScan {
   /** Newest first, at most the index's limit. */
   readonly messages: readonly AgentMessage[];
-  /** Busiest first. */
+  /** Between sessions, busiest first. */
   readonly routes: readonly MessageRoute[];
 }
 
@@ -26,15 +30,24 @@ export interface MessageIndexOptions {
   readonly limit?: number;
 }
 
+interface FileFacts {
+  /** Who launched the owner. */
+  readonly parent: string;
+  /** The session's title for a main transcript, the agent's description for a subagent's. */
+  readonly label: string | null;
+}
+
 interface FileTarget {
   readonly file: string;
   readonly sessionId: string;
   readonly owner: string;
-  /** Reads who launched the owner. Only called when the file changed. */
-  readonly parent: () => Promise<string>;
+  /** Only called when the file changed. */
+  readonly facts: (size: number) => Promise<FileFacts>;
 }
 
-interface CachedFile {
+interface CachedFile extends FileFacts {
+  readonly sessionId: string;
+  readonly owner: string;
   readonly mtimeMs: number;
   readonly size: number;
   readonly messages: readonly ExtractedMessage[];
@@ -49,23 +62,34 @@ async function sizeAndTime(file: string): Promise<{ mtimeMs: number; size: numbe
   }
 }
 
-async function mainParent(): Promise<string> {
-  await Promise.resolve();
-  return MAIN;
+/** The session's title, or the folder it ran in until it has one. */
+async function sessionTitle(file: string, size: number): Promise<string | null> {
+  try {
+    const peek = await peekSession(file, size);
+    return peek.title ?? (peek.cwd === null ? null : path.basename(peek.cwd));
+  } catch {
+    return null;
+  }
+}
+
+function mainFacts(transcriptPath: string): (size: number) => Promise<FileFacts> {
+  return async (size) => ({ parent: MAIN, label: await sessionTitle(transcriptPath, size) });
 }
 
 async function targets(projectsDir: string): Promise<FileTarget[]> {
   const found: FileTarget[] = [];
   for (const session of await scanSessions(projectsDir)) {
-    const { sessionId } = session;
-    found.push({ file: session.transcriptPath, sessionId, owner: MAIN, parent: mainParent });
+    const { sessionId, transcriptPath } = session;
+    found.push({ file: transcriptPath, sessionId, owner: MAIN, facts: mainFacts(transcriptPath) });
     for (const sub of await listSubagentFiles(session.sessionDir)) {
-      const parent = async (): Promise<string> => {
+      const subFacts = async (): Promise<FileFacts> => {
         const meta = await readSubagentMeta(sub.metaPath);
         const id = meta?.parentAgentId ?? sessionId;
-        return id === sessionId ? MAIN : id;
+        const description = meta?.description ?? '';
+        const label = description === '' ? (meta?.agentType ?? null) : description;
+        return { parent: id === sessionId ? MAIN : id, label };
       };
-      found.push({ file: sub.transcriptPath, sessionId, owner: sub.agentId, parent });
+      found.push({ file: sub.transcriptPath, sessionId, owner: sub.agentId, facts: subFacts });
     }
   }
   return found;
@@ -76,38 +100,6 @@ function compareMessages(left: AgentMessage, right: AgentMessage): number {
     return right.at - left.at;
   }
   return left.id.localeCompare(right.id);
-}
-
-function compareRoutes(left: MessageRoute, right: MessageRoute): number {
-  if (left.count !== right.count) {
-    return right.count - left.count;
-  }
-  return right.lastAt - left.lastAt;
-}
-
-/**
- * Routes from every message, except deliveries whose text matches a send
- * already seen, since the send and its delivery are the same message.
- */
-export function buildRoutes(entries: readonly ExtractedMessage[]): MessageRoute[] {
-  const sent = new Set(
-    entries.flatMap((entry) => (entry.message.kind === 'send' ? [entry.textKey] : [])),
-  );
-  const routes = new Map<string, MessageRoute>();
-  for (const { message, textKey } of entries) {
-    if (message.kind === 'receive' && sent.has(textKey)) {
-      continue;
-    }
-    const key = JSON.stringify([message.from, message.to]);
-    const old = routes.get(key);
-    routes.set(key, {
-      from: message.from,
-      to: message.to,
-      count: (old?.count ?? 0) + 1,
-      lastAt: Math.max(old?.lastAt ?? 0, message.at),
-    });
-  }
-  return [...routes.values()].toSorted(compareRoutes);
 }
 
 export class MessageIndex {
@@ -123,7 +115,8 @@ export class MessageIndex {
     return this.files.size;
   }
 
-  async scan(): Promise<MessageScan> {
+  /** Rescans. `liveTitles` are the fleet's titles, newer than any in a transcript. */
+  async scan(liveTitles: ReadonlyMap<string, string> = new Map()): Promise<MessageScan> {
     const seen = new Set<string>();
     for (const target of await targets(this.options.projectsDir)) {
       if (await this.load(target)) {
@@ -135,7 +128,7 @@ export class MessageIndex {
         this.files.delete(file);
       }
     }
-    return this.snapshot();
+    return this.snapshot(liveTitles);
   }
 
   private async load(target: FileTarget): Promise<boolean> {
@@ -147,30 +140,61 @@ export class MessageIndex {
     if (cached?.mtimeMs === info.mtimeMs && cached.size === info.size) {
       return true;
     }
+    const facts = await target.facts(info.size);
     const context: FileContext = {
       sessionId: target.sessionId,
       owner: target.owner,
-      parent: await target.parent(),
+      parent: facts.parent,
     };
     const messages = extractMessages(await readAllLines(target.file), context);
-    this.files.set(target.file, { ...info, messages });
+    this.files.set(target.file, {
+      ...info,
+      ...facts,
+      sessionId: target.sessionId,
+      owner: target.owner,
+      messages,
+    });
     return true;
   }
 
-  private snapshot(): MessageScan {
+  private directory(liveTitles: ReadonlyMap<string, string>): Directory {
+    const labels = new Map<string, string>();
+    for (const cached of this.files.values()) {
+      if (cached.label !== null) {
+        labels.set(`${cached.sessionId}\n${cached.owner}`, cached.label);
+      }
+    }
+    const titleOf = (sessionId: string): string =>
+      liveTitles.get(sessionId) ??
+      labels.get(`${sessionId}\n${MAIN}`) ??
+      `Session ${sessionId.slice(0, 8)}`;
+    const uses = new Map<string, number>();
+    for (const sessionId of new Set([...this.files.values()].map((file) => file.sessionId))) {
+      const title = titleOf(sessionId);
+      uses.set(title, (uses.get(title) ?? 0) + 1);
+    }
+    return {
+      // Sessions in one folder share its name until they get titles, so add the id.
+      sessionTitle: (sessionId): string => {
+        const title = titleOf(sessionId);
+        return (uses.get(title) ?? 0) > 1 ? `${title} (${sessionId.slice(0, 8)})` : title;
+      },
+      agentName: (sessionId, agentId) =>
+        agentId === MAIN ? null : (labels.get(`${sessionId}\n${agentId}`) ?? null),
+    };
+  }
+
+  private snapshot(liveTitles: ReadonlyMap<string, string>): MessageScan {
     const unique = new Map<string, ExtractedMessage>();
     for (const cached of this.files.values()) {
       for (const entry of cached.messages) {
         unique.set(entry.message.id, entry);
       }
     }
-    const entries = [...unique.values()];
+    const named = nameMessages([...unique.values()], this.directory(liveTitles));
     return {
-      messages: entries
-        .map((entry) => entry.message)
-        .toSorted(compareMessages)
-        .slice(0, this.limit),
-      routes: buildRoutes(entries),
+      messages: named.messages.toSorted(compareMessages).slice(0, this.limit),
+      routes: named.routes,
     };
   }
 }

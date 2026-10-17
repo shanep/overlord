@@ -9,6 +9,10 @@ export const PREVIEW_CHARS = 120;
 const DELIVERY_HEADER = /^(?:Another Claude session|The coordinator) sent a message[^\n]*\n/u;
 const WRAPPER_TAG = /<\/?(?:agent-message|cross-session-message|teammate-message)\b[^>]*>/gu;
 const REPORT_MARKER = 'The report follows:';
+// Claude Code puts this note before a subagent report that looks like instructions.
+const HARNESS_NOTE = /^\s*\[harness:[^\]]*\]/u;
+// Claude Code adds this line when the coordinator writes to a busy subagent.
+const COORDINATOR_TRAILER = 'Address this before completing your current task.';
 // Ampersand last, so "&amp;lt;" becomes "&lt;" and not "<".
 const ENTITIES: readonly (readonly [string, string])[] = [
   ['&quot;', '"'],
@@ -18,20 +22,31 @@ const ENTITIES: readonly (readonly [string, string])[] = [
   ['&amp;', '&'],
 ];
 
-/** The message itself, without the header, wrapper tags or hand-back preamble. */
+function withoutTrailer(text: string): string {
+  const trimmed = text.trimEnd();
+  return trimmed.endsWith(COORDINATOR_TRAILER)
+    ? trimmed.slice(0, -COORDINATOR_TRAILER.length).trimEnd()
+    : text;
+}
+
+/** The message itself, without the header, wrapper tags, hand-back preamble, notes and trailer. */
 export function messageBody(text: string): string {
   const unwrapped = text.replace(DELIVERY_HEADER, '').replaceAll(WRAPPER_TAG, '');
   const report = unwrapped.indexOf(REPORT_MARKER);
-  return report === -1 ? unwrapped : unwrapped.slice(report + REPORT_MARKER.length);
+  const body = report === -1 ? unwrapped : unwrapped.slice(report + REPORT_MARKER.length);
+  return withoutTrailer(body.replace(HARNESS_NOTE, ''));
 }
 
 export function oneLine(text: string): string {
   return text.replaceAll(/\s+/gu, ' ').trim();
 }
 
+/** A report often opens with a Markdown heading, and its marks say nothing in one line. */
+const HEADING_MARKS = /^#{1,6} /u;
+
 /** One line of at most PREVIEW_CHARS characters, ending in an ellipsis when cut. */
 export function preview(text: string): string {
-  const line = oneLine(text);
+  const line = oneLine(text).replace(HEADING_MARKS, '');
   return line.length > PREVIEW_CHARS ? `${line.slice(0, PREVIEW_CHARS - 1)}…` : line;
 }
 

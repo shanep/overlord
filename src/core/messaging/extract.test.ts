@@ -1,9 +1,7 @@
 // Synthetic transcript lines shaped like Claude Code's. No real message text.
 import { describe, expect, it } from 'vitest';
 
-import type { AgentMessage } from '../../shared/protocol.js';
-
-import type { FileContext } from './extract.js';
+import type { FileContext, RawMessage } from './extract.js';
 import { BROADCAST, extractMessages, MAIN } from './extract.js';
 import { textKey } from './text.js';
 
@@ -53,7 +51,23 @@ function queued(uuid: string, origin: unknown, prompt: string): string {
   });
 }
 
-function only(lines: readonly string[], context: FileContext = MAIN_FILE): AgentMessage {
+function notice(summary: string): string {
+  return queued(
+    'q8',
+    { kind: 'task-notification' },
+    `<task-id>a4</task-id><summary>${summary}</summary>`,
+  );
+}
+
+function routine(summary: string): boolean | undefined {
+  return extractMessages([notice(summary)], MAIN_FILE)[0]?.routine;
+}
+
+function named(summary: string): string | null | undefined {
+  return extractMessages([notice(summary)], MAIN_FILE)[0]?.senderName;
+}
+
+function only(lines: readonly string[], context: FileContext = MAIN_FILE): RawMessage {
   const found = extractMessages(lines, context);
   expect(found).toHaveLength(1);
   const [first] = found;
@@ -64,7 +78,7 @@ function only(lines: readonly string[], context: FileContext = MAIN_FILE): Agent
 }
 
 describe('sends', () => {
-  it('reads a SendMessage call with its summary as the preview', () => {
+  it('reads a SendMessage call with its full text as the preview', () => {
     const found = extractMessages(
       [send('t1', { to: 'helper', message: 'Please check   the build', summary: 'Check build' })],
       MAIN_FILE,
@@ -78,19 +92,17 @@ describe('sends', () => {
           from: MAIN,
           to: 'helper',
           kind: 'send',
-          preview: 'Check build',
+          preview: 'Please check the build',
           blocked: false,
         },
         textKey: textKey('Please check the build'),
+        routine: false,
+        senderName: null,
       },
     ]);
   });
 
-  it('falls back to the message text, and names structured messages by type', () => {
-    expect(only([send('t1', { to: 'x', message: 'plain text', summary: '  ' })]).preview).toBe(
-      'plain text',
-    );
-    expect(only([send('t1', { to: 'x', message: 'plain', summary: null })]).preview).toBe('plain');
+  it('names structured messages by type', () => {
     expect(only([send('t1', { to: 'x', message: { type: 'shutdown_request' } })]).preview).toBe(
       'shutdown_request',
     );
@@ -195,13 +207,13 @@ describe('deliveries', () => {
 
   it('reads agent task notifications and skips shell and monitor ones', () => {
     const agentDone =
-      '<task-notification>\n<task-id>a444</task-id>\n<status>completed</status>\n<summary>Agent &quot;Audit&quot; completed</summary>\n</task-notification>';
+      '<task-notification>\n<task-id>a444</task-id>\n<status>completed</status>\n<summary>Agent &quot;Audit&quot; failed: stalled</summary>\n</task-notification>';
     const origin = { kind: 'task-notification' };
     expect(only([delivered('u3', origin, agentDone)])).toMatchObject({
       from: 'a444',
       to: MAIN,
       kind: 'task-notification',
-      preview: 'Agent "Audit" completed',
+      preview: 'Agent "Audit" failed: stalled',
     });
     const shell = '<task-id>b1</task-id><summary>Background command "x" completed</summary>';
     const noId = '<summary>Agent "y" completed</summary>';
@@ -212,6 +224,15 @@ describe('deliveries', () => {
         MAIN_FILE,
       ),
     ).toStrictEqual([]);
+  });
+
+  it('marks a notice that an agent finished or is waiting as routine, and a failure not', () => {
+    expect(routine('Agent "x" finished')).toBe(true);
+    expect(routine('Agent "x" is waiting on its own background work')).toBe(true);
+    expect(routine('Agent "x" failed: Agent stalled')).toBe(false);
+    expect(routine('Agent "x" finished early, then failed')).toBe(false);
+    expect(named('Agent "Map the "old" repo" finished')).toBe('Map the "old" repo');
+    expect(named('Agent "x"')).toBeNull();
   });
 
   it('reads the text blocks of a list content', () => {

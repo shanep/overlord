@@ -346,15 +346,21 @@ export interface AgentMessage {
   readonly id: string;
   readonly at: number;
   readonly sessionId: string;
-  /** Who sent it: an agent name, agent id, "main", or a session id. */
+  /** The title of the session whose transcript holds it. */
+  readonly sessionTitle: string;
+  /** The address: an agent id, "main", another session's name or uds: address, or "*". */
   readonly from: string;
   readonly to: string;
+  /** What to call each side: an agent's description, "Main conversation" or a session title. */
+  readonly fromName: string;
+  readonly toName: string;
   readonly kind: 'send' | 'receive' | 'broadcast' | 'task-notification' | 'hand-back';
   readonly preview: string;
   /** True when a rule or hook stopped it. */
   readonly blocked: boolean;
 }
 
+/** Messages from one session to another, both sides named by session title. */
 export interface MessageRoute {
   readonly from: string;
   readonly to: string;

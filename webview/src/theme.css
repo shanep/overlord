@@ -1735,3 +1735,22 @@ summary > h2 {
 .library-lede {
   max-width: 90ch;
 }
+
+/* ---- Agent messages ------------------------------------------------------ */
+
+/* Every session's table lines up, and the message column gets what is left. */
+table.message-log {
+  table-layout: fixed;
+}
+
+.message-log .col-time {
+  width: 11em;
+}
+
+.message-log .col-party {
+  width: 17%;
+}
+
+.message-log .col-kind {
+  width: 5.5em;
+}

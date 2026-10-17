@@ -28,11 +28,22 @@ export interface FileContext {
   readonly parent: string;
 }
 
+/** A message as one transcript shows it, before the index names its two sides. */
+export type RawMessage = Omit<AgentMessage, 'sessionTitle' | 'fromName' | 'toName'>;
+
 export interface ExtractedMessage {
-  readonly message: AgentMessage;
+  readonly message: RawMessage;
   /** Hash of the full text, so a delivery can be matched to its send. */
   readonly textKey: string;
+  /** A notice that an agent finished or is waiting, which its hand-back makes redundant. */
+  readonly routine: boolean;
+  /** The sender's description when the record names it, for an agent with no meta file here. */
+  readonly senderName: string | null;
 }
+
+type Hints = Pick<ExtractedMessage, 'routine' | 'senderName'>;
+
+const NO_HINTS: Hints = { routine: false, senderName: null };
 
 interface Delivery {
   readonly origin: MessageOrigin;
@@ -44,7 +55,6 @@ interface Delivery {
 const sendInputSchema = z.object({
   to: z.string(),
   message: z.unknown(),
-  summary: z.string().nullish().catch(null),
 });
 
 const structuredSchema = z.object({ type: z.string() });
@@ -54,6 +64,8 @@ const BLOCKED_TEXT = /\b(?:denied|blocked)\b|\bhook\b/iu;
 
 /** Agent task notifications only; background shell commands and monitors are not messages. */
 const AGENT_SUMMARY = 'Agent "';
+const ROUTINE_NOTICE = /" (?:finished|is waiting on its own background work)$/u;
+const NOTICE_NAME = /^Agent "(.+)" /u;
 
 function textOf(content: string | readonly MessageBlock[]): string {
   if (typeof content === 'string') {
@@ -77,10 +89,15 @@ function sendText(input: z.infer<typeof sendInputSchema>): string {
   return structured.success ? structured.data.type : 'message';
 }
 
-function build(fields: Omit<AgentMessage, 'blocked' | 'preview'>, text: string): ExtractedMessage {
+function build(
+  fields: Omit<RawMessage, 'blocked' | 'preview'>,
+  text: string,
+  hints: Hints = NO_HINTS,
+): ExtractedMessage {
   return {
     message: { ...fields, preview: preview(messageBody(text)), blocked: false },
     textKey: textKey(messageBody(text)),
+    ...hints,
   };
 }
 
@@ -97,8 +114,7 @@ function toSend(
   if (!input.success) {
     return null;
   }
-  const text = sendText(input.data);
-  const sent = build(
+  const entry = build(
     {
       id: `${context.sessionId}:${block.id}`,
       at,
@@ -107,13 +123,8 @@ function toSend(
       to: input.data.to,
       kind: input.data.to === BROADCAST ? 'broadcast' : 'send',
     },
-    text,
+    sendText(input.data),
   );
-  const summary = input.data.summary ?? '';
-  const entry =
-    summary.trim() === ''
-      ? sent
-      : { ...sent, message: { ...sent.message, preview: preview(summary) } };
   return { toolUseId: block.id, entry };
 }
 
@@ -158,6 +169,7 @@ function notification(delivery: Delivery, context: FileContext): ExtractedMessag
       kind: 'task-notification',
     },
     summary,
+    { routine: ROUTINE_NOTICE.test(summary), senderName: NOTICE_NAME.exec(summary)?.[1] ?? null },
   );
 }
 

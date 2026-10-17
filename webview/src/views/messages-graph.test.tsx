@@ -7,51 +7,39 @@ import { EChart } from '../charts/chart.js';
 
 import {
   buildRouteGraph,
+  graphHeight,
   graphNodes,
   graphRoutes,
+  LABEL_CHARS,
   MAX_GRAPH_ROUTES,
+  nodeLabel,
   nodeSize,
-  PARTY_LABELS,
-  partyKind,
-  shortName,
 } from './messages-graph.js';
 // Registers the graph series with ECharts.
 import './messages-view.js';
 
 const theme = readChartTheme(document.createElement('div'));
-const AGENT = 'a0123456789abcdef';
+const LONG = 'Fix the flaky login test on the build box';
 
 const routes: readonly MessageRoute[] = [
-  { from: 'main', to: AGENT, count: 4, lastAt: 10 },
-  { from: AGENT, to: 'main', count: 1, lastAt: 11 },
-  { from: 'main', to: 'uds:/tmp/cc-socks/4242.sock', count: 2, lastAt: 12 },
+  { from: 'Release prep', to: 'Docs pass', count: 4, lastAt: 10 },
+  { from: 'Docs pass', to: 'Release prep', count: 1, lastAt: 11 },
+  { from: 'Release prep', to: LONG, count: 2, lastAt: 12 },
 ];
 
-describe('party names', () => {
-  it('sorts names into main, agent ids and everything else', () => {
-    expect(partyKind('main')).toBe('main');
-    expect(partyKind(AGENT)).toBe('agent');
-    expect(partyKind('a0123')).toBe('other');
-    expect(partyKind('wt-apps-d3')).toBe('other');
-    expect(PARTY_LABELS).toStrictEqual({
-      main: 'Main conversation',
-      agent: 'Subagent',
-      other: 'Session or named agent',
-    });
-  });
-
-  it('shortens agent ids and socket addresses', () => {
-    expect(shortName(AGENT)).toBe('a0123456');
-    expect(shortName('uds:/tmp/cc-socks/4242.sock')).toBe('session 4242');
-    expect(shortName('uds:pipe')).toBe('session uds:pipe');
-    expect(shortName('helper')).toBe('helper');
+describe('node labels', () => {
+  it('cuts a long session title short', () => {
+    expect(LABEL_CHARS).toBe(28);
+    expect(nodeLabel('Docs pass')).toBe('Docs pass');
+    expect(nodeLabel('x'.repeat(LABEL_CHARS))).toBe('x'.repeat(LABEL_CHARS));
+    expect(nodeLabel(LONG)).toBe('Fix the flaky login test on…');
   });
 });
 
 describe('graph data', () => {
   it('keeps the busiest routes only', () => {
     const many = Array.from({ length: MAX_GRAPH_ROUTES + 5 }, (_, index) => ({
-      from: 'main',
+      from: 'hub',
       to: `peer-${String(index)}`,
       count: index,
       lastAt: 0,
@@ -63,12 +51,24 @@ describe('graph data', () => {
     expect(kept.at(-1)?.count).toBe(5);
   });
 
-  it('adds up traffic in and out of each node', () => {
+  it('adds up traffic in and out of each session', () => {
     expect(graphNodes(routes)).toStrictEqual([
-      { name: 'main', kind: 'main', traffic: 7 },
-      { name: AGENT, kind: 'agent', traffic: 5 },
-      { name: 'uds:/tmp/cc-socks/4242.sock', kind: 'other', traffic: 2 },
+      { name: 'Release prep', traffic: 7 },
+      { name: 'Docs pass', traffic: 5 },
+      { name: LONG, traffic: 2 },
     ]);
+  });
+
+  it('grows the graph with its sessions, up to a limit', () => {
+    expect(graphHeight([])).toBe(200);
+    expect(graphHeight(routes)).toBe(272);
+    const many = Array.from({ length: 30 }, (_, index) => ({
+      from: 'hub',
+      to: String(index),
+      count: 1,
+      lastAt: 0,
+    }));
+    expect(graphHeight(many)).toBe(480);
   });
 
   it('sizes nodes by the square root of traffic', () => {
@@ -79,60 +79,49 @@ describe('graph data', () => {
 });
 
 describe('buildRouteGraph', () => {
-  it('draws one colored node per party and one labeled arrow per route', () => {
+  it('draws one node per session and one labeled arrow per route', () => {
     const option = buildRouteGraph(routes, theme);
+    expect(option).not.toHaveProperty('legend');
     expect(option).toMatchObject({
       animation: false,
-      legend: { data: ['Main conversation', 'Subagent', 'Session or named agent'] },
       series: [
         {
           type: 'graph',
+          name: 'Messages between sessions',
           layout: 'force',
           edgeSymbol: ['none', 'arrow'],
           edgeLabel: { show: true, formatter: '{c}', color: theme.muted },
           label: { show: true, color: theme.foreground },
-          itemStyle: { borderColor: theme.surface, borderWidth: 2 },
-          categories: [
-            { name: 'Main conversation', itemStyle: { color: theme.series[0] } },
-            { name: 'Subagent', itemStyle: { color: theme.series[1] } },
-            { name: 'Session or named agent', itemStyle: { color: theme.series[2] } },
-          ],
+          itemStyle: { color: theme.series[0], borderColor: theme.surface, borderWidth: 2 },
           data: [
             {
-              id: 'main',
-              name: 'main',
+              id: 'Release prep',
+              name: 'Release prep',
               value: 7,
-              category: 0,
               symbolSize: 40,
-              tooltip: { formatter: 'main: 7 messages' },
+              tooltip: { formatter: 'Release prep: 7 messages' },
             },
-            { id: AGENT, name: 'a0123456', value: 5, category: 1 },
+            { id: 'Docs pass', name: 'Docs pass', value: 5 },
             {
-              id: 'uds:/tmp/cc-socks/4242.sock',
-              name: 'session 4242',
-              category: 2,
-              tooltip: { formatter: 'uds:/tmp/cc-socks/4242.sock: 2 messages' },
+              id: LONG,
+              name: 'Fix the flaky login test on…',
+              tooltip: { formatter: `${LONG}: 2 messages` },
             },
           ],
           links: [
             {
-              source: 'main',
-              target: AGENT,
+              source: 'Release prep',
+              target: 'Docs pass',
               value: 4,
               lineStyle: { width: 4 },
-              tooltip: { formatter: 'main to a0123456: 4 messages' },
+              tooltip: { formatter: 'Release prep to Docs pass: 4 messages' },
             },
+            { source: 'Release prep', target: LONG, value: 2, lineStyle: { width: 2.5 } },
             {
-              source: 'main',
-              target: 'uds:/tmp/cc-socks/4242.sock',
-              value: 2,
-              lineStyle: { width: 2.5 },
-            },
-            {
-              source: AGENT,
-              target: 'main',
+              source: 'Docs pass',
+              target: 'Release prep',
               value: 1,
-              tooltip: { formatter: 'a0123456 to main: 1 message' },
+              tooltip: { formatter: 'Docs pass to Release prep: 1 message' },
             },
           ],
         },
@@ -146,10 +135,10 @@ describe('buildRouteGraph', () => {
 
   it('renders node labels', () => {
     const { container } = render(
-      <EChart option={buildRouteGraph(routes, theme)} label="Routes" height={300} width={500} />,
+      <EChart option={buildRouteGraph(routes, theme)} label="Sessions" height={300} width={500} />,
     );
-    expect(container.textContent).toContain('session 4242');
+    expect(container.textContent).toContain('Docs pass');
     // Edge labels only render when the links resolve to node ids.
-    expect(container.textContent).toContain('session 4242421Main conversation');
+    expect(container.textContent).toContain('Fix the flaky login test on…421');
   });
 });

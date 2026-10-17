@@ -1,7 +1,8 @@
-// The route graph: one node per agent or session, sized by how many messages
-// pass through it, and one arrow per route labeled with its count. Node color
-// says what kind of party it is, in fixed slot order with a legend, and the
-// figure's table twin lists every route.
+// The graph of messages between sessions: one node per session, sized by how
+// many messages pass through it, and one arrow per route labeled with its
+// count. Subagent traffic stays out, since it only runs between a session and
+// its own agents and would draw a star around every session. The figure's
+// table twin lists every route.
 
 import type { EChartsOption } from 'echarts';
 
@@ -14,42 +15,24 @@ import { formatInteger } from '../format.js';
 /** The busiest routes drawn; the table still lists every one. */
 export const MAX_GRAPH_ROUTES = 40;
 
-export type PartyKind = 'main' | 'agent' | 'other';
+/** Session titles can be a whole prompt, so node labels stop here. */
+export const LABEL_CHARS = 28;
 
-export const PARTY_LABELS: Readonly<Record<PartyKind, string>> = {
-  main: 'Main conversation',
-  agent: 'Subagent',
-  other: 'Session or named agent',
-};
-
-const PARTY_ORDER: readonly PartyKind[] = ['main', 'agent', 'other'];
-
-const AGENT_ID = /^a[0-9a-f]{15,}$/u;
-const SOCKET_PREFIX = 'uds:';
+const MIN_HEIGHT = 200;
+const MAX_HEIGHT = 480;
+const HEIGHT_PER_NODE = 24;
 
 const MIN_NODE = 12;
 const MAX_NODE = 40;
 
 export interface GraphNode {
   readonly name: string;
-  readonly kind: PartyKind;
   /** Messages in and out. */
   readonly traffic: number;
 }
 
-export function partyKind(name: string): PartyKind {
-  if (name === 'main') {
-    return 'main';
-  }
-  return AGENT_ID.test(name) ? 'agent' : 'other';
-}
-
-/** A short label: agent ids cut to 8 characters, socket addresses to their pid. */
-export function shortName(name: string): string {
-  if (name.startsWith(SOCKET_PREFIX)) {
-    return `session ${name.slice(name.lastIndexOf('/') + 1).replace(/\.sock$/u, '')}`;
-  }
-  return partyKind(name) === 'agent' ? name.slice(0, 8) : name;
+export function nodeLabel(name: string): string {
+  return name.length > LABEL_CHARS ? `${name.slice(0, LABEL_CHARS - 1)}…` : name;
 }
 
 /** The routes worth drawing: the busiest ones, at most MAX_GRAPH_ROUTES. */
@@ -63,11 +46,15 @@ export function graphNodes(routes: readonly MessageRoute[]): readonly GraphNode[
     traffic.set(route.from, (traffic.get(route.from) ?? 0) + route.count);
     traffic.set(route.to, (traffic.get(route.to) ?? 0) + route.count);
   }
-  return [...traffic.entries()].map(([name, count]) => ({
-    name,
-    kind: partyKind(name),
-    traffic: count,
-  }));
+  return [...traffic.entries()].map(([name, count]) => ({ name, traffic: count }));
+}
+
+/** Taller for more sessions, so a pair does not float in a big empty box. */
+export function graphHeight(routes: readonly MessageRoute[]): number {
+  return Math.min(
+    MAX_HEIGHT,
+    MIN_HEIGHT + HEIGHT_PER_NODE * graphNodes(graphRoutes(routes)).length,
+  );
 }
 
 export function nodeSize(traffic: number, busiest: number): number {
@@ -90,39 +77,30 @@ export function buildRouteGraph(
   return {
     animation: false,
     tooltip: tooltip(theme, 'item'),
-    legend: {
-      data: PARTY_ORDER.map((kind) => PARTY_LABELS[kind]),
-      top: 0,
-      left: 0,
-      itemWidth: 12,
-      itemHeight: 8,
-      textStyle: text,
-    },
     series: [
       {
         type: 'graph',
-        name: 'Routes',
+        name: 'Messages between sessions',
         layout: 'force',
-        force: { repulsion: 220, edgeLength: [70, 150], gravity: 0.08, layoutAnimation: false },
-        top: 32,
+        force: { repulsion: 260, edgeLength: [70, 150], gravity: 0.12, layoutAnimation: false },
+        // Room for the labels, which sit to the right of each node.
+        top: 24,
+        bottom: 24,
+        left: 24,
+        right: 160,
         roam: true,
         draggable: true,
-        categories: PARTY_ORDER.map((kind, index) => ({
-          name: PARTY_LABELS[kind],
-          itemStyle: { color: seriesColor(theme, index) },
-        })),
         edgeSymbol: ['none', 'arrow'],
         edgeSymbolSize: [0, 7],
         label: { show: true, position: 'right', ...text },
         edgeLabel: { show: true, ...text, color: theme.muted, formatter: '{c}' },
-        itemStyle: { borderColor: theme.surface, borderWidth: 2 },
+        itemStyle: { color: seriesColor(theme, 0), borderColor: theme.surface, borderWidth: 2 },
         lineStyle: { color: theme.muted, opacity: 0.7, curveness: 0.15 },
         emphasis: { focus: 'adjacency' },
         data: nodes.map((node) => ({
           id: node.name,
-          name: shortName(node.name),
+          name: nodeLabel(node.name),
           value: node.traffic,
-          category: PARTY_ORDER.indexOf(node.kind),
           symbolSize: nodeSize(node.traffic, busiest),
           tooltip: { formatter: `${node.name}: ${plural(node.traffic)}` },
         })),
@@ -131,9 +109,7 @@ export function buildRouteGraph(
           target: route.to,
           value: route.count,
           lineStyle: { width: 1 + (3 * route.count) / Math.max(heaviest, 1) },
-          tooltip: {
-            formatter: `${shortName(route.from)} to ${shortName(route.to)}: ${plural(route.count)}`,
-          },
+          tooltip: { formatter: `${route.from} to ${route.to}: ${plural(route.count)}` },
         })),
       },
     ],

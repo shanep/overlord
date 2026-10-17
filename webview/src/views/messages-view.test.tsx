@@ -1,4 +1,4 @@
-// Row text is concatenated cell text. cspell:ignore maina auditsent finishedsent mainsession Readysent unknownapi mergedblocked workermain
+// Row text is concatenated cell text. cspell:ignore conversationAudit codeMessageStart codeMain conversationReportAudit conversationSession workerMain conversationMessageReady
 // Synthetic messages only.
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -15,7 +15,13 @@ import { expectAccessible, renderView } from '../../test/render.js';
 
 import { inboundHelp } from './messages-inbound.js';
 import type { LogFilter } from './messages-log.js';
-import { filterMessages, toKindFilter } from './messages-log.js';
+import {
+  filterMessages,
+  groupBySession,
+  kindLabel,
+  OPEN_GROUPS,
+  toKindFilter,
+} from './messages-log.js';
 import { newBlockRule } from './messages-rules.js';
 import { graphTitle, MessagesView, routeTable } from './messages-view.js';
 
@@ -25,8 +31,11 @@ function message(overrides: Partial<AgentMessage> & Pick<AgentMessage, 'id'>): A
   return {
     at: NOW - 60_000,
     sessionId: 's1',
+    sessionTitle: 'Audit run',
     from: 'main',
     to: AGENT,
+    fromName: 'Main conversation',
+    toName: 'Audit the code',
     kind: 'send',
     preview: 'Start the audit',
     blocked: false,
@@ -40,21 +49,35 @@ const messages: readonly AgentMessage[] = [
     id: 'm2',
     from: AGENT,
     to: 'main',
+    fromName: 'Audit the code',
+    toName: 'Main conversation',
     kind: 'hand-back',
     preview: 'Audit finished',
   }),
   message({
     id: 'm3',
     to: 'uds:/tmp/cc-socks/77.sock',
+    toName: 'Session with pid 77',
     preview: 'Your branch is merged',
     blocked: true,
   }),
-  message({ id: 'm4', from: 'api-worker', to: 'main', kind: 'receive', at: 0, preview: 'Ready' }),
+  message({
+    id: 'm4',
+    sessionId: 's2',
+    sessionTitle: 'API worker',
+    from: 'api-worker',
+    to: 'main',
+    fromName: 'api-worker',
+    toName: 'Main conversation',
+    kind: 'receive',
+    at: 0,
+    preview: 'Ready',
+  }),
 ];
 
 const routes: readonly MessageRoute[] = [
-  { from: 'main', to: AGENT, count: 3, lastAt: NOW },
-  { from: 'api-worker', to: 'main', count: 1, lastAt: 0 },
+  { from: 'Audit run', to: 'Session with pid 77', count: 3, lastAt: NOW },
+  { from: 'api-worker', to: 'API worker', count: 1, lastAt: 0 },
 ];
 
 const denyPeers: AutoApproveRule = {
@@ -95,24 +118,32 @@ function region(name: string): HTMLElement {
   return screen.getByRole('region', { name });
 }
 
+/** Body rows of every session table in the log, in order. */
+function logRows(log: HTMLElement): string[] {
+  return within(log)
+    .getAllByRole('table')
+    .flatMap((table) => within(table).getAllByRole('row').slice(1))
+    .map((row) => row.textContent);
+}
+
 describe('MessagesView', () => {
   it('renders every section and passes axe', async () => {
     const { container } = renderView(<MessagesView state={state} />);
     expect(screen.getByRole('heading', { level: 1, name: 'Agent messages' })).toBeDefined();
     expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toStrictEqual([
-      'Message log',
+      'Messages by session',
       'Messages from your other sessions',
       'Block rules for SendMessage',
     ]);
-    expect(screen.getByText('Message routes', { selector: 'figcaption' })).toBeDefined();
+    expect(screen.getByText('Messages between sessions', { selector: 'figcaption' })).toBeDefined();
     const stats = screen.getAllByRole('definition').map((item) => item.textContent);
-    expect(stats).toStrictEqual(['4', '2', '1']);
+    expect(stats).toStrictEqual(['4', '2', '4', '1']);
     await expectAccessible(container);
   });
 
-  it('renders empty states and passes axe', async () => {
+  it('renders empty states without a graph and passes axe', async () => {
     const { container } = renderView(<MessagesView state={empty} />);
-    expect(screen.getByText('No data yet.')).toBeDefined();
+    expect(screen.queryByText('Messages between sessions')).toBeNull();
     expect(screen.getByText('No messages match.')).toBeDefined();
     expect(screen.getByText('No rules. Every send goes through.')).toBeDefined();
     expect(
@@ -127,64 +158,105 @@ describe('MessagesView', () => {
 describe('route table and title', () => {
   it('lists every route with its last time', () => {
     const table = routeTable(routes);
-    expect(table.columns).toStrictEqual(['From', 'To', 'Messages', 'Last']);
+    expect(table.columns).toStrictEqual(['From session', 'To session', 'Messages', 'Last']);
     expect(table.rows.map((row) => row.slice(0, 3))).toStrictEqual([
-      ['main', AGENT, '3'],
-      ['api-worker', 'main', '1'],
+      ['Audit run', 'Session with pid 77', '3'],
+      ['api-worker', 'API worker', '1'],
     ]);
     expect(table.rows[1]?.[3]).toBe('unknown');
     expect(table.rows[0]?.[3]).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/u);
   });
 
   it('says when the graph leaves routes out', () => {
-    expect(graphTitle(routes)).toBe('Message routes');
+    expect(graphTitle(routes)).toBe('Messages between sessions');
     const many = Array.from({ length: 41 }, (_, index) => ({
-      from: 'main',
+      from: 'hub',
       to: String(index),
       count: 1,
       lastAt: 0,
     }));
-    expect(graphTitle(many)).toBe('Message routes (busiest 40 of 41)');
+    expect(graphTitle(many)).toBe('Messages between sessions (busiest 40 of 41)');
   });
 });
 
 describe('message log', () => {
-  it('shows a row per message with short names and a blocked badge', () => {
+  it('groups rows by session with readable names and a blocked badge', () => {
     renderView(<MessagesView state={state} />);
-    const log = region('Message log');
-    const rows = within(log).getAllByRole('row').slice(1);
-    expect(rows.map((row) => row.textContent)).toStrictEqual([
-      expect.stringContaining('maina0123456SendStart the auditsent'),
-      expect.stringContaining('a0123456mainHand-backAudit finishedsent'),
-      expect.stringContaining('mainsession 77SendYour branch is mergedblocked'),
-      'unknownapi-workermainReceiveReadysent',
+    const log = region('Messages by session');
+    expect(
+      [...log.querySelectorAll('summary')].map((summary) => summary.textContent),
+    ).toStrictEqual([
+      expect.stringMatching(/^Audit run 3 messages, last \d{4}-/u),
+      'API worker 1 message, last unknown',
     ]);
+    expect(logRows(log)).toStrictEqual([
+      expect.stringContaining('Main conversationAudit the codeMessageStart the audit'),
+      expect.stringContaining('Audit the codeMain conversationReportAudit finished'),
+      expect.stringContaining('Main conversationSession with pid 77Messageblocked Your branch'),
+      'unknownapi-workerMain conversationMessageReady',
+    ]);
+    // The raw address shows on hover when the name differs from it.
     expect(within(log).getAllByTitle(AGENT)).toHaveLength(2);
-    expect(within(log).getByText('Showing 4 of 4 messages.')).toBeDefined();
+    expect(within(log).queryAllByTitle('api-worker')).toHaveLength(0);
+    expect(within(log).getByText('Showing 4 of 4 messages in 2 sessions.')).toBeDefined();
   });
 
   it('filters by text, kind and blocked', async () => {
     renderView(<MessagesView state={state} />);
-    const log = region('Message log');
+    const log = region('Messages by session');
     await userEvent.type(within(log).getByRole('searchbox', { name: 'Filter' }), 'audit');
-    expect(within(log).getByText('Showing 2 of 4 messages.')).toBeDefined();
-    await userEvent.selectOptions(within(log).getByRole('combobox', { name: 'Kind' }), 'hand-back');
-    expect(within(log).getByText('Showing 1 of 4 messages.')).toBeDefined();
+    expect(within(log).getByText('Showing 3 of 4 messages in 1 session.')).toBeDefined();
+    await userEvent.selectOptions(within(log).getByRole('combobox', { name: 'Kind' }), 'report');
+    expect(within(log).getByText('Showing 1 of 4 messages in 1 session.')).toBeDefined();
     await userEvent.selectOptions(within(log).getByRole('combobox', { name: 'Kind' }), 'all');
     await userEvent.clear(within(log).getByRole('searchbox', { name: 'Filter' }));
     await userEvent.click(within(log).getByRole('checkbox', { name: 'Blocked only' }));
-    expect(within(log).getByText('Showing 1 of 4 messages.')).toBeDefined();
+    expect(within(log).getByText('Showing 1 of 4 messages in 1 session.')).toBeDefined();
     await userEvent.click(within(log).getByRole('checkbox', { name: 'Blocked only' }));
-    expect(within(log).getByText('Showing 4 of 4 messages.')).toBeDefined();
+    expect(within(log).getByText('Showing 4 of 4 messages in 2 sessions.')).toBeDefined();
+    await userEvent.type(within(log).getByRole('searchbox', { name: 'Filter' }), 'nothing like it');
+    expect(within(log).getByText('No messages match.')).toBeDefined();
   });
 
-  it('filters in pure code too', () => {
+  it('opens the newest sessions, and every session while a filter is on', async () => {
+    const many = Array.from({ length: OPEN_GROUPS + 1 }, (_, index) =>
+      message({ id: `g${String(index)}`, sessionId: `s${String(index)}`, at: NOW - index }),
+    );
+    renderView(<MessagesView state={{ ...state, messages: many }} />);
+    const log = region('Messages by session');
+    const open = (): boolean[] =>
+      [...log.querySelectorAll('details')].map((details) => details.open);
+    expect(OPEN_GROUPS).toBe(3);
+    expect(open()).toStrictEqual([true, true, true, false]);
+    await userEvent.selectOptions(within(log).getByRole('combobox', { name: 'Kind' }), 'message');
+    expect(open()).toStrictEqual([true, true, true, true]);
+  });
+
+  it('filters, groups and labels in pure code too', () => {
     const all: LogFilter = { text: '', kind: 'all', blockedOnly: false };
     expect(filterMessages(messages, all)).toHaveLength(4);
     expect(filterMessages(messages, { ...all, text: 'API  main' })).toHaveLength(1);
-    expect(filterMessages(messages, { ...all, kind: 'receive' })).toHaveLength(1);
-    expect(toKindFilter('broadcast')).toBe('broadcast');
-    expect(toKindFilter('nonsense')).toBe('all');
+    expect(filterMessages(messages, { ...all, text: 'pid 77' })).toHaveLength(1);
+    expect(filterMessages(messages, { ...all, text: 'uds:' })).toHaveLength(1);
+    expect(filterMessages(messages, { ...all, kind: 'message' })).toHaveLength(3);
+    expect(filterMessages(messages, { ...all, kind: 'status' })).toHaveLength(0);
+    expect(toKindFilter('report')).toBe('report');
+    expect(toKindFilter('hand-back')).toBe('all');
+    expect(messages.map((item) => kindLabel(item))).toStrictEqual([
+      'Message',
+      'Report',
+      'Message',
+      'Message',
+    ]);
+    expect(kindLabel(message({ id: 'n', kind: 'task-notification' }))).toBe('Status');
+    expect(kindLabel(message({ id: 'b', kind: 'broadcast' }))).toBe('Message');
+    expect(
+      groupBySession(messages).map((group) => [group.title, group.messages.length]),
+    ).toStrictEqual([
+      ['Audit run', 3],
+      ['API worker', 1],
+    ]);
+    expect(groupBySession([])).toStrictEqual([]);
   });
 });
 
