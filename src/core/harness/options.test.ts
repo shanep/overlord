@@ -8,6 +8,7 @@ import {
   parseExtraArgs,
   sessionSettings,
   toEffortLevel,
+  toPermissionMode,
   toSdkPermissionMode,
 } from './options.js';
 
@@ -22,6 +23,7 @@ const spec: LaunchSpec = {
 
 const profile: LaunchProfile = {
   id: 'p1',
+  agent: 'claude-code',
   name: 'Opus high',
   model: 'opus',
   effort: 'high',
@@ -48,6 +50,18 @@ describe('toSdkPermissionMode', () => {
     expect(toSdkPermissionMode('manual')).toBe('default');
     expect(toSdkPermissionMode('plan')).toBe('plan');
     expect(toSdkPermissionMode('bypassPermissions')).toBe('bypassPermissions');
+  });
+});
+
+describe('toPermissionMode', () => {
+  it('accepts every Claude mode and null', () => {
+    expect(toPermissionMode(null)).toBeNull();
+    expect(toPermissionMode('plan')).toBe('plan');
+    expect(toPermissionMode('manual')).toBe('manual');
+  });
+
+  it('rejects modes Claude does not have', () => {
+    expect(() => toPermissionMode('yolo')).toThrow('Unknown permission mode "yolo"');
   });
 });
 

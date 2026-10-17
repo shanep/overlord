@@ -227,6 +227,7 @@ export function makeApp(env: TestEnv, options: AppOptions = {}): TestApp {
 export function session(id: string, overrides: Partial<SessionSummary> = {}): SessionSummary {
   return {
     id,
+    agent: 'claude-code',
     surface: 'cli',
     title: `title ${id}`,
     cwd: '/work',
@@ -297,6 +298,7 @@ export function permissionRequest(
 ): PermissionRequest {
   return {
     id,
+    agent: 'claude-code',
     sessionId: 's1',
     agentId: 's1',
     toolName: 'Bash',

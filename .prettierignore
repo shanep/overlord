@@ -9,3 +9,5 @@ webview/dist/
 package-lock.json
 src/core/knobs/catalog.generated.json
 test/fixtures/**/*.jsonl
+# Written by the golden tests with JSON.stringify, so Prettier must not reformat them.
+test/golden/**/*.json

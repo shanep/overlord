@@ -3,7 +3,8 @@
 
 import { z } from 'zod';
 
-import type { LaunchProfile, PermissionMode } from '../../shared/model.js';
+import { CLAUDE_CODE } from '../../shared/agents.js';
+import type { LaunchProfile } from '../../shared/model.js';
 
 import { readOptional, writeFileAtomic } from './atomic-file.js';
 import { errorMessage, parseJson } from './json.js';
@@ -11,6 +12,8 @@ import { errorMessage, parseJson } from './json.js';
 const profileSchema = z.strictObject({
   id: z.string().min(1),
   name: z.string().min(1),
+  agent: z.string().min(1).optional(),
+  backend: z.string().min(1).optional(),
   model: z.string().min(1).nullable(),
   effort: z.string().min(1).nullable(),
   permissionMode: z
@@ -24,6 +27,22 @@ const storeSchema = z.object({
   version: z.literal(1),
   profiles: z.array(profileSchema),
 });
+
+/** A profile saved before agents existed is a Claude Code one. */
+function fromStored(stored: z.infer<typeof profileSchema>): LaunchProfile {
+  const { agent, backend, ...rest } = stored;
+  return { ...rest, agent: agent ?? CLAUDE_CODE, ...(backend === undefined ? {} : { backend }) };
+}
+
+/** Claude Code profiles are saved without an agent, so the file reads the same as before. */
+function toStored(profile: LaunchProfile): Omit<LaunchProfile, 'agent'> & { agent?: string } {
+  const { agent, backend, ...rest } = profile;
+  return {
+    ...rest,
+    ...(agent === CLAUDE_CODE ? {} : { agent }),
+    ...(backend === undefined ? {} : { backend }),
+  };
+}
 
 export interface ProfileList {
   readonly profiles: readonly LaunchProfile[];
@@ -51,7 +70,7 @@ export async function listProfiles(file: string): Promise<ProfileList> {
   }
   const parsed = storeSchema.safeParse(json.value);
   return parsed.success
-    ? { profiles: parsed.data.profiles, error: null }
+    ? { profiles: parsed.data.profiles.map((stored) => fromStored(stored)), error: null }
     : { profiles: [], error: `${file} is not a profile store: ${parsed.error.message}` };
 }
 
@@ -60,7 +79,8 @@ async function store(
   profiles: readonly LaunchProfile[],
 ): Promise<ProfileWriteResult> {
   try {
-    const content = `${JSON.stringify({ version: 1, profiles }, null, 2)}\n`;
+    const stored = profiles.map((item) => toStored(item));
+    const content = `${JSON.stringify({ version: 1, profiles: stored }, null, 2)}\n`;
     await writeFileAtomic({ target: file, content, backup: `${file}.bak` });
     return { ok: true, profiles };
   } catch (error) {
@@ -77,7 +97,7 @@ export async function saveProfile(file: string, profile: unknown): Promise<Profi
   if (!parsed.success) {
     return { ok: false, error: `Invalid profile: ${parsed.error.message}` };
   }
-  const next = parsed.data;
+  const next = fromStored(parsed.data);
   const { profiles } = await listProfiles(file);
   const exists = profiles.some((item) => item.id === next.id);
   return store(
@@ -98,7 +118,7 @@ export async function deleteProfile(file: string, id: string): Promise<ProfileWr
 export interface LaunchOptions {
   readonly model?: string;
   readonly effort?: string;
-  readonly permissionMode?: PermissionMode;
+  readonly permissionMode?: string;
   readonly env: Readonly<Record<string, string>>;
   /** SDK extraArgs: flag name without dashes to value, null for a bare flag. */
   readonly extraArgs: Readonly<Record<string, string | null>>;

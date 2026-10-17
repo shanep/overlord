@@ -1,6 +1,7 @@
 // One list of sessions across every surface. Each source runs on its own, so
 // a broken Desktop file or a missing claude binary only adds an error.
 
+import { CLAUDE_CODE } from '../../shared/agents.js';
 import type { Surface } from '../../shared/model.js';
 import type { SurfaceSession } from '../../shared/protocol.js';
 import type { ClaudePaths } from '../paths.js';
@@ -61,6 +62,7 @@ export function liveToSurface(live: LiveProcess): SurfaceSession {
   const surface = surfaceForEntrypoint(live.entrypoint);
   return {
     id: live.sessionId,
+    agent: CLAUDE_CODE,
     surface,
     title: pickTitle(live.name, live.cwd, live.sessionId),
     cwd: live.cwd,

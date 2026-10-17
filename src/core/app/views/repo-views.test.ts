@@ -49,6 +49,7 @@ describe('sessions view', () => {
     const none = { cwd: null, gitBranch: null, title: null };
     expect(transcriptRow(info, none)).toStrictEqual({
       id: 'abcdef0123456789',
+      agent: 'claude-code',
       surface: 'cli',
       title: 'Session abcdef01',
       cwd: null,
@@ -69,6 +70,7 @@ describe('sessions view', () => {
     );
     expect(transcriptRow(info, none, known)).toStrictEqual({
       id: 'abcdef0123456789',
+      agent: 'claude-code',
       surface: 'desktop-code',
       title: 'Known',
       cwd: '/w',
@@ -95,6 +97,7 @@ describe('sessions view', () => {
       sessions: [
         {
           id: 'chat',
+          agent: 'claude-code',
           surface: 'claude-ai',
           title: 'A chat',
           cwd: null,

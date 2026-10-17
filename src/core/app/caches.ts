@@ -1,7 +1,11 @@
 // The background-loaded data behind the views. Each loader reads the host
 // settings when it runs, so a settings change applies on the next refresh.
 
+import type { AgentInfo } from '../../shared/agents.js';
+import { CLAUDE_CODE } from '../../shared/agents.js';
 import type { PlanLimits } from '../../shared/protocol.js';
+import { agents } from '../agents/index.js';
+import { agentInfo, detectAgents } from '../agents/registry.js';
 import { EMPTY_USAGE } from '../surfaces/usage.js';
 
 import { AsyncValue } from './async-value.js';
@@ -113,6 +117,19 @@ export function createCaches(rt: CacheRuntime): Caches {
           callTool: rt.callTool,
           clock: rt.clock,
         }),
+    }),
+    agents: new AsyncValue({
+      ...common,
+      name: 'agents',
+      initial: agents.list().map((adapter) => agentInfo(adapter)),
+      load: async (): Promise<AgentInfo[]> => {
+        const cli = await rt.claudeCli();
+        return detectAgents(agents, {
+          env: cli.env,
+          platform: rt.platform,
+          pathFor: (id) => (id === CLAUDE_CODE ? host.settings.claudePath : ''),
+        });
+      },
     }),
   };
 }

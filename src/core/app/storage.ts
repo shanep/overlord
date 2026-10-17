@@ -7,6 +7,7 @@ import path from 'node:path';
 
 import { z } from 'zod';
 
+import { CLAUDE_CODE } from '../../shared/agents.js';
 import type { AutoApproveRule, LauncherState, SurfaceSession } from '../../shared/protocol.js';
 import { readOptional, writeFileAtomic } from '../knobs/atomic-file.js';
 import type { ProjectBook } from '../projects/book.js';
@@ -142,6 +143,7 @@ export async function readImport(file: string): Promise<StoredImport | null> {
     importedAt: data.importedAt,
     sessions: data.sessions.map((session): SurfaceSession => ({
       ...session,
+      agent: CLAUDE_CODE,
       surface: 'claude-ai',
       cwd: null,
       archived: false,

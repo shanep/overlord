@@ -1,5 +1,6 @@
 // Builders for the summary, agent and rate limit records the mapper keeps.
 
+import { CLAUDE_CODE } from '../../shared/agents.js';
 import {
   ZERO_USAGE,
   type AgentNode,
@@ -26,6 +27,7 @@ export const NO_RATE_LIMITS: RateLimits = { fiveHourPct: null, sevenDayPct: null
 export function initialSummary(config: MapperConfig, at: number): SessionSummary {
   return {
     id: config.sessionId,
+    agent: CLAUDE_CODE,
     surface: 'overlord',
     title: config.title,
     cwd: config.cwd,

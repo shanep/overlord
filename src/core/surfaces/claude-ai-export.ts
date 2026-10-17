@@ -11,6 +11,7 @@ import path from 'node:path';
 
 import { z } from 'zod';
 
+import { CLAUDE_CODE } from '../../shared/agents.js';
 import type { SurfaceSession } from '../../shared/protocol.js';
 
 import { lenientArray, sourceError } from './common.js';
@@ -132,6 +133,7 @@ function toConversation(raw: z.infer<typeof conversationSchema>): ClaudeAiConver
   return {
     session: {
       id: raw.uuid,
+      agent: CLAUDE_CODE,
       surface: 'claude-ai',
       title: name === '' ? 'Untitled chat' : name,
       cwd: null,

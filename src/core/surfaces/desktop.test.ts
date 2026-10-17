@@ -177,6 +177,7 @@ describe('desktopCodeToSurface', () => {
   it('uses the CLI session id so the row matches the transcript', () => {
     expect(desktopCodeToSurface(desktopSession({ archived: true }))).toStrictEqual({
       id: 'cli-d',
+      agent: 'claude-code',
       surface: 'desktop-code',
       title: 'T',
       cwd: '/w/proj',

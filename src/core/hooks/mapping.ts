@@ -1,6 +1,7 @@
 // Turns hook payloads into the shared model and permission decisions into the
 // JSON a PermissionRequest or PreToolUse hook prints.
 
+import { CLAUDE_CODE } from '../../shared/agents.js';
 import type {
   AgentNode,
   LoadReason,
@@ -91,6 +92,7 @@ export function toPermissionRequest(
   return {
     id,
     sessionId: payload.session_id,
+    agent: CLAUDE_CODE,
     agentId: agentIdOf(payload),
     toolName: payload.tool_name,
     input: payload.tool_input,

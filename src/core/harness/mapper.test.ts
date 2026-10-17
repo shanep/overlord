@@ -139,6 +139,7 @@ describe('MessageMapper lifecycle', () => {
     expect(events.map((event) => event.name)).toStrictEqual(['session.upserted', 'agent.upserted']);
     expect(mapper.summary()).toStrictEqual({
       id: SID,
+      agent: 'claude-code',
       surface: 'overlord',
       title: 'Fix the bug',
       cwd: '/repo',

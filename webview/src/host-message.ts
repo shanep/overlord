@@ -98,5 +98,5 @@ export function isHostToWebview(value: unknown): value is HostToWebview {
   }
   const view = value['view'];
   const state = value['state'];
-  return isViewId(view) && isRecord(state) && stateMatches(view, state);
+  return isViewId(view) && isRecord(state) && isArray(value['agents']) && stateMatches(view, state);
 }

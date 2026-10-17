@@ -403,6 +403,7 @@ describe('knobs view', () => {
       {
         id: 'p',
         name: 'P',
+        agent: 'claude-code',
         model: null,
         effort: null,
         permissionMode: null,

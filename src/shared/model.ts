@@ -2,6 +2,8 @@
 // Everything here is plain data (JSON safe) so it can cross postMessage.
 // Times are epoch milliseconds.
 
+import type { AgentId } from './agents.js';
+
 /** Where a session runs or came from. */
 export type Surface =
   'cli' | 'sdk' | 'overlord' | 'desktop-code' | 'cowork' | 'cloud' | 'claude-ai';
@@ -14,6 +16,7 @@ export type SessionState = 'running' | 'waiting' | 'idle' | 'done' | 'failed' | 
  */
 export type SessionPlace = 'vscode' | 'terminal' | 'background';
 
+/** Claude Code's permission modes. Other agents bring their own as plain strings. */
 export type PermissionMode =
   'default' | 'acceptEdits' | 'plan' | 'auto' | 'dontAsk' | 'bypassPermissions' | 'manual';
 
@@ -95,6 +98,8 @@ export interface SessionRecap {
 
 export interface SessionSummary {
   readonly id: string;
+  /** The agent CLI that runs this session. */
+  readonly agent: AgentId;
   readonly surface: Surface;
   readonly title: string;
   readonly cwd: string;
@@ -106,7 +111,8 @@ export interface SessionSummary {
   readonly costUsd: number | null;
   readonly model: string | null;
   readonly effort: string | null;
-  readonly permissionMode: PermissionMode | null;
+  /** An id from the agent's permission modes. */
+  readonly permissionMode: string | null;
   readonly pid: number | null;
   readonly transcriptPath: string | null;
   readonly gitBranch: string | null;
@@ -371,11 +377,14 @@ export interface ConfigItem {
 export interface PermissionRequest {
   readonly id: string;
   readonly sessionId: string;
+  /** The agent CLI that asked, not the subagent (that is agentId). */
+  readonly agent: AgentId;
   readonly agentId: string;
   readonly toolName: string;
   readonly input: unknown;
   readonly requestedAt: number;
-  readonly source: 'sdk' | 'hook';
+  /** Runtime is any programmatic driver other than the Claude SDK. */
+  readonly source: 'sdk' | 'hook' | 'runtime';
 }
 
 export type PermissionDecision =
@@ -385,9 +394,14 @@ export type PermissionDecision =
 export interface LaunchProfile {
   readonly id: string;
   readonly name: string;
+  /** Saved profiles without one are Claude Code profiles. */
+  readonly agent: AgentId;
+  /** The model endpoint behind the agent, for example "boisestate". Unset is the agent's own. */
+  readonly backend?: string;
   readonly model: string | null;
   readonly effort: string | null;
-  readonly permissionMode: PermissionMode | null;
+  /** An id from the agent's permission modes. */
+  readonly permissionMode: string | null;
   readonly env: Readonly<Record<string, string>>;
   readonly extraArgs: readonly string[];
 }

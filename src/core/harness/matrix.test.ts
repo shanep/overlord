@@ -6,7 +6,16 @@ import type { LaunchProfile } from '../../shared/model.js';
 import { expandMatrix, promptSnippet } from './matrix.js';
 
 function profile(id: string, name: string): LaunchProfile {
-  return { id, name, model: null, effort: null, permissionMode: null, env: {}, extraArgs: [] };
+  return {
+    id,
+    name,
+    agent: 'claude-code',
+    model: null,
+    effort: null,
+    permissionMode: null,
+    env: {},
+    extraArgs: [],
+  };
 }
 
 describe('promptSnippet', () => {

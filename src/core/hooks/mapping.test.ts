@@ -120,6 +120,7 @@ describe('toPermissionRequest', () => {
       ),
     ).toStrictEqual({
       id: 'req-1',
+      agent: 'claude-code',
       sessionId: 's',
       agentId: 's',
       toolName: 'Bash',

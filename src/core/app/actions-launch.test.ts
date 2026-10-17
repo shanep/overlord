@@ -34,6 +34,7 @@ function specs(count: number, overrides: Partial<LaunchSpec> = {}): LaunchSpec[]
 
 const PROFILE: LaunchProfile = {
   id: 'cheap',
+  agent: 'claude-code',
   name: 'Cheap',
   model: 'haiku',
   effort: null,

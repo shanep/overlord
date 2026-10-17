@@ -1,6 +1,7 @@
 // Everything the views, actions and commands share. OverlordApp builds one
 // and hands it around, so each piece takes a single argument.
 
+import type { AgentInfo } from '../../shared/agents.js';
 import type { LaunchProfile } from '../../shared/model.js';
 import type {
   ConfigState,
@@ -48,6 +49,8 @@ export interface Caches {
   readonly plan: AsyncValue<PlanLimits | null>;
   readonly worktrees: AsyncValue<readonly WorktreeSummary[]>;
   readonly connectors: AsyncValue<ConnectorsData>;
+  /** Every agent adapter and whether its binary was found. */
+  readonly agents: AsyncValue<readonly AgentInfo[]>;
 }
 
 /** The background config sync, reached from actions and views. */

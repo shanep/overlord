@@ -256,6 +256,7 @@ export const knobsState: KnobsState = {
   profiles: [
     {
       id: 'p1',
+      agent: 'claude-code',
       name: 'Fast',
       model: 'claude-sonnet-4-6',
       effort: 'low',
@@ -265,6 +266,7 @@ export const knobsState: KnobsState = {
     },
     {
       id: 'p2',
+      agent: 'claude-code',
       name: 'Deep',
       model: 'claude-opus-4-7',
       effort: 'high',

@@ -4,6 +4,7 @@
 
 import path from 'node:path';
 
+import { CLAUDE_CODE } from '../../../shared/agents.js';
 import type { HealthLevel } from '../../../shared/health.js';
 import type { PermissionRequest, SessionPlace, SessionSummary } from '../../../shared/model.js';
 import { sessionName, ZERO_USAGE } from '../../../shared/model.js';
@@ -59,6 +60,7 @@ function jobSession(job: BackgroundJob): SessionSummary {
   const startedAt = job.startedAt ?? 0;
   return {
     id: job.sessionId,
+    agent: CLAUDE_CODE,
     surface: 'cli',
     title: job.name ?? NEW_SESSION_TITLE,
     cwd: job.cwd ?? '',

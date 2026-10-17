@@ -8,6 +8,7 @@ import { CANCELLED_MESSAGE, PermissionInbox, type AutoDecisionEntry } from './in
 function request(id: string, sessionId = 's1'): PermissionRequest {
   return {
     id,
+    agent: 'claude-code',
     sessionId,
     agentId: sessionId,
     toolName: 'Bash',

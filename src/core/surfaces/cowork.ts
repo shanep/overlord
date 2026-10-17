@@ -6,6 +6,7 @@ import path from 'node:path';
 
 import { z } from 'zod';
 
+import { CLAUDE_CODE } from '../../shared/agents.js';
 import type { SurfaceSession } from '../../shared/protocol.js';
 import type { ClaudePaths } from '../paths.js';
 
@@ -89,6 +90,7 @@ export async function readCoworkSessions(paths: ClaudePaths): Promise<Collected<
 export function coworkToSurface(session: CoworkSession): SurfaceSession {
   return {
     id: session.id,
+    agent: CLAUDE_CODE,
     surface: 'cowork',
     title: pickTitle(session.title, null, 'Cowork session'),
     cwd: session.cwd,

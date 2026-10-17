@@ -505,6 +505,7 @@ describe('handoff', () => {
     const { app } = liveApp(env);
     const row = {
       id: 'c1',
+      agent: 'claude-code',
       surface: 'cowork' as const,
       title: 'Notes',
       cwd: null,

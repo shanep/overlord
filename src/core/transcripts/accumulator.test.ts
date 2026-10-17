@@ -167,6 +167,7 @@ describe('SessionAccumulator', () => {
     const accumulator = new SessionAccumulator({ sessionId: 'empty' });
     expect(accumulator.summary(T0)).toStrictEqual({
       id: 'empty',
+      agent: 'claude-code',
       surface: 'cli',
       title: '',
       cwd: '',
@@ -216,6 +217,7 @@ describe('SessionAccumulator', () => {
     const summary = accumulator.summary(T0 + 1800);
     expect(summary).toStrictEqual({
       id: SESSION,
+      agent: 'claude-code',
       surface: 'cli',
       title: 'Investigate the bug',
       cwd: '/work/demo',

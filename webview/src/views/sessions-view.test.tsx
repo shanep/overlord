@@ -26,6 +26,7 @@ function titles(root: HTMLElement): string[] {
 const lexer = {
   ...sessionsState.sessions[0],
   id: 'x4',
+  agent: 'claude-code',
   title: 'Add lexer',
   cwd: '/repo',
   updatedAt: 1,

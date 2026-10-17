@@ -4,6 +4,7 @@
 import type { ReactElement } from 'react';
 import { useState } from 'react';
 
+import { CLAUDE_CODE } from '../../../src/shared/agents.js';
 import type { LaunchProfile } from '../../../src/shared/model.js';
 import { usePostAction } from '../vscode-context.js';
 
@@ -17,6 +18,9 @@ import {
 } from './knobs-values.js';
 
 interface ProfileDraft {
+  /** Kept from the profile so a save does not change it. The form does not show them. */
+  readonly agent: string;
+  readonly backend: string;
   readonly name: string;
   readonly model: string;
   readonly effort: string;
@@ -27,6 +31,8 @@ interface ProfileDraft {
 
 export function toDraft(profile: LaunchProfile): ProfileDraft {
   return {
+    agent: profile.agent,
+    backend: profile.backend ?? '',
     name: profile.name,
     model: profile.model ?? '',
     effort: profile.effort ?? '',
@@ -40,6 +46,8 @@ export function fromDraft(id: string, draft: ProfileDraft): LaunchProfile {
   return {
     id,
     name: draft.name.trim(),
+    agent: draft.agent,
+    ...(draft.backend === '' ? {} : { backend: draft.backend }),
     model: nullIfEmpty(draft.model),
     effort: nullIfEmpty(draft.effort),
     permissionMode: isPermissionMode(draft.mode) ? draft.mode : null,
@@ -52,6 +60,7 @@ export function blankProfile(id: string): LaunchProfile {
   return {
     id,
     name: '',
+    agent: CLAUDE_CODE,
     model: null,
     effort: null,
     permissionMode: null,

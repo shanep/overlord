@@ -46,13 +46,13 @@ describe('useHostState', () => {
       </VsCodeProvider>,
     );
     expect(getByRole('status').textContent).toBe('none');
-    send({ type: 'state', view: 'usage', state: usageState });
+    send({ type: 'state', view: 'usage', state: usageState, agents: [] });
     expect(getByRole('status').textContent).toBe('none');
-    send({ type: 'state', view: 'fleet', state: { sessions: 'bad' } });
+    send({ type: 'state', view: 'fleet', state: { sessions: 'bad' }, agents: [] });
     expect(getByRole('status').textContent).toBe('none');
-    send({ type: 'state', view: 'fleet', state: fleetState }, 'https://evil.example');
+    send({ type: 'state', view: 'fleet', state: fleetState, agents: [] }, 'https://evil.example');
     expect(getByRole('status').textContent).toBe('none');
-    send({ type: 'state', view: 'fleet', state: fleetState });
+    send({ type: 'state', view: 'fleet', state: fleetState, agents: [] });
     expect(getByRole('status').textContent).toBe('fleet:13');
   });
 
@@ -65,7 +65,7 @@ describe('useHostState', () => {
     );
     unmount();
     expect(() => {
-      send({ type: 'state', view: 'fleet', state: fleetState });
+      send({ type: 'state', view: 'fleet', state: fleetState, agents: [] });
     }).not.toThrow();
   });
 });

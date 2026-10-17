@@ -5,6 +5,7 @@
 
 import { randomUUID } from 'node:crypto';
 
+import { CLAUDE_CODE } from '../../shared/agents.js';
 import type {
   AgentNode,
   PermissionDecision,
@@ -226,6 +227,7 @@ export class SdkSession {
     const request: PermissionRequest = {
       id: this.newId(),
       sessionId: this.id,
+      agent: CLAUDE_CODE,
       agentId: context.agentId ?? this.id,
       toolName,
       input: toolInput,

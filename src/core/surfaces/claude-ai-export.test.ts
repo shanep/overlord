@@ -56,6 +56,7 @@ describe('parseClaudeAiExport', () => {
       {
         session: {
           id: 'chat-1',
+          agent: 'claude-code',
           surface: 'claude-ai',
           title: 'Trip planning',
           cwd: null,
@@ -117,6 +118,7 @@ describe('parseClaudeAiExport', () => {
     expect(only).toStrictEqual({
       session: {
         id: 'bare',
+        agent: 'claude-code',
         surface: 'claude-ai',
         title: 'Untitled chat',
         cwd: null,

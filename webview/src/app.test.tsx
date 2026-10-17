@@ -1,7 +1,7 @@
 import { act, render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import type { HostToWebview, ViewId } from '../../src/shared/protocol.js';
+import type { HostToWebview, ViewId, ViewStateMessage } from '../../src/shared/protocol.js';
 import { contextState, knobsState } from '../test/fixtures-context.js';
 import { configState, launcherState, sessionsState, usageState } from '../test/fixtures-tools.js';
 import { agentState, fleetState, NOW, session } from '../test/fixtures.js';
@@ -11,7 +11,7 @@ import { App, readViewId, ViewSwitch } from './app.js';
 import { NowProvider } from './clock.js';
 import { VsCodeProvider } from './vscode-context.js';
 
-const messages: readonly HostToWebview[] = [
+const messages: readonly ViewStateMessage[] = [
   { type: 'state', view: 'fleet', state: fleetState },
   { type: 'state', view: 'agent', state: agentState },
   { type: 'state', view: 'context', state: contextState },
@@ -49,23 +49,22 @@ describe('readViewId', () => {
 });
 
 describe('ViewSwitch', () => {
-  it.each(messages.map((message): [ViewId, HostToWebview] => [message.view, message]))(
-    'renders the %s view without errors and passes axe',
-    async (_view, message) => {
-      const { container, queryByRole } = render(
-        <VsCodeProvider api={new FakeApi()}>
-          <NowProvider now={NOW}>
-            <main>
-              <ViewSwitch message={message} />
-            </main>
-          </NowProvider>
-        </VsCodeProvider>,
-      );
-      expect(container.querySelector('section, [role="status"]')).not.toBeNull();
-      expect(queryByRole('alert')).toBeNull();
-      await expectAccessible(container);
-    },
-  );
+  it.each(
+    messages.map((message): [ViewId, HostToWebview] => [message.view, { ...message, agents: [] }]),
+  )('renders the %s view without errors and passes axe', async (_view, message) => {
+    const { container, queryByRole } = render(
+      <VsCodeProvider api={new FakeApi()}>
+        <NowProvider now={NOW}>
+          <main>
+            <ViewSwitch message={message} />
+          </main>
+        </NowProvider>
+      </VsCodeProvider>,
+    );
+    expect(container.querySelector('section, [role="status"]')).not.toBeNull();
+    expect(queryByRole('alert')).toBeNull();
+    await expectAccessible(container);
+  });
 });
 
 describe('App', () => {
@@ -83,7 +82,7 @@ describe('App', () => {
     act(() => {
       globalThis.dispatchEvent(
         new MessageEvent('message', {
-          data: { type: 'state', view: 'usage', state: usageState },
+          data: { type: 'state', view: 'usage', state: usageState, agents: [] },
           origin: 'vscode-webview://panel',
         }),
       );

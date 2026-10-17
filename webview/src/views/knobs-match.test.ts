@@ -36,6 +36,7 @@ function value(key: string, layer: EffectiveValue['layer'], set: unknown): Effec
 
 const profile: LaunchProfile = {
   id: 'p',
+  agent: 'claude-code',
   name: 'P',
   model: null,
   effort: null,

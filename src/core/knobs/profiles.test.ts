@@ -17,6 +17,7 @@ import {
 function profile(id: string, partial: Partial<LaunchProfile> = {}): LaunchProfile {
   return {
     id,
+    agent: 'claude-code',
     name: `Profile ${id}`,
     model: null,
     effort: null,
@@ -25,6 +26,11 @@ function profile(id: string, partial: Partial<LaunchProfile> = {}): LaunchProfil
     extraArgs: [],
     ...partial,
   };
+}
+
+/** What the store file holds: Claude Code profiles leave the agent out. */
+function stored(item: LaunchProfile): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(item).filter(([key]) => key !== 'agent'));
 }
 
 describe('profiles', () => {
@@ -77,8 +83,24 @@ describe('profiles', () => {
       });
       expect(await listProfiles(store)).toStrictEqual({ profiles: [first, second], error: null });
       expect(await readFile(store, 'utf8')).toBe(
-        `${JSON.stringify({ version: 1, profiles: [first, second] }, null, 2)}\n`,
+        `${JSON.stringify({ version: 1, profiles: [first, second].map((item) => stored(item)) }, null, 2)}\n`,
       );
+    });
+
+    it('reads a profile saved without an agent as Claude Code', async () => {
+      await mkdir(path.dirname(store), { recursive: true });
+      const old = stored(profile('a'));
+      await writeFile(store, JSON.stringify({ version: 1, profiles: [old] }));
+      expect(await listProfiles(store)).toStrictEqual({ profiles: [profile('a')], error: null });
+    });
+
+    it('keeps the agent and backend of a profile for another agent', async () => {
+      const codex = profile('c', { agent: 'codex', backend: 'boisestate' });
+      expect(await saveProfile(store, codex)).toStrictEqual({ ok: true, profiles: [codex] });
+      expect(await listProfiles(store)).toStrictEqual({ profiles: [codex], error: null });
+      const file = await readFile(store, 'utf8');
+      expect(file).toContain('"agent": "codex"');
+      expect(file).toContain('"backend": "boisestate"');
     });
 
     it('replaces a profile with the same id in place', async () => {
@@ -100,6 +122,8 @@ describe('profiles', () => {
       ['an empty model', { ...profile('a'), model: '' }],
       ['an empty effort', { ...profile('a'), effort: '' }],
       ['an unknown field', { ...profile('a'), secret: 'x' }],
+      ['an empty agent', { ...profile('a'), agent: '' }],
+      ['an empty backend', { ...profile('a'), backend: '' }],
       ['a non-object', 'profile'],
     ])('rejects %s', async (_label, raw) => {
       const result = await saveProfile(store, raw);

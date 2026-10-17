@@ -4,6 +4,7 @@ import { z } from 'zod';
 
 import type { LaunchProfile, LaunchSpec, PermissionMode } from '../../shared/model.js';
 
+import { parsePermissionMode } from './events.js';
 import type { EffortLevel, SdkPermissionMode } from './sdk-types.js';
 
 const effortSchema = z.enum(['low', 'medium', 'high', 'xhigh', 'max']);
@@ -26,6 +27,18 @@ export function toEffortLevel(value: string | null): EffortLevel | null {
     throw new Error(`Unknown effort level "${value}"`);
   }
   return parsed.data;
+}
+
+/** Profiles hold any agent's mode id, so a Claude run checks it is one of Claude's. */
+export function toPermissionMode(value: string | null): PermissionMode | null {
+  if (value === null) {
+    return null;
+  }
+  const mode = parsePermissionMode(value);
+  if (mode === null) {
+    throw new Error(`Unknown permission mode "${value}"`);
+  }
+  return mode;
 }
 
 /** Overlord's `manual` mode is what the SDK calls `default`: every tool asks. */
@@ -97,7 +110,7 @@ export function sessionSettings(
   return {
     model: profile?.model ?? null,
     effort: toEffortLevel(profile?.effort ?? null),
-    permissionMode: profile?.permissionMode ?? null,
+    permissionMode: toPermissionMode(profile?.permissionMode ?? null),
     env: mergeEnv(baseEnv, profile?.env ?? {}),
     extraArgs: parseExtraArgs(profile?.extraArgs ?? []),
     maxBudgetUsd: spec.maxBudgetUsd,

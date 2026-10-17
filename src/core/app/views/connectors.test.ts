@@ -80,6 +80,7 @@ describe('the Connectors view', () => {
       type: 'state',
       view: 'connectors',
       state,
+      agents: rt.caches.agents.peek(),
     });
   });
 

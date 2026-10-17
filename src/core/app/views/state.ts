@@ -3,7 +3,7 @@
 
 import type {
   AgentDetailState,
-  HostToWebview,
+  ViewStateMessage,
   LauncherState,
   ViewId,
 } from '../../../shared/protocol.js';
@@ -52,7 +52,7 @@ function isSessionView(view: ViewId): view is SessionView {
 }
 
 /** Views about one session or agent, picked by the panel params. */
-function sessionStateFor(rt: Runtime, view: SessionView, params: PanelParams): HostToWebview {
+function sessionStateFor(rt: Runtime, view: SessionView, params: PanelParams): ViewStateMessage {
   switch (view) {
     case 'agent': {
       return { type: 'state', view, state: buildAgent(rt, params) };
@@ -90,7 +90,7 @@ function isReportView(view: ViewId): view is ReportView {
 }
 
 /** The Global views that report on history, setup and live load rather than one session. */
-function reportStateFor(rt: Runtime, view: ReportView): HostToWebview {
+function reportStateFor(rt: Runtime, view: ReportView): ViewStateMessage {
   switch (view) {
     case 'usage': {
       return { type: 'state', view, state: buildUsage(rt) };
@@ -116,7 +116,7 @@ function reportStateFor(rt: Runtime, view: ReportView): HostToWebview {
   }
 }
 
-export function stateFor(rt: Runtime, view: ViewId, params: PanelParams): HostToWebview {
+export function stateFor(rt: Runtime, view: ViewId, params: PanelParams): ViewStateMessage {
   if (isSessionView(view)) {
     return sessionStateFor(rt, view, params);
   }

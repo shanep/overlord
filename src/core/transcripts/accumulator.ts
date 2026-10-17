@@ -1,6 +1,7 @@
 // Turns the records of one session (main thread plus subagents) into the
 // shared model. Feed it records in file order; ask for snapshots any time.
 
+import { CLAUDE_CODE } from '../../shared/agents.js';
 import type {
   AgentNode,
   ApiRequest,
@@ -245,6 +246,7 @@ export class SessionAccumulator {
     }
     return {
       id: this.sessionId,
+      agent: CLAUDE_CODE,
       surface: surfaceFor(this.fields.entrypoint),
       title: this.title(),
       cwd: this.fields.cwd ?? '',

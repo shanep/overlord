@@ -29,6 +29,8 @@ describe('profile drafts', () => {
     const profile = fastProfile();
     const draft = toDraft(profile);
     expect(draft).toStrictEqual({
+      agent: 'claude-code',
+      backend: '',
       name: 'Fast',
       model: 'claude-sonnet-4-6',
       effort: 'low',
@@ -42,6 +44,8 @@ describe('profile drafts', () => {
   it('maps empty fields to null and an unknown mode to none', () => {
     const blank = blankProfile('p9');
     expect(toDraft(blank)).toStrictEqual({
+      agent: 'claude-code',
+      backend: '',
       name: '',
       model: '',
       effort: '',
@@ -79,6 +83,7 @@ describe('ProfilesEditor', () => {
         profile: {
           id: 'p1',
           name: 'Quick',
+          agent: 'claude-code',
           model: 'claude-sonnet-4-6',
           effort: null,
           permissionMode: 'plan',

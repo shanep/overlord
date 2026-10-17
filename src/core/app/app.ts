@@ -319,7 +319,7 @@ export class OverlordApp {
   }
 
   stateFor(view: ViewId, params: PanelParams): HostToWebview {
-    return stateFor(this.rt, view, params);
+    return { ...stateFor(this.rt, view, params), agents: this.rt.caches.agents.value };
   }
 
   onChange(listener: () => void): () => void {

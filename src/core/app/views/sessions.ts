@@ -1,6 +1,7 @@
 // The all-sessions view: every surface, plus CLI transcripts on disk and the
 // claude.ai export the user imported.
 
+import { CLAUDE_CODE } from '../../../shared/agents.js';
 import type { SessionSummary } from '../../../shared/model.js';
 import type { SessionsState, SurfaceSession } from '../../../shared/protocol.js';
 import type { ClaudePaths } from '../../paths.js';
@@ -69,6 +70,7 @@ export function transcriptRow(
   const surface = known?.surface ?? 'cli';
   return {
     id: info.sessionId,
+    agent: known?.agent ?? CLAUDE_CODE,
     surface,
     title: known?.title ?? peek.title ?? `Session ${info.sessionId.slice(0, 8)}`,
     cwd: known?.cwd ?? peek.cwd,

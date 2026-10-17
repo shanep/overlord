@@ -114,7 +114,7 @@ window.acquireVsCodeApi = () => ({
   postMessage: async (message) => {
     if (message.type !== 'ready') return;
     const state = await (await fetch('./state.json')).json();
-    window.postMessage({ type: 'state', view: ${JSON.stringify(view)}, state }, '*');
+    window.postMessage({ type: 'state', view: ${JSON.stringify(view)}, state, agents: [] }, '*');
   },
 });
 const clicks = ${JSON.stringify(clicks)};

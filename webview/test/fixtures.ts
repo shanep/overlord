@@ -21,6 +21,7 @@ export function usage(input: number, output: number, cacheRead = 0, cacheCreatio
 
 export function session(overrides: Partial<SessionSummary> & { id: string }): SessionSummary {
   return {
+    agent: 'claude-code',
     surface: 'cli',
     title: `Session ${overrides.id}`,
     cwd: `/Users/dev/repos/${overrides.id}`,
@@ -69,6 +70,7 @@ export function agent(
 
 export const permission: PermissionRequest = {
   id: 'perm-1',
+  agent: 'claude-code',
   sessionId: 's1',
   agentId: 's1',
   toolName: 'Bash',

@@ -32,6 +32,7 @@ function spec(prompt: string, overrides: Partial<LaunchSpec> = {}): LaunchSpec {
 
 const PROFILE: LaunchProfile = {
   id: 'p1',
+  agent: 'claude-code',
   name: 'Opus',
   model: 'opus',
   effort: 'max',

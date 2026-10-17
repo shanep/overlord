@@ -6,6 +6,7 @@ import path from 'node:path';
 
 import { z } from 'zod';
 
+import { CLAUDE_CODE } from '../../shared/agents.js';
 import type { SurfaceSession } from '../../shared/protocol.js';
 import { encodeProjectDir } from '../paths.js';
 import type { ClaudePaths } from '../paths.js';
@@ -119,6 +120,7 @@ export async function readDesktopCodeSessions(
 export function desktopCodeToSurface(session: DesktopCodeSession): SurfaceSession {
   return {
     id: session.cliSessionId ?? session.desktopId,
+    agent: CLAUDE_CODE,
     surface: 'desktop-code',
     title: pickTitle(session.title, session.cwd, 'Desktop session'),
     cwd: session.cwd,

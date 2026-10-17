@@ -17,6 +17,7 @@ import { DESKTOP, makeScratchHome } from './test-helpers/scratch-home.js';
 function row(overrides: Partial<SurfaceSession>): SurfaceSession {
   return {
     id: 'id',
+    agent: 'claude-code',
     surface: 'cli',
     title: 'title',
     cwd: null,
@@ -67,6 +68,7 @@ describe('liveToSurface', () => {
   it('builds a CLI row with local handoffs', () => {
     expect(liveToSurface(live({ name: 'named' }))).toStrictEqual({
       id: 's1',
+      agent: 'claude-code',
       surface: 'cli',
       title: 'named',
       cwd: '/w/repo',
@@ -225,6 +227,7 @@ describe('listAllSessions', () => {
     const desk = result.sessions[0];
     expect(desk).toStrictEqual({
       id: 'cli-desk',
+      agent: 'claude-code',
       surface: 'desktop-code',
       title: 'Desk title',
       cwd: '/w/desk',

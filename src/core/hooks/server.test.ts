@@ -779,6 +779,7 @@ describe('HookServer', () => {
     await waitFor(() => requested.length === 1);
     expect(requested[0]).toStrictEqual({
       id: 'perm-1',
+      agent: 'claude-code',
       sessionId: 'sess',
       agentId: 'a1',
       toolName: 'Bash',

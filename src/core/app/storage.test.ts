@@ -94,6 +94,7 @@ describe('claude.ai import file', () => {
       sessions: [
         {
           id: 'c1',
+          agent: 'claude-code',
           surface: 'claude-ai',
           title: 'Chat',
           cwd: '/ignored',
@@ -113,6 +114,7 @@ describe('claude.ai import file', () => {
       sessions: [
         {
           id: 'c1',
+          agent: 'claude-code',
           title: 'Chat',
           updatedAt: 7,
           surface: 'claude-ai',

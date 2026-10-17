@@ -29,6 +29,7 @@ const NOW = 1_000_000_000_000;
 function session(id: string, overrides: Partial<SessionSummary> = {}): SessionSummary {
   return {
     id,
+    agent: 'claude-code',
     surface: 'cli',
     title: `title ${id}`,
     cwd: '/work',
@@ -109,6 +110,7 @@ function tool(id: string, overrides: Partial<ToolCall> = {}): ToolCall {
 function permission(id: string, overrides: Partial<PermissionRequest> = {}): PermissionRequest {
   return {
     id,
+    agent: 'claude-code',
     sessionId: 's1',
     agentId: 's1',
     toolName: 'Bash',

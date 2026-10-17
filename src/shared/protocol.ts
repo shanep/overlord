@@ -4,6 +4,7 @@
 // `action` messages for user intent.
 
 import type { ActivityState } from './activity.js';
+import type { AgentId, AgentInfo } from './agents.js';
 import type { CatalogKind, LibraryState } from './catalog.js';
 import type { ConnectorsState } from './connectors.js';
 import type { HealthLevel, SessionHealth } from './health.js';
@@ -54,10 +55,19 @@ export const VIEW_IDS = [
 
 export type ViewId = (typeof VIEW_IDS)[number];
 
+/** One usage limit window, such as Claude's 5 hour one. */
+interface RateLimitWindow {
+  readonly label: string;
+  readonly usedPct: number | null;
+  readonly resetsAt: number | null;
+}
+
 export interface RateLimits {
   readonly fiveHourPct: number | null;
   readonly sevenDayPct: number | null;
   readonly resetsAt: number | null;
+  /** Every window the agent reports. Optional until the store fills it in, so read the two fields above for Claude. */
+  readonly windows?: readonly RateLimitWindow[];
 }
 
 export interface ProjectSummary {
@@ -200,6 +210,7 @@ export interface LauncherState {
 
 export interface SurfaceSession {
   readonly id: string;
+  readonly agent: AgentId;
   readonly surface: SessionSummary['surface'];
   readonly title: string;
   readonly cwd: string | null;
@@ -369,13 +380,19 @@ interface ViewStateMap {
   readonly agents: LibraryState;
 }
 
-export type HostToWebview = {
+/** One view's state, before the host adds what every view gets. */
+export type ViewStateMessage = {
   readonly [V in ViewId]: {
     readonly type: 'state';
     readonly view: V;
     readonly state: ViewStateMap[V];
   };
 }[ViewId];
+
+export type HostToWebview = ViewStateMessage & {
+  /** Every agent Overlord knows, installed or not. */
+  readonly agents: readonly AgentInfo[];
+};
 
 export type WebviewAction =
   | { readonly type: 'openSession'; readonly sessionId: string }
@@ -448,7 +465,7 @@ export type WebviewAction =
       readonly values: Readonly<Record<string, string>>;
     }
   | { readonly type: 'setInboundPolicy'; readonly value: string | null }
-  | { readonly type: 'newSession' }
+  | { readonly type: 'newSession'; readonly agent?: AgentId }
   | { readonly type: 'newBridgeChat' }
   | { readonly type: 'landWorktree'; readonly id: string }
   | { readonly type: 'discardWorktree'; readonly id: string }

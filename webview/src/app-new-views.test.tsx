@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { CatalogKind, LibraryState } from '../../src/shared/catalog.js';
 import { EMPTY_REGISTRY } from '../../src/shared/connectors.js';
-import type { HostToWebview } from '../../src/shared/protocol.js';
+import type { HostToWebview, ViewStateMessage } from '../../src/shared/protocol.js';
 import { EMPTY_LIMIT } from '../../src/shared/tuning.js';
 import { NOW } from '../test/fixtures.js';
 import { FakeApi } from '../test/render.js';
@@ -31,7 +31,7 @@ function library(kind: CatalogKind): LibraryState {
   };
 }
 
-const views: readonly HostToWebview[] = [
+const views: readonly ViewStateMessage[] = [
   {
     type: 'state',
     view: 'reputation',
@@ -119,19 +119,18 @@ const views: readonly HostToWebview[] = [
 ];
 
 describe('ViewSwitch for the newer views', () => {
-  it.each(views.map((message): [string, HostToWebview] => [message.view, message]))(
-    'renders the %s view',
-    (_view, message) => {
-      const { container } = render(
-        <VsCodeProvider api={new FakeApi()}>
-          <NowProvider now={NOW}>
-            <main>
-              <ViewSwitch message={message} />
-            </main>
-          </NowProvider>
-        </VsCodeProvider>,
-      );
-      expect(container.querySelector('section, [role="status"]')).not.toBeNull();
-    },
-  );
+  it.each(
+    views.map((message): [string, HostToWebview] => [message.view, { ...message, agents: [] }]),
+  )('renders the %s view', (_view, message) => {
+    const { container } = render(
+      <VsCodeProvider api={new FakeApi()}>
+        <NowProvider now={NOW}>
+          <main>
+            <ViewSwitch message={message} />
+          </main>
+        </NowProvider>
+      </VsCodeProvider>,
+    );
+    expect(container.querySelector('section, [role="status"]')).not.toBeNull();
+  });
 });

@@ -114,6 +114,7 @@ describe('coworkToSurface', () => {
   it('builds a Cowork row that can open in Desktop', () => {
     expect(coworkToSurface(cowork({ archived: true }))).toStrictEqual({
       id: 'local_c',
+      agent: 'claude-code',
       surface: 'cowork',
       title: 'Plan a trip',
       cwd: '/sessions/vm-name',

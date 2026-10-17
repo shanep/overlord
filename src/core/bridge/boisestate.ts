@@ -6,6 +6,7 @@
 
 import { z } from 'zod';
 
+import { CLAUDE_CODE } from '../../shared/agents.js';
 import type { LaunchProfile } from '../../shared/model.js';
 
 /** The ANTHROPIC_BASE_URL value a profile uses to say "route me through the bridge". */
@@ -27,6 +28,7 @@ const BRIDGE_MODEL = 'claude-opus-5-5';
 export const BOISESTATE_PROFILE: LaunchProfile = {
   id: 'boisestate',
   name: 'Boise State (Opus 5.5)',
+  agent: CLAUDE_CODE,
   model: BRIDGE_MODEL,
   effort: null,
   permissionMode: null,

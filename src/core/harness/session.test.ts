@@ -239,6 +239,7 @@ describe('SdkSession permissions', () => {
     );
     const expected: PermissionRequest = {
       id: 'req-1',
+      agent: 'claude-code',
       sessionId: CONFIG.sessionId ?? '',
       agentId: CONFIG.sessionId ?? '',
       toolName: 'Bash',

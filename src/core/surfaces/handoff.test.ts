@@ -17,6 +17,7 @@ import {
 function session(surface: Surface, overrides: Partial<SurfaceSession> = {}): SurfaceSession {
   return {
     id: 'abc-123',
+    agent: 'claude-code',
     surface,
     title: 'Fix the parser',
     cwd: '/repo',

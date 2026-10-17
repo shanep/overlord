@@ -23,6 +23,7 @@ function spec(prompt: string, profileId: string | null): LaunchSpec {
 
 const opus: LaunchProfile = {
   id: 'opus',
+  agent: 'claude-code',
   name: 'Opus',
   model: 'claude-opus-4-6[1m]',
   effort: null,

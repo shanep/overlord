@@ -141,6 +141,7 @@ export const sessionsState: SessionsState = {
   sessions: [
     {
       id: 'x1',
+      agent: 'claude-code',
       surface: 'cli',
       title: 'Refactor parser',
       cwd: '/repo',
@@ -150,6 +151,7 @@ export const sessionsState: SessionsState = {
     },
     {
       id: 'x2',
+      agent: 'claude-code',
       surface: 'cloud',
       title: 'Cloud fix',
       cwd: null,
@@ -159,6 +161,7 @@ export const sessionsState: SessionsState = {
     },
     {
       id: 'x3',
+      agent: 'claude-code',
       surface: 'claude-ai',
       title: 'Chat about tests',
       cwd: null,

@@ -1,4 +1,91 @@
 {
+  "agents": [
+    {
+      "capabilities": {
+        "approvals": true,
+        "background": true,
+        "cacheReads": true,
+        "cacheWrites": true,
+        "contextInspector": true,
+        "costUsd": true,
+        "fork": true,
+        "handoffs": [
+          "resume-local",
+          "open-desktop",
+          "teleport-local",
+          "remote-control"
+        ],
+        "hooks": true,
+        "interrupt": true,
+        "launch": true,
+        "liveModelChange": true,
+        "livePermissionMode": true,
+        "messaging": true,
+        "resume": true,
+        "subagents": true,
+        "terminal": true
+      },
+      "effortLevels": [
+        {
+          "id": "low",
+          "label": "Low"
+        },
+        {
+          "id": "medium",
+          "label": "Medium"
+        },
+        {
+          "id": "high",
+          "label": "High"
+        },
+        {
+          "id": "xhigh",
+          "label": "Extra high"
+        },
+        {
+          "id": "max",
+          "label": "Max"
+        }
+      ],
+      "icon": "sparkle",
+      "id": "claude-code",
+      "installed": false,
+      "name": "Claude Code",
+      "permissionModes": [
+        {
+          "id": "default",
+          "label": "Default"
+        },
+        {
+          "id": "acceptEdits",
+          "label": "Accept edits"
+        },
+        {
+          "id": "plan",
+          "label": "Plan"
+        },
+        {
+          "id": "auto",
+          "label": "Auto"
+        },
+        {
+          "id": "dontAsk",
+          "label": "Don't ask"
+        },
+        {
+          "id": "bypassPermissions",
+          "label": "Bypass permissions",
+          "risky": true
+        },
+        {
+          "id": "manual",
+          "label": "Manual"
+        }
+      ],
+      "short": "Claude",
+      "version": null
+    }
+  ],
   "state": {
     "activeSessionId": null,
     "activeVersion": 0,
@@ -100,6 +187,7 @@
     },
     "sessions": [
       {
+        "agent": "claude-code",
         "agentCount": 0,
         "contextFill": 0.0029,
         "costUsd": 0.0043,
@@ -129,6 +217,7 @@
         "version": "2.1.301"
       },
       {
+        "agent": "claude-code",
         "agentCount": 1,
         "contextFill": 0.0045,
         "costUsd": 0.01704,
