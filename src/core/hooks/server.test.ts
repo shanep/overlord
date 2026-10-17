@@ -323,6 +323,43 @@ describe('HookServer', () => {
       });
     });
 
+    it("keeps the adviser's systemMessage so the user sees it", async () => {
+      const outputs: (Readonly<Record<string, unknown>> | null)[] = [
+        {
+          hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: 'check' },
+          systemMessage: 'on screen',
+        },
+        { systemMessage: 'only on screen' },
+      ];
+      await startServer({
+        sessionContext: () => 'check the connectors',
+        advise: () => outputs.shift() ?? null,
+      });
+      const opened = await client();
+      opened.send('m1', start);
+      expect(await opened.next()).toStrictEqual({
+        id: 'm1',
+        output: {
+          hookSpecificOutput: {
+            hookEventName: 'SessionStart',
+            additionalContext: 'check the connectors\n\ncheck',
+          },
+          systemMessage: 'on screen',
+        },
+      });
+      opened.send('m2', start);
+      expect(await opened.next()).toStrictEqual({
+        id: 'm2',
+        output: {
+          hookSpecificOutput: {
+            hookEventName: 'SessionStart',
+            additionalContext: 'check the connectors',
+          },
+          systemMessage: 'only on screen',
+        },
+      });
+    });
+
     it('uses the adviser alone when there is no session note', async () => {
       const outputs: (Readonly<Record<string, unknown>> | null)[] = [
         { hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: 'peers' } },

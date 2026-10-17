@@ -27,6 +27,7 @@ import {
   toAgentNode,
   toInstructionLoaded,
   toPermissionRequest,
+  withSystemMessage,
 } from './mapping.js';
 import type {
   KnownPayload,
@@ -280,7 +281,8 @@ export class HookServer {
   /**
    * What a hook prints: a deny rule's answer on PreToolUse, else the
    * adviser's. SessionStart joins the session note and the adviser's note
-   * into one, since a hook prints a single answer.
+   * into one, since a hook prints a single answer, and keeps the adviser's
+   * systemMessage, which is what the user sees on screen.
    */
   private outputFor(payload: KnownPayload): HookOutput | null {
     const denied = payload.hook_event_name === 'PreToolUse' ? this.preToolDeny(payload) : null;
@@ -294,7 +296,12 @@ export class HookServer {
     const notes = [this.sessionNote(), additionalContextOf(advice)].filter(
       (note): note is string => note !== null,
     );
-    return notes.length === 0 ? null : sessionStartOutput(notes.join('\n\n'));
+    const joined = notes.length === 0 ? null : sessionStartOutput(notes.join('\n\n'));
+    const message: unknown = advice?.['systemMessage'];
+    return withSystemMessage(
+      joined,
+      typeof message === 'string' && message !== '' ? message : null,
+    );
   }
 
   private sessionNote(): string | null {
