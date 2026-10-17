@@ -248,7 +248,7 @@ body)` returns `ApiRequest[]`. `otel/receiver.ts` and `otlp.ts` are shared.
 - **ConfigFacet**: settings layers with file format (JSON, JSONC, TOML) and
   precedence, a knob catalog, an MCP store (read the file directly, add
   through the agent's CLI when it has one), skill and agent folders with
-  their frontmatter schemas.
+  their frontmatter schemas. TOML files follow the rule in the next section.
 - **ModelFacet**: `contextWindow(model, observed?)`, `price(model)`,
   `defaultModel`. Replaces the `claude-*` regex in `shared/model.ts:44` and
   the Anthropic-only table in `transcripts/pricing.ts`.
@@ -275,6 +275,45 @@ backend only work from the Launcher.
   `overlord.importClaudeAi`) because people bind keys to them. Add
   `overlord.newSession`, which asks which agent when more than one is
   installed. Change titles, not ids.
+
+### Editing Codex's config.toml
+
+Overlord never rewrites `~/.codex/config.toml` (or a project's
+`.codex/config.toml`) as a whole. It only makes small, targeted edits that
+keep everything else in the file byte for byte. Users keep comments and
+section order in that file, and the Node TOML libraries drop or reorder
+them on a round trip.
+
+In order of preference:
+
+1. **Launch overrides.** Settings for sessions Overlord starts go in as
+   `codex -c key=value` from the launch profile. The file is not touched.
+2. **Codex's own commands.** Use them where they exist (`codex mcp add`,
+   `codex mcp remove`). Codex writes its own file.
+3. **Separate files.** Hooks go in `~/.codex/hooks.json`, not a `[hooks]`
+   table.
+4. **Targeted edits.** For anything left, such as `[otel]` (Codex reads
+   telemetry only from the user `config.toml`) or a knob saved from the
+   Knobs view for terminal sessions, add or replace one key or one
+   `[section]` block with a line-level edit.
+
+The targeted editor lives in `src/core/knobs/toml-edit.ts` (owned by E2)
+and works like the JSON writer in `knobs/write.ts`:
+
+- It parses the file with `smol-toml` first to find the key or section and
+  to refuse a file that does not parse.
+- It changes only the lines of that key or block and leaves every other
+  byte alone, comments included.
+- It writes a `.bak` copy and swaps the file in atomically
+  (`knobs/atomic-file.ts`).
+- It parses the result again and checks that only the intended key changed,
+  and puts the backup back if anything else moved.
+- It refuses keys inside inline tables or arrays of tables. Those get shown
+  as read-only with a "set it with `-c` or edit the file" note.
+
+Tests run it over real `config.toml` files with comments, blank lines,
+dotted keys and quoted keys, and assert that the diff is only the edited
+lines.
 
 ## Rules for every worker
 
@@ -402,10 +441,11 @@ Notes per workstream:
   keeps checking `~/.claude/shims`, since those are machine-wide.
 - **E2.** One catalog per agent: `catalog.generated.json` becomes
   `catalogs/claude-code.json` and `generate-catalog.mjs` takes per-agent
-  sources and parsers. Layers and precedence come from the facet. TOML is
-  read-only for now (add `smol-toml`). Codex knobs apply as `-c key=value`
-  launch overrides in profiles, so we never rewrite a user's `config.toml`.
-  The profile schema validates `permissionMode` and `effort` against the
+  sources and parsers. Layers and precedence come from the facet. E2 owns
+  `knobs/toml-edit.ts` and the TOML rule under Target design: launch
+  profiles set Codex knobs with `-c key=value`, and saving a knob for
+  terminal sessions goes through the targeted editor. Build the editor early,
+  since D and N3 need it for `[otel]`. The profile schema validates `permissionMode` and `effort` against the
   chosen agent's lists.
 - **E3.** List servers by reading each agent's MCP file directly instead of
   scraping `claude mcp list`. Add through the agent's own CLI where it has
@@ -421,7 +461,9 @@ Notes per workstream:
   every installed agent that reads skills.
 - **E5.** Lowest priority. Namespace the config repo by agent: keep
   `global/` as Claude so existing repos still apply, add `agents/<id>/` for
-  the rest. Sync of TOML waits for a TOML writer.
+  the rest. Applying synced Codex settings goes key by key through
+  `knobs/toml-edit.ts`. Sync never copies a whole `config.toml` over the
+  user's file.
 - **F.** `contextWindow` and pricing move to each adapter's model facet, with
   the shared function calling the right one. Health, tuning and the Fleet
   show a dash, not 0%, when `cacheReads` is false, and a dash for cost when
@@ -502,7 +544,10 @@ Per agent notes:
   turn and reports rate limits. The observer reads rollout files, which are
   undocumented, so it needs the version badge too. Codex mints its own
   thread id, so the runtime reports the id after `thread.started` and the
-  Fleet must accept a session whose id arrives late. Config is TOML.
+  Fleet must accept a session whose id arrives late. Config is TOML and
+  follows the rule under Target design: profile settings as `-c` overrides,
+  MCP through `codex mcp add`, hooks in `~/.codex/hooks.json`, and only the
+  `[otel]` block through the targeted editor.
 - **N4 Gemini.** Runtime is N1 with `gemini --acp`. The observer must handle
   both the older whole-file JSON and the newer JSONL chats, and work out the
   project hash (sha256 of the path did not match the folders on this Mac).
@@ -553,9 +598,10 @@ These have defaults in the plan, so work can start without an answer.
    milestone 3, and look at `agy` once it has a machine-readable mode.
 2. **Which agent comes first?** Default: Copilot, since it is installed and
    ships its own event schema. Codex second.
-3. **Should Overlord ever write `config.toml`?** Default: no. Codex knobs go
-   in as `-c` launch overrides until we add a TOML writer that keeps
-   comments.
+
+Decided: Overlord edits `config.toml` only through small targeted edits that
+keep the rest of the file, never a full rewrite (see "Editing Codex's
+config.toml").
 
 ## Appendix A: inventory of Claude assumptions
 
