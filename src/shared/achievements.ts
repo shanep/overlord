@@ -6,7 +6,7 @@ import { RANKS, rankFor } from './reputation-ranks.js';
 import type { ReputationSummary } from './reputation.js';
 
 /** The average a day it takes to be a token maxxer. */
-export const TOKEN_MAXXER_PER_DAY = 100_000_000;
+const TOKEN_MAXXER_PER_DAY = 100_000_000;
 
 export interface AchievementRule {
   /** Stable, since uploads and the leaderboard store it. */
