@@ -26,6 +26,17 @@ describe('groupItems', () => {
     expect(groups).toHaveLength(1);
     expect(first(groups).items.map((item) => item.id)).toStrictEqual(['github']);
   });
+
+  it('keeps items whose name, path or link target holds the search text, ignoring case', () => {
+    const names = (query: string): string[] =>
+      groupItems(configState.items, 'all', query).flatMap((group) =>
+        group.items.map((item) => item.name),
+      );
+    expect(names('VOICE')).toStrictEqual(['writing-voice']);
+    expect(names(' edutools ')).toStrictEqual(['canvas']);
+    expect(names('no such item')).toStrictEqual([]);
+    expect(names('')).toHaveLength(configState.items.length);
+  });
 });
 
 describe('syncLine', () => {
@@ -69,6 +80,14 @@ describe('ConfigView', () => {
     expect(getByText('Badge legend')).toBeDefined();
     expect(getByText('Value lives in the OS keychain. The repo has a placeholder.')).toBeDefined();
     await expectAccessible(container);
+  });
+
+  it('narrows the list to what the search matches and counts what is shown', async () => {
+    const { getByRole, getByText, queryByText } = renderView(<ConfigView state={configState} />);
+    await userEvent.type(getByRole('searchbox', { name: 'Search' }), 'canvas');
+    expect(getByText('1 of 6 items')).toBeDefined();
+    expect(getByText('canvas')).toBeDefined();
+    expect(queryByText('writing-voice')).toBeNull();
   });
 
   it('posts sync, open and adopt actions', async () => {
