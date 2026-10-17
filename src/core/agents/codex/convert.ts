@@ -2,15 +2,16 @@
 // exec scripts) into the shared model's.
 // cspell:words rollouts
 
+import type { RateLimitWindow } from '../../../shared/agents.js';
+import { CODEX } from '../../../shared/agents.js';
 import type { FeedItem, TokenUsage, ToolCall } from '../../../shared/model.js';
 import { plainText } from '../../../shared/plain-text.js';
-import type { RateLimits } from '../../../shared/protocol.js';
 import { preview } from '../../transcripts/text.js';
 
 import type { CodexItem, CodexRateLimits, CodexRateWindow, CodexUsage } from './records.js';
 import { partsText, TESTED_CODEX_VERSIONS } from './records.js';
 
-export type RateLimitWindow = NonNullable<RateLimits['windows']>[number];
+export type { RateLimitWindow } from '../../../shared/agents.js';
 
 const MINUTES_PER_HOUR = 60;
 const MINUTES_PER_DAY = 1440;
@@ -40,8 +41,10 @@ function windowLabel(minutes: number | null): string {
   return `${String(minutes)} minute`;
 }
 
-function toWindow(window: CodexRateWindow): RateLimitWindow {
+function toWindow(id: string, window: CodexRateWindow): RateLimitWindow {
   return {
+    agent: CODEX,
+    id,
     label: windowLabel(window.window_minutes),
     usedPct: window.used_percent,
     // Codex writes epoch seconds.
@@ -51,9 +54,11 @@ function toWindow(window: CodexRateWindow): RateLimitWindow {
 
 /** Codex's primary and secondary windows, in that order, as the shared rate limit windows. */
 export function rateLimitWindows(limits: CodexRateLimits): RateLimitWindow[] {
-  return [limits.primary, limits.secondary].flatMap((window) =>
-    window === null ? [] : [toWindow(window)],
-  );
+  const windows = [
+    ['primary', limits.primary],
+    ['secondary', limits.secondary],
+  ] as const;
+  return windows.flatMap(([id, window]) => (window === null ? [] : [toWindow(id, window)]));
 }
 
 /** The script a shell wrapper runs, like `/bin/zsh -lc "cat notes.txt"`, else the argv joined. */

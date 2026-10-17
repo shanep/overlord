@@ -160,7 +160,13 @@ describe('CodexRecords', () => {
   it('keeps the newest rate limit window and teaches the models facet the window', () => {
     const { records } = replay(PLAIN);
     expect(records.rateLimits()).toStrictEqual([
-      { label: '30 day', usedPct: 0, resetsAt: 1_794_802_004_000 },
+      {
+        agent: 'codex',
+        id: 'primary',
+        label: '30 day',
+        usedPct: 0,
+        resetsAt: 1_794_802_004_000,
+      },
     ]);
     expect(codexModels.contextWindow('gpt-6-luna')).toBe(258_400);
     expect(codexModels.contextWindow('gpt-6-luna', 300_000)).toBe(300_000);
