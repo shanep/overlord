@@ -1,5 +1,7 @@
 // The rules that decide whether one candidate loads. Each check returns a
-// skip or null, and the first skip wins, so the order below matters.
+// skip or null, and the first skip wins, so the order below matters. The
+// driver (judgeWith) and the first few checks serve every agent; the rest
+// are Claude Code's, which its instruction policy lists in CLAUDE_GATES.
 
 import type { LoadReason, MemoryTier, SettingsLayer, SkipReasonCode } from '../../shared/model.js';
 
@@ -11,6 +13,7 @@ import type {
   Candidate,
   ContextFlags,
   ContextSettingsView,
+  InstructionNames,
   SettingSource,
 } from './types.js';
 
@@ -18,6 +21,8 @@ import type {
 export const MAX_INSTRUCTION_BYTES = 4 * 1024 * 1024;
 
 export interface GateContext {
+  /** The agent's words for the explanations. */
+  readonly names: InstructionNames;
   readonly cwd: string;
   /** cwd and the --add-dir dirs: imports inside these are not external. */
   readonly workDirs: readonly string[];
@@ -30,6 +35,8 @@ export interface GateContext {
   readonly ancestorHasClaudeMd: boolean;
   /** Subdirectories below cwd that have one of those three files of their own. */
   readonly nestedClaudeMdDirs: ReadonlySet<string>;
+  /** Files that give way to another under the agent's precedence, by path, with why. */
+  readonly shadowed: ReadonlyMap<string, string>;
 }
 
 export interface Skip {
@@ -47,7 +54,19 @@ export interface Load {
 
 export type Verdict = Skip | Load;
 
-type Check = (candidate: Candidate, context: GateContext) => Skip | null;
+export type Check = (candidate: Candidate, context: GateContext) => Skip | null;
+
+/** An agent's checks, in the order they run. */
+export interface InstructionGates {
+  /** Checks every file runs first, imports and memory included. */
+  readonly base: readonly Check[];
+  /** Checks for files the agent finds on its own. */
+  readonly files: readonly Check[];
+  /** Checks for imported files, which already passed their parent's. */
+  readonly imports: readonly Check[];
+  /** The verdict on an auto memory file, for an agent that keeps one. */
+  readonly memory?: (candidate: Candidate, context: GateContext) => Verdict;
+}
 
 function skip(code: SkipReasonCode, detail: string): Skip {
   return { load: false, code, detail };
@@ -67,8 +86,17 @@ function isMemory(candidate: Candidate): boolean {
   return candidate.kind === 'memory-index' || candidate.kind === 'memory-topic';
 }
 
-const checkMissing: Check = (candidate) =>
+export const checkMissing: Check = (candidate) =>
   candidate.exists ? null : skip('missing', 'The file does not exist.');
+
+/** Skips a file that gives way to another one under the agent's precedence. */
+export const checkPrecedence: Check = (candidate, context) => {
+  const detail = context.shadowed.get(candidate.path);
+  if (detail === undefined) {
+    return null;
+  }
+  return skip(candidate.kind === 'agents-md' ? 'agents-md-shadowed' : 'excluded', detail);
+};
 
 const checkClaudeMdOff: Check = (candidate, context) => {
   if (envOn(context.settings.env['CLAUDE_CODE_DISABLE_CLAUDE_MDS'])) {
@@ -265,22 +293,23 @@ const checkImportShape: Check = (candidate) => {
     : null;
 };
 
-/** Checks every file runs, before the managed short cut. */
-const BASE_CHECKS: readonly Check[] = [checkMissing, checkClaudeMdOff, checkSize];
-
-/** Checks for files Claude Code finds on its own (not imports). */
-const FILE_CHECKS: readonly Check[] = [
-  checkInstructionFiles,
-  checkSettingSources,
-  checkAddDir,
-  checkOmit,
-  checkExcludes,
-  checkAgentsShadow,
-  checkExternal,
-];
-
-/** Imports already passed their parent's checks, so only these apply. */
-const IMPORT_CHECKS: readonly Check[] = [checkImportShape, checkExcludes, checkExternal];
+/** Claude Code's checks, which its instruction policy runs. */
+export const CLAUDE_GATES: InstructionGates = {
+  base: [checkMissing, checkClaudeMdOff, checkSize],
+  // Files Claude Code finds on its own (not imports).
+  files: [
+    checkInstructionFiles,
+    checkSettingSources,
+    checkAddDir,
+    checkOmit,
+    checkExcludes,
+    checkAgentsShadow,
+    checkExternal,
+  ],
+  // Imports already passed their parent's checks, so only these apply.
+  imports: [checkImportShape, checkExcludes, checkExternal],
+  memory: memoryVerdict,
+};
 
 function runChecks(
   checks: readonly Check[],
@@ -300,15 +329,16 @@ function triggerVerdict(candidate: Candidate, context: GateContext): Verdict {
   const base = candidate.ownerDir;
   const under = context.touched.filter((file) => isInside(base, file));
   const where = relativePosix(context.cwd, base);
+  const { agent, globKey } = context.names;
   if (candidate.mode === 'lazy-subdir') {
     const trigger = under[0];
     return trigger === undefined
-      ? skip('lazy-not-touched', `Only loads after Claude touches a file under ${where}.`)
+      ? skip('lazy-not-touched', `Only loads after ${agent} touches a file under ${where}.`)
       : {
           load: true,
           reason: 'nested_traversal',
           triggerPath: trigger,
-          detail: `Loaded when Claude touched a file under ${where}.`,
+          detail: `Loaded when ${agent} touched a file under ${where}.`,
         };
   }
   const trigger = under.find(
@@ -317,13 +347,13 @@ function triggerVerdict(candidate: Candidate, context: GateContext): Verdict {
   return trigger === undefined
     ? skip(
         'glob-not-matched',
-        `Its paths globs (${candidate.globs.join(', ')}) have not matched a file Claude touched.`,
+        `Its ${globKey} globs (${candidate.globs.join(', ')}) have not matched a file ${agent} touched.`,
       )
     : {
         load: true,
         reason: 'path_glob_match',
         triggerPath: trigger,
-        detail: 'Loaded when a touched file matched its paths globs.',
+        detail: `Loaded when a touched file matched its ${globKey} globs.`,
       };
 }
 
@@ -342,13 +372,18 @@ function loadVerdict(candidate: Candidate, context: GateContext): Verdict {
   return { load: true, reason: 'session_start', triggerPath: null, detail: 'Loaded at launch.' };
 }
 
-export function judge(candidate: Candidate, context: GateContext): Verdict {
-  const base = runChecks(BASE_CHECKS, candidate, context);
+/** Runs an agent's checks on one candidate, then says how it loads. */
+export function judgeWith(
+  gates: InstructionGates,
+  candidate: Candidate,
+  context: GateContext,
+): Verdict {
+  const base = runChecks(gates.base, candidate, context);
   if (base !== null) {
     return base;
   }
-  if (isMemory(candidate)) {
-    return memoryVerdict(candidate, context);
+  if (isMemory(candidate) && gates.memory !== undefined) {
+    return gates.memory(candidate, context);
   }
   if (candidate.tier === 'Managed' && candidate.kind !== 'import') {
     return {
@@ -358,6 +393,11 @@ export function judge(candidate: Candidate, context: GateContext): Verdict {
       detail: 'Managed policy file, which settings cannot exclude.',
     };
   }
-  const checks = candidate.kind === 'import' ? IMPORT_CHECKS : FILE_CHECKS;
+  const checks = candidate.kind === 'import' ? gates.imports : gates.files;
   return runChecks(checks, candidate, context) ?? loadVerdict(candidate, context);
+}
+
+/** Claude Code's verdict on one candidate. */
+export function judge(candidate: Candidate, context: GateContext): Verdict {
+  return judgeWith(CLAUDE_GATES, candidate, context);
 }

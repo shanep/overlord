@@ -59,7 +59,7 @@ const HOOK_MANAGERS = [
 ];
 const LANDING_HOOKS = new Set(['pre-commit', 'pre-push', 'commit-msg', 'pre-merge-commit']);
 // Ignored files a checkout needs to run, by name: env files, local settings and secrets.
-// Claude Code's own .claude folder is left out, since it is not the app's.
+// The agent's own folder (.claude for Claude Code) is left out, since it is not the app's.
 const LOCAL_FILES = [
   /^\.env(?:$|\.)/u,
   /\.local(?:$|\.)/u,
@@ -191,12 +191,13 @@ async function localFiles(deps: ProbeDeps, repoRoot: string): Promise<string[]> 
       '--exclude-standard',
       '--directory',
     ])) ?? '';
+  const agentFolder = deps.reads === null ? null : `${deps.reads.policy.projectDir}/`;
   return ignored
     .split('\n')
     .filter(
       (file) =>
         file !== '' &&
-        !file.startsWith('.claude/') &&
+        (agentFolder === null || !file.startsWith(agentFolder)) &&
         file.split('/').length <= MARKER_DEPTH &&
         LOCAL_FILES.some((pattern) => pattern.test(path.posix.basename(file))),
     );

@@ -167,7 +167,7 @@ async function strayFindings(deps: ProbeDeps, repoRoot: string): Promise<readonl
 /** Probes the repository and returns what a new session there should hear. */
 export async function probeRepo(deps: ProbeDeps, probe: ProbeTarget): Promise<LaunchCheck> {
   const { repoRoot } = probe;
-  const instructions = await repoInstructions(deps.fs, repoRoot);
+  const instructions = await repoInstructions(deps.fs, repoRoot, deps.reads?.policy ?? null);
   const landing = await landingFindings(deps, repoRoot, instructions);
   const tools = buildTools((await git(deps, repoRoot, ['ls-files'])) ?? '');
   const groups = await Promise.all([

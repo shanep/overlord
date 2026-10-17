@@ -1,18 +1,22 @@
-// The "why or why not loaded" resolver. It rebuilds Claude Code's discovery
-// rules for one session, judges every candidate, and when the transcript says
-// what actually loaded, treats that as the truth and explains the rest.
+// The "why or why not loaded" resolver. It rebuilds the session's agent's
+// discovery rules from its instruction policy, judges every candidate, and
+// when the transcript says what actually loaded, treats that as the truth and
+// explains the rest.
 
 import { Buffer } from 'node:buffer';
 import path from 'node:path';
 
 import type { LoadedInstruction, SkippedCandidate } from '../../shared/model.js';
+import { agents } from '../agents/index.js';
+import type { InstructionPolicy } from '../agents/types.js';
 import { encodeProjectDir } from '../paths.js';
 
 import { collectCandidates } from './candidates.js';
-import { judge, type GateContext, type Load, type Skip, type Verdict } from './gates.js';
+import { judgeWith, type GateContext, type Load, type Skip } from './gates.js';
 import { walkImports, type ImportNode } from './imports.js';
 import { checkMemoryTruncation, type MemoryCut } from './memory.js';
 import { expandHome } from './path-tools.js';
+import { applyBudget, shadowedFiles, walkFolders, type Judged } from './policy.js';
 import { DEFAULT_SCAN_LIMITS, type Candidate, type LoadMode, type ResolveInput } from './types.js';
 
 export interface ExpectedInstruction extends LoadedInstruction {
@@ -27,14 +31,10 @@ export interface ResolvedContext {
   readonly skipped: readonly SkippedCandidate[];
   /** Observed loads the rules did not predict. */
   readonly unexplained: readonly LoadedInstruction[];
-  readonly memoryDir: string;
+  /** Claude's auto memory folder, or null for an agent without one. */
+  readonly memoryDir: string | null;
   /** The MEMORY.md cut, when the file exists. */
   readonly memory: MemoryCut | null;
-}
-
-interface Judged {
-  readonly candidate: Candidate;
-  readonly verdict: Verdict;
 }
 
 /** autoMemoryDirectory, then CLAUDE_CODE_PROJECT_DIR_NAME, then the git root's project dir. */
@@ -52,13 +52,27 @@ export function autoMemoryDir(input: ResolveInput): string {
   return path.join(input.paths.projectsDir, project, 'memory');
 }
 
-function hasOwnClaudeMd(candidate: Candidate): boolean {
-  return candidate.exists && (candidate.kind === 'claude-md' || candidate.kind === 'local-md');
+/** Files that hide others of their folder under a shadowed precedence, like CLAUDE.md. */
+function shadowing(policy: InstructionPolicy, candidates: readonly Candidate[]): Candidate[] {
+  const { precedence } = policy;
+  if (precedence.kind !== 'shadowed') {
+    return [];
+  }
+  return candidates.filter(
+    (candidate) => candidate.exists && precedence.by.includes(candidate.kind),
+  );
 }
 
-function gateContext(input: ResolveInput, candidates: readonly Candidate[]): GateContext {
-  const own = candidates.filter((candidate) => hasOwnClaudeMd(candidate));
+function gateContext(
+  input: ResolveInput,
+  policy: InstructionPolicy,
+  candidates: readonly Candidate[],
+): GateContext {
+  const own = shadowing(policy, candidates);
+  const { root } = walkFolders(policy.walk, input.cwd, input.gitRoot);
   return {
+    names: policy.names,
+    shadowed: shadowedFiles(policy, candidates, root),
     cwd: input.cwd,
     workDirs: [input.cwd, ...input.flags.addDirs],
     settings: input.settings,
@@ -111,9 +125,13 @@ function importRoots(judged: readonly Judged[]): Root[] {
 
 async function expandImports(
   input: ResolveInput,
+  policy: InstructionPolicy,
   judged: readonly Judged[],
   context: GateContext,
 ): Promise<Judged[]> {
+  if (policy.imports === null) {
+    return [];
+  }
   const roots = importRoots(judged);
   const seen = new Set(roots.map((root) => root.candidate.path));
   const out: Judged[] = [];
@@ -130,7 +148,7 @@ async function expandImports(
         continue;
       }
       const child = importCandidate(candidate, node);
-      out.push({ candidate: child, verdict: judge(child, context) });
+      out.push({ candidate: child, verdict: judgeWith(policy.gates, child, context) });
     }
   }
   return out;
@@ -229,23 +247,34 @@ function memoryCut(
   return { candidate: index, cut: checkMemoryTruncation(index.text) };
 }
 
-export async function resolveContext(input: ResolveInput): Promise<ResolvedContext> {
-  const memoryDir = autoMemoryDir(input);
+/** Runs one instruction policy for the session. */
+export async function resolveWithPolicy(
+  input: ResolveInput,
+  policy: InstructionPolicy,
+): Promise<ResolvedContext> {
+  const memoryDir = policy.autoMemory ? autoMemoryDir(input) : null;
   const candidates = await collectCandidates({
+    policy,
     fs: input.fs,
     paths: input.paths,
+    env: input.settings.env,
     cwd: input.cwd,
+    gitRoot: input.gitRoot,
     addDirs: input.flags.addDirs,
     touchedFiles: input.touchedFiles,
     memoryDir,
     scan: input.scan ?? DEFAULT_SCAN_LIMITS,
   });
-  const context = gateContext(input, candidates);
-  const judged = candidates.map((candidate): Judged => ({
-    candidate,
-    verdict: judge(candidate, context),
-  }));
-  const entries = [...judged, ...(await expandImports(input, judged, context))];
+  const context = gateContext(input, policy, candidates);
+  const judged = applyBudget(
+    policy.budget,
+    policy.names.agent,
+    candidates.map((candidate): Judged => ({
+      candidate,
+      verdict: judgeWith(policy.gates, candidate, context),
+    })),
+  );
+  const entries = [...judged, ...(await expandImports(input, policy, judged, context))];
   const memory = memoryCut(candidates);
   const built = build(entries, input.observedLoaded);
   const loadedPaths = new Set(built.expected.map((item) => item.path));
@@ -269,4 +298,22 @@ export async function resolveContext(input: ResolveInput): Promise<ResolvedConte
     memoryDir,
     memory: memory?.cut ?? null,
   };
+}
+
+/**
+ * Runs the policy of the session's agent. An agent without one gets no
+ * predictions, so what the session showed loaded stays unexplained.
+ */
+export async function resolveContext(input: ResolveInput): Promise<ResolvedContext> {
+  const policy = agents.get(input.agentId)?.instructions;
+  if (policy === undefined) {
+    return {
+      expected: [],
+      skipped: [],
+      unexplained: input.observedLoaded,
+      memoryDir: null,
+      memory: null,
+    };
+  }
+  return resolveWithPolicy(input, policy);
 }

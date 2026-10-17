@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { CLAUDE_CODE, COPILOT, type AgentId } from '../../shared/agents.js';
 import type { WorktreeSummary } from '../../shared/protocol.js';
 import { normalizeClaudeHook } from '../agents/claude/hooks.js';
 import type { NormalizedHookEvent } from '../hooks/normalized.js';
@@ -11,6 +12,7 @@ interface World {
   enabled: boolean;
   now: number;
   probes: ProbeTarget[];
+  agents: AgentId[];
   located: string[];
   fail: boolean;
   reports: string[];
@@ -28,6 +30,7 @@ function setUp(): { world: World; checker: LaunchChecker } {
     enabled: true,
     now: 1000,
     probes: [],
+    agents: [],
     located: [],
     fail: false,
     reports: [],
@@ -42,8 +45,9 @@ function setUp(): { world: World; checker: LaunchChecker } {
         REPOS.find((repo) => cwd === repo.repoRoot || cwd.startsWith(`${repo.repoRoot}/`)) ?? null
       );
     },
-    probe: async (target): Promise<LaunchCheck> => {
+    probe: async (target, agent): Promise<LaunchCheck> => {
       world.probes.push(target);
+      world.agents.push(agent);
       await Promise.resolve();
       if (world.fail) {
         throw new Error('boom');
@@ -269,5 +273,19 @@ describe('LaunchChecker failures and settings', () => {
     expect(world.probes).toHaveLength(0);
     expect(checker.noteFor(start('s1', '/repo'))).toBeNull();
     expect(world.located).toHaveLength(0);
+  });
+});
+
+describe('LaunchChecker per agent', () => {
+  it('checks a repository again for another agent, which reads its own files', async () => {
+    const { world, checker } = setUp();
+    checker.prime(PLACE);
+    await checker.idle();
+    expect(checker.noteFor(start('s1', '/wt/a'))).toContain('- checked 1');
+    const copilot: NormalizedHookEvent = { ...start('s2', '/wt/a'), agent: COPILOT };
+    expect(checker.noteFor(copilot)).toBeNull();
+    await checker.idle();
+    expect(checker.noteFor({ ...prompt('s2'), agent: COPILOT })).toContain('- checked 2');
+    expect(world.agents).toStrictEqual([CLAUDE_CODE, COPILOT]);
   });
 });

@@ -107,6 +107,7 @@ export async function resolveSnapshot(
   const touched = touchedFiles(deps.store, job.session, deps.clock());
   const observedLoaded = mergeLoaded(job.base.loaded, job.observed);
   const resolved = await resolveContext({
+    agentId: job.session.agent,
     fs: deps.fs,
     paths: deps.paths,
     cwd,

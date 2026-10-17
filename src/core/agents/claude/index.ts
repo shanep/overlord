@@ -14,6 +14,7 @@ import type { AgentAdapter, DetectInput, Detected } from '../types.js';
 import { claudeConfig } from './config.js';
 import { claudeHooks } from './hooks.js';
 import { claudeInject } from './inject.js';
+import { claudeInstructions } from './instructions.js';
 import { claudeObserverFacet } from './observer.js';
 import { claudeRuntime } from './runtime.js';
 import { claudeTelemetry } from './telemetry.js';
@@ -91,4 +92,5 @@ export const claudeCode: AgentAdapter = {
   telemetry: claudeTelemetry,
   inject: claudeInject,
   config: claudeConfig,
+  instructions: claudeInstructions,
 };

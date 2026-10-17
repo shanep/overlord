@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { claudeInstructions } from '../agents/claude/instructions.js';
 import { resolveClaudePaths } from '../paths.js';
 
 import { collectCandidates, type CandidateInput } from './candidates.js';
@@ -9,9 +10,12 @@ import { DEFAULT_SCAN_LIMITS } from './types.js';
 
 function input(tree: MemoryTree, overrides: Partial<CandidateInput> = {}): CandidateInput {
   return {
+    policy: claudeInstructions,
     fs: createMemoryFs(tree),
     paths: PATHS,
+    env: {},
     cwd: CWD,
+    gitRoot: CWD,
     addDirs: [],
     touchedFiles: [],
     memoryDir: MEMORY_DIR,

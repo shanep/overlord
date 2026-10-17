@@ -2,12 +2,16 @@ import path from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
+import { claudeInstructions } from '../agents/claude/instructions.js';
+import { codexInstructions } from '../agents/codex/instructions.js';
+import { copilotInstructions } from '../agents/copilot/instructions.js';
 import { recordingExec, ok } from '../app/test-helpers/fixtures.js';
 import type { ExecCall } from '../app/test-helpers/fixtures.js';
 import type { FileKind, FileSystem } from '../context/fs.js';
 import type { ExecResult } from '../sync/exec.js';
 import { NOT_FOUND_CODE } from '../sync/exec.js';
 
+import type { AgentReads } from './instructions.js';
 import type { Finding, ProbeDeps } from './probe.js';
 import { probeRepo } from './probe.js';
 
@@ -63,7 +67,17 @@ function answering(answers: Answers): (call: ExecCall) => ExecResult | undefined
 
 const PROTECTION = 'gh api repos/acme/app/branches/main';
 
-function deps(files: Readonly<Record<string, string>>, answers: Answers = {}): ProbeDeps {
+const CLAUDE_READS: AgentReads = {
+  policy: claudeInstructions,
+  configDir: `${HOME}/.claude`,
+  projectsDir: `${HOME}/.claude/projects`,
+};
+
+function deps(
+  files: Readonly<Record<string, string>>,
+  answers: Answers = {},
+  reads: AgentReads | null = CLAUDE_READS,
+): ProbeDeps {
   const { exec } = recordingExec(
     answering({
       'git rev-parse --path-format=absolute --git-common-dir': ok(`${REPO}/.git\n`),
@@ -75,8 +89,7 @@ function deps(files: Readonly<Record<string, string>>, answers: Answers = {}): P
     exec,
     fs: memoryFs(files),
     home: HOME,
-    userClaudeMd: `${HOME}/.claude/CLAUDE.md`,
-    projectsDir: `${HOME}/.claude/projects`,
+    reads,
     worktreeRoot: `${HOME}/.overlord/worktrees`,
     now: () => 42,
   };
@@ -90,6 +103,15 @@ async function findings(
   const check = await probeRepo(deps(files, answers), { repoRoot: REPO, target });
   expect(check.repoRoot).toBe(REPO);
   expect(check.checkedAt).toBe(42);
+  return check.findings;
+}
+
+/** The findings for sessions of the agent that reads what reads names. */
+async function forAgent(
+  reads: AgentReads | null,
+  files: Readonly<Record<string, string>>,
+): Promise<readonly Finding[]> {
+  const check = await probeRepo(deps(files, {}, reads), { repoRoot: REPO, target: 'main' });
   return check.findings;
 }
 
@@ -149,6 +171,62 @@ describe('probeRepo landing', () => {
     const [rule] = texts(list, 'info');
     expect(rule).toContain('...")');
     expect(rule?.length).toBeLessThan(170);
+  });
+
+  it('reads AGENTS.md for Claude only where no CLAUDE.md hides it', async () => {
+    const agents = { [`${REPO}/AGENTS.md`]: 'Run gh pr create when done.\n' };
+    expect(texts(await findings(agents), 'info')).toContain(
+      'Work lands as AGENTS.md:1 ("Run gh pr create when done.") says.',
+    );
+    const hidden = await findings({ ...agents, [`${REPO}/CLAUDE.md`]: '# App\n' });
+    expect(texts(hidden, 'info').some((text) => text.includes('Work lands'))).toBe(false);
+    const nested = await findings({
+      [`${REPO}/CLAUDE.md`]: '# App\n',
+      [`${REPO}/web/AGENTS.md`]: 'Push straight to main.\n',
+    });
+    expect(texts(nested, 'info')).toContain(
+      'Work lands as web/AGENTS.md:1 ("Push straight to main.") says.',
+    );
+  });
+
+  it("reads Codex's override first and its user file from its own folder", async () => {
+    const reads: AgentReads = {
+      policy: codexInstructions,
+      configDir: `${HOME}/.codex`,
+      projectsDir: `${HOME}/.claude/projects`,
+    };
+    const list = await forAgent(reads, {
+      [`${HOME}/.codex/AGENTS.md`]: 'No pull requests.\n',
+      [`${HOME}/.claude/CLAUDE.md`]: 'Open a pull request for every change.\n',
+      [`${REPO}/AGENTS.override.md`]: 'Push straight to main.\n',
+      [`${REPO}/AGENTS.md`]: 'Run gh pr create when done.\n',
+      [`${REPO}/web/AGENTS.md`]: 'Open a PR.\n',
+    });
+    expect(texts(list, 'warn')).toStrictEqual([]);
+    expect(texts(list, 'info')).toContain(
+      'Work lands as AGENTS.override.md:1 ("Push straight to main.") says.',
+    );
+    // Codex keeps no auto memory.
+    expect(texts(list, 'info').some((text) => text.includes('auto memory'))).toBe(false);
+  });
+
+  it("reads Copilot's files and none for an agent without a policy", async () => {
+    const reads: AgentReads = {
+      policy: copilotInstructions,
+      configDir: `${HOME}/.copilot`,
+      projectsDir: `${HOME}/.claude/projects`,
+    };
+    const files = {
+      [`${HOME}/.copilot/copilot-instructions.md`]: 'No pull requests.\n',
+      [`${REPO}/.github/copilot-instructions.md`]: 'Open a pull request for every change.\n',
+    };
+    expect(texts(await forAgent(reads, files), 'warn')[0]).toContain(
+      '~/.copilot/copilot-instructions.md:1 ("No pull requests."), but .github/copilot-instructions.md:1',
+    );
+    const none = await forAgent(null, files);
+    expect(none.some(({ text }) => text.includes('Work lands') || text.includes('disagree'))).toBe(
+      false,
+    );
   });
 });
 

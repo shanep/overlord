@@ -9,6 +9,7 @@
 
 import path from 'node:path';
 
+import { CLAUDE_CODE, type AgentId } from '../../shared/agents.js';
 import type { WorktreeSummary } from '../../shared/protocol.js';
 import type { NormalizedHookEvent } from '../hooks/normalized.js';
 
@@ -25,7 +26,8 @@ export interface LaunchCheckerDeps {
   readonly enabled: () => boolean;
   /** The repository holding a folder, or null when the folder is outside git. */
   readonly locate: (cwd: string) => Promise<ProbeTarget | null>;
-  readonly probe: (target: ProbeTarget) => Promise<LaunchCheck>;
+  /** Checks the repository for sessions of one agent, which reads its own instruction files. */
+  readonly probe: (target: ProbeTarget, agent: AgentId) => Promise<LaunchCheck>;
   /** Overlord's worktrees, including ones made before this window started. */
   readonly worktrees: () => readonly WorktreeSummary[];
   /** Sessions here are chats, not projects, so they get no note. */
@@ -43,26 +45,37 @@ function inside(folder: string, dir: string): boolean {
   return folder === dir || folder.startsWith(dir + path.sep);
 }
 
+/** A folder or repository for one agent, since each agent reads its own files. */
+function keyOf(agent: AgentId, folder: string): string {
+  return `${agent}\n${folder}`;
+}
+
+interface Waiting {
+  readonly cwd: string;
+  readonly agent: AgentId;
+}
+
 export class LaunchChecker {
+  /** Results by agent and repository. */
   private readonly results = new Map<string, LaunchCheck>();
   /** The repository of each folder a session started in, or null outside git. */
   private readonly located = new Map<string, ProbeTarget | null>();
-  /** Checks running, by the folder they were started for. */
+  /** Checks running, by agent and the folder they were started for. */
   private readonly jobs = new Map<string, Promise<void>>();
-  /** Probes running, by repository, so two folders of one repository share one. */
+  /** Probes running, by agent and repository, so two folders of one repository share one. */
   private readonly probes = new Map<string, Promise<LaunchCheck>>();
   /** Worktrees handed out since this window started. */
   private readonly placed = new Map<string, Placed>();
-  /** Sessions that started before their check was ready, and the folder they started in. */
-  private readonly waiting = new Map<string, string>();
+  /** Sessions that started before their check was ready, with the folder they started in. */
+  private readonly waiting = new Map<string, Waiting>();
 
   constructor(private readonly deps: LaunchCheckerDeps) {}
 
-  /** Checks the worktree's repository again, for the session about to start there. */
-  prime(worktree: Placed): void {
+  /** Checks the worktree's repository again, for the agent's session about to start there. */
+  prime(worktree: Placed, agent: AgentId = CLAUDE_CODE): void {
     this.placed.set(worktree.path, worktree);
     if (this.deps.enabled()) {
-      this.refresh(worktree.path, worktree);
+      this.refresh({ cwd: worktree.path, agent }, worktree);
     }
   }
 
@@ -78,7 +91,9 @@ export class LaunchChecker {
     }
     // Resuming or compacting a session is not a new session, so it is not told again.
     if (event.kind === 'session-start') {
-      return event.source === 'new' ? this.started(id, event.cwd ?? '') : null;
+      return event.source === 'new'
+        ? this.started(id, { cwd: event.cwd ?? '', agent: event.agent })
+        : null;
     }
     // A subagent's context goes away with it, so the note waits for the main thread.
     const later =
@@ -87,7 +102,8 @@ export class LaunchChecker {
     return later ? this.delivered(id) : null;
   }
 
-  private started(id: string, cwd: string): string | null {
+  private started(id: string, session: Waiting): string | null {
+    const { cwd, agent } = session;
     if (cwd === '' || cwd === this.deps.home) {
       return null;
     }
@@ -95,29 +111,32 @@ export class LaunchChecker {
     const location = place ?? this.located.get(cwd);
     if (location === null) {
       // The folder may have become a repository since, so look again for next time.
-      this.refresh(cwd, null);
+      this.refresh(session, null);
       return this.outsideGit(cwd);
     }
-    const result = location === undefined ? undefined : this.results.get(location.repoRoot);
+    const result =
+      location === undefined ? undefined : this.results.get(keyOf(agent, location.repoRoot));
     if (result !== undefined && this.deps.now() - result.checkedAt < FRESH_MS) {
       return this.note(cwd, result);
     }
-    this.refresh(cwd, place);
-    this.waiting.set(id, cwd);
+    this.refresh(session, place);
+    this.waiting.set(id, session);
     return null;
   }
 
   private delivered(id: string): string | null {
-    const cwd = this.waiting.get(id);
-    if (cwd === undefined || this.jobs.has(cwd)) {
+    const session = this.waiting.get(id);
+    if (session === undefined || this.jobs.has(keyOf(session.agent, session.cwd))) {
       return null;
     }
     this.waiting.delete(id);
+    const { cwd, agent } = session;
     const location = this.placeOf(cwd) ?? this.located.get(cwd);
     if (location === null) {
       return this.outsideGit(cwd);
     }
-    const result = location === undefined ? undefined : this.results.get(location.repoRoot);
+    const result =
+      location === undefined ? undefined : this.results.get(keyOf(agent, location.repoRoot));
     return result === undefined ? null : this.note(cwd, result);
   }
 
@@ -163,8 +182,10 @@ export class LaunchChecker {
   }
 
   /** Finds the folder's repository if need be, then checks it, in the background. */
-  private refresh(cwd: string, known: ProbeTarget | null): void {
-    if (this.jobs.has(cwd)) {
+  private refresh(session: Waiting, known: ProbeTarget | null): void {
+    const { cwd, agent } = session;
+    const key = keyOf(agent, cwd);
+    if (this.jobs.has(key)) {
       return;
     }
     const job = (async (): Promise<void> => {
@@ -172,28 +193,30 @@ export class LaunchChecker {
         const location = known ?? (await this.deps.locate(cwd));
         this.located.set(cwd, location);
         if (location !== null) {
-          this.results.set(location.repoRoot, await this.probeOnce(location));
+          const result = await this.probeOnce(location, agent);
+          this.results.set(keyOf(agent, location.repoRoot), result);
         }
       } catch (error: unknown) {
         this.deps.report(`compatibility check failed for ${cwd}: ${String(error)}`);
       } finally {
-        this.jobs.delete(cwd);
+        this.jobs.delete(key);
       }
     })();
-    this.jobs.set(cwd, job);
+    this.jobs.set(key, job);
   }
 
-  private async probeOnce(target: ProbeTarget): Promise<LaunchCheck> {
-    const running = this.probes.get(target.repoRoot);
+  private async probeOnce(target: ProbeTarget, agent: AgentId): Promise<LaunchCheck> {
+    const key = keyOf(agent, target.repoRoot);
+    const running = this.probes.get(key);
     if (running !== undefined) {
       return running;
     }
-    const probe = this.deps.probe(target);
-    this.probes.set(target.repoRoot, probe);
+    const probe = this.deps.probe(target, agent);
+    this.probes.set(key, probe);
     try {
       return await probe;
     } finally {
-      this.probes.delete(target.repoRoot);
+      this.probes.delete(key);
     }
   }
 

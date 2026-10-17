@@ -1,9 +1,12 @@
-// The compatibility check's findings from what sessions read: CLAUDE.md files and
-// auto memory. It quotes the lines that decide how work lands, and the ones
-// that tell a session to make its own worktree.
+// The compatibility check's findings from what sessions read: the instruction
+// files the session's agent loads (CLAUDE.md and AGENTS.md for Claude Code)
+// and Claude's auto memory. It quotes the lines that decide how work lands,
+// and the ones that tell a session to make its own worktree.
 
 import path from 'node:path';
 
+import type { InstructionEntry, InstructionFile, InstructionPolicy } from '../agents/types.js';
+import { underDir } from '../context/candidates.js';
 import type { FileSystem } from '../context/fs.js';
 import { encodeProjectDir } from '../paths.js';
 
@@ -15,11 +18,20 @@ export interface Finding {
   readonly text: string;
 }
 
+/** What the session's agent reads, from its instruction policy. */
+export interface AgentReads {
+  readonly policy: InstructionPolicy;
+  /** The agent's own folder, which holds its user files. */
+  readonly configDir: string;
+  /** Claude's projects folder, which holds auto memory. */
+  readonly projectsDir: string;
+}
+
 export interface InstructionDeps {
   readonly fs: FileSystem;
   readonly home: string;
-  readonly userClaudeMd: string;
-  readonly projectsDir: string;
+  /** Null for an agent without an instruction policy, whose files are not read. */
+  readonly reads: AgentReads | null;
 }
 
 /** An instruction file's path as shown to the session, and its text. */
@@ -100,22 +112,68 @@ function each(instructions: Instructions, patterns: readonly RegExp[], skip: boo
   return instructions.flatMap(([file, text]) => matching(file, text, patterns, skip));
 }
 
-/** The repository's instruction files that exist: its own and one folder down. */
-export async function repoInstructions(fs: FileSystem, repoRoot: string): Promise<Instructions> {
-  const top = await fs.readdir(repoRoot);
-  const candidates = [
-    'CLAUDE.md',
-    'CLAUDE.local.md',
-    path.join('.claude', 'CLAUDE.md'),
-    ...top.filter((name) => !name.startsWith('.')).map((name) => path.join(name, 'CLAUDE.md')),
-  ];
-  const files = await Promise.all(
-    candidates.map(async (name) => {
-      const text = await fs.readFile(path.join(repoRoot, name));
-      return text === null ? null : ([name, text] as const);
+interface Found {
+  readonly entry: InstructionFile;
+  readonly path: string;
+  readonly text: string;
+}
+
+/** The files of one folder the agent reads, after the one that wins hides the rest. */
+async function folderFiles(
+  fs: FileSystem,
+  dir: string,
+  entries: readonly InstructionEntry[],
+  policy: InstructionPolicy,
+): Promise<Found[]> {
+  const files = entries.filter((entry): entry is InstructionFile => 'file' in entry);
+  const read = await Promise.all(
+    files.map(async (entry) => {
+      const file = underDir(dir, entry.file);
+      const text = await fs.readFile(file);
+      return text === null ? null : { entry, path: file, text };
     }),
   );
-  return files.filter((file) => file !== null);
+  const found = read.filter((file) => file !== null);
+  const { precedence } = policy;
+  if (precedence.kind === 'first-per-folder') {
+    return found.slice(0, 1);
+  }
+  if (precedence.kind === 'shadowed') {
+    const hides = found.some((file) => precedence.by.includes(file.entry.kind));
+    return hides ? found.filter((file) => !precedence.shadowed.includes(file.entry.kind)) : found;
+  }
+  return found;
+}
+
+/**
+ * The repository's instruction files the agent reads: the root's, and one
+ * folder down for an agent that loads subfolders once it works in them.
+ */
+export async function repoInstructions(
+  fs: FileSystem,
+  repoRoot: string,
+  policy: InstructionPolicy | null,
+): Promise<Instructions> {
+  if (policy === null) {
+    return [];
+  }
+  const top = policy.lazySubfolders ? await fs.readdir(repoRoot) : [];
+  const below = top.filter((name) => !name.startsWith('.'));
+  const folders = [repoRoot, ...below.map((name) => path.join(repoRoot, name))];
+  const found = await Promise.all(
+    folders.map(async (dir) => folderFiles(fs, dir, policy.project, policy)),
+  );
+  return found.flat().map((file) => [path.relative(repoRoot, file.path), file.text] as const);
+}
+
+/** The instruction files in the agent's own folder, shown as a person reads them. */
+async function userInstructions(deps: InstructionDeps, repoRoot: string): Promise<Instructions> {
+  if (deps.reads === null) {
+    return [];
+  }
+  const { policy, configDir } = deps.reads;
+  const found = await folderFiles(deps.fs, configDir, policy.user, policy);
+  return found.map((file) => [shownPath(file.path, deps.home, repoRoot), file.text] as const);
 }
 
 export interface Landing {
@@ -139,8 +197,7 @@ export async function landingFindings(
   repoRoot: string,
   instructions: Instructions,
 ): Promise<Landing> {
-  const userText = (await deps.fs.readFile(deps.userClaudeMd)) ?? '';
-  const user: Instructions = [[shownPath(deps.userClaudeMd, deps.home, repoRoot), userText]];
+  const user = await userInstructions(deps, repoRoot);
   const userDirect = each(user, LANDS_DIRECT, false);
   const userPr = each(user, OPENS_PR, true);
   const repoDirect = each(instructions, LANDS_DIRECT, false);
@@ -166,25 +223,29 @@ export async function landingFindings(
   };
 }
 
-/** How much auto memory the session shares, and advice in it or the repo to make a worktree. */
-export async function memoryFindings(
+interface Memory {
+  readonly finding: Finding;
+  readonly files: Instructions;
+}
+
+/** How much auto memory the repository has, and its files. */
+async function autoMemory(
   deps: InstructionDeps,
+  projectsDir: string,
   repoRoot: string,
-  instructions: Instructions,
-): Promise<readonly Finding[]> {
-  const dir = path.join(deps.projectsDir, encodeProjectDir(repoRoot), 'memory');
+): Promise<Memory> {
+  const dir = path.join(projectsDir, encodeProjectDir(repoRoot), 'memory');
   const shownDir = shownPath(dir, deps.home, repoRoot);
   const index = await deps.fs.readFile(path.join(dir, 'MEMORY.md'));
   const entries = index?.split('\n').filter((line) => line.startsWith('- ')).length ?? 0;
-  const findings: Finding[] = [
+  const finding =
     entries === 0
       ? info('No auto memory for this repo yet.')
       : info(
           `Auto memory: ${String(entries)} entries in ${shownDir}, shared with the main checkout.`,
-        ),
-  ];
+        );
   const listing = await deps.fs.readdir(dir);
-  const memories = await Promise.all(
+  const files = await Promise.all(
     listing
       .filter((name) => name.endsWith('.md'))
       .map(async (name) => {
@@ -192,7 +253,24 @@ export async function memoryFindings(
         return [`${shownDir}/${name}`, text ?? ''] as const;
       }),
   );
-  const [told] = each([...instructions, ...memories], MAKES_WORKTREE, true);
+  return { finding, files };
+}
+
+/**
+ * How much auto memory the session shares, for an agent that keeps it, and
+ * advice in it or the repo to make a worktree.
+ */
+export async function memoryFindings(
+  deps: InstructionDeps,
+  repoRoot: string,
+  instructions: Instructions,
+): Promise<readonly Finding[]> {
+  const memory =
+    deps.reads?.policy.autoMemory === true
+      ? await autoMemory(deps, deps.reads.projectsDir, repoRoot)
+      : null;
+  const findings: Finding[] = memory === null ? [] : [memory.finding];
+  const [told] = each([...instructions, ...(memory?.files ?? [])], MAKES_WORKTREE, true);
   if (told !== undefined) {
     findings.push(
       warn(

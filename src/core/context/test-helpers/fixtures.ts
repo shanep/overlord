@@ -1,5 +1,6 @@
 // Builders for resolver inputs, so each test states only what it changes.
 
+import { CLAUDE_CODE } from '../../../shared/agents.js';
 import { resolveClaudePaths, type ClaudePaths } from '../../paths.js';
 import type { GateContext } from '../gates.js';
 import type { Candidate, ResolveInput } from '../types.js';
@@ -48,6 +49,8 @@ export function gateContext(overrides: Partial<GateContext> = {}): GateContext {
     approvedExternalImports: false,
     ancestorHasClaudeMd: false,
     nestedClaudeMdDirs: new Set(),
+    names: { agent: 'Claude', globKey: 'paths' },
+    shadowed: new Map(),
     ...overrides,
   };
 }
@@ -57,6 +60,7 @@ export function resolveInput(
   overrides: Partial<ResolveInput> = {},
 ): ResolveInput {
   return {
+    agentId: CLAUDE_CODE,
     fs: createMemoryFs(tree),
     paths: PATHS,
     cwd: CWD,

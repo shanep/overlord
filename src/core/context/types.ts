@@ -1,20 +1,41 @@
 // Types shared inside the context resolver. The public result types build on
 // LoadedInstruction and SkippedCandidate from the shared model.
 
+import type { AgentId } from '../../shared/agents.js';
 import type { LoadedInstruction, MemoryTier, SettingsLayer } from '../../shared/model.js';
 import type { ClaudePaths } from '../paths.js';
 
 import type { FileSystem } from './fs.js';
 
+/** Words the explanations use for an agent. */
+export interface InstructionNames {
+  /** As in "Loaded when Claude touched a file". */
+  readonly agent: string;
+  /** The frontmatter key named in "Its paths globs have not matched". */
+  readonly globKey: string;
+}
+
 /** How a candidate would get into context. */
 export type LoadMode = 'eager' | 'lazy-subdir' | 'glob' | 'import' | 'auto-memory';
 
+/** instructions is any other agent's own file, like GEMINI.md or .github/copilot-instructions.md. */
 export type CandidateKind =
-  'claude-md' | 'local-md' | 'agents-md' | 'rule' | 'import' | 'memory-index' | 'memory-topic';
+  | 'claude-md'
+  | 'local-md'
+  | 'agents-md'
+  | 'instructions'
+  | 'rule'
+  | 'import'
+  | 'memory-index'
+  | 'memory-topic';
 
-/** Where the candidate was found. */
+/**
+ * Where the candidate was found. ancestor is a folder of the walk (cwd and
+ * above it), and between is a folder of Copilot's walk between the git root
+ * and cwd.
+ */
 export type CandidateOrigin =
-  'managed' | 'user' | 'ancestor' | 'nested' | 'add-dir' | 'auto-memory';
+  'managed' | 'user' | 'ancestor' | 'between' | 'nested' | 'add-dir' | 'auto-memory';
 
 export interface Candidate {
   readonly path: string;
@@ -83,6 +104,8 @@ export interface ScanLimits {
 export const DEFAULT_SCAN_LIMITS: ScanLimits = { maxDirs: 2000, maxDepth: 8 };
 
 export interface ResolveInput {
+  /** The session's agent, whose instruction policy the resolver runs. */
+  readonly agentId: AgentId;
   readonly fs: FileSystem;
   readonly paths: ClaudePaths;
   readonly cwd: string;
