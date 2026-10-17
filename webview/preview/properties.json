@@ -1,0 +1,139 @@
+{
+  "sessionId": "5f1c9a2e-7b44-4c0d-9a51-0e2d3c8f1b77",
+  "session": {
+    "id": "5f1c9a2e-7b44-4c0d-9a51-0e2d3c8f1b77",
+    "surface": "cli",
+    "title": "Add registry search to the Connectors view",
+    "cwd": "/Users/dev/repos/overlord",
+    "state": "running",
+    "startedAt": 1791989200000,
+    "updatedAt": 1791999960000,
+    "usage": {
+      "input": 182000,
+      "output": 64000,
+      "cacheRead": 9200000,
+      "cacheCreation": 410000,
+      "thinking": 0
+    },
+    "costUsd": 14.82,
+    "model": "claude-opus-5-5",
+    "effort": "high",
+    "permissionMode": "acceptEdits",
+    "pid": 48213,
+    "transcriptPath": "/Users/dev/.claude/projects/overlord/5f1c9a2e.jsonl",
+    "gitBranch": "overlord/66af2afd",
+    "version": "2.4.11",
+    "agentCount": 3,
+    "contextFill": 0.64,
+    "recap": {
+      "text": "Built the MCP registry search and install flow, added paging and filters, and is now restyling the view as cards. Tests pass, and next it commits and installs the build.",
+      "at": 1791999640000
+    },
+    "lastPrompt": "Can you make the page look better it is just ugly.",
+    "lastPromptAt": 1791999460000
+  },
+  "agents": [
+    {
+      "id": "a1",
+      "sessionId": "5f1c9a2e-7b44-4c0d-9a51-0e2d3c8f1b77",
+      "parentAgentId": "5f1c9a2e-7b44-4c0d-9a51-0e2d3c8f1b77",
+      "parentToolUseId": "t1",
+      "agentType": "Explore",
+      "description": "Find every view that renders a DataTable",
+      "spawnDepth": 1,
+      "background": false,
+      "state": "done",
+      "startedAt": 1791997000000,
+      "endedAt": 1791997120000,
+      "transcriptPath": null,
+      "usage": {
+        "input": 42000,
+        "output": 3000,
+        "cacheRead": 0,
+        "cacheCreation": 0,
+        "thinking": 0
+      },
+      "toolCallCount": 14,
+      "currentTool": null,
+      "model": "claude-haiku-5-5"
+    },
+    {
+      "id": "a2",
+      "sessionId": "5f1c9a2e-7b44-4c0d-9a51-0e2d3c8f1b77",
+      "parentAgentId": "5f1c9a2e-7b44-4c0d-9a51-0e2d3c8f1b77",
+      "parentToolUseId": "t2",
+      "agentType": "fork",
+      "description": "Restyle the Usage and Activity views",
+      "spawnDepth": 1,
+      "background": true,
+      "state": "running",
+      "startedAt": 1791999520000,
+      "endedAt": null,
+      "transcriptPath": null,
+      "usage": {
+        "input": 91000,
+        "output": 12000,
+        "cacheRead": 0,
+        "cacheCreation": 0,
+        "thinking": 0
+      },
+      "toolCallCount": 37,
+      "currentTool": "Bash",
+      "model": "claude-opus-5-5"
+    },
+    {
+      "id": "a3",
+      "sessionId": "5f1c9a2e-7b44-4c0d-9a51-0e2d3c8f1b77",
+      "parentAgentId": "5f1c9a2e-7b44-4c0d-9a51-0e2d3c8f1b77",
+      "parentToolUseId": "t3",
+      "agentType": "general-purpose",
+      "description": "Check the registry API for cursor paging",
+      "spawnDepth": 1,
+      "background": false,
+      "state": "failed",
+      "startedAt": 1791994600000,
+      "endedAt": 1791994720000,
+      "transcriptPath": null,
+      "usage": { "input": 8000, "output": 900, "cacheRead": 0, "cacheCreation": 0, "thinking": 0 },
+      "toolCallCount": 3,
+      "currentTool": null,
+      "model": "claude-sonnet-5-5"
+    }
+  ],
+  "pendingPermissions": [
+    {
+      "id": "p1",
+      "sessionId": "5f1c9a2e-7b44-4c0d-9a51-0e2d3c8f1b77",
+      "agentId": "5f1c9a2e-7b44-4c0d-9a51-0e2d3c8f1b77",
+      "toolName": "Bash",
+      "input": { "command": "git push origin HEAD:master" },
+      "requestedAt": 1791999925000,
+      "source": "hook"
+    }
+  ],
+  "health": {
+    "level": "watch",
+    "metrics": {
+      "contextTokens": 640000,
+      "contextWindow": 1000000,
+      "compactions": 1,
+      "turns": 212,
+      "recentToolErrors": 2,
+      "recentToolCalls": 20,
+      "recentCacheHit": 0.93
+    },
+    "signals": [
+      {
+        "id": "context",
+        "level": "watch",
+        "title": "Context is filling up",
+        "finding": "640K tokens, 64% of a 1M window.",
+        "why": "Past about half full, Claude starts to lose track of details from early in the session.",
+        "actions": [
+          "Run /compact with a note on what to keep.",
+          "Start a fresh session for the next task."
+        ]
+      }
+    ]
+  }
+}

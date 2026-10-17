@@ -9,7 +9,8 @@
 // The state comes from webview/preview/<view>.json unless --state names
 // another file. It is the view's state as src/shared/protocol.ts types it.
 // Each --click presses the first button with that text, in order, so a
-// screenshot can show an open form or a menu.
+// screenshot can show an open form or a menu. --narrow sets the narrow width,
+// such as 320 for a view that lives in the sidebar.
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
@@ -21,11 +22,13 @@ import { parseArgs } from 'node:util';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-const SHOTS = [
-  { name: 'light-wide', theme: 'light', width: 1200 },
-  { name: 'dark-wide', theme: 'dark', width: 1200 },
-  { name: 'dark-narrow', theme: 'dark', width: 700 },
-];
+function shots(narrow) {
+  return [
+    { name: 'light-wide', theme: 'light', width: 1200 },
+    { name: 'dark-wide', theme: 'dark', width: 1200 },
+    { name: 'dark-narrow', theme: 'dark', width: narrow },
+  ];
+}
 
 // The VS Code theme variables theme.css reads, from the Light Modern and Dark Modern themes.
 const THEMES = {
@@ -101,7 +104,10 @@ function page(view, clicks) {
 <style>body { font-family: -apple-system, system-ui, sans-serif; font-size: 13px; }
 ${themeCss()}</style>
 <script>
-document.documentElement.classList.add(new URLSearchParams(location.search).get('theme') ?? 'light');
+const params = new URLSearchParams(location.search);
+document.documentElement.classList.add(params.get('theme') ?? 'light');
+// Headless Chrome will not make a window narrower than about 500 px, so the page holds itself to the width asked for.
+document.documentElement.style.maxWidth = (params.get('width') ?? '') + 'px';
 window.acquireVsCodeApi = () => ({
   getState: () => undefined,
   setState: () => {},
@@ -190,6 +196,7 @@ async function main() {
       click: { type: 'string', multiple: true, default: [] },
       out: { type: 'string', default: path.join(root, '.cache', 'preview') },
       height: { type: 'string', default: '1600' },
+      narrow: { type: 'string', default: '700' },
     },
   });
   const [view] = positionals;
@@ -229,7 +236,7 @@ async function main() {
     const server = await serve(site);
     const { port } = server.address();
     try {
-      for (const shot of SHOTS) {
+      for (const shot of shots(Number.parseInt(values.narrow, 10))) {
         const file = path.join(values.out, `${view}-${shot.name}.png`);
         await run(
           chrome,
@@ -241,7 +248,7 @@ async function main() {
             '--virtual-time-budget=5000',
             `--window-size=${String(shot.width)},${values.height}`,
             `--screenshot=${file}`,
-            `http://127.0.0.1:${String(port)}/index.html?theme=${shot.theme}`,
+            `http://127.0.0.1:${String(port)}/index.html?theme=${shot.theme}&width=${String(shot.width)}`,
           ],
           true,
         );

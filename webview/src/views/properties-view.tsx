@@ -15,7 +15,7 @@ import { usePostAction } from '../vscode-context.js';
 
 import { HealthSection } from './properties-health.js';
 import type { Row } from './props-group.js';
-import { Group } from './props-group.js';
+import { Group, groupClass } from './props-group.js';
 
 function orUnknown(value: string | number | null): string {
   return value === null ? 'unknown' : String(value);
@@ -82,7 +82,7 @@ function WorkingOn(props: {
     return null;
   }
   return (
-    <section className="props-group" aria-label="Working on">
+    <section className={groupClass('info')} aria-label="Working on">
       <h2>Working on</h2>
       {recap === null ? null : (
         <>
@@ -91,7 +91,7 @@ function WorkingOn(props: {
         </>
       )}
       {lastPrompt === null ? null : (
-        <dl className="props">
+        <dl className="props props-stacked">
           <div className="prop">
             <dt>Last prompt</dt>
             <dd>{lastPrompt}</dd>
@@ -112,6 +112,7 @@ function Waiting(props: {
   return (
     <Group
       title="Waiting on you"
+      tone="warning"
       rows={props.requests.map((request) => [
         request.toolName,
         `asked ${formatAgo(request.requestedAt, props.now)}`,
@@ -166,12 +167,11 @@ function SessionProperties(props: {
   const post = usePostAction();
   return (
     <>
-      <header>
-        <div className="view-header">
-          <h1>{session.title}</h1>
+      <header className="props-header">
+        <h1>{session.title}</h1>
+        <div className="props-header-row">
           <StateBadge state={session.state} />
-        </div>
-        <div className="actions">
+          <span className="spacer" />
           <button
             type="button"
             onClick={() => {

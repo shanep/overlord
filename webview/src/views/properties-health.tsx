@@ -15,7 +15,7 @@ import { formatCompact, formatPercent } from '../format.js';
 import type { Tone } from '../labels.js';
 
 import type { Row } from './props-group.js';
-import { PropertyRows } from './props-group.js';
+import { groupClass, PropertyRows } from './props-group.js';
 
 const LEVELS: Readonly<
   Record<HealthLevel, { readonly label: string; readonly tone: Tone; readonly summary: string }>
@@ -74,7 +74,7 @@ function Signal(props: { readonly signal: HealthSignal }): ReactElement {
   const { signal } = props;
   const level = LEVELS[signal.level];
   return (
-    <article className="health-signal" aria-label={signal.title}>
+    <article className={`health-signal health-${level.tone}`} aria-label={signal.title}>
       <h3>
         <Badge label={level.label} tone={level.tone} /> {signal.title}
       </h3>
@@ -93,7 +93,7 @@ export function HealthSection(props: { readonly health: SessionHealth }): ReactE
   const { health } = props;
   const level = LEVELS[health.level];
   return (
-    <section className="props-group" aria-label="Health">
+    <section className={groupClass(level.tone)} aria-label="Health">
       <h2>
         Health <Badge label={level.label} tone={level.tone} />
       </h2>

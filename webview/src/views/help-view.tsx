@@ -13,6 +13,7 @@ import {
   SurfaceBadge,
   WindowlessMarker,
 } from '../components/badge.js';
+import { Card } from '../components/card.js';
 import { Icon } from '../components/icon.js';
 import { PLACE_INFO, STATE_INFO, SURFACES, WINDOWLESS_INFO } from '../labels.js';
 
@@ -29,7 +30,7 @@ import {
 } from './help-content.js';
 import { ExtendSection } from './help-extend.js';
 import { ROW_BUTTONS } from './help-row-buttons.js';
-import { ScreenSection } from './help-screen.js';
+import { SCREEN_MAP_ID, ScreenSection } from './help-screen.js';
 import { SessionsSection } from './help-sessions.js';
 import { HANDOFF_LABELS } from './sessions-view.js';
 
@@ -128,11 +129,17 @@ function WorkflowSection(): ReactElement {
       title="A typical workflow"
       intro="How a day with Overlord usually goes, from setup to merged work."
     >
-      <ol className="help-steps">
-        {WORKFLOW.map((step) => (
-          <li key={step.title}>
-            <strong>{step.title}.</strong> {step.detail}
-          </li>
+      <ol className="card-grid card-grid-wide help-steps">
+        {WORKFLOW.map((step, index) => (
+          <Card key={step.title}>
+            <div className="card-head">
+              <span className="help-step-number" aria-hidden="true">
+                {String(index + 1)}
+              </span>
+              <strong className="card-title">{step.title}.</strong>
+            </div>
+            <p className="help-step-text">{step.detail}</p>
+          </Card>
         ))}
       </ol>
     </Section>
@@ -291,17 +298,48 @@ function OtherBadges(): ReactElement {
   );
 }
 
+/** The sections in page order, for the links at the top. */
+const CONTENTS: readonly (readonly [id: string, title: string])[] = [
+  ['help-workflow', 'A typical workflow'],
+  [SCREEN_MAP_ID, 'Where things are'],
+  ['help-sessions', 'How a session works'],
+  ['help-sidebar', 'The sidebar'],
+  ['help-states', 'Session states'],
+  ['help-places', 'Where a session runs'],
+  ['help-surfaces', 'Surfaces'],
+  ['help-fleet', 'The Fleet'],
+  ['help-handoffs', 'Handoff buttons'],
+  ['help-config', 'Config badges'],
+  ['help-extend', 'Extending Overlord'],
+];
+
+function Contents(): ReactElement {
+  return (
+    <nav className="help-toc" aria-label="On this page">
+      <span className="muted">On this page</span>
+      <ul>
+        {CONTENTS.map(([id, title]) => (
+          <li key={id}>
+            <a href={`#${id}`}>{title}</a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  );
+}
+
 export function HelpView(): ReactElement {
   return (
     <article className="help" aria-labelledby="help-title">
       <header className="view-header">
         <h1 id="help-title">Overlord help</h1>
       </header>
-      <p>
+      <p className="help-lede">
         Overlord is htop for Claude Code. It shows every session and subagent you have running, what
         is in their context, and every knob you can turn. It also runs agents itself, so you can
         launch a batch of prompts and watch them side by side.
       </p>
+      <Contents />
       <WorkflowSection />
       <ScreenSection />
       <SessionsSection />
