@@ -10,7 +10,7 @@ import path from 'node:path';
 import { CLAUDE_CODE, type AgentId } from '../../shared/agents.js';
 import type { AgentTerminal } from '../agents/terminals.js';
 import type { TabLaunch } from '../agents/types.js';
-import { backendFor, findBackend } from '../bridge/backends.js';
+import { backendFor, findBackend, modeOn } from '../bridge/backends.js';
 import type { WorktreeLease, WorktreeProvider } from '../harness/launcher.js';
 import type { ClaudePaths } from '../paths.js';
 import { daemonJobCwds } from '../surfaces/daemon.js';
@@ -217,11 +217,25 @@ async function openSession(
  * repository folder is in. A folder outside git, or no folder at all, gets a
  * plain session there instead.
  */
+/** A profile's auto mode, or no mode, takes its backend's safe mode, as a Launcher run does. */
+function safeStart(start: SessionStart): SessionStart {
+  const backend = start.backend === undefined ? null : findBackend(start.backend);
+  const { launch } = start;
+  if (launch === undefined) {
+    return start;
+  }
+  const permissionMode = modeOn(backend, launch.permissionMode);
+  return permissionMode === launch.permissionMode
+    ? start
+    : { ...start, launch: { ...launch, permissionMode } };
+}
+
 export async function startSession(
   rt: Runtime,
   folder: string | null,
-  start: SessionStart,
+  wanted: SessionStart,
 ): Promise<void> {
+  const start = safeStart(wanted);
   const backend = await tabBackend(rt, start.backend, start.agent);
   if (backend === null) {
     return;

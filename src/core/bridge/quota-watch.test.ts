@@ -9,6 +9,13 @@ const NOW = Date.UTC(2026, 9, 17, 16);
 const spend = (dollars: number): string =>
   JSON.stringify({ at: NOW, model: OPUS, inputTokens: 0, outputTokens: dollars * 50_000 });
 
+/** Lets queued callbacks run. */
+async function settle(): Promise<void> {
+  await new Promise((resolve) => {
+    setImmediate(resolve);
+  });
+}
+
 describe('notice lines', () => {
   it('round-trip, and other lines are not notices', () => {
     const notice: QuotaNotice = { level: 80, spentUsd: 24.5, limitUsd: 30 };
@@ -66,5 +73,32 @@ describe('QuotaWatch', () => {
     await late.check();
     await late.check();
     expect(heard).toHaveLength(2);
+  });
+
+  it('takes checks in turn, so a slow older read cannot land after a newer one', async () => {
+    const reads: ((text: string) => void)[] = [];
+    const heard: QuotaNotice[] = [];
+    const watch = new QuotaWatch({
+      read: async (): Promise<string | null> =>
+        new Promise((resolve) => {
+          reads.push(resolve);
+        }),
+      now: (): number => NOW,
+      notify: (notice): void => {
+        heard.push(notice);
+      },
+    });
+    const first = watch.check();
+    const second = watch.check();
+    await settle();
+    // Only the first read has started, since the second waits its turn.
+    expect(reads).toHaveLength(1);
+    reads[0]?.('');
+    await first;
+    await settle();
+    expect(reads).toHaveLength(2);
+    reads[1]?.(spend(25));
+    await second;
+    expect(heard).toStrictEqual([{ level: 80, spentUsd: 25, limitUsd: 30 }]);
   });
 });

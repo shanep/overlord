@@ -32,9 +32,10 @@ let app: OverlordApp | null = null;
 
 type ViewEntry = readonly [command: string, view: ViewId, label: string, icon: string];
 
-/** Settings and history that apply across every session. */
 /** The button on a quota warning that opens boisestate.ai's own usage page. */
 const OPEN_USAGE = 'Open boisestate.ai usage';
+
+/** Settings and history that apply across every session. */
 const GLOBAL_VIEWS: readonly ViewEntry[] = [
   ['overlord.openKnobs', 'knobs', 'Knobs', 'settings-gear'],
   ['overlord.openConfig', 'config', 'Config and Sync', 'repo'],

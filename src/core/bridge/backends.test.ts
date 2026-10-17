@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { CLAUDE_CODE, CODEX } from '../../shared/agents.js';
 
 import {
+  modeOn,
   BACKENDS,
   backendFor,
   backendIdOf,
@@ -57,5 +58,15 @@ describe('the backend list', () => {
     expect(backendsFor(CODEX)).toStrictEqual([]);
     expect(findBackend('boisestate')).toBe(BOISESTATE);
     expect(findBackend('nope')).toBeNull();
+  });
+});
+
+describe('modeOn', () => {
+  it("swaps auto mode, or no mode, for a backend's safe mode and keeps any other choice", () => {
+    expect(modeOn(BOISESTATE, 'auto')).toBe('default');
+    expect(modeOn(BOISESTATE, null)).toBe('default');
+    expect(modeOn(BOISESTATE, 'plan')).toBe('plan');
+    expect(modeOn({ ...BOISESTATE, safeMode: null }, 'auto')).toBe('auto');
+    expect(modeOn(null, 'auto')).toBe('auto');
   });
 });

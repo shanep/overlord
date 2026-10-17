@@ -11,7 +11,7 @@ import type { LaunchRun, LauncherState } from '../../shared/protocol.js';
 import type { AgentRegistry } from '../agents/registry.js';
 import type { AgentAdapter } from '../agents/types.js';
 import type { Backend, EndpointSource } from '../bridge/backend.js';
-import { chosenBackend } from '../bridge/backends.js';
+import { chosenBackend, modeOn } from '../bridge/backends.js';
 import type { EventBus } from '../bus.js';
 import type { ConfigOverride } from '../knobs/facet.js';
 
@@ -331,11 +331,10 @@ export class Launcher {
       throw new Error(`The ${backend.name} backend is not available here.`);
     }
     const endpoint = await source(backend.id);
-    const safe = backend.safeMode !== null && (mode === null || mode === 'auto');
     return {
       env: { ...env, ...backend.env(agent, endpoint, 'run') },
       noMcp: backend.noMcp,
-      permissionMode: safe ? backend.safeMode : mode,
+      permissionMode: modeOn(backend, mode),
     };
   }
 

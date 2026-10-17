@@ -36,7 +36,7 @@ import {
   waitFor,
   writeJson,
 } from './test-helpers/fixtures.js';
-import { startSession, tidyWorktrees, worktreeRoot } from './worktrees.js';
+import { newSession as startNew, startSession, tidyWorktrees, worktreeRoot } from './worktrees.js';
 
 const PID = 4242;
 
@@ -811,6 +811,20 @@ describe('worktrees in the app', { timeout: 30_000 }, () => {
       await test.app.dispatch({ type: 'newSession' }, {});
       expect(test.env.host.terminals).toHaveLength(before);
       expect(await summaries(test)).toStrictEqual([]);
+    });
+
+    it('run a profile that asks for auto mode in default mode, since auto would bill the quota', async () => {
+      const test = await bridged();
+      await startNew(test.app.runtime, world.repo, {
+        backend: 'boisestate',
+        launch: { model: null, effort: null, permissionMode: 'auto' },
+      });
+      const { args } = lastTerminal(test);
+      expect(args.filter((_flag, index) => args[index - 1] === '--permission-mode')).not.toContain(
+        'auto',
+      );
+      expect(args).toContain('--permission-mode');
+      await test.app.sessionClosed(lastTerminal(test).sessionId ?? '');
     });
 
     it('are not offered before Boise State is set up', async () => {

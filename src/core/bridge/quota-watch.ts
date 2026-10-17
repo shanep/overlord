@@ -58,11 +58,18 @@ export interface QuotaWatchDeps {
 export class QuotaWatch {
   /** The level last seen, or null before the first check. */
   private level: 0 | 80 | 100 | null = null;
+  /** The check in progress. Checks take turns, so an older read never lands after a newer one. */
+  private turn: Promise<void> = Promise.resolve();
 
   constructor(private readonly deps: QuotaWatchDeps) {}
 
   /** Reads the log and notifies when the month has crossed a level since the last check. */
   async check(): Promise<void> {
+    this.turn = this.turn.then(async () => this.checkNow());
+    await this.turn;
+  }
+
+  private async checkNow(): Promise<void> {
     const text = await this.deps.read();
     const usage = text === null ? null : summarizeUsage(text, this.deps.now());
     // No log yet means nothing spent, so the first crossing still warns.

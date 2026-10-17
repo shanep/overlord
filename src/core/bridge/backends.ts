@@ -42,6 +42,16 @@ export function backendFor(id: string, agent: AgentId): Backend {
   return backend;
 }
 
+/**
+ * The permission mode a session runs in on a backend. A backend with a safe
+ * mode takes it in place of auto mode, or of no mode, which leaves the user's
+ * default (maybe auto). Any other mode the user chose stays.
+ */
+export function modeOn(backend: Backend | null, mode: string | null): string | null {
+  const safe = backend?.safeMode ?? null;
+  return safe !== null && (mode === null || mode === 'auto') ? safe : mode;
+}
+
 /** The backend a profile or env picks for the agent, or null for its own account. */
 export function chosenBackend(choice: BackendChoice, agent: AgentId): Backend | null {
   const id = backendIdOf(choice);
