@@ -1,0 +1,51 @@
+{
+  "state": {
+    "agents": [],
+    "health": {
+      "level": "good",
+      "metrics": {
+        "compactions": 0,
+        "contextTokens": 2900,
+        "contextWindow": 1000000,
+        "recentCacheHit": 0.6896551724137931,
+        "recentToolCalls": 0,
+        "recentToolErrors": 0,
+        "turns": 1
+      },
+      "signals": []
+    },
+    "pendingPermissions": [],
+    "session": {
+      "agentCount": 0,
+      "contextFill": 0.0029,
+      "costUsd": 0.0043,
+      "cwd": "/work/demo",
+      "effort": "high",
+      "gitBranch": "main",
+      "id": "sess-0002",
+      "lastPrompt": null,
+      "lastPromptAt": 1790856480000,
+      "model": "claude-opus-5-5",
+      "permissionMode": null,
+      "pid": null,
+      "recap": null,
+      "startedAt": 1790856480000,
+      "state": "running",
+      "surface": "cli",
+      "title": "Run the tests",
+      "transcriptPath": "<root>/home/.claude/projects/-work-demo/sess-0002.jsonl",
+      "updatedAt": 1790856481000,
+      "usage": {
+        "cacheCreation": 0,
+        "cacheRead": 2000,
+        "input": 900,
+        "output": 15,
+        "thinking": 0
+      },
+      "version": "2.1.301"
+    },
+    "sessionId": "sess-0002"
+  },
+  "type": "state",
+  "view": "properties"
+}

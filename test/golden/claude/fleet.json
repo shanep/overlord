@@ -1,0 +1,166 @@
+{
+  "state": {
+    "activeSessionId": null,
+    "activeVersion": 0,
+    "agents": [
+      {
+        "agentType": "main",
+        "background": false,
+        "currentTool": null,
+        "description": "Find why the build is slow",
+        "endedAt": null,
+        "id": "sess-0001",
+        "model": "claude-opus-5-5",
+        "parentAgentId": null,
+        "parentToolUseId": null,
+        "sessionId": "sess-0001",
+        "spawnDepth": 0,
+        "startedAt": 1790856000000,
+        "state": "idle",
+        "toolCallCount": 2,
+        "transcriptPath": "<root>/home/.claude/projects/-work-demo/sess-0001.jsonl",
+        "usage": {
+          "cacheCreation": 500,
+          "cacheRead": 7200,
+          "input": 1500,
+          "output": 120,
+          "thinking": 20
+        }
+      },
+      {
+        "agentType": "Explore",
+        "background": false,
+        "currentTool": null,
+        "description": "Scan the imports",
+        "endedAt": 1790856005000,
+        "id": "explore1",
+        "model": "claude-opus-5-5",
+        "parentAgentId": "sess-0001",
+        "parentToolUseId": "toolu_agent",
+        "sessionId": "sess-0001",
+        "spawnDepth": 1,
+        "startedAt": 1790856002100,
+        "state": "done",
+        "toolCallCount": 1,
+        "transcriptPath": "<root>/home/.claude/projects/-work-demo/sess-0001/subagents/agent-explore1.jsonl",
+        "usage": {
+          "cacheCreation": 0,
+          "cacheRead": 0,
+          "input": 900,
+          "output": 55,
+          "thinking": 0
+        }
+      },
+      {
+        "agentType": "main",
+        "background": false,
+        "currentTool": "Bash",
+        "description": "Run the tests",
+        "endedAt": null,
+        "id": "sess-0002",
+        "model": "claude-opus-5-5",
+        "parentAgentId": null,
+        "parentToolUseId": null,
+        "sessionId": "sess-0002",
+        "spawnDepth": 0,
+        "startedAt": 1790856480000,
+        "state": "running",
+        "toolCallCount": 1,
+        "transcriptPath": "<root>/home/.claude/projects/-work-demo/sess-0002.jsonl",
+        "usage": {
+          "cacheCreation": 0,
+          "cacheRead": 2000,
+          "input": 900,
+          "output": 15,
+          "thinking": 0
+        }
+      }
+    ],
+    "health": {},
+    "launched": [],
+    "pendingPermissions": [],
+    "places": {},
+    "projects": [],
+    "rateLimits": {
+      "fiveHourPct": null,
+      "resetsAt": null,
+      "sevenDayPct": null
+    },
+    "sessionProjects": {
+      "sess-0001": {
+        "folder": "/work/demo",
+        "ignored": false,
+        "projectId": null
+      },
+      "sess-0002": {
+        "folder": "/work/demo",
+        "ignored": false,
+        "projectId": null
+      }
+    },
+    "sessions": [
+      {
+        "agentCount": 0,
+        "contextFill": 0.0029,
+        "costUsd": 0.0043,
+        "cwd": "/work/demo",
+        "effort": "high",
+        "gitBranch": "main",
+        "id": "sess-0002",
+        "lastPrompt": null,
+        "lastPromptAt": 1790856480000,
+        "model": "claude-opus-5-5",
+        "permissionMode": null,
+        "pid": null,
+        "recap": null,
+        "startedAt": 1790856480000,
+        "state": "running",
+        "surface": "cli",
+        "title": "Run the tests",
+        "transcriptPath": "<root>/home/.claude/projects/-work-demo/sess-0002.jsonl",
+        "updatedAt": 1790856481000,
+        "usage": {
+          "cacheCreation": 0,
+          "cacheRead": 2000,
+          "input": 900,
+          "output": 15,
+          "thinking": 0
+        },
+        "version": "2.1.301"
+      },
+      {
+        "agentCount": 1,
+        "contextFill": 0.0045,
+        "costUsd": 0.01704,
+        "cwd": "/work/demo",
+        "effort": "high",
+        "gitBranch": "main",
+        "id": "sess-0001",
+        "lastPrompt": null,
+        "lastPromptAt": 1790856000000,
+        "model": "claude-opus-5-5",
+        "permissionMode": null,
+        "pid": null,
+        "recap": null,
+        "startedAt": 1790856000000,
+        "state": "idle",
+        "surface": "cli",
+        "title": "Find why the build is slow",
+        "transcriptPath": "<root>/home/.claude/projects/-work-demo/sess-0001.jsonl",
+        "updatedAt": 1790856006000,
+        "usage": {
+          "cacheCreation": 500,
+          "cacheRead": 7200,
+          "input": 2400,
+          "output": 175,
+          "thinking": 20
+        },
+        "version": "2.1.301"
+      }
+    ],
+    "spendPerHourUsd": 0.021339999999999998,
+    "workspaceProjects": []
+  },
+  "type": "state",
+  "view": "fleet"
+}

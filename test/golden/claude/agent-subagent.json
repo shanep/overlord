@@ -1,0 +1,145 @@
+{
+  "state": {
+    "agent": {
+      "agentType": "Explore",
+      "background": false,
+      "currentTool": null,
+      "description": "Scan the imports",
+      "endedAt": 1790856005000,
+      "id": "explore1",
+      "model": "claude-opus-5-5",
+      "parentAgentId": "sess-0001",
+      "parentToolUseId": "toolu_agent",
+      "sessionId": "sess-0001",
+      "spawnDepth": 1,
+      "startedAt": 1790856002100,
+      "state": "done",
+      "toolCallCount": 1,
+      "transcriptPath": "<root>/home/.claude/projects/-work-demo/sess-0001/subagents/agent-explore1.jsonl",
+      "usage": {
+        "cacheCreation": 0,
+        "cacheRead": 0,
+        "input": 900,
+        "output": 55,
+        "thinking": 0
+      }
+    },
+    "children": [],
+    "compactions": [],
+    "feed": [
+      {
+        "at": 1790856002100,
+        "id": "e-u1",
+        "kind": "user",
+        "text": "List slow imports"
+      },
+      {
+        "at": 1790856002500,
+        "id": "e-a1:0",
+        "input": {
+          "pattern": "import"
+        },
+        "kind": "tool_use",
+        "name": "Grep"
+      },
+      {
+        "at": 1790856003000,
+        "id": "e-u2:0",
+        "kind": "tool_result",
+        "ok": true,
+        "text": "src/a.ts\nsrc/b.ts",
+        "toolUseId": "toolu_grep"
+      },
+      {
+        "at": 1790856004000,
+        "id": "e-a2:0",
+        "kind": "text",
+        "text": "Two files import the whole SDK."
+      }
+    ],
+    "requests": [
+      {
+        "agentId": "explore1",
+        "costUsd": 0.0022,
+        "durationMs": null,
+        "messageId": "msg-e1",
+        "model": "claude-opus-5-5",
+        "requestId": "req-msg-e1",
+        "sessionId": "sess-0001",
+        "timestamp": 1790856002500,
+        "ttftMs": null,
+        "usage": {
+          "cacheCreation": 0,
+          "cacheRead": 0,
+          "input": 400,
+          "output": 30,
+          "thinking": 0
+        }
+      },
+      {
+        "agentId": "explore1",
+        "costUsd": 0.0025,
+        "durationMs": null,
+        "messageId": "msg-e2",
+        "model": "claude-opus-5-5",
+        "requestId": "req-msg-e2",
+        "sessionId": "sess-0001",
+        "timestamp": 1790856004000,
+        "ttftMs": null,
+        "usage": {
+          "cacheCreation": 0,
+          "cacheRead": 0,
+          "input": 500,
+          "output": 25,
+          "thinking": 0
+        }
+      }
+    ],
+    "session": {
+      "agentCount": 1,
+      "contextFill": 0.0045,
+      "costUsd": 0.01704,
+      "cwd": "/work/demo",
+      "effort": "high",
+      "gitBranch": "main",
+      "id": "sess-0001",
+      "lastPrompt": null,
+      "lastPromptAt": 1790856000000,
+      "model": "claude-opus-5-5",
+      "permissionMode": null,
+      "pid": null,
+      "recap": null,
+      "startedAt": 1790856000000,
+      "state": "idle",
+      "surface": "cli",
+      "title": "Find why the build is slow",
+      "transcriptPath": "<root>/home/.claude/projects/-work-demo/sess-0001.jsonl",
+      "updatedAt": 1790856006000,
+      "usage": {
+        "cacheCreation": 500,
+        "cacheRead": 7200,
+        "input": 2400,
+        "output": 175,
+        "thinking": 20
+      },
+      "version": "2.1.301"
+    },
+    "toolCalls": [
+      {
+        "agentId": "explore1",
+        "endedAt": 1790856003000,
+        "id": "toolu_grep",
+        "input": {
+          "pattern": "import"
+        },
+        "name": "Grep",
+        "ok": true,
+        "resultPreview": "src/a.ts\nsrc/b.ts",
+        "sessionId": "sess-0001",
+        "startedAt": 1790856002500
+      }
+    ]
+  },
+  "type": "state",
+  "view": "agent"
+}

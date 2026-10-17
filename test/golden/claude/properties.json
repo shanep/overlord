@@ -1,0 +1,76 @@
+{
+  "state": {
+    "agents": [
+      {
+        "agentType": "Explore",
+        "background": false,
+        "currentTool": null,
+        "description": "Scan the imports",
+        "endedAt": 1790856005000,
+        "id": "explore1",
+        "model": "claude-opus-5-5",
+        "parentAgentId": "sess-0001",
+        "parentToolUseId": "toolu_agent",
+        "sessionId": "sess-0001",
+        "spawnDepth": 1,
+        "startedAt": 1790856002100,
+        "state": "done",
+        "toolCallCount": 1,
+        "transcriptPath": "<root>/home/.claude/projects/-work-demo/sess-0001/subagents/agent-explore1.jsonl",
+        "usage": {
+          "cacheCreation": 0,
+          "cacheRead": 0,
+          "input": 900,
+          "output": 55,
+          "thinking": 0
+        }
+      }
+    ],
+    "health": {
+      "level": "good",
+      "metrics": {
+        "compactions": 0,
+        "contextTokens": 4500,
+        "contextWindow": 1000000,
+        "recentCacheHit": 0.782608695652174,
+        "recentToolCalls": 2,
+        "recentToolErrors": 0,
+        "turns": 2
+      },
+      "signals": []
+    },
+    "pendingPermissions": [],
+    "session": {
+      "agentCount": 1,
+      "contextFill": 0.0045,
+      "costUsd": 0.01704,
+      "cwd": "/work/demo",
+      "effort": "high",
+      "gitBranch": "main",
+      "id": "sess-0001",
+      "lastPrompt": null,
+      "lastPromptAt": 1790856000000,
+      "model": "claude-opus-5-5",
+      "permissionMode": null,
+      "pid": null,
+      "recap": null,
+      "startedAt": 1790856000000,
+      "state": "idle",
+      "surface": "cli",
+      "title": "Find why the build is slow",
+      "transcriptPath": "<root>/home/.claude/projects/-work-demo/sess-0001.jsonl",
+      "updatedAt": 1790856006000,
+      "usage": {
+        "cacheCreation": 500,
+        "cacheRead": 7200,
+        "input": 2400,
+        "output": 175,
+        "thinking": 20
+      },
+      "version": "2.1.301"
+    },
+    "sessionId": "sess-0001"
+  },
+  "type": "state",
+  "view": "properties"
+}

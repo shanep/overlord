@@ -9,7 +9,7 @@ export default defineConfig({
       {
         test: {
           name: 'node',
-          include: ['src/**/*.test.ts', 'test/unit/**/*.test.ts'],
+          include: ['src/**/*.test.ts', 'test/unit/**/*.test.ts', 'test/golden/**/*.test.ts'],
           environment: 'node',
           setupFiles: ['test/unit-setup.ts'],
           restoreMocks: true,
