@@ -17,10 +17,10 @@ import type { KnobDefinition, KnobKind, KnobValueType } from '../../shared/model
 
 import { classifyArea } from './areas.js';
 
-export const CODEX_DOCS = 'https://learn.chatgpt.com/docs';
-export const CONFIG_REFERENCE_URL = `${CODEX_DOCS}/config-file/config-reference`;
-export const ENVIRONMENT_URL = `${CODEX_DOCS}/config-file/environment-variables`;
-export const COMMANDS_URL = `${CODEX_DOCS}/developer-commands?surface=cli`;
+const CODEX_DOCS = 'https://learn.chatgpt.com/docs';
+const CONFIG_REFERENCE_URL = `${CODEX_DOCS}/config-file/config-reference`;
+const ENVIRONMENT_URL = `${CODEX_DOCS}/config-file/environment-variables`;
+const COMMANDS_URL = `${CODEX_DOCS}/developer-commands?surface=cli`;
 
 /** The three pages, as the generator fetched them. */
 export interface CodexReferencePages {
@@ -123,10 +123,14 @@ export function parseConfigTables(markdown: string): readonly ReferenceRow[] {
   const rows: ReferenceRow[] = [];
   let key = fieldAfter(markdown, 'key', 0);
   while (key !== null) {
+    const next = fieldAfter(markdown, 'key', key.end);
+    // A row without a type or a description is skipped, so it never takes the next row's.
+    const limit = next === null ? markdown.length : next.end;
     const type = fieldAfter(markdown, 'type', key.end);
     const description = type === null ? null : fieldAfter(markdown, 'description', type.end);
-    if (type === null || description === null) {
-      break;
+    if (type === null || description === null || description.end > limit) {
+      key = next;
+      continue;
     }
     rows.push({
       key: key.value,
@@ -134,7 +138,7 @@ export function parseConfigTables(markdown: string): readonly ReferenceRow[] {
       description: description.value,
       defaultValue: null,
     });
-    key = fieldAfter(markdown, 'key', description.end);
+    key = next;
   }
   return rows;
 }
@@ -243,7 +247,7 @@ function textField(record: Readonly<Record<string, unknown>>, key: string): stri
 }
 
 /** The options of every ConfigTable island on the page, one list per island. */
-export function parseIslandTables(html: string): readonly (readonly ReferenceRow[])[] {
+function parseIslandTables(html: string): readonly (readonly ReferenceRow[])[] {
   const tables: ReferenceRow[][] = [];
   const island = /<astro-island[^>]*component-export="ConfigTable"[^>]*props="([^"]*)"/gu;
   for (const match of html.matchAll(island)) {
@@ -290,6 +294,21 @@ export function parseGlobalFlags(html: string): readonly ReferenceRow[] {
 
 const SIMPLE_WORD = /^[\w.-]+$/u;
 
+/** Type names, so "boolean | table" reads as a mixed type and not a choice of two words. */
+const TYPE_NAMES: ReadonlySet<string> = new Set([
+  'boolean',
+  'table',
+  'string',
+  'number',
+  'integer',
+  'null',
+  'path',
+]);
+
+function isChoice(word: string): boolean {
+  return SIMPLE_WORD.test(word) && !TYPE_NAMES.has(word);
+}
+
 /** The value type and allowed values a Codex type line describes. */
 export function codexType(type: string): {
   readonly valueType: KnobValueType;
@@ -310,7 +329,7 @@ export function codexType(type: string): {
     return { valueType: 'string[]', allowed: [] };
   }
   const choices = plain.split('|').map((choice) => choice.trim());
-  if (choices.length > 1 && choices.every((choice) => SIMPLE_WORD.test(choice))) {
+  if (choices.length > 1 && choices.every((choice) => isChoice(choice))) {
     return { valueType: 'enum', allowed: choices };
   }
   return { valueType: 'json', allowed: [] };
@@ -318,7 +337,7 @@ export function codexType(type: string): {
 
 /** The default a description names, as in "(default: `x`)" or "Defaults to `x`". */
 export function codexDefault(description: string): string | null {
-  const match = /\(default:\s*`([^`]+)`|[Dd]efaults? to `([^`]+)`/u.exec(description);
+  const match = /\(default:\s*`([^`]+)`|defaults? to `([^`]+)`/iu.exec(description);
   const found = match?.[1] ?? match?.[2] ?? null;
   return found === null ? null : found.replace(/^"(.*)"$/u, '$1');
 }
@@ -345,11 +364,11 @@ function unlink(markdown: string): string {
 
 /** Docs text with Markdown links reduced to their text, one space between words, and no dashes. */
 function plainText(description: string): string {
-  let undashed = unlink(description);
+  let text = unlink(description);
   for (const dash of DASHES) {
-    undashed = undashed.replaceAll(dash, ',');
+    text = text.replaceAll(dash, ',');
   }
-  return undashed
+  return text
     .split(/\s/u)
     .filter((word) => word !== '')
     .join(' ')
@@ -388,7 +407,16 @@ function knob(option: ReferenceRow, kind: KnobKind, page: string): KnobDefinitio
   };
 }
 
-/** Every knob, settings first, each key once, placeholders left out. */
+/**
+ * True for a key with a dot inside one of its own segments, like
+ * notice.hide_gpt-5.1-codex-max_migration_prompt, which a dotted path would
+ * split in the wrong place. A segment never starts with a digit otherwise.
+ */
+function hasDottedSegment(key: string): boolean {
+  return key.split('.').some((segment, index) => index > 0 && /^\d/u.test(segment));
+}
+
+/** Every knob, settings first, each key once, placeholders and dotted segments left out. */
 export function buildCodexCatalog(pages: CodexReferencePages): readonly KnobDefinition[] {
   const settings = parseConfigTables(configTomlSection(pages.configReference)).map((option) =>
     knob(option, 'setting', CONFIG_REFERENCE_URL),
@@ -402,7 +430,7 @@ export function buildCodexCatalog(pages: CodexReferencePages): readonly KnobDefi
   const seen = new Set<string>();
   return [...settings, ...env, ...flags].filter((item) => {
     const id = `${item.kind}:${item.key}`;
-    if (item.key.includes('<') || seen.has(id)) {
+    if (item.key.includes('<') || hasDottedSegment(item.key) || seen.has(id)) {
       return false;
     }
     seen.add(id);

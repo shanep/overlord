@@ -105,6 +105,12 @@ describe('parseConfigTables', () => {
     expect(options[1]?.description).toContain('Defaults to `"read-only"`');
   });
 
+  it("skips a row with no type instead of taking the next row's", () => {
+    const text =
+      '{ key: "a", description: "no type" },\n{ key: "b", type: "string", description: "B" }';
+    expect(parseConfigTables(text).map((row) => row.key)).toStrictEqual(['b']);
+  });
+
   it('stops at requirements.toml for the config.toml part', () => {
     const keys = parseConfigTables(configTomlSection(REFERENCE)).map((option) => option.key);
     expect(keys).not.toContain('allowed_approval_policies');
@@ -142,6 +148,7 @@ describe('codexType and codexDefault', () => {
     ['array<string>', 'string[]', []],
     ['low | medium | high', 'enum', ['low', 'medium', 'high']],
     ['boolean | array<string>', 'json', []],
+    ['boolean | table', 'json', []],
     ['map<string,string>', 'json', []],
   ])('reads %s', (type, valueType, allowed) => {
     expect(codexType(type)).toStrictEqual({ valueType, allowed });

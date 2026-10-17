@@ -1151,12 +1151,9 @@
     "key": "features.network_proxy",
     "kind": "setting",
     "area": "tools",
-    "valueType": "enum",
+    "valueType": "json",
     "defaultValue": null,
-    "allowed": [
-      "boolean",
-      "table"
-    ],
+    "allowed": [],
     "description": "Start the network proxy for sandboxed commands (experimental; off by default). Required to enforce permission-profile domain rules unless enabled administrator-managed `experimental_network` requirements start the proxy. Use a table when setting feature-level policy options such as `domains`. Does not filter web search, apps, MCP, or other hosted tools.",
     "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
     "appliesAt": "next-launch",
@@ -2205,18 +2202,6 @@
     "defaultValue": null,
     "allowed": [],
     "description": "Track acknowledgement of the GPT-5.1 migration prompt.",
-    "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
-    "appliesAt": "next-launch",
-    "managedOnly": false
-  },
-  {
-    "key": "notice.hide_gpt-5.1-codex-max_migration_prompt",
-    "kind": "setting",
-    "area": "ui",
-    "valueType": "boolean",
-    "defaultValue": null,
-    "allowed": [],
-    "description": "Track acknowledgement of the gpt-5.1-codex-max migration prompt.",
     "docUrl": "https://learn.chatgpt.com/docs/config-file/config-reference",
     "appliesAt": "next-launch",
     "managedOnly": false
