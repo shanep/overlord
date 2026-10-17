@@ -187,7 +187,7 @@ describe('real SDK against the fake Claude binary', () => {
       const limits = events.flatMap((event) =>
         event.name === 'rateLimits.updated' ? [event.payload] : [],
       );
-      expect(limits).toStrictEqual([
+      expect(limits).toMatchObject([
         { fiveHourPct: 25, sevenDayPct: null, resetsAt: 1_800_000_000_000 },
       ]);
       expect(session.summary()).toMatchObject({ state: 'done', costUsd: 0.0125, agentCount: 1 });

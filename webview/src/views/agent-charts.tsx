@@ -4,8 +4,10 @@
 import type { ReactElement } from 'react';
 import { useMemo } from 'react';
 
+import type { AgentId } from '../../../src/shared/agents.js';
+import { CLAUDE_CODE } from '../../../src/shared/agents.js';
 import type { ApiRequest, ToolCall } from '../../../src/shared/model.js';
-import { contextWindow } from '../../../src/shared/model.js';
+import { claudeContextWindow } from '../../../src/shared/model.js';
 import type { ChartTheme } from '../charts/chart-theme.js';
 import { useChartTheme } from '../charts/chart-theme.js';
 import {
@@ -25,13 +27,21 @@ import { cacheHitRatio, promptTokens } from '../metrics.js';
 /** Calls shown on the timeline, newest kept. */
 const TIMELINE_LIMIT = 60;
 
-/** Context window for the chart's limit line, from the model and the biggest prompt seen. */
+/**
+ * Context window for the chart's limit line, from the model and the biggest
+ * prompt seen. Only Claude's windows are known here, so another agent's
+ * chart has no limit line.
+ */
 export function windowForRequests(
   model: string | null,
   requests: readonly ApiRequest[],
+  agent: AgentId = CLAUDE_CODE,
 ): number | null {
+  if (agent !== CLAUDE_CODE) {
+    return null;
+  }
   const peak = Math.max(0, ...requests.map((request) => promptTokens(request.usage)));
-  return contextWindow(model, peak);
+  return claudeContextWindow(model, peak);
 }
 
 function byTime(requests: readonly ApiRequest[]): readonly ApiRequest[] {
@@ -92,21 +102,22 @@ function RequestCharts(props: {
   readonly requests: readonly ApiRequest[];
   readonly compactions: readonly number[];
   readonly model: string | null;
+  readonly agent: AgentId;
   readonly theme: ChartTheme;
   readonly cacheReads: boolean;
 }): ReactElement {
-  const { requests, compactions, model, theme } = props;
+  const { requests, compactions, model, agent, theme } = props;
   const options = useMemo(
     () => ({
       tokens: buildTokensOverTime(requests, theme),
       cost: buildCostOverTime(requests, theme),
       context: buildContextFill(
-        { requests, compactions, windowTokens: windowForRequests(model, requests) },
+        { requests, compactions, windowTokens: windowForRequests(model, requests, agent) },
         theme,
       ),
       cache: buildCacheHitRatio(requests, theme),
     }),
-    [requests, compactions, model, theme],
+    [requests, compactions, model, agent, theme],
   );
   return (
     <>
@@ -145,6 +156,8 @@ export function AgentCharts(props: {
   readonly requests: readonly ApiRequest[];
   readonly compactions: readonly number[];
   readonly model: string | null;
+  /** The session's agent. Unset is Claude Code. */
+  readonly agent?: AgentId;
   /** False when the session's agent does not report cache reads, which leaves the cache chart out. */
   readonly cacheReads?: boolean;
 }): ReactElement {
@@ -165,6 +178,7 @@ export function AgentCharts(props: {
         requests={requests}
         compactions={compactions}
         model={model}
+        agent={props.agent ?? CLAUDE_CODE}
         theme={theme}
         cacheReads={props.cacheReads ?? true}
       />

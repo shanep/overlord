@@ -2,7 +2,9 @@
 // transcript, the SDK, hooks and telemetry each know part of an API call or an
 // agent, and a later report must not wipe what an earlier one knew.
 
+import type { RateLimitWindow } from '../../shared/agents.js';
 import type { AgentNode, ApiRequest } from '../../shared/model.js';
+import type { RateLimits } from '../../shared/protocol.js';
 
 export function requestKey(sessionId: string, id: string): string {
   return JSON.stringify([sessionId, id]);
@@ -42,6 +44,32 @@ export function mergeCall(message: ApiRequest, telemetry: ApiRequest): ApiReques
     durationMs: telemetry.durationMs ?? message.durationMs,
     costUsd: telemetry.costUsd ?? message.costUsd,
   };
+}
+
+function sameWindow(left: RateLimitWindow, right: RateLimitWindow): boolean {
+  return left.agent === right.agent && left.id === right.id;
+}
+
+/**
+ * Each session reports only the limits it saw, so a report keeps what other
+ * sessions and other agents said. A window reported again replaces the old
+ * copy, and a field the report does not know keeps its value.
+ */
+export function mergeRateLimits(known: RateLimits, next: RateLimits): RateLimits {
+  const merged: RateLimits = {
+    fiveHourPct: next.fiveHourPct ?? known.fiveHourPct,
+    sevenDayPct: next.sevenDayPct ?? known.sevenDayPct,
+    resetsAt: next.resetsAt ?? known.resetsAt,
+  };
+  if (known.windows === undefined && next.windows === undefined) {
+    return merged;
+  }
+  // Known windows keep their place, so the header does not reorder as reports come in.
+  const fresh = next.windows ?? [];
+  const old = known.windows ?? [];
+  const updated = old.map((window) => fresh.find((other) => sameWindow(window, other)) ?? window);
+  const added = fresh.filter((window) => !old.some((other) => sameWindow(window, other)));
+  return { ...merged, windows: [...updated, ...added] };
 }
 
 /** What a SubagentStart or SubagentStop hook says when it cannot know where the agent sits. */

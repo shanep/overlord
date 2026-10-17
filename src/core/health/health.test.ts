@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import type { ApiRequest, ToolCall } from '../../shared/model.js';
+import { claudeCode } from '../agents/claude/index.js';
 
-import type { HealthInput } from './health.js';
-import { assessHealth } from './health.js';
+import type { HealthAgent, HealthInput } from './health.js';
+import { assessHealth, healthAgent } from './health.js';
 
 const T0 = 1_800_000_000_000;
 const MINUTE = 60_000;
@@ -47,9 +48,24 @@ function input(overrides: Partial<HealthInput> = {}): HealthInput {
     requests: [request(1, 40_000), request(2, 50_000)],
     toolCalls: [call(1, true)],
     compactions: [],
+    agent: healthAgent(claudeCode),
     ...overrides,
   };
 }
+
+/** An agent with its own words, no cache reads and no subagents. */
+const OTHER: HealthAgent = {
+  name: 'Other CLI',
+  contextWindow: () => 400_000,
+  cacheReads: false,
+  subagents: false,
+  words: {
+    instructionsFile: 'AGENTS.md',
+    compactCommand: '/compact',
+    clearCommand: '/new',
+    rewind: null,
+  },
+};
 
 function ids(health: ReturnType<typeof assessHealth>): string[] {
   return health.signals.map((signal) => `${signal.id}:${signal.level}`);
@@ -210,5 +226,45 @@ describe('assessHealth', () => {
     ).toBeLessThan(0.2);
     // Signals with only a watch level take the bar to watch.
     expect(assessHealth(input({ updatedAt: T0 + 9 * HOUR })).score).toBeCloseTo(0.5);
+  });
+
+  it("uses the agent's words, window and capabilities", () => {
+    const health = assessHealth(
+      input({ agent: OTHER, requests: [request(1, 350_000)], compactions: [T0] }),
+    );
+    expect(health.metrics.contextWindow).toBe(400_000);
+    const context = health.signals.find((signal) => signal.id === 'context');
+    expect(context?.actions).toStrictEqual([
+      'Run /compact with what to keep, for example /compact keep the plan, the open questions and the failing test names.',
+      'If the next piece of work is a new task, ask for a short handoff note, run /new and paste the note in.',
+    ]);
+    expect(context?.why).toContain('Other CLI compacts on its own soon');
+    const compacted = health.signals.find((signal) => signal.id === 'compactions');
+    expect(compacted?.actions).toContain(
+      'Put facts it keeps losing in AGENTS.md or a notes file so they survive the next compaction.',
+    );
+    const failing = Array.from({ length: 5 }, (_, index) => call(index, false));
+    const errors = assessHealth(input({ agent: OTHER, toolCalls: failing })).signals[0];
+    expect(errors?.actions).toHaveLength(2);
+  });
+
+  it('shows no cache share or cache signal for an agent without cache reads', () => {
+    const cold = Array.from({ length: 12 }, (_, index) => request(index, 60_000, 0.2));
+    const health = assessHealth(input({ agent: OTHER, requests: cold }));
+    expect(health.metrics.recentCacheHit).toBeNull();
+    expect(health.signals).toStrictEqual([]);
+  });
+
+  it('knows no window and suggests no commands for an unknown agent', () => {
+    const health = assessHealth(
+      input({ agent: healthAgent(null), requests: [request(1, 600_000)], compactions: [T0] }),
+    );
+    expect(health.metrics.contextWindow).toBeNull();
+    expect(ids(health)).toStrictEqual(['compactions:watch']);
+    expect(health.signals[0]?.actions).toStrictEqual([
+      'Ask it to restate the goal, the plan and what is left, and correct anything it got wrong.',
+      'Start fresh: ask for a handoff note, start a new session and paste the note in.',
+      'Put facts it keeps losing in the instructions file or a notes file so they survive the next compaction.',
+    ]);
   });
 });

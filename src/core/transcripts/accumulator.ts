@@ -14,7 +14,7 @@ import type {
   TokenUsage,
   ToolCall,
 } from '../../shared/model.js';
-import { contextWindow, promptTokens, ZERO_USAGE } from '../../shared/model.js';
+import { claudeContextWindow, promptTokens, ZERO_USAGE } from '../../shared/model.js';
 import { plainText } from '../../shared/plain-text.js';
 import { surfaceForEntrypoint } from '../agents/claude/surface.js';
 
@@ -70,7 +70,7 @@ function contextFill(requests: readonly ApiRequest[]): number | null {
     return null;
   }
   const tokens = promptTokens(latest.usage);
-  return tokens / contextWindow(latest.model, tokens);
+  return tokens / claudeContextWindow(latest.model, tokens);
 }
 
 /** The Claude adapter owns the entrypoint rules, shared with the live process table. */

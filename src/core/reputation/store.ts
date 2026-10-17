@@ -53,7 +53,10 @@ const hitsSchema = z.record(
   z.string(),
   z.object({
     terms: z.array(z.string()),
-    target: z.enum(['claude', 'general']),
+    // Indexes from before other agents say 'claude' for a hit aimed at the agent.
+    target: z
+      .enum(['agent', 'claude', 'general'])
+      .transform((target): FrustrationTarget => (target === 'general' ? 'general' : 'agent')),
     excerpt: z.string(),
   }),
 );

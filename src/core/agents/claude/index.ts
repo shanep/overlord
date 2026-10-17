@@ -4,12 +4,12 @@
 
 import type { AgentCapabilities, ModeOption } from '../../../shared/agents.js';
 import { CLAUDE_CODE } from '../../../shared/agents.js';
-import { contextWindow } from '../../../shared/model.js';
+import { claudeContextWindow } from '../../../shared/model.js';
 import type { HandoffKind } from '../../../shared/protocol.js';
 import { executableFor } from '../../app/claude-bin.js';
 import { DEFAULT_MODEL } from '../../app/prices.js';
 import { DEFAULT_PRICES, findPrice } from '../../transcripts/pricing.js';
-import type { AgentAdapter, DetectInput, Detected } from '../types.js';
+import type { AgentAdapter, AgentWords, DetectInput, Detected } from '../types.js';
 
 import { claudeConfig } from './config.js';
 import { claudeHooks } from './hooks.js';
@@ -19,6 +19,7 @@ import { claudeObserverFacet } from './observer.js';
 import { claudeRuntime } from './runtime.js';
 import { claudeTelemetry } from './telemetry.js';
 import { CLAUDE_SHORT, claudeTerminal } from './terminal.js';
+import { claudeTuning } from './tuning.js';
 
 const HANDOFFS: readonly HandoffKind[] = [
   'resume-local',
@@ -66,6 +67,13 @@ const EFFORT_LEVELS: readonly ModeOption[] = [
   { id: 'max', label: 'Max' },
 ];
 
+const WORDS: AgentWords = {
+  instructionsFile: 'CLAUDE.md',
+  compactCommand: '/compact',
+  clearCommand: '/clear',
+  rewind: '/rewind (or press Esc twice)',
+};
+
 /** Finds the binary the way SDK runs do, without running it, so the version stays unknown. */
 async function detect(input: DetectInput): Promise<Detected> {
   await Promise.resolve();
@@ -81,10 +89,11 @@ export const claudeCode: AgentAdapter = {
   capabilities: CAPABILITIES,
   modes: { permission: PERMISSION_MODES, effort: EFFORT_LEVELS },
   models: {
-    contextWindow,
+    contextWindow: claudeContextWindow,
     price: (model) => findPrice(model, DEFAULT_PRICES),
     defaultModel: DEFAULT_MODEL,
   },
+  words: WORDS,
   runtime: claudeRuntime(),
   terminal: claudeTerminal,
   observer: claudeObserverFacet,
@@ -93,4 +102,5 @@ export const claudeCode: AgentAdapter = {
   inject: claudeInject,
   config: claudeConfig,
   instructions: claudeInstructions,
+  tuning: claudeTuning,
 };

@@ -42,7 +42,7 @@ function hitsOf(index: ReputationIndex): ReputationHit[] {
   for (const [id, prompt] of index.prompts) {
     const mean = index.hits.get(id);
     if (mean !== undefined) {
-      const tone = mean.target === 'claude' ? 'mean' : 'general';
+      const tone = mean.target === 'agent' ? 'mean' : 'general';
       hits.push({ id: `${id}:${tone}`, sessionId: prompt.sessionId, at: prompt.at, tone, ...mean });
     }
     const kind = index.kind.get(id);
@@ -110,7 +110,7 @@ export function summarize(
     ]) {
       tally.prompts += 1;
       tally.kind += kind ? 1 : 0;
-      tally.mean += target === 'claude' ? 1 : 0;
+      tally.mean += target === 'agent' ? 1 : 0;
       tally.general += target === 'general' ? 1 : 0;
     }
   }

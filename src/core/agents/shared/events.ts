@@ -104,8 +104,9 @@ export interface CompactedEvent {
  */
 export interface RateLimitWindowReport {
   /**
-   * The window's id. "five_hour" and "seven_day" fill the Fleet's plan
-   * limits. The reducer drops other ids until the store reads every window.
+   * The window's id, unique within the agent. Every window shows in the
+   * Fleet header and the Usage view. Claude Code's "five_hour" and
+   * "seven_day" also fill the Fleet's plan limits.
    */
   readonly id: string;
   readonly usedPct: number | null;

@@ -55,5 +55,7 @@ export function currentPlan(rt: Runtime): PlanLimits | null {
 }
 
 export function buildUsage(rt: Runtime): UsageState {
-  return { ...rt.caches.usage.value, plan: currentPlan(rt) };
+  const { windows } = rt.store.rateLimitsState();
+  const usage: UsageState = { ...rt.caches.usage.value, plan: currentPlan(rt) };
+  return windows === undefined ? usage : { ...usage, windows };
 }

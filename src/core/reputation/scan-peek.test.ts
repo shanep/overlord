@@ -4,6 +4,8 @@ import path from 'node:path';
 
 import { describe, expect, it, onTestFinished, vi } from 'vitest';
 
+import { claudeUserPrompts } from '../agents/claude/prompts.js';
+
 import { scanInto } from './scan.js';
 import { emptyIndex } from './store.js';
 
@@ -32,8 +34,7 @@ describe('scanInto when the title peek fails', () => {
     await writeFile(path.join(project, 's1.jsonl'), `${line}\n`);
     const index = emptyIndex();
     await scanInto(index, {
-      projectsDir: path.join(root, 'projects'),
-      historyFile: path.join(root, 'history.jsonl'),
+      sources: [claudeUserPrompts({ projectsDir: path.join(root, 'projects'), configDir: root })],
       now: 1,
     });
     expect(index.prompts.size).toBe(1);

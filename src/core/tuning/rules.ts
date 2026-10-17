@@ -2,8 +2,10 @@
 // all, and at each session to list the ones that show the problem worst.
 // Thresholds are set so a tip only shows when it is worth acting on.
 
+import { CLAUDE_CODE } from '../../shared/agents.js';
 import type { TipSeverity } from '../../shared/tuning.js';
 
+import type { RuleFit } from './agent.js';
 import type { TipTracking } from './impact.js';
 import type { SessionMeasure } from './measure.js';
 import { costTotal } from './measure.js';
@@ -11,7 +13,10 @@ import type { Totals } from './totals.js';
 import { LARGE_CONTEXT, LONG_SESSION_PROMPTS, sessionUsd } from './totals.js';
 import { percent, plural, tokens, usd } from './words.js';
 
-export interface TipRule {
+/** Claude Code's own settings, commands or behavior, so the rule fits Claude Code alone. */
+const CLAUDE_ONLY = [CLAUDE_CODE];
+
+export interface TipRule extends RuleFit {
   readonly id: string;
   readonly severity: TipSeverity;
   readonly title: string;
@@ -58,6 +63,7 @@ function homeNote(totals: Totals): string {
 export const RULES: readonly TipRule[] = [
   {
     id: 'context-reread',
+    needs: ['cacheReads', 'costUsd'],
     severity: 'high',
     title: 'Most of the spend is re-reading old context',
     advice: [
@@ -93,6 +99,7 @@ export const RULES: readonly TipRule[] = [
   },
   {
     id: 'huge-context',
+    only: CLAUDE_ONLY,
     severity: 'high',
     title: 'Sessions grow huge without compacting',
     advice: [
@@ -125,6 +132,7 @@ export const RULES: readonly TipRule[] = [
   },
   {
     id: 'idle-rewrite',
+    only: CLAUDE_ONLY,
     severity: 'medium',
     title: 'Resuming big sessions after a break rewrites the cache',
     advice: [
@@ -155,6 +163,7 @@ export const RULES: readonly TipRule[] = [
   },
   {
     id: 'subagent-model',
+    only: CLAUDE_ONLY,
     severity: 'medium',
     title: 'Subagents run on the most expensive models',
     advice: [
@@ -187,6 +196,7 @@ export const RULES: readonly TipRule[] = [
   },
   {
     id: 'big-results',
+    only: CLAUDE_ONLY,
     severity: 'medium',
     title: 'Huge tool output stays in context',
     advice: [
@@ -280,6 +290,7 @@ export const RULES: readonly TipRule[] = [
   },
   {
     id: 'denials',
+    only: CLAUDE_ONLY,
     severity: 'medium',
     title: 'Tool calls keep getting denied',
     advice: [
@@ -365,6 +376,7 @@ export const RULES: readonly TipRule[] = [
   },
   {
     id: 'cd-commands',
+    only: CLAUDE_ONLY,
     severity: 'low',
     title: 'Commands keep changing folders',
     advice: [

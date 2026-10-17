@@ -6,6 +6,8 @@
 import path from 'node:path';
 
 import type { ReputationState } from '../../../shared/reputation.js';
+import { agents } from '../../agents/index.js';
+import type { ObserverContext } from '../../agents/types.js';
 import { scanInto } from '../../reputation/scan.js';
 import type { ReputationIndex } from '../../reputation/store.js';
 import { loadIndex, saveIndex } from '../../reputation/store.js';
@@ -82,11 +84,11 @@ async function loaded(rt: Runtime, entry: Entry, file: string): Promise<Loaded> 
 async function scan(rt: Runtime, entry: Entry): Promise<void> {
   const file = path.join(rt.host.storageDir, REPUTATION_FILE);
   const { index, rebuilt } = await loaded(rt, entry, file);
-  const result = await scanInto(index, {
-    projectsDir: rt.paths.projectsDir,
-    historyFile: path.join(rt.paths.configDir, 'history.jsonl'),
-    now: rt.clock(),
-  });
+  const context: ObserverContext = { home: rt.paths.home, env: rt.env, claude: rt.paths };
+  const sources = agents
+    .list()
+    .flatMap((adapter) => adapter.observer?.userPrompts?.(context) ?? []);
+  const result = await scanInto(index, { sources, now: rt.clock() });
   // Nothing new means nothing to write, so an empty home leaves no file behind.
   if (rebuilt || result.filesRead > 0 || result.filesGone > 0) {
     await saveIndex(file, index);

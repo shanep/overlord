@@ -21,6 +21,7 @@ import type { EditTools, HookDialect } from '../hooks/normalized.js';
 import type { KnobsFacet, SettingsFormat } from '../knobs/facet.js';
 import type { TelemetryDecode } from '../otel/decode.js';
 import type { ClaudePaths } from '../paths.js';
+import type { Prompt } from '../reputation/prompts.js';
 import type { Collected } from '../surfaces/common.js';
 import type { HandoffCommand } from '../surfaces/handoff.js';
 import type { AgentEntry, LiveProcess, RegistryEntry } from '../surfaces/live.js';
@@ -29,6 +30,7 @@ import type { ExecFunction, IsAlive } from '../surfaces/process.js';
 import type { Exec } from '../sync/exec.js';
 import type { SessionPeek } from '../transcripts/peek.js';
 import type { ModelPrice } from '../transcripts/pricing.js';
+import type { SessionMeasure } from '../tuning/measure.js';
 
 import type { RuntimeFacet } from './shared/runtime.js';
 
@@ -55,10 +57,30 @@ export interface Detected {
 export interface ModelFacet {
   /** The window for a model id, or null when the model is unknown. A prompt bigger than the standard window proves a larger one. */
   contextWindow: (model: string | null, observedTokens?: number) => number | null;
-  /** List price per million tokens, or null when the model has none. */
+  /**
+   * List price per million tokens, or null when the agent has no price for
+   * the model. Null means the cost is unknown, never that it is free: an
+   * agent that records its own cost, or runs on a plan with no per token
+   * price, returns null here.
+   */
   price: (model: string) => ModelPrice | null;
   /** What the agent runs when neither a profile nor its settings pick a model. */
   readonly defaultModel: string;
+}
+
+/**
+ * The agent's own names for things that advice text mentions, so Health and
+ * Tuning tell a Codex user about AGENTS.md and not CLAUDE.md.
+ */
+export interface AgentWords {
+  /** The project instruction file, such as CLAUDE.md or AGENTS.md. */
+  readonly instructionsFile: string;
+  /** The command that swaps the conversation for a summary, such as /compact, or null when it has none. */
+  readonly compactCommand: string | null;
+  /** The command that starts over with an empty context, such as /clear or /new, or null when it has none. */
+  readonly clearCommand: string | null;
+  /** How to go back to an earlier turn, as advice says it, such as "/rewind (or press Esc twice)". */
+  readonly rewind: string | null;
 }
 
 /** The binary to run outside a terminal tab, and the login shell's environment for it. */
@@ -235,12 +257,66 @@ export interface SessionObserver<A extends RecordAccumulator = RecordAccumulator
   list?: (input: ObserverListInput) => Promise<readonly SurfaceSession[]>;
 }
 
+/** A file that holds prompts the user typed, for Reputation. */
+export interface PromptFile {
+  readonly path: string;
+  /** Null for a file that is not there right now, such as a history file not written yet. */
+  readonly stamp: { readonly mtimeMs: number; readonly size: number } | null;
+  /**
+   * A session's own file, which names the session, or a history file that
+   * keeps prompts from many sessions after their transcripts are gone.
+   */
+  readonly kind: 'transcript' | 'history';
+  /** The session a transcript belongs to. Null for a history file. */
+  readonly sessionId: string | null;
+}
+
+/** What one prompt file holds. */
+export interface PromptFileRead {
+  readonly prompts: readonly Prompt[];
+  /** The session's title, for a transcript that has one. */
+  readonly title: string | null;
+}
+
+/** Where the agent keeps what the user typed. Reputation reads these. */
+export interface UserPrompts {
+  /** Every prompt file. A history file that is missing is still listed, with a null stamp, so its old stamp is kept. */
+  files: () => Promise<readonly PromptFile[]>;
+  /** Reads one file. Called only when its stamp changed since the last scan. */
+  read: (file: PromptFile) => Promise<PromptFileRead>;
+}
+
 /**
  * Sessions the agent ran without Overlord, read from its own files.
  * @public
  */
 export interface ObserverFacet {
   create: (context: ObserverContext) => SessionObserver;
+  /** The prompts the user typed, for Reputation. Left out when the agent's files do not keep them. */
+  userPrompts?: (context: ObserverContext) => UserPrompts;
+}
+
+/** One session's files as the Tuning scan sees them. */
+export interface TuningSession {
+  readonly sessionId: string;
+  /** The main file, which keys the session in the Tuning index. */
+  readonly path: string;
+  readonly mtimeMs: number;
+  readonly size: number;
+}
+
+/**
+ * Reads the agent's past sessions for the Tuning view. Each agent parses its
+ * own denial text, model ids and cache fields, and the rules and totals are
+ * shared.
+ */
+export interface TuningFacet {
+  /** Every session on disk, from file metadata alone. */
+  sessions: (context: ObserverContext) => Promise<readonly TuningSession[]>;
+  /** Reads one session's files and measures them. */
+  measure: (session: TuningSession) => Promise<SessionMeasure>;
+  /** The knobs a tip's advice sets, by tip id, for an agent whose knobs differ from Claude Code's. */
+  readonly knobs?: Readonly<Record<string, readonly string[]>>;
 }
 
 /**
@@ -555,6 +631,8 @@ export interface AgentAdapter {
     readonly effort: readonly ModeOption[];
   };
   readonly models: ModelFacet;
+  /** Names advice text uses. Left out, Health and Tuning use plain words and skip the advice that needs a command. */
+  readonly words?: AgentWords;
   readonly runtime?: RuntimeFacet;
   readonly terminal?: TerminalFacet;
   readonly observer?: ObserverFacet;
@@ -563,4 +641,5 @@ export interface AgentAdapter {
   readonly inject?: InjectFacet;
   readonly instructions?: InstructionPolicy;
   readonly config?: ConfigFacet;
+  readonly tuning?: TuningFacet;
 }

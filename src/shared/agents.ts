@@ -63,3 +63,15 @@ export interface AgentInfo {
   readonly permissionModes: readonly ModeOption[];
   readonly effortLevels: readonly ModeOption[];
 }
+
+/** One usage limit window, such as Claude's 5 hour one. */
+export interface RateLimitWindow {
+  readonly agent: AgentId;
+  /** The agent's own id for the window, such as five_hour. */
+  readonly id: string;
+  /** "5 hour", "7 day", "30 day". */
+  readonly label: string;
+  /** Percent on the bus, a fraction once the Fleet view reads it. */
+  readonly usedPct: number | null;
+  readonly resetsAt: number | null;
+}

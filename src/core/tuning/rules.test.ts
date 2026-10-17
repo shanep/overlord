@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
+import { CODEX } from '../../shared/agents.js';
+import { claudeCode } from '../agents/claude/index.js';
+
+import type { TuningAgent } from './agent.js';
+import { tuningAgent } from './agent.js';
 import { buildTips, isTipId, tipsFor, tipsTakenBy } from './build.js';
 import type { SessionMeasure } from './measure.js';
 import type { TipRule } from './rules.js';
@@ -299,5 +304,63 @@ describe('tipsTakenBy and isTipId', () => {
     ]);
     expect(isTipId('rereads')).toBe(true);
     expect(isTipId('nope')).toBe(false);
+  });
+});
+
+describe('tips for another agent', () => {
+  const claude = tuningAgent(claudeCode);
+  const other: TuningAgent = {
+    ...claude,
+    id: CODEX,
+    name: 'Codex CLI',
+    short: 'Codex',
+    capabilities: { ...claude.capabilities, cacheReads: false },
+    words: {
+      instructionsFile: 'AGENTS.md',
+      compactCommand: '/compact',
+      clearCommand: '/new',
+      rewind: null,
+    },
+    knobs: { 'repeated-commands': ['some_knob'] },
+  };
+  const measures = [NOISY, LONG, QUIET];
+
+  it('gives Claude Code the same tips with or without the agent', () => {
+    const plain = tipsOf(measures);
+    const named = buildTips({
+      totals: totalsOf(measures, HOME),
+      live: measures,
+      all: measures,
+      tracked: new Map(),
+      now: 0,
+      agent: claude,
+    });
+    expect(named).toStrictEqual(plain);
+  });
+
+  it('leaves out Claude Code only rules and ones needing a missing capability, in its words', () => {
+    const tips = buildTips({
+      totals: totalsOf(measures, HOME),
+      live: measures,
+      all: measures,
+      tracked: new Map(),
+      now: 0,
+      agent: other,
+    });
+    expect(tips.map((tip) => tip.id)).toStrictEqual([
+      'repeated-commands',
+      'long-sessions',
+      'rereads',
+      'tool-errors',
+    ]);
+    const long = tips.find((tip) => tip.id === 'long-sessions');
+    expect(long?.advice).toStrictEqual([
+      'Keep one task per session, and start the next one with the Launcher or a new Codex tab.',
+      'Put facts every session needs in AGENTS.md or a skill instead of building them up in a long conversation.',
+    ]);
+    expect(tipsTakenBy({ kind: 'knob', key: 'autoCompactWindow' }, other)).toStrictEqual([]);
+    expect(tipsTakenBy({ kind: 'knob', key: 'some_knob' }, other)).toStrictEqual([
+      'repeated-commands',
+    ]);
   });
 });

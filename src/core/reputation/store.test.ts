@@ -55,7 +55,7 @@ describe('index file', () => {
     expect(JSON.parse(text)).toMatchObject({
       version: 2,
       scannedAt: 77,
-      hits: { 't:a': { terms: ['idiot'], target: 'claude', excerpt: 'you idiot' } },
+      hits: { 't:a': { terms: ['idiot'], target: 'agent', excerpt: 'you idiot' } },
       kind: { 't:c': { terms: ['thanks', 'great job'], excerpt: 'thanks, great job' } },
     });
   });
@@ -73,6 +73,16 @@ describe('index file', () => {
     expect(index.prompts).toStrictEqual(old.prompts);
     expect(index.hits).toStrictEqual(old.hits);
     expect(index.sessions).toStrictEqual(old.sessions);
+  });
+
+  it('reads a hit saved as aimed at claude as aimed at the agent', async () => {
+    const file = await indexFile();
+    await saveIndex(file, filled());
+    const saved = await readFile(file, 'utf8');
+    await writeFile(file, saved.replaceAll('"target":"agent"', '"target":"claude"'));
+    const { index, backup } = await loadIndex(file, 1);
+    expect(backup).toBeNull();
+    expect(index.hits.get('t:a')?.target).toBe('agent');
   });
 
   it('backs up a corrupt or unexpected file and starts over', async () => {
@@ -117,7 +127,7 @@ describe('addPrompt', () => {
     expect(index.kind.get('t:a')?.terms).toStrictEqual(['please', 'thanks']);
     expect(index.hits.get('t:a')?.terms).toStrictEqual(['damn']);
     index.kind.delete('t:a');
-    index.hits.set('t:b', { terms: ['old'], target: 'claude', excerpt: 'old' });
+    index.hits.set('t:b', { terms: ['old'], target: 'agent', excerpt: 'old' });
     expect(addPrompt(index, prompt('t:a', 'please fix this damn test, thanks'))).toBe(false);
     expect(index.kind.get('t:a')?.terms).toStrictEqual(['please', 'thanks']);
     expect(addPrompt(index, prompt('t:b', 'fine'))).toBe(true);

@@ -1,22 +1,16 @@
-// One rescan: read every main session transcript that changed since the last
-// scan, then the prompt history, and merge what they hold into the index.
-// Subagent transcripts are skipped, since a person never types into them.
+// One rescan: read every prompt file that changed since the last scan, the
+// session transcripts first and then the history files, and merge what they
+// hold into the index. Each agent's observer says where its user's prompts
+// are kept.
 
-import { stat } from 'node:fs/promises';
+import type { PromptFile, UserPrompts } from '../agents/types.js';
 
-import { peekSession } from '../transcripts/peek.js';
-import { readAllLines } from '../transcripts/reader.js';
-import type { SessionFileInfo } from '../transcripts/scanner.js';
-import { scanSessions } from '../transcripts/scanner.js';
-
-import { historyPrompts, transcriptPrompts } from './prompts.js';
 import type { FileStamp, ReputationIndex } from './store.js';
 import { addHistoryPrompt, addPrompt, claimSession } from './store.js';
 
 export interface ScanInputs {
-  readonly projectsDir: string;
-  /** ~/.claude/history.jsonl. */
-  readonly historyFile: string;
+  /** Every agent's prompt files, from the observers that keep them. */
+  readonly sources: readonly UserPrompts[];
   readonly now: number;
 }
 
@@ -32,68 +26,63 @@ function sameStamp(left: FileStamp | undefined, right: FileStamp): boolean {
   return left?.mtimeMs === right.mtimeMs && left.size === right.size;
 }
 
-async function titleOf(info: SessionFileInfo): Promise<string | null> {
-  try {
-    const peek = await peekSession(info.transcriptPath, info.size);
-    return peek.title;
-  } catch {
-    return null;
-  }
+interface Listed {
+  readonly source: UserPrompts;
+  readonly file: PromptFile;
 }
 
-async function readTranscript(index: ReputationIndex, info: SessionFileInfo): Promise<number> {
-  const lines = await readAllLines(info.transcriptPath);
-  claimSession(index, info.sessionId, await titleOf(info));
-  const prompts = transcriptPrompts(lines, {
-    sessionId: info.sessionId,
-    fallbackAt: info.mtimeMs,
-  });
+async function readTranscript(index: ReputationIndex, item: Listed): Promise<number> {
+  const { prompts, title } = await item.source.read(item.file);
+  if (item.file.sessionId !== null) {
+    claimSession(index, item.file.sessionId, title);
+  }
   return prompts.filter((prompt) => addPrompt(index, prompt)).length;
 }
 
-async function stampOf(file: string): Promise<FileStamp | null> {
-  try {
-    const info = await stat(file);
-    return { mtimeMs: info.mtimeMs, size: info.size };
-  } catch {
+async function readHistory(index: ReputationIndex, item: Listed): Promise<number | null> {
+  const { stamp } = item.file;
+  if (stamp === null || sameStamp(index.files.get(item.file.path), stamp)) {
     return null;
   }
-}
-
-async function readHistory(index: ReputationIndex, file: string): Promise<number | null> {
-  const stamp = await stampOf(file);
-  if (stamp === null || sameStamp(index.files.get(file), stamp)) {
-    return null;
-  }
-  const prompts = historyPrompts(await readAllLines(file));
-  index.files.set(file, stamp);
+  const { prompts } = await item.source.read(item.file);
+  index.files.set(item.file.path, stamp);
   return prompts.filter((prompt) => addHistoryPrompt(index, prompt)).length;
 }
 
 /** Merges new prompts into `index` in place. Running it twice on the same files adds nothing. */
 export async function scanInto(index: ReputationIndex, inputs: ScanInputs): Promise<ScanResult> {
-  const seen = new Set<string>([inputs.historyFile]);
+  const listed: Listed[] = [];
+  for (const source of inputs.sources) {
+    for (const file of await source.files()) {
+      listed.push({ source, file });
+    }
+  }
+  // A history file stays seen while it is missing, so its stamp is kept.
+  const seen = new Set<string>(listed.map((item) => item.file.path));
   let filesRead = 0;
   let newPrompts = 0;
-  for (const info of await scanSessions(inputs.projectsDir)) {
-    seen.add(info.transcriptPath);
-    const stamp: FileStamp = { mtimeMs: info.mtimeMs, size: info.size };
-    if (!sameStamp(index.files.get(info.transcriptPath), stamp)) {
-      newPrompts += await readTranscript(index, info);
-      index.files.set(info.transcriptPath, stamp);
+  for (const item of listed) {
+    const { stamp } = item.file;
+    if (item.file.kind !== 'transcript' || stamp === null) {
+      continue;
+    }
+    if (!sameStamp(index.files.get(item.file.path), stamp)) {
+      newPrompts += await readTranscript(index, item);
+      index.files.set(item.file.path, stamp);
       filesRead += 1;
     }
   }
-  const fromHistory = await readHistory(index, inputs.historyFile);
+  // History goes last, so a session read from its transcript is not counted again.
+  for (const item of listed) {
+    const fromHistory = item.file.kind === 'history' ? await readHistory(index, item) : null;
+    filesRead += fromHistory === null ? 0 : 1;
+    newPrompts += fromHistory ?? 0;
+  }
   // Deleted transcripts keep their prompts and sessions; only the file stamps go.
   const gone = [...index.files.keys()].filter((file) => !seen.has(file));
   for (const file of gone) {
     index.files.delete(file);
   }
   index.scannedAt = inputs.now;
-  return {
-    filesRead: filesRead + (fromHistory === null ? 0 : 1),
-    newPrompts: newPrompts + (fromHistory ?? 0),
-    filesGone: gone.length,
-  };
+  return { filesRead, newPrompts, filesGone: gone.length };
 }

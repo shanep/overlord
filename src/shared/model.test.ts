@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { contextWindow, promptTokens, sessionName, ZERO_USAGE } from './model.js';
+import { claudeContextWindow, promptTokens, sessionName, ZERO_USAGE } from './model.js';
 
 describe('ZERO_USAGE', () => {
   it('has every counter at zero', () => {
@@ -22,7 +22,7 @@ describe('promptTokens', () => {
   });
 });
 
-describe('contextWindow', () => {
+describe('claudeContextWindow', () => {
   it('gives the 1M window to the models that run it by default', () => {
     for (const model of [
       'claude-opus-4-7',
@@ -33,7 +33,10 @@ describe('contextWindow', () => {
       'claude-haiku-6-0',
       'claude-fable-5-1',
     ]) {
-      expect({ model, window: contextWindow(model) }).toStrictEqual({ model, window: 1_000_000 });
+      expect({ model, window: claudeContextWindow(model) }).toStrictEqual({
+        model,
+        window: 1_000_000,
+      });
     }
   });
 
@@ -47,19 +50,22 @@ describe('contextWindow', () => {
       'claude-3-5-sonnet-20241022',
       'gateway-model',
     ]) {
-      expect({ model, window: contextWindow(model) }).toStrictEqual({ model, window: 200_000 });
+      expect({ model, window: claudeContextWindow(model) }).toStrictEqual({
+        model,
+        window: 200_000,
+      });
     }
   });
 
   it('trusts the [1m] tag and a prompt too big for 200K', () => {
-    expect(contextWindow('claude-opus-4-6[1m]')).toBe(1_000_000);
-    expect(contextWindow('gateway-model', 250_000)).toBe(1_000_000);
-    expect(contextWindow(null, 250_000)).toBe(1_000_000);
+    expect(claudeContextWindow('claude-opus-4-6[1m]')).toBe(1_000_000);
+    expect(claudeContextWindow('gateway-model', 250_000)).toBe(1_000_000);
+    expect(claudeContextWindow(null, 250_000)).toBe(1_000_000);
   });
 
   it('is unknown without a model', () => {
-    expect(contextWindow(null)).toBeNull();
-    expect(contextWindow(null, 150_000)).toBeNull();
+    expect(claudeContextWindow(null)).toBeNull();
+    expect(claudeContextWindow(null, 150_000)).toBeNull();
   });
 });
 

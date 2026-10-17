@@ -1,6 +1,7 @@
 // Builders for the summary, agent and rate limit records the reducer keeps.
 
-import type { AgentId } from '../../shared/agents.js';
+import type { AgentId, RateLimitWindow } from '../../shared/agents.js';
+import { CLAUDE_CODE } from '../../shared/agents.js';
 import {
   ZERO_USAGE,
   type AgentNode,
@@ -8,7 +9,11 @@ import {
   type SessionSummary,
 } from '../../shared/model.js';
 import type { RateLimits } from '../../shared/protocol.js';
-import type { RateLimitEvent, SubagentStartedEvent } from '../agents/shared/events.js';
+import type {
+  RateLimitEvent,
+  RateLimitWindowReport,
+  SubagentStartedEvent,
+} from '../agents/shared/events.js';
 
 import type { EndReason } from './events.js';
 
@@ -102,23 +107,83 @@ export function subagent(sessionId: string, event: SubagentStartedEvent, at: num
   };
 }
 
+const MINUTES_PER_HOUR = 60;
+const MINUTES_PER_DAY = 24 * MINUTES_PER_HOUR;
+
+/** Claude Code reports its windows by id alone. */
+const KNOWN_LABELS: Readonly<Record<string, string>> = {
+  five_hour: '5 hour',
+  seven_day: '7 day',
+  seven_day_opus: '7 day Opus',
+  seven_day_sonnet: '7 day Sonnet',
+};
+
+/** "5 hour", "7 day" or "30 day" from the window's length, else from its id. */
+export function windowLabel(id: string, minutes: number | null): string {
+  if (minutes !== null && minutes > 0) {
+    if (minutes % MINUTES_PER_DAY === 0) {
+      return `${String(minutes / MINUTES_PER_DAY)} day`;
+    }
+    if (minutes % MINUTES_PER_HOUR === 0) {
+      return `${String(minutes / MINUTES_PER_HOUR)} hour`;
+    }
+    return `${String(minutes)} minute`;
+  }
+  return KNOWN_LABELS[id] ?? id.replaceAll('_', ' ');
+}
+
+/** The windows with one report folded in, each agent's window kept once by id. */
+function withWindow(
+  windows: readonly RateLimitWindow[],
+  agent: AgentId,
+  report: RateLimitWindowReport,
+): RateLimitWindow[] {
+  const known = windows.find((window) => window.agent === agent && window.id === report.id);
+  const next: RateLimitWindow = {
+    agent,
+    id: report.id,
+    label: windowLabel(report.id, report.windowMinutes),
+    usedPct: report.usedPct ?? known?.usedPct ?? null,
+    resetsAt: report.resetsAt ?? known?.resetsAt ?? null,
+  };
+  return known === undefined
+    ? [...windows, next]
+    : windows.map((window) => (window === known ? next : window));
+}
+
+/** Claude Code's 5 hour and 7 day windows in the fields the Fleet header reads. */
+function withClaudeWindow(current: RateLimits, window: RateLimitWindowReport): RateLimits {
+  if (window.id === 'five_hour') {
+    return {
+      ...current,
+      fiveHourPct: window.usedPct ?? current.fiveHourPct,
+      resetsAt: window.resetsAt ?? current.resetsAt,
+    };
+  }
+  if (window.id === 'seven_day') {
+    return { ...current, sevenDayPct: window.usedPct ?? current.sevenDayPct };
+  }
+  return current;
+}
+
 /**
- * Folds one rate limit report into the known limits. Returns null when no
- * window has a slot on the bus (per-model, overage and other agents' windows).
+ * Folds one rate limit report into the known limits. Every window goes in
+ * windows, and Claude Code's 5 hour and 7 day ones also fill the two fields
+ * the Fleet header reads. Returns null when the report has no windows.
  */
-export function applyRateLimit(limits: RateLimits, event: RateLimitEvent): RateLimits | null {
+export function applyRateLimit(
+  limits: RateLimits,
+  event: RateLimitEvent,
+  agent: AgentId,
+): RateLimits | null {
   let next: RateLimits | null = null;
   for (const window of event.windows) {
-    const current: RateLimits = next ?? limits;
-    if (window.id === 'five_hour') {
-      next = {
-        ...current,
-        fiveHourPct: window.usedPct ?? current.fiveHourPct,
-        resetsAt: window.resetsAt ?? current.resetsAt,
-      };
-    } else if (window.id === 'seven_day') {
-      next = { ...current, sevenDayPct: window.usedPct ?? current.sevenDayPct };
-    }
+    const prior = next ?? limits;
+    const current: RateLimits = {
+      ...prior,
+      windows: withWindow(prior.windows ?? [], agent, window),
+    };
+    next = agent === CLAUDE_CODE ? withClaudeWindow(current, window) : current;
   }
   return next;
 }

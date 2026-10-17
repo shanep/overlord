@@ -233,6 +233,42 @@ describe('OverlordStore fleetState', () => {
     expect(store.fleetState(NOW).rateLimits).toStrictEqual(limits);
   });
 
+  it('keeps windows and fields that a later report does not know', () => {
+    const { bus, store } = setup();
+    const codex = {
+      agent: 'codex',
+      id: 'primary',
+      label: '5 hour',
+      usedPct: 30,
+      resetsAt: null,
+    };
+    const claude = { ...codex, agent: 'claude-code', id: 'five_hour', usedPct: 40 };
+    bus.emit('rateLimits.updated', {
+      fiveHourPct: 40,
+      sevenDayPct: null,
+      resetsAt: NOW,
+      windows: [claude],
+    });
+    bus.emit('rateLimits.updated', {
+      fiveHourPct: null,
+      sevenDayPct: null,
+      resetsAt: null,
+      windows: [codex],
+    });
+    bus.emit('rateLimits.updated', {
+      fiveHourPct: 45,
+      sevenDayPct: 5,
+      resetsAt: NOW,
+      windows: [{ ...claude, usedPct: 45 }],
+    });
+    expect(store.rateLimitsState()).toStrictEqual({
+      fiveHourPct: 45,
+      sevenDayPct: 5,
+      resetsAt: NOW,
+      windows: [{ ...claude, usedPct: 45 }, codex],
+    });
+  });
+
   it('sums request cost over the last hour, inclusive of now only', () => {
     const { bus, store } = setup();
     bus.emit('request.recorded', request('old', { timestamp: NOW - HOUR, costUsd: 100 }));

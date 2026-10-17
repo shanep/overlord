@@ -4,6 +4,8 @@ import path from 'node:path';
 
 import { describe, expect, it, onTestFinished } from 'vitest';
 
+import { claudeUserPrompts } from '../agents/claude/prompts.js';
+
 import type { ScanInputs } from './scan.js';
 import { scanInto } from './scan.js';
 import type { ReputationIndex } from './store.js';
@@ -11,6 +13,7 @@ import { emptyIndex } from './store.js';
 
 interface Home {
   readonly inputs: ScanInputs;
+  readonly historyFile: string;
   readonly transcript: (sessionId: string, lines: readonly string[]) => Promise<string>;
 }
 
@@ -23,7 +26,8 @@ async function makeHome(): Promise<Home> {
   const project = path.join(projectsDir, '-work');
   await mkdir(project, { recursive: true });
   return {
-    inputs: { projectsDir, historyFile: path.join(root, 'history.jsonl'), now: 500 },
+    inputs: { sources: [claudeUserPrompts({ projectsDir, configDir: root })], now: 500 },
+    historyFile: path.join(root, 'history.jsonl'),
     transcript: async (sessionId, lines): Promise<string> => {
       const file = path.join(project, `${sessionId}.jsonl`);
       await writeFile(file, lines.map((line) => `${line}\n`).join(''));
@@ -133,7 +137,7 @@ describe('scanInto', () => {
     const home = await makeHome();
     await home.transcript('live', [prompt('u1', 'a')]);
     await writeFile(
-      home.inputs.historyFile,
+      home.historyFile,
       [history('live', 'a'), history('gone', 'you idiot'), history('gone', '/clear')].join('\n'),
     );
     const index = emptyIndex();
@@ -144,7 +148,7 @@ describe('scanInto', () => {
     });
     expect(ids(index).filter((id) => id.startsWith('h:'))).toHaveLength(1);
     expect(index.sessions.get('gone')).toStrictEqual({ source: 'history', title: null });
-    expect(index.files.has(home.inputs.historyFile)).toBe(true);
+    expect(index.files.has(home.historyFile)).toBe(true);
     expect(await scanInto(index, home.inputs)).toStrictEqual({
       filesRead: 0,
       newPrompts: 0,
@@ -154,10 +158,10 @@ describe('scanInto', () => {
 
   it('rereads history when it grows and swaps it out when the transcript shows up', async () => {
     const home = await makeHome();
-    await writeFile(home.inputs.historyFile, `${history('s2', 'shit')}\n`);
+    await writeFile(home.historyFile, `${history('s2', 'shit')}\n`);
     const index = emptyIndex();
     await scanInto(index, home.inputs);
-    await appendFile(home.inputs.historyFile, `${history('s2', 'damn', 2000)}\n`);
+    await appendFile(home.historyFile, `${history('s2', 'damn', 2000)}\n`);
     expect(await scanInto(index, home.inputs)).toStrictEqual({
       filesRead: 1,
       newPrompts: 1,
@@ -172,14 +176,13 @@ describe('scanInto', () => {
     });
     expect(ids(index)).toStrictEqual(['t:u1', 't:u2']);
     expect(index.hits.size).toBe(2);
-    expect(index.files.has(home.inputs.historyFile)).toBe(true);
+    expect(index.files.has(home.historyFile)).toBe(true);
   });
 
   it('copes with no projects folder and no history', async () => {
     const index = emptyIndex();
     const inputs: ScanInputs = {
-      projectsDir: '/nope/projects',
-      historyFile: '/nope/h.jsonl',
+      sources: [claudeUserPrompts({ projectsDir: '/nope/projects', configDir: '/nope' })],
       now: 1,
     };
     expect(await scanInto(index, inputs)).toStrictEqual({

@@ -68,6 +68,17 @@ describe('claudeCode', () => {
     expect(models.price('gpt-5')).toBeNull();
   });
 
+  it('names its instruction file and commands for advice text', () => {
+    expect(claudeCode.words).toStrictEqual({
+      instructionsFile: 'CLAUDE.md',
+      compactCommand: '/compact',
+      clearCommand: '/clear',
+      rewind: '/rewind (or press Esc twice)',
+    });
+    expect(claudeCode.tuning).toBeDefined();
+    expect(claudeCode.observer?.userPrompts).toBeDefined();
+  });
+
   it('finds claude on PATH without running it', async () => {
     const bin = path.join(dir, 'claude');
     await writeFile(bin, '#!/bin/sh\nexit 1\n');

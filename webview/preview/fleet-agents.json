@@ -435,7 +435,30 @@
   "rateLimits": {
     "fiveHourPct": 62,
     "sevenDayPct": 38,
-    "resetsAt": 1792213564715
+    "resetsAt": 1792213564715,
+    "windows": [
+      {
+        "agent": "claude-code",
+        "id": "five_hour",
+        "label": "5 hour",
+        "usedPct": 0.62,
+        "resetsAt": 1792213564715
+      },
+      {
+        "agent": "codex",
+        "id": "primary",
+        "label": "5 hour",
+        "usedPct": 0.41,
+        "resetsAt": 1792212000000
+      },
+      {
+        "agent": "codex",
+        "id": "secondary",
+        "label": "7 day",
+        "usedPct": 0.77,
+        "resetsAt": 1792600000000
+      }
+    ]
   },
   "spendPerHourUsd": 14.6,
   "health": {

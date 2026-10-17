@@ -20,7 +20,7 @@ import type {
 } from '../../shared/protocol.js';
 import type { EventBus } from '../bus.js';
 
-import { isTelemetry, mergeAgent, mergeCall, requestKey } from './merge.js';
+import { isTelemetry, mergeAgent, mergeCall, mergeRateLimits, requestKey } from './merge.js';
 import type { CallRecord } from './merge.js';
 import { BoundedMap, RingBuffer } from './ring.js';
 import { SessionScoped } from './scoped.js';
@@ -175,6 +175,11 @@ export class OverlordStore {
       rateLimits: this.rateLimits,
       spendPerHourUsd: this.spendSince(now - HOUR_MS, now),
     };
+  }
+
+  /** Every agent's usage limit windows as last reported, for the Usage view. */
+  rateLimitsState(): RateLimits {
+    return this.rateLimits;
   }
 
   agentDetailState(sessionId: string, agentId: string): AgentDetailState {
@@ -381,7 +386,7 @@ export class OverlordStore {
         this.changed();
       }),
       bus.on('rateLimits.updated', (limits) => {
-        this.rateLimits = limits;
+        this.rateLimits = mergeRateLimits(this.rateLimits, limits);
         this.changed();
       }),
     ];

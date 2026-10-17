@@ -1,13 +1,11 @@
 // One rescan: measure every session whose transcript changed since the last
 // scan, mark sessions whose transcript is gone as history, and forget history
-// older than a year.
+// older than a year. Each agent's tuning facet finds and measures its own
+// sessions.
 
-import { readAllLines } from '../transcripts/reader.js';
-import type { SessionFileInfo } from '../transcripts/scanner.js';
-import { scanSessions } from '../transcripts/scanner.js';
-import { listSubagentFiles } from '../transcripts/subagents.js';
+import { claudeTuningSessions, measureClaudeSession } from '../agents/claude/tuning.js';
+import type { ObserverContext, TuningFacet, TuningSession } from '../agents/types.js';
 
-import { measureSession } from './measure.js';
 import type { FileStamp, TuningIndex } from './store.js';
 
 /** How long a measure outlives its transcript. */
@@ -23,17 +21,10 @@ function sameStamp(left: FileStamp | undefined, right: FileStamp): boolean {
   return left?.mtimeMs === right.mtimeMs && left.size === right.size;
 }
 
-async function measureFile(info: SessionFileInfo): Promise<ReturnType<typeof measureSession>> {
-  const subagents: string[][] = [];
-  for (const file of await listSubagentFiles(info.sessionDir)) {
-    subagents.push(await readAllLines(file.transcriptPath));
-  }
-  return measureSession({
-    sessionId: info.sessionId,
-    main: await readAllLines(info.transcriptPath),
-    subagents,
-    fallbackAt: info.mtimeMs,
-  });
+/** One session and the agent's measure for it. */
+interface Found {
+  readonly session: TuningSession;
+  readonly measure: TuningFacet['measure'];
 }
 
 function markGone(index: TuningIndex, seen: ReadonlySet<string>, now: number): number {
@@ -53,32 +44,61 @@ function markGone(index: TuningIndex, seen: ReadonlySet<string>, now: number): n
   return changed;
 }
 
-/** Updates `index` in place. Running it twice on the same files reads nothing the second time. */
-export async function scanInto(
+async function scanFound(
   index: TuningIndex,
-  projectsDir: string,
+  found: readonly Found[],
   now: number,
 ): Promise<ScanResult> {
   const seen = new Set<string>();
   let filesRead = 0;
-  for (const info of await scanSessions(projectsDir)) {
-    seen.add(info.transcriptPath);
-    const stamp: FileStamp = { mtimeMs: info.mtimeMs, size: info.size };
-    const known = index.entries.get(info.transcriptPath);
+  for (const { session, measure } of found) {
+    seen.add(session.path);
+    const stamp: FileStamp = { mtimeMs: session.mtimeMs, size: session.size };
+    const known = index.entries.get(session.path);
     if (!sameStamp(known?.stamp, stamp)) {
-      index.entries.set(info.transcriptPath, {
-        stamp,
-        measure: await measureFile(info),
-        live: true,
-      });
+      index.entries.set(session.path, { stamp, measure: await measure(session), live: true });
       filesRead += 1;
     } else if (known !== undefined && !known.live) {
       // A transcript that came back, for example restored from a backup.
-      index.entries.set(info.transcriptPath, { ...known, live: true });
+      index.entries.set(session.path, { ...known, live: true });
       filesRead += 1;
     }
   }
   const filesGone = markGone(index, seen, now);
   index.scannedAt = now;
   return { filesRead, filesGone };
+}
+
+/**
+ * Scans every agent that has a tuning facet in one pass, so a session of one
+ * agent is not marked gone because another agent's scan did not list it.
+ * @public
+ */
+export async function scanAgents(
+  index: TuningIndex,
+  facets: readonly TuningFacet[],
+  context: ObserverContext,
+  now: number,
+): Promise<ScanResult> {
+  const found: Found[] = [];
+  for (const facet of facets) {
+    for (const session of await facet.sessions(context)) {
+      found.push({ session, measure: facet.measure });
+    }
+  }
+  return scanFound(index, found, now);
+}
+
+/**
+ * Claude Code's sessions under projectsDir. Updates `index` in place.
+ * Running it twice on the same files reads nothing the second time.
+ */
+export async function scanInto(
+  index: TuningIndex,
+  projectsDir: string,
+  now: number,
+): Promise<ScanResult> {
+  const sessions = await claudeTuningSessions(projectsDir);
+  const found = sessions.map((session) => ({ session, measure: measureClaudeSession }));
+  return scanFound(index, found, now);
 }

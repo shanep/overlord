@@ -4,7 +4,7 @@
 // `action` messages for user intent.
 
 import type { ActivityState } from './activity.js';
-import type { AgentId, AgentInfo } from './agents.js';
+import type { AgentId, AgentInfo, RateLimitWindow } from './agents.js';
 import type { BridgeUsage } from './bridge-usage.js';
 import type { CatalogKind, LibraryState } from './catalog.js';
 import type { ConnectorsState } from './connectors.js';
@@ -56,18 +56,12 @@ export const VIEW_IDS = [
 
 export type ViewId = (typeof VIEW_IDS)[number];
 
-/** One usage limit window, such as Claude's 5 hour one. */
-interface RateLimitWindow {
-  readonly label: string;
-  readonly usedPct: number | null;
-  readonly resetsAt: number | null;
-}
-
+/** The first three fields are Claude Code's 5 hour and 7 day windows and when the 5 hour one resets. */
 export interface RateLimits {
   readonly fiveHourPct: number | null;
   readonly sevenDayPct: number | null;
   readonly resetsAt: number | null;
-  /** Every window the agent reports. Optional until the store fills it in, so read the two fields above for Claude. */
+  /** Every window any agent reported, Claude Code's included. Left out until the first one arrives. */
   readonly windows?: readonly RateLimitWindow[];
 }
 
@@ -327,6 +321,8 @@ export interface PlanLimits {
 export interface UsageState extends UsageStats {
   /** Null when plan limits do not apply (API key, Bedrock, Vertex) or could not be read. */
   readonly plan: PlanLimits | null;
+  /** Usage limit windows the agents' sessions reported, in percent. Left out before the first one. */
+  readonly windows?: readonly RateLimitWindow[];
 }
 
 /** One message between agents or sessions, from the transcripts. */

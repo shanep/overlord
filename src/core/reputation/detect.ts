@@ -1,12 +1,13 @@
 // Finds abusive or frustrated language in one prompt and decides whether it
-// was aimed at Claude or was general swearing. The word matching here is
+// was aimed at the agent or was general swearing. The word matching here is
 // shared with the kindness detector.
 
 import { stripIgnored } from './clean.js';
 import type { LexiconEntry } from './lexicon.js';
 import { DETERMINERS, LEXICON, SECOND_PERSON } from './lexicon.js';
 
-export type FrustrationTarget = 'claude' | 'general';
+/** Aimed at the agent the prompt was typed to, or swearing at the world. */
+export type FrustrationTarget = 'agent' | 'general';
 
 export interface Detection {
   /** Terms in the order they first appear, each once. */
@@ -162,7 +163,7 @@ export function detectFrustration(text: string): Detection | null {
   const aimed = matches.some((match) => isAimed(match, tokens, spoken));
   return {
     terms: [...new Set(matches.map((match) => match.entry.term))],
-    target: aimed ? 'claude' : 'general',
+    target: aimed ? 'agent' : 'general',
     excerpt: excerptAround(cleaned, first.token.start),
   };
 }

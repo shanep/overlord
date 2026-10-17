@@ -9,6 +9,7 @@ import type {
   SessionSummary,
   ToolCall,
 } from '../shared/model.js';
+import type { RateLimits } from '../shared/protocol.js';
 
 export interface OverlordEvents {
   readonly 'session.upserted': SessionSummary;
@@ -29,11 +30,8 @@ export interface OverlordEvents {
   };
   readonly 'permission.requested': PermissionRequest;
   readonly 'permission.resolved': { readonly requestId: string };
-  readonly 'rateLimits.updated': {
-    readonly fiveHourPct: number | null;
-    readonly sevenDayPct: number | null;
-    readonly resetsAt: number | null;
-  };
+  /** What one session saw. The store folds it into what the others saw. */
+  readonly 'rateLimits.updated': RateLimits;
   readonly 'source.error': { readonly source: string; readonly message: string };
 }
 

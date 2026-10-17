@@ -68,13 +68,15 @@ function largeByDefault(family: string, major: number, minor: number): boolean {
 }
 
 /**
- * Context window for a model id, or null when the model is unknown. A prompt
- * bigger than the standard window proves the session has the large one,
- * which covers model ids this table does not know yet.
+ * Context window for a Claude model id, or null when the model is unknown. A
+ * prompt bigger than the standard window proves the session has the large
+ * one, which covers model ids this table does not know yet. Claude Code's
+ * models facet uses it, and the webview may call it for Claude sessions
+ * only, since an unknown id gets Claude's standard window.
  */
-export function contextWindow(model: string, observedTokens?: number): number;
-export function contextWindow(model: string | null, observedTokens?: number): number | null;
-export function contextWindow(model: string | null, observedTokens = 0): number | null {
+export function claudeContextWindow(model: string, observedTokens?: number): number;
+export function claudeContextWindow(model: string | null, observedTokens?: number): number | null;
+export function claudeContextWindow(model: string | null, observedTokens = 0): number | null {
   if (observedTokens > STANDARD_WINDOW || model?.includes('[1m]') === true) {
     return LARGE_WINDOW;
   }

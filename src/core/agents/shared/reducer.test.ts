@@ -687,22 +687,46 @@ describe('MessageMapper rate limits and compaction', () => {
         resetsAt: 1_800_000_000,
       },
     });
+    const fiveWindow = {
+      agent: 'claude-code',
+      id: 'five_hour',
+      label: '5 hour',
+      usedPct: 25,
+      resetsAt: 1_800_000_000_000,
+    };
     expect(payloads(five, 'rateLimits.updated')).toStrictEqual([
-      { fiveHourPct: 25, sevenDayPct: null, resetsAt: 1_800_000_000_000 },
+      { fiveHourPct: 25, sevenDayPct: null, resetsAt: 1_800_000_000_000, windows: [fiveWindow] },
     ]);
     const seven = mapper.translate({
       type: 'rate_limit_event',
       rate_limit_info: { status: 'allowed', rateLimitType: 'seven_day', utilization: 0.5 },
     });
+    const sevenWindow = {
+      agent: 'claude-code',
+      id: 'seven_day',
+      label: '7 day',
+      usedPct: 50,
+      resetsAt: null,
+    };
     expect(payloads(seven, 'rateLimits.updated')).toStrictEqual([
-      { fiveHourPct: 25, sevenDayPct: 50, resetsAt: 1_800_000_000_000 },
+      {
+        fiveHourPct: 25,
+        sevenDayPct: 50,
+        resetsAt: 1_800_000_000_000,
+        windows: [fiveWindow, sevenWindow],
+      },
     ]);
     const sparse = mapper.translate({
       type: 'rate_limit_event',
       rate_limit_info: { status: 'allowed', rateLimitType: 'five_hour' },
     });
     expect(payloads(sparse, 'rateLimits.updated')).toStrictEqual([
-      { fiveHourPct: 25, sevenDayPct: 50, resetsAt: 1_800_000_000_000 },
+      {
+        fiveHourPct: 25,
+        sevenDayPct: 50,
+        resetsAt: 1_800_000_000_000,
+        windows: [fiveWindow, sevenWindow],
+      },
     ]);
     const sevenSparse = mapper.translate({
       type: 'rate_limit_event',
@@ -720,14 +744,32 @@ describe('MessageMapper rate limits and compaction', () => {
     expect(payloads(ms, 'rateLimits.updated')[0]?.resetsAt).toBe(1_900_000_000_000);
   });
 
-  it('skips windows the bus cannot show', () => {
+  it('keeps windows past the 5 hour and 7 day ones without touching those', () => {
     const { mapper } = makeMapper();
-    expect(
-      mapper.translate({
-        type: 'rate_limit_event',
-        rate_limit_info: { status: 'allowed', rateLimitType: 'overage' },
-      }),
-    ).toStrictEqual([]);
+    const overage = mapper.translate({
+      type: 'rate_limit_event',
+      rate_limit_info: { status: 'allowed', rateLimitType: 'seven_day_opus', utilization: 0.1 },
+    });
+    expect(payloads(overage, 'rateLimits.updated')).toStrictEqual([
+      {
+        fiveHourPct: null,
+        sevenDayPct: null,
+        resetsAt: null,
+        windows: [
+          {
+            agent: 'claude-code',
+            id: 'seven_day_opus',
+            label: '7 day Opus',
+            usedPct: 10,
+            resetsAt: null,
+          },
+        ],
+      },
+    ]);
+  });
+
+  it('skips a report with no window', () => {
+    const { mapper } = makeMapper();
     expect(
       mapper.translate({ type: 'rate_limit_event', rate_limit_info: { status: 'allowed' } }),
     ).toStrictEqual([]);
@@ -859,12 +901,24 @@ describe('SessionReducer events other agents send', () => {
     expect(payloads(mapper.apply(turn), 'turn.result')[0]?.turns).toBe(2);
   });
 
-  it('drops windows the bus has no slot for and folds the rest', () => {
+  it('keeps every window and fills the Claude fields from the 5 hour and 7 day ones', () => {
     const { mapper } = makeMapper();
     const window = { usedPct: 40, resetsAt: 5000, windowMinutes: 43_200 };
     expect(
-      mapper.apply({ type: 'rate_limit', windows: [{ id: 'codex', ...window }] }),
-    ).toStrictEqual([]);
+      payloads(
+        mapper.apply({ type: 'rate_limit', windows: [{ id: 'monthly', ...window }] }),
+        'rateLimits.updated',
+      ),
+    ).toStrictEqual([
+      {
+        fiveHourPct: null,
+        sevenDayPct: null,
+        resetsAt: null,
+        windows: [
+          { agent: CLAUDE_CODE, id: 'monthly', label: '30 day', usedPct: 40, resetsAt: 5000 },
+        ],
+      },
+    ]);
     expect(
       payloads(
         mapper.apply({
@@ -876,6 +930,6 @@ describe('SessionReducer events other agents send', () => {
         }),
         'rateLimits.updated',
       ),
-    ).toStrictEqual([{ fiveHourPct: 40, sevenDayPct: 10, resetsAt: 5000 }]);
+    ).toMatchObject([{ fiveHourPct: 40, sevenDayPct: 10, resetsAt: 5000 }]);
   });
 });

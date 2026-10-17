@@ -11,6 +11,7 @@ import { formatCost, formatDuration, formatValue, truncate } from '../format.js'
 import type { Tone } from '../labels.js';
 
 import { normalizeRatio } from './fleet-rows.js';
+import { otherWindows } from './limit-windows.js';
 
 function Stat(props: {
   readonly label: string;
@@ -80,6 +81,11 @@ export function FleetHeader(props: {
         {!claudeLimits || resetsAt === null ? null : (
           <Stat label="Resets in">{formatDuration(Math.max(0, resetsAt - now))}</Stat>
         )}
+        {otherWindows(state.rateLimits.windows, agents).map(({ key, label, window }) => (
+          <Stat key={key} label={label}>
+            <Meter label={`${label} used`} ratio={normalizeRatio(window.usedPct)} />
+          </Stat>
+        ))}
       </dl>
     </header>
   );

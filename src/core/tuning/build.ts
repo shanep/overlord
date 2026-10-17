@@ -3,6 +3,8 @@
 
 import type { Tip, TipSession, TipSeverity } from '../../shared/tuning.js';
 
+import type { TuningAgent } from './agent.js';
+import { inAgentWords, ruleFits, ruleKnobs } from './agent.js';
 import { impactOf } from './impact.js';
 import type { SessionMeasure } from './measure.js';
 import type { TipRule } from './rules.js';
@@ -34,6 +36,20 @@ export interface TipInputs {
   /** When you started following each tracked tip, by tip id. */
   readonly tracked: ReadonlyMap<string, number>;
   readonly now: number;
+  /** The agent whose sessions these are. Unset is Claude Code, whose words the rules use. */
+  readonly agent?: TuningAgent;
+}
+
+/** Every text of a rule that shows, to check the agent has a word for each name in it. */
+function ruleTexts(rule: TipRule): readonly string[] {
+  return [rule.title, ...rule.advice, ...rule.pros, ...rule.cons, rule.skipWhen];
+}
+
+/** The rules that fit the agent, or all of them for Claude Code. */
+function rulesFor(agent: TuningAgent | undefined): readonly TipRule[] {
+  return agent === undefined
+    ? RULES
+    : RULES.filter((rule) => ruleFits(rule, ruleTexts(rule), agent));
 }
 
 const NO_LONGER =
@@ -46,7 +62,9 @@ const NO_LONGER =
  */
 export function buildTips(inputs: TipInputs): Tip[] {
   const tips: Tip[] = [];
-  for (const rule of RULES) {
+  const { agent } = inputs;
+  const say = (text: string): string => (agent === undefined ? text : inAgentWords(text, agent));
+  for (const rule of rulesFor(agent)) {
     const finding = rule.finding(inputs.totals);
     const since = inputs.tracked.get(rule.id);
     if (finding === null && since === undefined) {
@@ -55,14 +73,14 @@ export function buildTips(inputs: TipInputs): Tip[] {
     tips.push({
       id: rule.id,
       severity: rule.severity,
-      title: rule.title,
-      finding: finding ?? NO_LONGER,
-      advice: rule.advice,
+      title: say(rule.title),
+      finding: say(finding ?? NO_LONGER),
+      advice: rule.advice.map((text) => say(text)),
       sessions: worstSessions(rule, inputs.live),
       fixes: rule.fixes,
-      pros: rule.pros,
-      cons: rule.cons,
-      skipWhen: rule.skipWhen,
+      pros: rule.pros.map((text) => say(text)),
+      cons: rule.cons.map((text) => say(text)),
+      skipWhen: say(rule.skipWhen),
       impact:
         since === undefined
           ? null
@@ -79,11 +97,15 @@ export type AdviceStep =
   | { readonly kind: 'knob'; readonly key: string }
   | { readonly kind: 'suggestion'; readonly id: string };
 
-/** Ids of the tips whose advice this step follows. */
-export function tipsTakenBy(step: AdviceStep): string[] {
-  return RULES.filter((rule) =>
-    step.kind === 'knob' ? (rule.knobs ?? []).includes(step.key) : rule.fixes.includes(step.id),
-  ).map((rule) => rule.id);
+/** Ids of the tips whose advice this step follows, for the agent whose knob it set. */
+export function tipsTakenBy(step: AdviceStep, agent?: TuningAgent): string[] {
+  const knobs = (rule: TipRule): readonly string[] =>
+    agent === undefined ? (rule.knobs ?? []) : ruleKnobs(rule, agent);
+  return rulesFor(agent)
+    .filter((rule) =>
+      step.kind === 'knob' ? knobs(rule).includes(step.key) : rule.fixes.includes(step.id),
+    )
+    .map((rule) => rule.id);
 }
 
 /** True when `id` names a tip rule. */

@@ -9,8 +9,53 @@ import type {
   SessionHealth,
 } from '../../shared/health.js';
 import type { ApiRequest, ToolCall } from '../../shared/model.js';
-import { contextWindow, promptTokens } from '../../shared/model.js';
+import { promptTokens } from '../../shared/model.js';
+import type { AgentAdapter, AgentWords, ModelFacet } from '../agents/types.js';
 import { percent, plural, tokens } from '../tuning/words.js';
+
+/** What the signals need from the session's agent. */
+export interface HealthAgent {
+  /** "Claude Code", for advice such as "Claude Code compacts on its own soon". */
+  readonly name: string;
+  readonly contextWindow: ModelFacet['contextWindow'];
+  /** The cache signal needs cache reads, and the subagent advice needs subagents. */
+  readonly cacheReads: boolean;
+  readonly subagents: boolean;
+  readonly words: AgentWords;
+}
+
+/** Plain words for an agent that names none, and no commands to suggest. */
+const PLAIN_WORDS: AgentWords = {
+  instructionsFile: 'the instructions file',
+  compactCommand: null,
+  clearCommand: null,
+  rewind: null,
+};
+
+/** An agent Overlord has no adapter for: no window, no cache signal and plain advice. */
+const UNKNOWN_AGENT: HealthAgent = {
+  name: 'The agent',
+  contextWindow: () => null,
+  cacheReads: false,
+  subagents: false,
+  words: PLAIN_WORDS,
+};
+
+/** The health view of an adapter, or of an unknown agent when there is none. */
+export function healthAgent(
+  adapter: Pick<AgentAdapter, 'name' | 'models' | 'capabilities' | 'words'> | null,
+): HealthAgent {
+  if (adapter === null) {
+    return UNKNOWN_AGENT;
+  }
+  return {
+    name: adapter.name,
+    contextWindow: adapter.models.contextWindow,
+    cacheReads: adapter.capabilities.cacheReads,
+    subagents: adapter.capabilities.subagents,
+    words: adapter.words ?? PLAIN_WORDS,
+  };
+}
 
 /** What the main thread did, for one session. */
 export interface HealthInput {
@@ -20,6 +65,7 @@ export interface HealthInput {
   readonly toolCalls: readonly ToolCall[];
   /** Compaction times. */
   readonly compactions: readonly number[];
+  readonly agent: HealthAgent;
 }
 
 type Level = HealthSignal['level'];
@@ -96,7 +142,30 @@ function contextLevel(used: number, window: number): Level | null {
   return used >= CONTEXT_WATCH_TOKENS || fill >= FILL_WATCH ? 'watch' : null;
 }
 
-function contextSignal(used: number, window: number): HealthSignal | null {
+/** "ask for a short handoff note, run /clear and paste the note in", in the agent's words. */
+function freshStart(words: AgentWords, note: string): string {
+  const start = words.clearCommand === null ? 'start a new session' : `run ${words.clearCommand}`;
+  return `ask for ${note}, ${start} and paste the note in`;
+}
+
+function contextActions(agent: HealthAgent): string[] {
+  const { compactCommand } = agent.words;
+  return [
+    ...(compactCommand === null
+      ? []
+      : [
+          `Run ${compactCommand} with what to keep, for example ${compactCommand} keep the plan, the open questions and the failing test names.`,
+        ]),
+    `If the next piece of work is a new task, ${freshStart(agent.words, 'a short handoff note')}.`,
+    ...(agent.subagents
+      ? [
+          'Hand big searches and file reads to a subagent so their output stays out of this context.',
+        ]
+      : []),
+  ];
+}
+
+function contextSignal(used: number, window: number, agent: HealthAgent): HealthSignal | null {
   const level = contextLevel(used, window);
   if (level === null) {
     return null;
@@ -104,7 +173,7 @@ function contextSignal(used: number, window: number): HealthSignal | null {
   const fill = used / window;
   const soon =
     fill >= FILL_DEGRADED
-      ? ' Claude Code compacts on its own soon, and then it picks what to keep, not you.'
+      ? ` ${agent.name} compacts on its own soon, and then it picks what to keep, not you.`
       : '';
   return {
     id: 'context',
@@ -112,15 +181,11 @@ function contextSignal(used: number, window: number): HealthSignal | null {
     title: level === 'degraded' ? 'The context is very large' : 'The context is getting large',
     finding: `${tokens(used)} tokens in context, ${percent(fill)} of a ${tokens(window)} window.`,
     why: `The bigger the context, the more likely the model misses instructions from early on and loses track of what was decided. Every turn also costs more and starts slower.${soon}`,
-    actions: [
-      'Run /compact with what to keep, for example /compact keep the plan, the open questions and the failing test names.',
-      'If the next piece of work is a new task, ask for a short handoff note, run /clear and paste the note in.',
-      'Hand big searches and file reads to a subagent so their output stays out of this context.',
-    ],
+    actions: contextActions(agent),
   };
 }
 
-function compactionSignal(count: number): HealthSignal | null {
+function compactionSignal(count: number, words: AgentWords): HealthSignal | null {
   if (count === 0) {
     return null;
   }
@@ -132,8 +197,8 @@ function compactionSignal(count: number): HealthSignal | null {
     why: 'Each compaction swaps the conversation for a summary. Exact error text, file paths and the reasons behind decisions can drop out, and the model does not know what it lost.',
     actions: [
       'Ask it to restate the goal, the plan and what is left, and correct anything it got wrong.',
-      'Start fresh: ask for a handoff note, run /clear and paste the note in.',
-      'Put facts it keeps losing in CLAUDE.md or a notes file so they survive the next compaction.',
+      `Start fresh: ${freshStart(words, 'a handoff note')}.`,
+      `Put facts it keeps losing in ${words.instructionsFile} or a notes file so they survive the next compaction.`,
     ],
   };
 }
@@ -152,7 +217,7 @@ function worstTool(failed: readonly ToolCall[]): { readonly name: string; readon
   return worst;
 }
 
-function toolErrorSignal(recent: readonly ToolCall[]): HealthSignal | null {
+function toolErrorSignal(recent: readonly ToolCall[], words: AgentWords): HealthSignal | null {
   const failed = recent.filter((call) => call.ok === false);
   if (failed.length < ERRORS_WATCH) {
     return null;
@@ -167,7 +232,9 @@ function toolErrorSignal(recent: readonly ToolCall[]): HealthSignal | null {
     actions: [
       'Press Esc and tell it what is wrong, or give it what it is missing (a path, a command, a permission).',
       'Ask it to stop and list what it has tried before it tries again.',
-      'Run /rewind (or press Esc twice) to go back to before the failures and steer it another way.',
+      ...(words.rewind === null
+        ? []
+        : [`Run ${words.rewind} to go back to before the failures and steer it another way.`]),
     ],
   };
 }
@@ -249,9 +316,11 @@ export function assessHealth(input: HealthInput): SessionHealth {
   const recentRequests = requests.slice(-CACHE_TURNS);
   const latest = requests.at(-1);
   const used = latest === undefined ? null : promptTokens(latest.usage);
+  const { agent } = input;
   const window =
-    latest === undefined ? null : contextWindow(latest.model, promptTokens(latest.usage));
-  const hit = recentCacheHit(recentRequests);
+    latest === undefined ? null : agent.contextWindow(latest.model, promptTokens(latest.usage));
+  // Without cache reads the share is unknown, not 0%.
+  const hit = agent.cacheReads ? recentCacheHit(recentRequests) : null;
   const metrics: HealthMetrics = {
     contextTokens: used,
     contextWindow: window,
@@ -262,9 +331,9 @@ export function assessHealth(input: HealthInput): SessionHealth {
     recentCacheHit: hit,
   };
   const signals = [
-    used === null || window === null ? null : contextSignal(used, window),
-    compactionSignal(input.compactions.length),
-    toolErrorSignal(recentCalls),
+    used === null || window === null ? null : contextSignal(used, window, agent),
+    compactionSignal(input.compactions.length, agent.words),
+    toolErrorSignal(recentCalls, agent.words),
     cacheSignal(recentRequests, hit, input.compactions),
     ageSignal(input.startedAt, input.updatedAt),
   ]

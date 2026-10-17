@@ -3,7 +3,8 @@
 
 import type { PermissionRequest } from '../../../shared/model.js';
 import type { PropertiesState } from '../../../shared/protocol.js';
-import { assessHealth } from '../../health/health.js';
+import { agents } from '../../agents/index.js';
+import { assessHealth, healthAgent } from '../../health/health.js';
 import type { OverlordStore } from '../../store/store.js';
 
 export function buildProperties(
@@ -31,6 +32,7 @@ export function buildProperties(
             startedAt: session.startedAt,
             updatedAt: session.updatedAt,
             ...store.agentActivity(sessionId, sessionId),
+            agent: healthAgent(agents.get(session.agent)),
           }),
   };
 }

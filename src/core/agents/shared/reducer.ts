@@ -407,7 +407,7 @@ export class SessionReducer {
   }
 
   private rateLimit(event: RateLimitEvent): SessionEvent[] {
-    const next = applyRateLimit(this.limits, event);
+    const next = applyRateLimit(this.limits, event, this.current.agent);
     if (next === null) {
       return [];
     }

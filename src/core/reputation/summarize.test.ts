@@ -78,7 +78,7 @@ describe('summarize', () => {
   it('totals kind, mean and general prompts by day and by session', () => {
     const index = emptyIndex();
     index.scannedAt = 9;
-    put(index, 'a', { sessionId: 's1', at: DAY2 }, { mean: hit('claude', 'idiot') });
+    put(index, 'a', { sessionId: 's1', at: DAY2 }, { mean: hit('agent', 'idiot') });
     put(
       index,
       'b',
@@ -88,7 +88,7 @@ describe('summarize', () => {
     put(index, 'c', { sessionId: 's1', at: DAY1 });
     put(index, 'd', { sessionId: 's2', at: DAY1 }, { mean: hit('general', 'shit') });
     put(index, 'e', { sessionId: 's3', at: DAY1 }, { kind: ['thanks', 'please'] });
-    put(index, 'f', { sessionId: 's4', at: DAY1 }, { mean: hit('claude', 'idiot') });
+    put(index, 'f', { sessionId: 's4', at: DAY1 }, { mean: hit('agent', 'idiot') });
     put(index, 'g', { sessionId: 's4', at: DAY1 });
     put(index, 'h', { sessionId: 's5', at: DAY1 });
     const state = summarize(index, title, 0);
@@ -160,8 +160,8 @@ describe('summarize', () => {
 
   it('breaks session ties by id', () => {
     const index = emptyIndex();
-    put(index, 'a', { sessionId: 'zz', at: DAY1 }, { mean: hit('claude', 'x') });
-    put(index, 'b', { sessionId: 'aa', at: DAY1 }, { mean: hit('claude', 'x') });
+    put(index, 'a', { sessionId: 'zz', at: DAY1 }, { mean: hit('agent', 'x') });
+    put(index, 'b', { sessionId: 'aa', at: DAY1 }, { mean: hit('agent', 'x') });
     expect(summarize(index, title, 0).bySession.map((row) => row.sessionId)).toStrictEqual([
       'aa',
       'zz',
@@ -193,7 +193,7 @@ describe('summarize', () => {
 
   it('skips hits whose prompt is missing', () => {
     const index = emptyIndex();
-    index.hits.set('lost', hit('claude', 'x'));
+    index.hits.set('lost', hit('agent', 'x'));
     index.kind.set('lost', { terms: ['please'], excerpt: 'please' });
     expect(summarize(index, title, 0)).toMatchObject({ recent: [], mean: 0, kind: 0 });
   });

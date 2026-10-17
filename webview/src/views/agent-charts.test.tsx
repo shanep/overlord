@@ -21,6 +21,10 @@ describe('windowForRequests', () => {
     expect(windowForRequests('gateway-model', big)).toBe(1_000_000);
     expect(windowForRequests(null, [])).toBeNull();
   });
+
+  it('knows no window for another agent', () => {
+    expect(windowForRequests('claude-opus-4-7', [], 'codex')).toBeNull();
+  });
 });
 
 describe('chart tables', () => {

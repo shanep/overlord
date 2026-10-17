@@ -25,7 +25,7 @@ import { useNow } from '../clock.js';
 import { Card, CardGrid, StatTile, StatTiles, StatusDot } from '../components/card.js';
 import type { FigureTable } from '../components/chart-figure.js';
 import { ChartFigure } from '../components/chart-figure.js';
-import { Meter } from '../components/meter.js';
+import { Meter, meterTone } from '../components/meter.js';
 import {
   formatAgo,
   formatCompact,
@@ -34,6 +34,10 @@ import {
   formatInteger,
 } from '../format.js';
 import type { Tone } from '../labels.js';
+
+import { normalizeRatio } from './fleet-rows.js';
+import type { NamedWindow } from './limit-windows.js';
+import { otherWindows } from './limit-windows.js';
 
 /** Table twin for the daily chart: one row per day, one column per series. */
 export function dailyTable(state: UsageState): FigureTable {
@@ -119,6 +123,46 @@ function PlanSection(props: { readonly plan: PlanLimits | null }): ReactElement 
                 title={limit.resetsAt === null ? undefined : formatDateTime(limit.resetsAt)}
               >
                 {resetText(limit, now)}
+              </span>
+            </Card>
+          );
+        })}
+      </CardGrid>
+    </section>
+  );
+}
+
+/** The usage limit windows other agents' sessions reported, one card each. */
+function AgentLimitsSection(props: {
+  readonly windows: readonly NamedWindow[];
+}): ReactElement | null {
+  const now = useNow();
+  if (props.windows.length === 0) {
+    return null;
+  }
+  return (
+    <section className="plan-limits" aria-labelledby="agent-limits-title">
+      <div className="list-bar">
+        <h2 id="agent-limits-title">Agent limits</h2>
+      </div>
+      <CardGrid labelledBy="agent-limits-title">
+        {props.windows.map(({ key, label, window }) => {
+          const ratio = normalizeRatio(window.usedPct);
+          const tone: Tone = ratio === null ? 'neutral' : meterTone(ratio);
+          return (
+            <Card key={key} tone={tone}>
+              <div className="card-head">
+                <StatusDot tone={tone} />
+                <span className="card-title">{label}</span>
+              </div>
+              <Meter label={`${label} used`} ratio={ratio} />
+              <span
+                className="card-sub"
+                title={window.resetsAt === null ? undefined : formatDateTime(window.resetsAt)}
+              >
+                {window.resetsAt === null
+                  ? ''
+                  : `Resets in ${formatDuration(Math.max(0, window.resetsAt - now))}`}
               </span>
             </Card>
           );
@@ -330,7 +374,8 @@ export function UsageView(props: { readonly state: UsageState }): ReactElement {
   const { state } = props;
   const theme = useChartTheme();
   // Plan limits are Claude Code's claude.ai plan, so they need Claude Code.
-  const claude = knowsClaude(useAgents());
+  const agents = useAgents();
+  const claude = knowsClaude(agents);
   const daily = useMemo(() => buildDailyUsage(state.days, theme), [state.days, theme]);
   const heatmap = useMemo(
     () => buildHourHeatmap(state.hourCounts, theme),
@@ -350,6 +395,7 @@ export function UsageView(props: { readonly state: UsageState }): ReactElement {
         </dl>
       </header>
       <PlanSection plan={claude ? state.plan : null} />
+      <AgentLimitsSection windows={otherWindows(state.windows, agents)} />
       <BridgeSection bridge={state.bridge} />
       <div className="charts chart-card">
         <ChartFigure

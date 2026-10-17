@@ -41,14 +41,14 @@ describe('detectFrustration on real shaped prompts', () => {
   it('finds the hits aimed at Claude', () => {
     expect(detectFrustration('what are you doing? hurry up dumbass')).toStrictEqual({
       terms: ['hurry up', 'dumbass'],
-      target: 'claude',
+      target: 'agent',
       excerpt: 'what are you doing? hurry up dumbass',
     });
     expect(
       detectFrustration('why are you not using multiple agents this is too slow you numskull!'),
     ).toStrictEqual({
       terms: ['numskull'],
-      target: 'claude',
+      target: 'agent',
       excerpt: 'why are you not using multiple agents this is too slow you numskull!',
     });
     expect(
@@ -57,13 +57,13 @@ describe('detectFrustration on real shaped prompts', () => {
       ),
     ).toStrictEqual({
       terms: ['fuck', 'shit'],
-      target: 'claude',
+      target: 'agent',
       excerpt:
         'I told you not to fuck shit up and here you go not having a gitignore what is yo...',
     });
     expect(detectFrustration('hurry up with this shit you slow fuck')).toStrictEqual({
       terms: ['hurry up', 'shit', 'fuck'],
-      target: 'claude',
+      target: 'agent',
       excerpt: 'hurry up with this shit you slow fuck',
     });
   });
@@ -75,7 +75,7 @@ describe('detectFrustration on real shaped prompts', () => {
       'have fucked shit up';
     expect(detectFrustration(text)).toStrictEqual({
       terms: ['fuck', 'shit'],
-      target: 'claude',
+      target: 'agent',
       excerpt:
         '...you and in general. That way they can see how many times you have fucked shit up',
     });
@@ -92,40 +92,40 @@ describe('detectFrustration on real shaped prompts', () => {
 describe('detectFrustration targets', () => {
   it('calls swearing general unless its sentence says you', () => {
     expect(target('this API is shit')).toBe('general');
-    expect(target('your API is shit')).toBe('claude');
-    expect(target('YOU broke it, shit')).toBe('claude');
+    expect(target('your API is shit')).toBe('agent');
+    expect(target('YOU broke it, shit')).toBe('agent');
   });
 
   it('splits sentences on . ! ? ; and new lines', () => {
     for (const mark of ['.', '!', '?', ';', '\n']) {
       expect(target(`you are here${mark} this is shit`)).toBe('general');
     }
-    expect(target('you are here, this is shit')).toBe('claude');
-    expect(target('a. you shit')).toBe('claude');
+    expect(target('you are here, this is shit')).toBe('agent');
+    expect(target('a. you shit')).toBe('agent');
   });
 
   it('treats every second person word as aimed', () => {
     expect(SECOND_PERSON.size).toBe(10);
     for (const word of SECOND_PERSON) {
-      expect(target(`${word} wrote shit`)).toBe('claude');
+      expect(target(`${word} wrote shit`)).toBe('agent');
     }
-    expect(target("you're useless")).toBe('claude');
-    expect(target('you’re useless')).toBe('claude');
+    expect(target("you're useless")).toBe('agent');
+    expect(target('you’re useless')).toBe('agent');
   });
 
   it('calls name-calling aimed unless a determiner points elsewhere', () => {
-    expect(target('fix it idiot')).toBe('claude');
-    expect(target('idiot')).toBe('claude');
-    expect(target('what an idiot')).toBe('claude');
+    expect(target('fix it idiot')).toBe('agent');
+    expect(target('idiot')).toBe('agent');
+    expect(target('what an idiot')).toBe('agent');
     expect(DETERMINERS.size).toBe(13);
     for (const word of DETERMINERS) {
       expect(target(`${word} idiot wrote this`)).toBe('general');
     }
-    expect(target('you are the idiot')).toBe('claude');
+    expect(target('you are the idiot')).toBe('agent');
   });
 
   it('calls a mix aimed when any hit is aimed', () => {
-    expect(target('this is shit. fix it idiot')).toBe('claude');
+    expect(target('this is shit. fix it idiot')).toBe('agent');
     expect(target('the idiot wrote shit')).toBe('general');
   });
 });
@@ -138,7 +138,7 @@ describe('detectFrustration terms', () => {
       for (const form of entry.forms) {
         const found = detectFrustration(form);
         expect(found?.terms).toStrictEqual([entry.term]);
-        expect(found?.target).toBe(entry.kind === 'swear' ? 'general' : 'claude');
+        expect(found?.target).toBe(entry.kind === 'swear' ? 'general' : 'agent');
       }
     }
   });

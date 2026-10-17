@@ -136,6 +136,7 @@ export function AgentView(props: { readonly state: AgentDetailState }): ReactEle
           requests={requests}
           compactions={compactions}
           model={agent.model}
+          agent={info.id}
           cacheReads={info.capabilities.cacheReads}
         />
       </section>

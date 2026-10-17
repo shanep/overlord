@@ -25,6 +25,8 @@ import type {
   TailedFile,
 } from '../types.js';
 
+import { claudeUserPrompts } from './prompts.js';
+
 /** What errors from the Claude watcher and list are filed under. */
 const SOURCE = 'transcripts';
 const JSONL = '.jsonl';
@@ -113,4 +115,5 @@ export function claudeObserver(options: ClaudeObserverOptions): SessionObserver<
 
 export const claudeObserverFacet: ObserverFacet = {
   create: (context) => claudeObserver({ projectsDir: context.claude.projectsDir }),
+  userPrompts: (context) => claudeUserPrompts(context.claude),
 };

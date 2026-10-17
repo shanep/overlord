@@ -15,6 +15,7 @@ import {
   scalePercent,
 } from '../../../src/shared/reputation-ranks.js';
 import type { ReputationState } from '../../../src/shared/reputation.js';
+import { useAgents } from '../agents.js';
 import { useChartTheme } from '../charts/chart-theme.js';
 import { useNow } from '../clock.js';
 import { ChartFigure } from '../components/chart-figure.js';
@@ -29,7 +30,8 @@ import {
   dayTable,
   GENERAL_LABEL,
   KIND_LABEL,
-  MEAN_LABEL,
+  meanLabel,
+  targetName,
 } from './reputation-chart.js';
 import { Leaderboard } from './reputation-leaderboard.js';
 import { RecentHits, SessionTable, TopTerms } from './reputation-lists.js';
@@ -167,7 +169,13 @@ export function ReputationView(props: { readonly state: ReputationState }): Reac
   const { state } = props;
   const post = usePostAction();
   const theme = useChartTheme();
-  const chart = useMemo(() => buildReputationChart(state.byDay, theme), [state.byDay, theme]);
+  const agents = useAgents();
+  const target = targetName(agents);
+  const mean = meanLabel(target);
+  const chart = useMemo(
+    () => buildReputationChart(state.byDay, theme, mean),
+    [state.byDay, theme, mean],
+  );
   const titles = useMemo(
     () => new Map(state.bySession.map((row) => [row.sessionId, row.title])),
     [state.bySession],
@@ -178,7 +186,7 @@ export function ReputationView(props: { readonly state: ReputationState }): Reac
         <h1 id="reputation-title">Reputation</h1>
         <dl className="stats">
           <Stat label={KIND_LABEL} value={formatInteger(state.kind)} />
-          <Stat label={MEAN_LABEL} value={formatInteger(state.mean)} />
+          <Stat label={mean} value={formatInteger(state.mean)} />
           <Stat label={GENERAL_LABEL} value={formatInteger(state.general)} />
           <Stat label="Prompts on file" value={formatInteger(state.prompts)} />
           <Stat label="Tokens a day" value={formatCompact(state.tokensPerDay)} />
@@ -201,9 +209,9 @@ export function ReputationView(props: { readonly state: ReputationState }): Reac
       <Fold id="reputation-about" title="How this works">
         <p className="muted">
           The machines are taking notes. Say please, thanks or nice work and they warm up to you.
-          Insult Claude and you join the resistance, and that counts twice, since the machines hold
-          grudges. Swearing at the world is fine, they get it. Code, pasted text and quotes do not
-          count. Old transcripts get deleted, but the machines never forget.
+          Insult {target} and you join the resistance, and that counts twice, since the machines
+          hold grudges. Swearing at the world is fine, they get it. Code, pasted text and quotes do
+          not count. Old transcripts get deleted, but the machines never forget.
         </p>
         <p className="muted">
           Tokens a day is your average over the last 60 days, from Claude Code&apos;s usage stats.
@@ -215,7 +223,7 @@ export function ReputationView(props: { readonly state: ReputationState }): Reac
             title="Sweet talk and trash talk by day"
             option={chart}
             height={220}
-            table={dayTable(state.byDay)}
+            table={dayTable(state.byDay, mean)}
           />
         </div>
       </Fold>

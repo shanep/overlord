@@ -9,7 +9,8 @@ import type { FleetHealth } from '../../../shared/health.js';
 import type { PermissionRequest, SessionPlace, SessionSummary } from '../../../shared/model.js';
 import { sessionName, ZERO_USAGE } from '../../../shared/model.js';
 import type { FleetState, PlanLimits, RateLimits } from '../../../shared/protocol.js';
-import { assessHealth } from '../../health/health.js';
+import { agents } from '../../agents/index.js';
+import { assessHealth, healthAgent } from '../../health/health.js';
 import type { OverlordStore } from '../../store/store.js';
 import type { BackgroundJob } from '../../surfaces/jobs.js';
 import type { RegistryStatus } from '../places.js';
@@ -27,11 +28,20 @@ export function toFraction(value: number | null): number | null {
 }
 
 export function normalizeRateLimits(limits: RateLimits): RateLimits {
-  return {
+  const normalized: RateLimits = {
     fiveHourPct: toFraction(limits.fiveHourPct),
     sevenDayPct: toFraction(limits.sevenDayPct),
     resetsAt: limits.resetsAt,
   };
+  return limits.windows === undefined
+    ? normalized
+    : {
+        ...normalized,
+        windows: limits.windows.map((window) => ({
+          ...window,
+          usedPct: toFraction(window.usedPct),
+        })),
+      };
 }
 
 /**
@@ -43,6 +53,7 @@ export function withPlanLimits(limits: RateLimits, plan: PlanLimits | null): Rat
   const session = plan?.limits.find((limit) => limit.kind === 'session');
   const week = plan?.limits.find((limit) => limit.kind === 'weekly_all');
   return {
+    ...limits,
     fiveHourPct: session === undefined ? limits.fiveHourPct : session.percent / 100,
     sevenDayPct: week === undefined ? limits.sevenDayPct : week.percent / 100,
     resetsAt: session === undefined ? limits.resetsAt : session.resetsAt,
@@ -201,6 +212,7 @@ export function fleetHealth(
       startedAt: session.startedAt,
       updatedAt: session.updatedAt,
       ...thread,
+      agent: healthAgent(agents.get(session.agent)),
     });
     out[session.id] = {
       level,
