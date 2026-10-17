@@ -17,7 +17,7 @@ import { fleetFor } from './views/fleet.js';
 /** How often the Fleet's progress is checked for warnings. */
 export const PROGRESS_CHECK_MS = 30_000;
 /** Spending this many times the planned tokens counts as running over. */
-export const OVERRUN_FACTOR = 1.5;
+const OVERRUN_FACTOR = 1.5;
 
 export const STOP = 'Stop session';
 export const SET_BUDGET = 'Set budget';
