@@ -29,7 +29,7 @@ export interface KnobAreaInfo {
   readonly summary: string;
 }
 
-export const KNOB_AREA_INFO: Readonly<Record<KnobArea, KnobAreaInfo>> = {
+const KNOB_AREA_INFO: Readonly<Record<KnobArea, KnobAreaInfo>> = {
   model: { title: 'Model and output', summary: 'Which model runs, fallbacks, output style.' },
   thinking: { title: 'Thinking and effort', summary: 'Extended thinking, effort level, advisor.' },
   context: {

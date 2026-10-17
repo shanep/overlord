@@ -1,5 +1,6 @@
-import { screen, within } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ReactElement } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import type { KnobDefinition, LaunchProfile } from '../../../src/shared/model.js';
@@ -7,7 +8,9 @@ import type { KnobsState } from '../../../src/shared/protocol.js';
 import { codexAgent, twoAgents } from '../../test/fixtures-agents.js';
 import { knobsState } from '../../test/fixtures-context.js';
 import { expectAccessible, FakeApi, renderView } from '../../test/render.js';
+import { AgentsProvider } from '../agents.js';
 import { CLAUDE_FALLBACK } from '../claude-fallback.js';
+import { VsCodeProvider } from '../vscode-context.js';
 
 import { KnobsView } from './knobs-view.js';
 
@@ -76,6 +79,10 @@ function renderCodex(): ReturnType<typeof renderView> {
   );
 }
 
+function layerIn(area: HTMLElement): HTMLElement {
+  return within(area).getByRole('combobox', { name: 'Layer' });
+}
+
 describe('KnobsView agent pick', () => {
   it('stays hidden with only one agent that has knobs', () => {
     renderView(<KnobsView state={knobsState} />, new FakeApi(), twoAgents);
@@ -126,6 +133,34 @@ describe('KnobsView agent pick', () => {
       { type: 'setKnob', key: 'model', value: null, layer: 'user', agent: 'codex' },
       { type: 'openKnobDocs', key: 'model', kind: 'setting', agent: 'codex' },
     ]);
+  });
+
+  it('starts an open editor over on the layers of the agent switched to', async () => {
+    const api = new FakeApi({ 'knobs.openAreas': ['model'] });
+    const claude = { ...knobsState, knobAgents: ['claude-code', 'codex'] };
+    const wrap = (state: KnobsState): ReactElement => (
+      <VsCodeProvider api={api}>
+        <AgentsProvider agents={twoAgents}>
+          <KnobsView state={state} />
+        </AgentsProvider>
+      </VsCodeProvider>
+    );
+    const { rerender } = render(wrap(claude));
+    await userEvent.click(screen.getByRole('button', { name: 'Details for model' }));
+    await userEvent.selectOptions(
+      layerIn(screen.getByRole('region', { name: 'Model and output' })),
+      'project-local',
+    );
+    rerender(wrap(codexState));
+    const area = screen.getByRole('region', { name: 'Model and output' });
+    await userEvent.click(within(area).getByRole('button', { name: 'Save' }));
+    expect(api.actions().at(-1)).toStrictEqual({
+      type: 'setKnob',
+      key: 'model',
+      value: 'gpt-5',
+      layer: 'user',
+      agent: 'codex',
+    });
   });
 
   it('puts a flag only in the profiles of the agent shown', async () => {

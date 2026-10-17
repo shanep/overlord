@@ -161,7 +161,7 @@ export async function loadProfiles(
 }
 
 /** The enabled agents the Knobs view can show, in registry order. */
-export function knobAgents(
+function knobAgents(
   registry: AgentRegistry,
   enabled: (id: AgentId) => boolean,
 ): readonly AgentId[] {
@@ -172,7 +172,7 @@ export function knobAgents(
 }
 
 /** The picked agent when it can be shown, else Claude Code, else the first one there is. */
-export function shownKnobsAgent(listed: readonly AgentId[], picked: AgentId): AgentId {
+function shownKnobsAgent(listed: readonly AgentId[], picked: AgentId): AgentId {
   if (listed.includes(picked)) {
     return picked;
   }
@@ -183,7 +183,7 @@ export function shownKnobsAgent(listed: readonly AgentId[], picked: AgentId): Ag
 const LAYER_ORDER: readonly EditableLayer[] = ['user', 'project', 'project-local'];
 
 /** The layers the Knobs view may save an agent's knobs to. */
-export function writableLayers(knobs: KnobsFacet): readonly EditableLayer[] {
+function writableLayers(knobs: KnobsFacet): readonly EditableLayer[] {
   const writable = new Set(
     knobs.layers.flatMap((source) =>
       source.kind === 'file' && source.writable ? [source.layer] : [],

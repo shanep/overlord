@@ -252,7 +252,14 @@ export function KnobsView(props: { readonly state: KnobsState }): ReactElement {
           <Segmented label="Knobs sections" options={tabs} value={tab} onChange={setTab} />
         </header>
         {tab === 'keys' ? (
-          <KeysTab state={state} entries={entries} profiles={profiles} words={words} />
+          // Keyed on the agent so an open editor starts over on the new agent's layers.
+          <KeysTab
+            key={agentId}
+            state={state}
+            entries={entries}
+            profiles={profiles}
+            words={words}
+          />
         ) : null}
         {tab === 'profiles' ? <ProfilesEditor profiles={state.profiles} agent={agentId} /> : null}
         {tab === 'flags' ? <FeatureFlags flags={state.featureFlags} /> : null}
