@@ -5,7 +5,15 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { WatchFile } from './self-update.js';
-import { loadedMarkerPath, watchForUpdate, writeLoadedMarker } from './self-update.js';
+import {
+  heldMarkerPath,
+  loadedMarkerPath,
+  watchForUpdate,
+  writeHeldMarker,
+  writeLoadedMarker,
+} from './self-update.js';
+
+const NOTHING_RUNNING = Promise.resolve();
 
 /** An unwatch that leaves the poll in place, like a poll already in flight. */
 function keepWatching(): void {
@@ -89,6 +97,65 @@ describe('watchForUpdate', () => {
     expect(fake.watched()).toBeNull();
   });
 
+  it('holds the reload until the Launcher runs finish', async () => {
+    const fake = fakeWatch();
+    const onUpdate = vi.fn();
+    const onHold = vi.fn();
+    let finish: (() => void) | undefined;
+    const idle = new Promise<void>((resolve) => {
+      finish = resolve;
+    });
+    watchForUpdate({
+      bundle: '/b',
+      watch: fake.watch,
+      settleMs: 1000,
+      onUpdate,
+      onHold,
+      runs: { active: () => 2, idle: async () => idle },
+    });
+    fake.change(5);
+    vi.advanceTimersByTime(1000);
+    await vi.runAllTimersAsync();
+    expect(onHold).toHaveBeenCalledWith(2);
+    expect(onUpdate).not.toHaveBeenCalled();
+    finish?.();
+    await vi.runAllTimersAsync();
+    expect(onUpdate).toHaveBeenCalledOnce();
+  });
+
+  it('reloads at once when no run is going, and never once stopped while holding', async () => {
+    const fake = fakeWatch();
+    const onUpdate = vi.fn();
+    const onHold = vi.fn();
+    watchForUpdate({
+      bundle: '/b',
+      watch: fake.watch,
+      settleMs: 1000,
+      onUpdate,
+      onHold,
+      runs: { active: () => 0, idle: async () => NOTHING_RUNNING },
+    });
+    fake.change(5);
+    vi.advanceTimersByTime(1000);
+    expect(onUpdate).toHaveBeenCalledOnce();
+    expect(onHold).not.toHaveBeenCalled();
+
+    const held = fakeWatch();
+    const heldUpdate = vi.fn();
+    const stop = watchForUpdate({
+      bundle: '/b',
+      watch: held.watch,
+      settleMs: 1000,
+      onUpdate: heldUpdate,
+      runs: { active: () => 1, idle: async () => NOTHING_RUNNING },
+    });
+    held.change(5);
+    vi.advanceTimersByTime(1000);
+    stop();
+    await vi.runAllTimersAsync();
+    expect(heldUpdate).not.toHaveBeenCalled();
+  });
+
   it('ignores a late poll that lands after stop', () => {
     const polls: ((mtimeMs: number) => void)[] = [];
     const watch: WatchFile = (_file, next) => {
@@ -119,6 +186,18 @@ describe('loaded marker', () => {
 
   it('sits next to the hook socket', () => {
     expect(loadedMarkerPath({ configDir: '/h/.claude' })).toBe('/h/.claude/overlord/loaded.json');
+  });
+
+  it('writes the held marker next to it', async () => {
+    const file = heldMarkerPath({ configDir: root });
+    expect(file).toBe(path.join(root, 'overlord', 'held.json'));
+    await writeHeldMarker(file, { bundleMtimeMs: 7, runs: 2, pid: 42, at: 99 });
+    expect(JSON.parse(readFileSync(file, 'utf8'))).toStrictEqual({
+      bundleMtimeMs: 7,
+      runs: 2,
+      pid: 42,
+      at: 99,
+    });
   });
 
   it('writes the marker as JSON, creating the directory', async () => {

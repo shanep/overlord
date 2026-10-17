@@ -10,6 +10,7 @@ import { storagePath } from '../core/app/storage.js';
 import { parseTransferUri } from '../core/app/transfer.js';
 import { fleetSessionName } from '../core/app/views/fleet.js';
 import { BOISESTATE_KEY_SECRET, BOISESTATE_PROFILE } from '../core/bridge/boisestate.js';
+import { isTerminal } from '../core/harness/launcher.js';
 import { listProfiles, saveProfile } from '../core/knobs/profiles.js';
 import type { HostToWebview, ViewId, WebviewAction } from '../shared/protocol.js';
 
@@ -189,7 +190,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     status,
     bridge,
     bridgeLog,
-    reloadOnUpdate(context, overlord.paths),
+    reloadOnUpdate(context, overlord.paths, {
+      active: () => overlord.runtime.launcher.runs().filter((run) => !isTerminal(run.state)).length,
+      idle: async () => overlord.runtime.launcher.idle(),
+    }),
     keepAwake(),
     fleetSidebar,
     propertiesSidebar,

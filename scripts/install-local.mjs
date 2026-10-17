@@ -2,7 +2,9 @@
 // window has reloaded onto the new build. It builds HEAD in a temporary
 // worktree, so uncommitted work (yours or another session's) never ships.
 // Installed copies watch their own bundle and reload themselves, then write
-// ~/.claude/overlord/loaded.json, which is what this waits for.
+// ~/.claude/overlord/loaded.json, which is what this waits for. A window with
+// Launcher runs going holds the reload until they finish and writes held.json
+// instead, since a reload would end them.
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, statSync, symlinkSync } from 'node:fs';
 import os from 'node:os';
@@ -26,30 +28,38 @@ const bundle = path.join(
 );
 const configDir = process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude');
 const marker = path.join(configDir, 'overlord', 'loaded.json');
+const heldMarker = path.join(configDir, 'overlord', 'held.json');
 
 function run(command, args, cwd = repo) {
   process.stdout.write(`$ ${command} ${args.join(' ')}\n`);
   execFileSync(command, args, { cwd, stdio: 'inherit' });
 }
 
-function loadedMtime() {
+function readMarker(file) {
   try {
-    return JSON.parse(readFileSync(marker, 'utf8')).bundleMtimeMs;
+    return JSON.parse(readFileSync(file, 'utf8'));
   } catch {
     return null;
   }
 }
 
-/** Polls the marker until a window reports the installed bundle, or the time runs out. */
+/**
+ * Polls the markers until a window reports the installed bundle, says it
+ * holds the reload for Launcher runs, or the time runs out.
+ */
 async function waitForReload(installed) {
   const deadline = Date.now() + TIMEOUT_MS;
   while (Date.now() < deadline) {
-    if (loadedMtime() === installed) {
-      return true;
+    if (readMarker(marker)?.bundleMtimeMs === installed) {
+      return { reloaded: true, runs: 0 };
+    }
+    const held = readMarker(heldMarker);
+    if (held?.bundleMtimeMs === installed) {
+      return { reloaded: false, runs: held.runs };
     }
     await sleep(POLL_MS);
   }
-  return false;
+  return { reloaded: false, runs: 0 };
 }
 
 const tree = path.join(mkdtempSync(path.join(os.tmpdir(), 'overlord-install-')), 'tree');
@@ -66,8 +76,14 @@ try {
 
 const installed = statSync(bundle).mtimeMs;
 process.stdout.write(`Installed ${bundle}. Waiting for a VS Code window to reload onto it.\n`);
-if (await waitForReload(installed)) {
+const result = await waitForReload(installed);
+if (result.reloaded) {
   process.stdout.write('Reloaded: a VS Code window is running the new build.\n');
+} else if (result.runs > 0) {
+  process.stdout.write(
+    `Held: a VS Code window reloads onto the new build once its ${result.runs.toString()} ` +
+      'Launcher runs finish, since a reload would end them.\n',
+  );
 } else {
   process.stderr.write(
     `Installed, but no window reloaded within ${(TIMEOUT_MS / 1000).toString()} seconds. ` +

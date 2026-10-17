@@ -24,7 +24,10 @@ and without pressing Reload Window himself.
    with the mtime of the bundle they loaded. The script waits for that mtime
    to match the installed file.
 
-3. Report the result in one line: installed and reloaded, or what failed.
+3. Report the result in one line: installed and reloaded, held, or what failed.
+   **"Held"** means a window has Launcher runs going. A reload would end them,
+   so the window waits for them to finish and then reloads on its own. The
+   install worked and there is nothing more to do.
 
 ## When it fails
 
