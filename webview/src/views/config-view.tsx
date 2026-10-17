@@ -2,6 +2,7 @@
 // and the config repo's state.
 
 import type { ReactElement } from 'react';
+import { useState } from 'react';
 
 import type { ConfigItem, ConfigKind, ConfigStatus } from '../../../src/shared/model.js';
 import type { ConfigState, ConfigSyncStatus } from '../../../src/shared/protocol.js';
@@ -26,12 +27,26 @@ export interface ConfigGroup {
   readonly items: readonly ConfigItem[];
 }
 
+/** True when the item's name, path or link target contains the search text, ignoring case. */
+export function matchesQuery(item: ConfigItem, query: string): boolean {
+  const needle = query.trim().toLowerCase();
+  return (
+    needle === '' ||
+    [item.name, item.path ?? '', item.realPath ?? ''].some((field) =>
+      field.toLowerCase().includes(needle),
+    )
+  );
+}
+
 /** Items grouped by kind in a fixed order, names sorted, empty groups dropped. */
 export function groupItems(
   items: readonly ConfigItem[],
   status: ConfigStatus | 'all',
+  query = '',
 ): readonly ConfigGroup[] {
-  const shown = items.filter((item) => status === 'all' || item.status === status);
+  const shown = items.filter(
+    (item) => (status === 'all' || item.status === status) && matchesQuery(item, query),
+  );
   return KIND_ORDER.map((kind) => ({
     kind,
     items: shown
@@ -248,18 +263,34 @@ function Group(props: { readonly group: ConfigGroup }): ReactElement | null {
 export function ConfigView(props: { readonly state: ConfigState }): ReactElement {
   const { state } = props;
   const [status, setStatus] = usePersistentState('config.status', 'all', isStatusFilter);
-  const groups = groupItems(state.items, status);
+  const [query, setQuery] = useState('');
+  const groups = groupItems(state.items, status, query);
+  const shown = groups.reduce((sum, group) => sum + group.items.length, 0);
+  const total = state.items.length.toString();
   return (
     <section className="config" aria-labelledby="config-title">
       <header className="view-header">
         <h1 id="config-title">Config and sync</h1>
-        <span className="muted">{state.items.length.toString()} items</span>
+        <span className="muted">
+          {shown === state.items.length
+            ? `${total} items`
+            : `${shown.toString()} of ${total} items`}
+        </span>
         <span className="spacer" />
         <SyncButtons state={state} />
       </header>
       <RepoCard state={state} />
       <StatusLegend />
-      <div className="list-bar">
+      <div className="list-bar" role="search">
+        <input
+          type="search"
+          aria-label="Search"
+          placeholder="Search by name or path"
+          value={query}
+          onChange={(event) => {
+            setQuery(event.target.value);
+          }}
+        />
         <label>
           Status
           <select
