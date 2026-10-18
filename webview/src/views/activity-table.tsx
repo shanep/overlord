@@ -12,7 +12,8 @@ import type {
   ProcessFlagKind,
   Rates,
 } from '../../../src/shared/activity.js';
-import { Badge, PlaceMarker } from '../components/badge.js';
+import { useAgent } from '../agents.js';
+import { AgentMark, Badge, PlaceMarker } from '../components/badge.js';
 import type { Column, SortState } from '../components/data-table.js';
 import { ariaSort, nextSort, SortHeader, sortRows } from '../components/data-table.js';
 import { formatBytes, formatInteger, formatRate } from '../format.js';
@@ -115,16 +116,22 @@ function SessionTitle(props: { readonly session: ActivitySession }): ReactElemen
   );
 }
 
+function SessionCell(props: { readonly session: ActivitySession }): ReactElement {
+  const agent = useAgent(props.session.agent);
+  const { session } = props;
+  return (
+    <>
+      {session.place === null ? null : <PlaceMarker place={session.place} />}{' '}
+      <AgentMark agent={agent} /> <SessionTitle session={session} />
+    </>
+  );
+}
+
 const SESSION_COLUMNS: readonly Column<ActivitySession>[] = [
   {
     id: 'title',
     header: 'Session',
-    cell: (row) => (
-      <>
-        {row.place === null ? null : <PlaceMarker place={row.place} />}{' '}
-        <SessionTitle session={row} />
-      </>
-    ),
+    cell: (row) => <SessionCell session={row} />,
     sortValue: (row) => row.title.toLowerCase(),
   },
   {

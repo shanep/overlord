@@ -6,6 +6,7 @@ import path from 'node:path';
 
 import { z } from 'zod';
 
+import type { AgentId } from '../../shared/agents.js';
 import type { ClaudePaths } from '../paths.js';
 
 import { readDirOrEmpty, readJsonFile, sourceError } from './common.js';
@@ -43,6 +44,8 @@ const agentSchema = z.object({
 export interface RegistryEntry {
   readonly pid: number;
   readonly sessionId: string;
+  /** The CLI that registered this process. */
+  readonly agent?: AgentId;
   readonly cwd: string | null;
   readonly kind: string | null;
   readonly entrypoint: string | null;

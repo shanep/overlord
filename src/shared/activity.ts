@@ -2,6 +2,7 @@
 // machine (CPU, memory, disk and network for its whole process tree), the
 // machine as a whole, and the processes that hog, starve or are stuck.
 
+import type { AgentId } from './agents.js';
 import type { SessionPlace } from './model.js';
 
 export type ActivityLevel = 'warning' | 'critical';
@@ -55,6 +56,8 @@ export interface ActivityProcess {
 
 export interface ActivitySession {
   readonly sessionId: string;
+  /** The CLI that owns this session, when its live registry identifies one. */
+  readonly agent?: AgentId;
   readonly title: string;
   readonly cwd: string;
   readonly pid: number;

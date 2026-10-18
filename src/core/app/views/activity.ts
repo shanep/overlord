@@ -39,6 +39,7 @@ export function activitySessions(places: SessionPlaces, store: OverlordStore): S
     const cwd = firstNonEmpty(entry.cwd, summary?.cwd);
     return {
       sessionId: entry.sessionId,
+      ...(entry.agent === undefined ? {} : { agent: entry.agent }),
       pid: entry.pid,
       title: firstNonEmpty(
         summary?.title,

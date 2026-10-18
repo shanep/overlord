@@ -7,6 +7,7 @@ import type {
   ActivityState,
   MachineActivity,
 } from '../../../src/shared/activity.js';
+import { codexAgent } from '../../test/fixtures-agents.js';
 import { NOW } from '../../test/fixtures.js';
 import { expectAccessible, FakeApi, renderView } from '../../test/render.js';
 
@@ -66,6 +67,7 @@ function session(id: string, overrides: Partial<ActivitySession> = {}): Activity
 }
 
 const BUSY = session('busy', {
+  agent: 'copilot',
   title: 'Busy build',
   place: 'vscode',
   cpuPct: 180,
@@ -255,6 +257,16 @@ describe('ActivityView', () => {
     const badge = container.querySelector<HTMLElement>('.activity-table .badge-critical');
     expect(badge?.textContent).toBe('2');
     expect(badge?.dataset['tip']).toBe('CPU hog: Used 170% CPU\nBlocked: Stuck on disk');
+  });
+
+  it('marks each session with its agent', () => {
+    const { container } = renderView(<ActivityView state={STATE} />, new FakeApi(), [
+      { ...codexAgent, id: 'copilot', name: 'Copilot CLI', short: 'Copilot', icon: 'copilot' },
+    ]);
+    expect(container.querySelectorAll('.activity-table .agent-mark')).toHaveLength(2);
+    expect(
+      container.querySelector<HTMLElement>('.activity-table .agent-mark')?.dataset['tip'],
+    ).toMatch(/^Agent: Copilot CLI/u);
   });
 
   it('shows a warning badge when no flag is critical', () => {

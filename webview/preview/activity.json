@@ -30,6 +30,7 @@
   "sessions": [
     {
       "sessionId": "s-release",
+      "agent": "claude-code",
       "title": "Release prep for 0.4",
       "cwd": "/Users/shane/repos/overlord",
       "pid": 41210,
@@ -109,6 +110,7 @@
     },
     {
       "sessionId": "s-docs",
+      "agent": "copilot",
       "title": "Docs pass on the README",
       "cwd": "/Users/shane/repos/overlord",
       "pid": 40112,

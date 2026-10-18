@@ -70,9 +70,16 @@ async function readRegistries(
 ): Promise<Collected<RegistryEntry>> {
   const sources = { paths: deps.paths, exec: deps.exec, isAlive: deps.isAlive, processTable };
   const lists = await Promise.all(
-    terminalAgents().map(async ({ terminal }): Promise<Collected<RegistryEntry>> =>
-      terminal.registry === undefined ? { items: [], errors: [] } : terminal.registry(sources),
-    ),
+    terminalAgents().map(async ({ adapter, terminal }): Promise<Collected<RegistryEntry>> => {
+      if (terminal.registry === undefined) {
+        return { items: [], errors: [] };
+      }
+      const list = await terminal.registry(sources);
+      return {
+        items: list.items.map((entry) => ({ ...entry, agent: adapter.id })),
+        errors: list.errors,
+      };
+    }),
   );
   return {
     items: lists.flatMap((list) => list.items),

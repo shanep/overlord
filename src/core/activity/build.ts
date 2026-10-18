@@ -9,6 +9,7 @@ import type {
   MachineActivity,
   Rates,
 } from '../../shared/activity.js';
+import type { AgentId } from '../../shared/agents.js';
 import type { SessionPlace } from '../../shared/model.js';
 
 import type { MachineContext, ProcessSnapshot } from './flags.js';
@@ -23,6 +24,7 @@ import type { RawSample } from './sample.js';
 /** A live session and the process Claude Code runs it in. */
 export interface SessionRef {
   readonly sessionId: string;
+  readonly agent?: AgentId;
   readonly pid: number;
   readonly title: string;
   readonly cwd: string;
@@ -217,6 +219,7 @@ function sessionOf(tree: SessionTree, context: Context): ActivitySession {
   const processes = tree.rows.map((row) => processOf(row, context));
   return {
     sessionId: session.sessionId,
+    ...(session.agent === undefined ? {} : { agent: session.agent }),
     title: session.title,
     cwd: session.cwd,
     pid: session.pid,
