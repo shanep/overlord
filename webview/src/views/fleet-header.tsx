@@ -2,6 +2,8 @@
 
 import type { ReactElement } from 'react';
 
+import type { AgentInfo } from '../../../src/shared/agents.js';
+import { CLAUDE_CODE } from '../../../src/shared/agents.js';
 import {
   permissionChoices,
   type PermissionChoice,
@@ -10,9 +12,9 @@ import {
 } from '../../../src/shared/model.js';
 import type { FleetState } from '../../../src/shared/protocol.js';
 import { findAgent, knownAgents, knowsClaude, useAgents } from '../agents.js';
-import { Badge } from '../components/badge.js';
+import { AgentLogo, Badge } from '../components/badge.js';
 import { Meter } from '../components/meter.js';
-import { formatCost, formatDuration, formatValue, truncate } from '../format.js';
+import { formatDuration, formatValue, truncate } from '../format.js';
 import type { Tone } from '../labels.js';
 
 import { normalizeRatio } from './fleet-rows.js';
@@ -21,14 +23,31 @@ import { otherWindows } from './limit-windows.js';
 function Stat(props: {
   readonly label: string;
   readonly tone?: Tone;
+  /** The agent the number belongs to, drawn as its logo before the label. */
+  readonly agent?: AgentInfo;
+  /** A small line under the value, such as when a limit resets. */
+  readonly detail?: string | null;
   readonly children: ReactElement | string;
 }): ReactElement {
   return (
     <div className={`stat stat-${props.tone ?? 'neutral'}`}>
-      <dt>{props.label}</dt>
+      <dt>
+        {props.agent === undefined ? null : <AgentLogo agent={props.agent} />}
+        {props.label}
+      </dt>
       <dd>{props.children}</dd>
+      {props.detail === undefined || props.detail === null ? null : (
+        <dd className="stat-detail">{props.detail}</dd>
+      )}
     </div>
   );
+}
+
+/** "Resets in 1h 30m", or null when the reset time is unknown or already past. */
+function resetsIn(resetsAt: number | null, now: number): string | null {
+  return resetsAt === null || resetsAt <= now
+    ? null
+    : `Resets in ${formatDuration(resetsAt - now)}`;
 }
 
 export function FleetHeader(props: {
@@ -39,7 +58,6 @@ export function FleetHeader(props: {
   const agents = useAgents();
   const known = knownAgents(agents);
   const anySubagents = known.some((agent) => agent.capabilities.subagents);
-  const anyCost = known.some((agent) => agent.capabilities.costUsd);
   // The 5 hour and 7 day windows are Claude Code's plan limits.
   const claudeLimits = knowsClaude(agents);
   const count = (wanted: string): number =>
@@ -57,7 +75,11 @@ export function FleetHeader(props: {
       session.state !== 'failed'
     );
   }).length;
-  const { fiveHourPct, sevenDayPct, resetsAt } = state.rateLimits;
+  const { fiveHourPct, sevenDayPct, resetsAt, windows } = state.rateLimits;
+  const claude = findAgent(agents, CLAUDE_CODE);
+  const sevenDayResetsAt =
+    windows?.find((window) => window.agent === CLAUDE_CODE && window.id === 'seven_day')
+      ?.resetsAt ?? null;
   return (
     <header className="fleet-header">
       <h1>Fleet</h1>
@@ -72,22 +94,23 @@ export function FleetHeader(props: {
           </Stat>
         )}
         {anySubagents ? <Stat label="Subagents">{`${subagents.toString()} running`}</Stat> : null}
-        {anyCost ? <Stat label="Spend per hour">{formatCost(state.spendPerHourUsd)}</Stat> : null}
         {claudeLimits ? (
-          <Stat label="5 hour limit">
+          <Stat label="5 hour limit" agent={claude} detail={resetsIn(resetsAt, now)}>
             <Meter label="5 hour limit used" ratio={normalizeRatio(fiveHourPct)} />
           </Stat>
         ) : null}
         {!claudeLimits || sevenDayPct === null ? null : (
-          <Stat label="7 day limit">
+          <Stat label="7 day limit" agent={claude} detail={resetsIn(sevenDayResetsAt, now)}>
             <Meter label="7 day limit used" ratio={normalizeRatio(sevenDayPct)} />
           </Stat>
         )}
-        {!claudeLimits || resetsAt === null ? null : (
-          <Stat label="Resets in">{formatDuration(Math.max(0, resetsAt - now))}</Stat>
-        )}
-        {otherWindows(state.rateLimits.windows, agents).map(({ key, label, window }) => (
-          <Stat key={key} label={label}>
+        {otherWindows(windows, agents).map(({ key, label, window }) => (
+          <Stat
+            key={key}
+            label={label}
+            agent={findAgent(agents, window.agent)}
+            detail={resetsIn(window.resetsAt, now)}
+          >
             <Meter label={`${label} used`} ratio={window.usedPct} />
           </Stat>
         ))}

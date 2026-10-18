@@ -52,6 +52,28 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* The agent a limit belongs to, as its logo before the label. */
+.stat-tiles dt .icon {
+  display: inline-block;
+  width: 12px;
+}
+
+.stat-tiles dt .icon,
+.stat-tiles dt .backend-logo {
+  height: 12px;
+  margin-right: 4px;
+  vertical-align: -1px;
+}
+
+.stat-tiles dd.stat-detail {
+  overflow: hidden;
+  color: var(--ov-muted);
+  font-size: 0.8em;
+  font-weight: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .stat-tiles .stat-warning {
   border-left: 3px solid var(--ov-yellow);
 }

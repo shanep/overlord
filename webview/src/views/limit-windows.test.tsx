@@ -53,6 +53,10 @@ describe('agent limit windows in the views', () => {
     expect(
       view.getByRole('meter', { name: 'Codex 30 day limit used' }).getAttribute('aria-valuenow'),
     ).toBe('92');
+    expect(view.getByText('Resets in 1h 30m')).toBeDefined();
+    expect(view.getAllByText('Resets in 2h 00m')).toHaveLength(2);
+    expect(view.container.querySelectorAll('.stat-tiles dt .backend-logo')).toHaveLength(2);
+    expect(view.container.querySelectorAll('.stat-tiles dt svg.icon')).toHaveLength(2);
   });
 
   it('shows the Fleet header as before with no windows', () => {

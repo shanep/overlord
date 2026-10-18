@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react';
 
 import type { AgentInfo } from '../../../src/shared/agents.js';
+import { CLAUDE_CODE } from '../../../src/shared/agents.js';
 import type { ModelBackend } from '../../../src/shared/backends.js';
 import type { SessionPlace, SessionState, Surface } from '../../../src/shared/model.js';
 import boisestateLogo from '../assets/boisestate.png';
@@ -96,6 +97,15 @@ const BACKENDS: Readonly<Record<ModelBackend, { readonly logo: string; readonly 
 /** Clawd for a session on Anthropic, the Boise State B for one on the boisestate.ai bridge. */
 function BackendLogo(props: { readonly backend: ModelBackend }): ReactElement {
   return <img className="backend-logo" src={BACKENDS[props.backend].logo} alt="" />;
+}
+
+/** An agent's logo alone: Claude's mascot for Claude Code, the agent's own icon for the rest. */
+export function AgentLogo(props: { readonly agent: AgentInfo }): ReactElement {
+  return props.agent.id === CLAUDE_CODE ? (
+    <BackendLogo backend="anthropic" />
+  ) : (
+    <Icon name={agentIcon(props.agent.icon)} />
+  );
 }
 
 /** The backend a Claude Code session talks to, as its logo alone. */

@@ -204,13 +204,11 @@ export const FLEET_STATS: readonly Column[] = [
     meaning: 'Sessions blocked on a permission prompt. It turns yellow when above 0.',
   },
   { name: 'Subagents', meaning: 'Subagents running across every session.' },
-  { name: 'Spend per hour', meaning: 'The estimated cost rate across the fleet.' },
   {
     name: '5 hour and 7 day limit',
     meaning:
-      "How much of Claude Code's plan limits you have used. Other agents' limits, such as Codex's, get a tile each with the agent's name.",
+      "How much of Claude Code's plan limits you have used, and when each resets. Other agents' limits, such as Codex's, get a tile each with the agent's name. Each tile shows the logo of the agent it belongs to.",
   },
-  { name: 'Resets in', meaning: 'Time until the 5 hour limit resets.' },
 ];
 
 export interface Key {
