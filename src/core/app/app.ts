@@ -4,77 +4,42 @@
 
 import path from 'node:path';
 
-import { CLAUDE_CODE } from '../../shared/agents.js';
 import type { FleetState, HostToWebview, ViewId, WebviewAction } from '../../shared/protocol.js';
-import { sdkPlanUsage } from '../agents/claude/runtime.js';
 import { trackCustomAgents } from '../agents/custom.js';
 import { agents } from '../agents/index.js';
-import type { AgentCli } from '../agents/types.js';
 import type { EventBus } from '../bus.js';
-import { GitHubReader } from '../catalog/github.js';
-import { callStdioTool } from '../connectors/stdio-mcp.js';
-import { Launcher } from '../harness/launcher.js';
-import { mergeEnv } from '../harness/options.js';
 import { socketPath } from '../hooks/socket-path.js';
 import type { ClaudePaths } from '../paths.js';
-import { OverlordStore } from '../store/store.js';
 
 import { watchProjects } from './actions-projects.js';
 import { dispatch } from './actions.js';
-import { agentCli } from './agent-terminal.js';
 import type { AppDeps } from './app-deps.js';
-import { coreDeps, launcherAgents, machineDeps } from './app-deps.js';
-import { TokenBudgets } from './budgets.js';
-import type { CacheRuntime } from './caches.js';
-import { createCaches } from './caches.js';
-import { CatalogBrowser } from './catalog-browser.js';
+import { coreDeps, machineDeps } from './app-deps.js';
+import { buildRuntime, concurrencyFrom } from './app-runtime.js';
 import { ChangeHub } from './changes.js';
-import { cliLoader, executableFor, launchBinary } from './claude-bin.js';
 import { ConfigSync } from './config-sync.js';
 import { createCoordinator } from './coordination.js';
 import type { AppError } from './errors.js';
 import { ErrorLog } from './errors.js';
 import { hookAnswers } from './hook-answers.js';
 import type { PanelParams } from './host-port.js';
-import { BackgroundJobs } from './jobs.js';
 import { createLaunchChecker } from './launch-check.js';
-import { LaunchNotes } from './launch-notes.js';
-import { LaunchedSessions } from './launched-sessions.js';
-import { paceHold, timeOfDay } from './pacing.js';
-import { PermissionHub } from './permissions.js';
 import type { ActiveTerminal } from './places.js';
-import { SessionPlaces } from './places.js';
 import type { FileWatchFunction, IntervalFunction } from './process.js';
-import { toSurfacesExec } from './process.js';
-import { createProjectIndex } from './projects.js';
-import { RegistrySearch } from './registry-search.js';
 import type { Runtime } from './runtime.js';
 import { SetupCommands } from './setup.js';
-import { once, readLoginShellEnv } from './shell-env.js';
 import { Sources } from './sources.js';
 import type { RunningItem } from './status.js';
 import { runningItems, statusLine } from './status.js';
-import { storagePath } from './storage.js';
 import { SyncCommands } from './sync-commands.js';
 import { startTimers } from './timers.js';
 import { installTransferSkill } from './transfer.js';
-import { createActivity } from './views/activity.js';
-import { ContextViews } from './views/context.js';
 import { fleetFor } from './views/fleet.js';
 import { stateFor } from './views/state.js';
-import { currentPlan } from './views/usage.js';
-import {
-  createWorktreeRegistry,
-  launcherWorktrees,
-  sessionClosed,
-  tidyWorktrees,
-} from './worktrees.js';
+import { sessionClosed, tidyWorktrees } from './worktrees.js';
 
+export { concurrencyFrom } from './app-runtime.js';
 export { SESSIONS_REFRESH_MS } from './timers.js';
-
-export function concurrencyFrom(value: number): number {
-  return Number.isFinite(value) ? Math.max(1, Math.round(value)) : 1;
-}
 
 export class OverlordApp {
   readonly paths: ClaudePaths;
@@ -96,7 +61,8 @@ export class OverlordApp {
 
   constructor(deps: AppDeps) {
     const { host } = deps;
-    const { env, clock, exec, platform, paths, bus } = coreDeps(deps);
+    const core = coreDeps(deps);
+    const { env, clock, platform, paths, bus } = core;
     const machine = machineDeps(deps);
     this.paths = paths;
     this.bus = bus;
@@ -108,152 +74,13 @@ export class OverlordApp {
     const notify = (): void => {
       this.changes.notify();
     };
-    const report = (source: string, message: string): void => {
-      bus.emit('source.error', { source, message });
-    };
-    const store = new OverlordStore(bus, {
-      notifyDelayMs: host.settings.updateThrottleMs,
-      scheduler: deps.scheduler,
-      clock,
-    });
-    const permissions = new PermissionHub({
-      storageDir: host.storageDir,
-      bus,
-      clock,
-      onChange: notify,
-    });
-    // Launched runs get the same PATH and variables as a terminal tab.
-    const launchEnv = once(async () => readLoginShellEnv(exec, env, platform));
-    const worktrees = createWorktreeRegistry({
-      paths,
-      storageDir: host.storageDir,
-      exec,
-      isAlive: machine.isAlive,
-      clock,
-      pid: deps.pid ?? process.pid,
-    });
-    const runners = launcherAgents(deps.queryFunction);
-    const launchNotes = new LaunchNotes();
-    const launcher = new Launcher(
-      {
-        agents: runners,
-        bus,
-        broker: permissions.inbox,
-        // The caches exist by the time a run reaches for a worktree.
-        worktrees: launcherWorktrees(worktrees, report, () => {
-          void this.rt.caches.worktrees.refresh();
-        }),
-        baseEnv: launchEnv,
-        launchConfig: launchNotes.config,
-        executablePath: (agent, runEnv): string | null =>
-          launchBinary(host.settings, runners.get(agent), runEnv, platform),
-        ...(host.backendEndpoint === undefined ? {} : { backendEndpoint: host.backendEndpoint }),
-        now: clock,
-        // The runtime exists by the time a queued run asks.
-        canStart: (): string | null =>
-          host.settings.paceToUsageLimit
-            ? paceHold(currentPlan(this.rt), clock(), timeOfDay)
-            : null,
-      },
-      concurrencyFrom(host.settings.maxConcurrency),
-    );
-    const planUsageFunction = deps.planUsageFunction ?? sdkPlanUsage;
-    const surfacesExec = toSurfacesExec(exec);
-    // What the background sources call when something changed or failed.
-    const events = { onChange: notify, report };
-    const places = new SessionPlaces({
-      ...events,
-      // Jobs is built below, and this only runs after start.
-      onStatus: (): void => void this.rt.jobs.refresh(),
-      paths,
-      exec: surfacesExec,
-      isAlive: machine.isAlive,
-      terminalPids: host.terminalPids,
-      // Sources is built below, and the keeps here and in jobs only run after start.
-      keep: async (sessionIds): Promise<void> => this.sources.keepViewed(sessionIds),
-    });
-    const jobs = new BackgroundJobs({
-      exec: surfacesExec,
-      // The runtime is built below, and this only runs after start.
-      cliFor: async (at): Promise<AgentCli> => agentCli(this.rt, at),
-      keep: async (ids, finished): Promise<void> => this.sources.keepTranscripts(ids, finished),
-      ...events,
-    });
-    const projects = createProjectIndex(host.storageDir, worktrees, { ...events, clock });
-    const launched = new LaunchedSessions({
-      ...events,
-      file: storagePath(host.storageDir, 'launched'),
-      // Sources is built below, and this only runs after construction.
-      keep: async (ids): Promise<void> => this.sources.keepLaunched(ids),
-    });
-    const base: CacheRuntime = {
-      paths: this.paths,
-      host,
-      bus,
-      clock,
-      exec,
-      surfacesExec,
-      isAlive: machine.isAlive,
-      kill: machine.kill,
-      delay: machine.delay,
-      env,
-      hostname: machine.hostname,
-      platform,
-      fs: machine.fs,
-      store,
-      launcher,
-      worktrees,
-      sessionWorktrees: new Map(),
-      knobsPick: { agent: CLAUDE_CODE },
-      browsedFolders: [],
-      permissions,
-      places,
-      jobs,
-      projects,
-      launched,
-      budgets: new TokenBudgets({ ...events, file: storagePath(host.storageDir, 'budgets') }),
-      report,
-      planUsage: async (): Promise<unknown> => {
-        const usageEnv = await launchEnv();
-        return planUsageFunction({
-          cwd: paths.home,
-          env: mergeEnv(usageEnv, {}),
-          executablePath: executableFor(host.settings.claudePath, usageEnv, platform),
-        });
-      },
+    this.rt = buildRuntime(deps, core, machine, {
       notify,
-      // Sources is built below, and this only runs after construction.
-      openTranscript: async (id: string): Promise<boolean> => this.sources.openTranscript(id),
-      dismissTranscript: async (id: string): Promise<void> => this.sources.dismissTranscript(id),
-      sessionBusy: (id: string): boolean => this.sources.sessionBusy(id),
-      claudeCli: deps.claudeCli ?? cliLoader(host.settings, launchEnv, platform),
-      loginEnv: launchEnv,
-      // The config sync is built below, once the runtime it needs exists.
-      configSync: {
-        status: () => this.configSync.status(),
-        syncNow: async (): Promise<void> => this.configSync.syncNow(),
-      },
-      fetch: machine.fetch,
-      callTool: deps.callTool ?? callStdioTool,
-      launchNotes,
-    };
-    const context = new ContextViews({ ...base, onUpdate: notify, onError: report });
-    const activity = createActivity(base, machine.interval);
-    const registry = new RegistrySearch({ fetch: base.fetch, notify });
-    const reader = new GitHubReader({
-      fetch: base.fetch,
-      token: async (): Promise<string | null> =>
-        host.gitHubSession(false).then(
-          (signIn) => signIn?.accessToken ?? null,
-          () => null,
-        ),
+      runtime: () => this.rt,
+      sources: () => this.sources,
+      configSync: () => this.configSync,
     });
-    const catalogs = {
-      reader,
-      skill: new CatalogBrowser({ kind: 'skill', reader, fetch: base.fetch, notify }),
-      agent: new CatalogBrowser({ kind: 'agent', reader, fetch: base.fetch, notify }),
-    };
-    this.rt = { ...base, caches: createCaches(base), context, activity, registry, catalogs };
+    const { store, launcher, launched, permissions, context, launchNotes, report } = this.rt;
     this.cleanups.push(store.onChange(notify), launcher.onChange(notify), launched.track(launcher));
     const coordinator = createCoordinator(this.rt);
     const launchCheck = createLaunchChecker(this.rt);
