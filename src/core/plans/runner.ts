@@ -61,6 +61,8 @@ function fromRun(run: LaunchRun): PlanTaskState {
 export class PlanRunner {
   private list: Plan[];
   private readonly deps: PlanRunnerDeps;
+  /** The last save, so the next one waits for it and an older list never lands on top of a newer one. */
+  private saving: Promise<void> = Promise.resolve();
 
   /** `saved` is what the last session saved. Runs from before a reload are gone, so their tasks stop. */
   constructor(deps: PlanRunnerDeps, saved: readonly Plan[]) {
@@ -94,12 +96,20 @@ export class PlanRunner {
 
   private put(next: Plan): void {
     this.list = this.list.map((plan) => (plan.id === next.id ? next : plan));
-    this.deps.save(this.list).catch((error: unknown) => {
+    this.saving = this.saveAfter(this.saving, this.list);
+    this.deps.notify();
+  }
+
+  /** Saves `list` once the save before it is done. It never rejects, since a failed save is reported. */
+  private async saveAfter(previous: Promise<void>, list: readonly Plan[]): Promise<void> {
+    await previous;
+    try {
+      await this.deps.save(list);
+    } catch (error: unknown) {
       this.deps.report(
         `Could not save plans: ${error instanceof Error ? error.message : String(error)}`,
       );
-    });
-    this.deps.notify();
+    }
   }
 
   /** Drafts a plan for the goal. It shows as drafting until the planner answers. */

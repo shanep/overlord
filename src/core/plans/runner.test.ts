@@ -37,7 +37,11 @@ async function drafted(): Promise<Draft> {
   return DRAFT;
 }
 
-function harness(saved: readonly Plan[] = [], draft: () => Promise<Draft> = drafted): Harness {
+function harness(
+  saved: readonly Plan[] = [],
+  draft: () => Promise<Draft> = drafted,
+  save?: PlanRunnerDeps['save'],
+): Harness {
   const state = {
     launched: [] as { task: string; prompt: string }[],
     stopped: [] as string[],
@@ -58,10 +62,12 @@ function harness(saved: readonly Plan[] = [], draft: () => Promise<Draft> = draf
       await Promise.resolve();
       return state.landed;
     },
-    save: async (plans) => {
-      await Promise.resolve();
-      state.saved.push(plans);
-    },
+    save:
+      save ??
+      (async (plans): Promise<void> => {
+        await Promise.resolve();
+        state.saved.push(plans);
+      }),
     notify: (): void => {
       // Nothing renders in these tests.
     },
@@ -190,6 +196,26 @@ describe('PlanRunner', () => {
     h.runner.onRun(run('someone-else', 'done'));
     h.runner.discard(planId);
     expect(h.runner.plans()).toStrictEqual([]);
+  });
+
+  it('saves in order, so a slow save never overwrites a newer one', async () => {
+    const written: string[] = [];
+    let delay = 20;
+    const h = harness([], drafted, async (plans) => {
+      const wait = delay;
+      delay = 0;
+      await new Promise<void>((resolve) => {
+        setTimeout(resolve, wait);
+      });
+      written.push(plans[0]?.state ?? 'none');
+    });
+    const planId = await h.runner.draft('g', '/r');
+    h.runner.approve(planId);
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, 60);
+    });
+    expect(written.at(-1)).toBe('running');
+    expect(written[0]).toBe('drafting');
   });
 
   it('stops tasks whose runs a reload ended', () => {
