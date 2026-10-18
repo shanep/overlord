@@ -67,15 +67,18 @@ describe('costlySessions', () => {
 });
 
 describe('hotFiles', () => {
-  it('adds up the same file read from different worktrees of one project', () => {
-    const one = measureOf({ cwd: '/wt/a', files: { '/wt/a/src/app.ts': 2 } });
-    const two = measureOf({ cwd: '/wt/b', files: { '/wt/b/src/app.ts': 3, '/repo/README.md': 1 } });
-    expect(
-      hotFiles([one, two, measureOf({ cwd: null, files: { '/x.ts': 1 } })], () => '/repo'),
-    ).toStrictEqual([
+  it('adds up a file read from worktrees of one project, leaving out one-offs and outside files', () => {
+    const one = measureOf({
+      cwd: '/wt/a',
+      files: { '/wt/a/src/app.ts': 2, '/home/me/.claude/skills/voice/SKILL.md': 4 },
+    });
+    const two = measureOf({
+      cwd: '/wt/b',
+      files: { '/wt/b/src/app.ts': 3, '/repo/README.md': 1, '../other/x.ts': 2 },
+    });
+    const loose = measureOf({ cwd: null, files: { '/x.ts': 1 } });
+    expect(hotFiles([one, two, loose], () => '/repo')).toStrictEqual([
       { project: '/repo', path: 'src/app.ts', usd: 5, sessions: 2 },
-      { project: '/repo', path: 'README.md', usd: 1, sessions: 1 },
-      { project: '', path: '/x.ts', usd: 1, sessions: 1 },
     ]);
   });
 });

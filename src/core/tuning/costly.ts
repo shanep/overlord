@@ -13,6 +13,8 @@ import { plural, tokens, usd } from './words.js';
 const COSTLY_SESSIONS = 8;
 const COSTLY_MIN_USD = 3;
 const HOT_FILES = 15;
+/** A file read in one session is a one-off, not a habit worth a refactor. */
+const HOT_MIN_SESSIONS = 2;
 /** A cause worth naming costs at least this share of its session. */
 const CAUSE_SHARE = 0.08;
 const BIG_AVERAGE = 150_000;
@@ -228,6 +230,11 @@ export function costlySessions(
     }));
 }
 
+/** True for a path relative to the project, not one outside it such as ~/.claude or /tmp. */
+function insideProject(file: string): boolean {
+  return !file.startsWith('/') && !file.startsWith('~') && !file.startsWith('..');
+}
+
 /**
  * Files that cost the most to carry across sessions, keyed by project and
  * the path inside it, so the same file read from different worktrees adds up.
@@ -243,10 +250,16 @@ export function hotFiles(
     for (const [file, value] of Object.entries(measure.files)) {
       const base = cwd !== null && file.startsWith(`${cwd}/`) ? cwd : project;
       const inside = shortPath(file, base === '' ? null : base);
+      if (project === '' || !insideProject(inside)) {
+        continue;
+      }
       const key = `${project}\0${inside}`;
       const entry = found.get(key) ?? { project, path: inside, usd: 0, sessions: 0 };
       found.set(key, { ...entry, usd: entry.usd + value, sessions: entry.sessions + 1 });
     }
   }
-  return [...found.values()].toSorted((left, right) => right.usd - left.usd).slice(0, HOT_FILES);
+  return [...found.values()]
+    .filter((file) => file.sessions >= HOT_MIN_SESSIONS)
+    .toSorted((left, right) => right.usd - left.usd)
+    .slice(0, HOT_FILES);
 }
