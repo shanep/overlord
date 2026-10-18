@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { isPlainObject } from '../knobs/json.js';
 import { DEFAULT_PRICES } from '../transcripts/pricing.js';
 import {
   assistant,
@@ -184,7 +185,10 @@ function exact(
   model: string | null = 'claude-opus-5-5',
 ): Fields {
   const record = assistant({ uuid: `a-${id}`, at: 0, messageId: id, content, usage: usage(spec) });
-  const message = record['message'] as Fields;
+  const message = record['message'];
+  if (!isPlainObject(message)) {
+    throw new Error('no message');
+  }
   return { ...record, message: { ...message, model: model ?? undefined } };
 }
 
