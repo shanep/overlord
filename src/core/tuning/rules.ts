@@ -3,46 +3,20 @@
 // Thresholds are set so a tip only shows when it is worth acting on.
 
 import { CLAUDE_CODE } from '../../shared/agents.js';
-import type { TipSeverity } from '../../shared/tuning.js';
 
-import type { RuleFit } from './agent.js';
-import type { TipTracking } from './impact.js';
 import type { SessionMeasure } from './measure.js';
 import { costTotal } from './measure.js';
+import type { TipRule } from './rule-type.js';
+import { ratio } from './rule-type.js';
+import { SPEND_RULES } from './rules-spend.js';
 import type { Totals } from './totals.js';
 import { LARGE_CONTEXT, LONG_SESSION_PROMPTS, sessionUsd } from './totals.js';
 import { percent, plural, tokens, usd } from './words.js';
 
 /** Claude Code's own settings, commands or behavior, so the rule fits Claude Code alone. */
+export type { TipRule } from './rule-type.js';
+
 const CLAUDE_ONLY = [CLAUDE_CODE];
-
-export interface TipRule extends RuleFit {
-  readonly id: string;
-  readonly severity: TipSeverity;
-  readonly title: string;
-  readonly advice: readonly string[];
-  /** Suggestion ids that help. */
-  readonly fixes: readonly string[];
-  readonly pros: readonly string[];
-  /** What following the advice gives up, so the choice is an informed one. */
-  readonly cons: readonly string[];
-  readonly skipWhen: string;
-  /** What to compare once you start following it. */
-  readonly track: TipTracking;
-  /** Knobs the advice says to set. Setting one from Overlord starts tracking the tip. */
-  readonly knobs?: readonly string[];
-  /** What the transcripts show, or null when the tip does not apply. */
-  readonly finding: (totals: Totals) => string | null;
-  /** True when this session shows the problem. */
-  readonly flags: (measure: SessionMeasure) => boolean;
-  /** How badly, for ordering. */
-  readonly metric: (measure: SessionMeasure) => number;
-  readonly detail: (measure: SessionMeasure) => string;
-}
-
-function ratio(part: number, whole: number): number {
-  return whole === 0 ? 0 : part / whole;
-}
 
 function failures(measure: SessionMeasure): number {
   return measure.toolErrors - measure.denials;
@@ -61,6 +35,7 @@ function homeNote(totals: Totals): string {
 }
 
 export const RULES: readonly TipRule[] = [
+  ...SPEND_RULES,
   {
     id: 'context-reread',
     needs: ['cacheReads', 'costUsd'],

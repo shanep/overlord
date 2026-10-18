@@ -48,6 +48,10 @@ interface Sums {
   bashCommands: number;
   repeatedRuns: number;
   cdCommands: number;
+  fileReadUsd: number;
+  setupUsd: number;
+  skillUsd: number;
+  instructionUsd: number;
 }
 
 export type MetricId =
@@ -63,7 +67,11 @@ export type MetricId =
   | 'denials'
   | 'extraReads'
   | 'failures'
-  | 'cdShare';
+  | 'cdShare'
+  | 'fileReadShare'
+  | 'setupShare'
+  | 'skillShare'
+  | 'instructionShare';
 
 interface MetricDefinition {
   readonly label: string;
@@ -146,6 +154,26 @@ const METRICS: Readonly<Record<MetricId, MetricDefinition>> = {
     format: 'percent',
     value: (s) => share(s.cdCommands, s.bashCommands),
   },
+  fileReadShare: {
+    label: 'Spend carrying files read',
+    format: 'percent',
+    value: (s) => share(s.fileReadUsd, s.usd),
+  },
+  setupShare: {
+    label: 'Spend on the system prompt and tools',
+    format: 'percent',
+    value: (s) => share(s.setupUsd, s.usd),
+  },
+  skillShare: {
+    label: 'Spend carrying skills',
+    format: 'percent',
+    value: (s) => share(s.skillUsd, s.usd),
+  },
+  instructionShare: {
+    label: 'Spend carrying CLAUDE.md and memory',
+    format: 'percent',
+    value: (s) => share(s.instructionUsd, s.usd),
+  },
 };
 
 /** A number that could get worse when the advice is followed, and why. */
@@ -181,6 +209,10 @@ function emptySums(): Sums {
     bashCommands: 0,
     repeatedRuns: 0,
     cdCommands: 0,
+    fileReadUsd: 0,
+    setupUsd: 0,
+    skillUsd: 0,
+    instructionUsd: 0,
   };
 }
 
@@ -204,6 +236,10 @@ function add(sums: Sums, m: SessionMeasure): void {
   sums.bashCommands += m.bashCommands;
   sums.repeatedRuns += m.repeatedRuns;
   sums.cdCommands += m.cdCommands;
+  sums.fileReadUsd += m.spend.fileReads + m.subagentSpend.fileReads;
+  sums.setupUsd += m.spend.setup + m.subagentSpend.setup;
+  sums.skillUsd += m.spend.skills + m.subagentSpend.skills;
+  sums.instructionUsd += m.spend.instructions + m.subagentSpend.instructions;
 }
 
 function sumsOf(measures: readonly SessionMeasure[]): Sums {

@@ -63,6 +63,125 @@ export interface TipImpact {
   readonly weeks: readonly ImpactWeek[];
 }
 
+/** What filled the context that each request sent again, or the reply it wrote. */
+export type SpendSource =
+  | 'setup'
+  | 'instructions'
+  | 'skills'
+  | 'reminders'
+  | 'fileReads'
+  | 'toolOutput'
+  | 'web'
+  | 'toolInputs'
+  | 'subagentReports'
+  | 'conversation'
+  | 'output';
+
+/** One source's part of the spend. */
+export interface SpendSlice {
+  readonly source: SpendSource;
+  readonly label: string;
+  readonly usd: number;
+  /** Share of the spend it is part of, 0 to 1. */
+  readonly share: number;
+}
+
+/** One thing that sat in a session's context, and what carrying it cost. */
+export interface HeavyItem {
+  readonly source: SpendSource;
+  /** What it was, such as "Read src/app.ts" or "Bash: npm test". */
+  readonly label: string;
+  readonly tokens: number;
+  readonly usd: number;
+}
+
+/** A subagent of a costly session. */
+export interface CostlySubagent {
+  readonly type: string;
+  readonly description: string;
+  readonly usd: number;
+  readonly requests: number;
+  readonly peakContext: number;
+}
+
+/** Why a session cost what it did, with what fixing it would have saved. */
+export interface CostCause {
+  readonly id: string;
+  readonly text: string;
+  /** What this cause cost the session. */
+  readonly usd: number;
+  /** What the fix would have saved on this session, or null when it cannot be worked out. */
+  readonly savedUsd: number | null;
+  /** The tip with the fix, or null. */
+  readonly tipId: string | null;
+}
+
+/** A closer look at one of the most expensive sessions. */
+export interface CostlySession {
+  readonly sessionId: string;
+  readonly title: string;
+  readonly cwd: string | null;
+  readonly updatedAt: number;
+  readonly usd: number;
+  readonly subagentUsd: number;
+  readonly requests: number;
+  readonly averageContext: number;
+  readonly peakContext: number;
+  /** Main thread and subagents together, biggest first. */
+  readonly spend: readonly SpendSlice[];
+  /** Biggest saving first. */
+  readonly causes: readonly CostCause[];
+  /** What cost the most to carry, worst first. */
+  readonly heavy: readonly HeavyItem[];
+  /** The most expensive subagents, worst first. */
+  readonly subagents: readonly CostlySubagent[];
+}
+
+/** A file sessions kept reading, and what carrying it cost them. */
+export interface HotFile {
+  /** The project folder the path is relative to. */
+  readonly project: string;
+  readonly path: string;
+  readonly sessions: number;
+  readonly usd: number;
+}
+
+/**
+ * A fix Overlord applies for you: set a setting, write a skill or agent, or
+ * start a Claude session that makes the change and reports back.
+ */
+export type AutoFix =
+  | {
+      readonly kind: 'knob';
+      readonly id: string;
+      readonly title: string;
+      readonly detail: string;
+      readonly key: string;
+      readonly value: unknown;
+      /** True when the setting already has this value. */
+      readonly applied: boolean;
+    }
+  | {
+      readonly kind: 'create';
+      readonly id: string;
+      readonly title: string;
+      readonly detail: string;
+      readonly suggestionId: string;
+      readonly applied: boolean;
+    }
+  | {
+      readonly kind: 'launch';
+      readonly id: string;
+      readonly title: string;
+      readonly detail: string;
+      readonly label: string;
+      readonly prompt: string;
+      readonly cwd: string;
+      /** True to run it in a new worktree, for changes to a repository. */
+      readonly worktree: boolean;
+      readonly applied: false;
+    };
+
 /** One piece of advice, backed by numbers from the session transcripts. */
 export interface Tip {
   readonly id: string;
@@ -76,6 +195,8 @@ export interface Tip {
   readonly sessions: readonly TipSession[];
   /** Ids of suggested skills or agents that help with it. */
   readonly fixes: readonly string[];
+  /** Fixes Overlord can apply for you, the one that saves the most first. */
+  readonly autoFixes: readonly AutoFix[];
   /** What following the advice gains. */
   readonly pros: readonly string[];
   /** What it gives up, such as context built up over a long session. */
@@ -235,6 +356,13 @@ export interface TuningState {
   /** Context tokens per main thread request, averaged over every session. */
   readonly averageContext: number;
   readonly largestContext: number;
+  readonly subagentUsd: number;
+  /** Where the spend went across every session, biggest first. */
+  readonly spend: readonly SpendSlice[];
+  /** The sessions that cost the most, each with why. */
+  readonly costly: readonly CostlySession[];
+  /** Files that cost the most to carry after reading them, worst first. */
+  readonly hotFiles: readonly HotFile[];
   readonly tips: readonly Tip[];
   readonly suggestions: readonly Suggestion[];
   /** Premade skills and agents that fit the work, from the Skills and Agents catalogs. */

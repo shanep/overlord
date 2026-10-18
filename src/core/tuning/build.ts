@@ -1,10 +1,13 @@
 // Turns the rules into the tips the view shows, with the measured impact of
 // the ones you track, and finds the tips a step taken from Overlord follows.
 
+import { CLAUDE_CODE } from '../../shared/agents.js';
 import type { Tip, TipSession, TipSeverity } from '../../shared/tuning.js';
 
 import type { TuningAgent } from './agent.js';
 import { inAgentWords, ruleFits, ruleKnobs } from './agent.js';
+import type { FixContext } from './fixes.js';
+import { autoFixesFor } from './fixes.js';
 import { impactOf } from './impact.js';
 import type { SessionMeasure } from './measure.js';
 import type { TipRule } from './rules.js';
@@ -38,7 +41,20 @@ export interface TipInputs {
   readonly now: number;
   /** The agent whose sessions these are. Unset is Claude Code, whose words the rules use. */
   readonly agent?: TuningAgent;
+  /** What the fixes need to know about this machine. Unset offers no session to start. */
+  readonly fixEnv?: FixEnv;
 }
+
+export type FixEnv = Omit<FixContext, 'totals' | 'live'>;
+
+const NO_ENV: FixEnv = {
+  hotFiles: [],
+  knob: () => null,
+  installed: new Set(),
+  home: '',
+  projectOf: (cwd) => cwd,
+  exists: () => false,
+};
 
 /** Every text of a rule that shows, to check the agent has a word for each name in it. */
 function ruleTexts(rule: TipRule): readonly string[] {
@@ -64,6 +80,11 @@ export function buildTips(inputs: TipInputs): Tip[] {
   const tips: Tip[] = [];
   const { agent } = inputs;
   const say = (text: string): string => (agent === undefined ? text : inAgentWords(text, agent));
+  const fixContext: FixContext = {
+    ...(inputs.fixEnv ?? NO_ENV),
+    totals: inputs.totals,
+    live: inputs.live,
+  };
   for (const rule of rulesFor(agent)) {
     const finding = rule.finding(inputs.totals);
     const since = inputs.tracked.get(rule.id);
@@ -78,6 +99,9 @@ export function buildTips(inputs: TipInputs): Tip[] {
       advice: rule.advice.map((text) => say(text)),
       sessions: worstSessions(rule, inputs.live),
       fixes: rule.fixes,
+      // The fixes write Claude Code's settings and start Claude Code sessions.
+      autoFixes:
+        agent === undefined || agent.id === CLAUDE_CODE ? autoFixesFor(rule.id, fixContext) : [],
       pros: rule.pros.map((text) => say(text)),
       cons: rule.cons.map((text) => say(text)),
       skipWhen: say(rule.skipWhen),

@@ -3,10 +3,12 @@
 // tuning/measure.ts, which reads Claude's denial text, model ids and cache
 // fields.
 
+import { readFile } from 'node:fs/promises';
+
 import { readAllLines } from '../../transcripts/reader.js';
 import { scanSessions } from '../../transcripts/scanner.js';
-import { listSubagentFiles } from '../../transcripts/subagents.js';
-import type { SessionMeasure } from '../../tuning/measure.js';
+import { listSubagentFiles, parseSubagentMeta } from '../../transcripts/subagents.js';
+import type { SessionMeasure, SubagentInfo } from '../../tuning/measure.js';
 import { measureSession } from '../../tuning/measure.js';
 import type { TuningFacet, TuningSession } from '../types.js';
 
@@ -23,18 +25,30 @@ export async function claudeTuningSessions(projectsDir: string): Promise<TuningS
   }));
 }
 
+async function readInfo(metaPath: string): Promise<SubagentInfo | null> {
+  try {
+    const meta = parseSubagentMeta(await readFile(metaPath, 'utf8'));
+    return meta === null ? null : { type: meta.agentType, description: meta.description };
+  } catch {
+    return null;
+  }
+}
+
 /** Reads a session's transcript and its subagents' and measures them. */
 export async function measureClaudeSession(session: TuningSession): Promise<SessionMeasure> {
   // The subagents sit in a folder named like the transcript without .jsonl.
   const sessionDir = session.path.slice(0, -JSONL.length);
   const subagents: string[][] = [];
+  const subagentInfo: (SubagentInfo | null)[] = [];
   for (const file of await listSubagentFiles(sessionDir)) {
     subagents.push(await readAllLines(file.transcriptPath));
+    subagentInfo.push(await readInfo(file.metaPath));
   }
   return measureSession({
     sessionId: session.sessionId,
     main: await readAllLines(session.path),
     subagents,
+    subagentInfo,
     fallbackAt: session.mtimeMs,
   });
 }

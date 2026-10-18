@@ -89,7 +89,26 @@
             "values": [126000, 2.3, 15.3]
           }
         ]
-      }
+      },
+      "autoFixes": [
+        {
+          "kind": "knob",
+          "id": "knob:autoCompactWindow",
+          "title": "Compact every session at 200K tokens",
+          "detail": "Sets autoCompactWindow to 200000 in your user settings, so sessions and subagents compact long before the 1M limit. On the sessions measured that would have saved about $612.",
+          "key": "autoCompactWindow",
+          "value": 200000,
+          "applied": false
+        },
+        {
+          "kind": "create",
+          "id": "create:handoff",
+          "title": "Add a handoff skill",
+          "detail": "Writes the handoff skill: Write a handoff note for the current task so a fresh session can pick it up.",
+          "suggestionId": "handoff",
+          "applied": true
+        }
+      ]
     },
     {
       "id": "big-reads",
@@ -111,7 +130,28 @@
       "pros": ["Smaller context from the first prompt on."],
       "cons": ["Claude can miss code outside the lines it read."],
       "skipWhen": "you are reviewing the whole file on purpose.",
-      "impact": null
+      "impact": null,
+      "autoFixes": [
+        {
+          "kind": "launch",
+          "id": "launch:hot-files:/Users/me/repos/shop",
+          "title": "Make the most read files in shop cheaper to read",
+          "detail": "Starts a Claude session in a new worktree of /Users/me/repos/shop that splits the files sessions keep reading ($212 to carry so far) into smaller modules and cuts comments that only restate the code, then lands the change.",
+          "label": "Make hot files cheaper to read",
+          "prompt": "Make these files cheaper...",
+          "cwd": "/Users/me/repos/shop",
+          "worktree": true,
+          "applied": false
+        },
+        {
+          "kind": "create",
+          "id": "create:scout",
+          "title": "Add a scout agent for searches",
+          "detail": "Writes the scout agent: Finds code, config and facts in the repository and reports only what matters.",
+          "suggestionId": "scout",
+          "applied": false
+        }
+      ]
     },
     {
       "id": "retry-loops",
@@ -132,7 +172,8 @@
         "sessionsAfter": 3,
         "metrics": [],
         "weeks": []
-      }
+      },
+      "autoFixes": []
     }
   ],
   "suggestions": [
@@ -397,5 +438,259 @@
       "tips": ["compact-early"]
     }
   ],
-  "scannedAt": 1792205100000
+  "scannedAt": 1792205100000,
+  "subagentUsd": 540,
+  "spend": [
+    {
+      "source": "fileReads",
+      "label": "Reading files",
+      "usd": 560,
+      "share": 0.23064250411861614
+    },
+    {
+      "source": "setup",
+      "label": "System prompt and tool definitions",
+      "usd": 366,
+      "share": 0.15074135090609556
+    },
+    {
+      "source": "output",
+      "label": "Writing replies (output tokens)",
+      "usd": 365,
+      "share": 0.15032948929159803
+    },
+    {
+      "source": "toolInputs",
+      "label": "Code and commands Claude wrote",
+      "usd": 360,
+      "share": 0.14827018121911037
+    },
+    {
+      "source": "toolOutput",
+      "label": "Command and search output",
+      "usd": 210,
+      "share": 0.08649093904448106
+    },
+    {
+      "source": "skills",
+      "label": "Skills",
+      "usd": 120,
+      "share": 0.04942339373970346
+    },
+    {
+      "source": "reminders",
+      "label": "Hooks and reminders",
+      "usd": 140,
+      "share": 0.057660626029654036
+    },
+    {
+      "source": "conversation",
+      "label": "Prompts, replies and thinking",
+      "usd": 150,
+      "share": 0.06177924217462932
+    },
+    {
+      "source": "instructions",
+      "label": "CLAUDE.md and memory",
+      "usd": 60,
+      "share": 0.02471169686985173
+    },
+    {
+      "source": "web",
+      "label": "Web and connectors",
+      "usd": 40,
+      "share": 0.016474464579901153
+    },
+    {
+      "source": "subagentReports",
+      "label": "Subagent reports",
+      "usd": 17,
+      "share": 0.00700164744645799
+    }
+  ],
+  "costly": [
+    {
+      "sessionId": "aaaaaaaa-1111-4111-8111-111111111111",
+      "title": "Checkout rewrite across the API and web app",
+      "cwd": "/Users/me/repos/shop",
+      "updatedAt": 1792205100000,
+      "usd": 273,
+      "subagentUsd": 257,
+      "requests": 186,
+      "averageContext": 203000,
+      "peakContext": 394000,
+      "spend": [
+        {
+          "source": "fileReads",
+          "label": "Reading files",
+          "usd": 121,
+          "share": 0.4432234432234432
+        },
+        {
+          "source": "setup",
+          "label": "System prompt and tool definitions",
+          "usd": 54,
+          "share": 0.1978021978021978
+        },
+        {
+          "source": "toolInputs",
+          "label": "Code and commands Claude wrote",
+          "usd": 40,
+          "share": 0.14652014652014653
+        },
+        {
+          "source": "output",
+          "label": "Writing replies (output tokens)",
+          "usd": 22,
+          "share": 0.08058608058608059
+        }
+      ],
+      "causes": [
+        {
+          "id": "subagents",
+          "text": "Subagents cost $257. The biggest, general-purpose \"Milestones 4 and 5\", cost $23 over 295 requests with a 571K peak. Running them on Sonnet would have saved about $64.",
+          "usd": 257,
+          "savedUsd": 64,
+          "tipId": "compact-early"
+        },
+        {
+          "id": "file-reads",
+          "text": "Files read with Read, cat and sed stayed in context and cost $121 to carry, most of all src/shared/protocol.ts ($18).",
+          "usd": 121,
+          "savedUsd": null,
+          "tipId": "big-reads"
+        }
+      ],
+      "heavy": [
+        {
+          "source": "fileReads",
+          "label": "Bash cat src/shared/protocol.ts",
+          "tokens": 21000,
+          "usd": 4.1
+        },
+        {
+          "source": "toolInputs",
+          "label": "Write src/core/checkout/flow.ts",
+          "tokens": 9000,
+          "usd": 1.5
+        },
+        {
+          "source": "skills",
+          "label": "skill list",
+          "tokens": 4000,
+          "usd": 1.4
+        }
+      ],
+      "subagents": [
+        {
+          "type": "general-purpose",
+          "description": "Milestones 4 and 5",
+          "usd": 23.4,
+          "requests": 295,
+          "peakContext": 571000
+        },
+        {
+          "type": "general-purpose",
+          "description": "Config sync",
+          "usd": 13.7,
+          "requests": 199,
+          "peakContext": 386000
+        }
+      ]
+    },
+    {
+      "sessionId": "bbbbbbbb-2222-4222-8222-222222222222",
+      "title": "Vault report",
+      "cwd": "/Users/me/repos/reports",
+      "updatedAt": 1792205100000,
+      "usd": 79,
+      "subagentUsd": 0,
+      "requests": 512,
+      "averageContext": 555000,
+      "peakContext": 949000,
+      "spend": [
+        {
+          "source": "fileReads",
+          "label": "Reading files",
+          "usd": 30,
+          "share": 0.379746835443038
+        },
+        {
+          "source": "toolInputs",
+          "label": "Code and commands Claude wrote",
+          "usd": 16,
+          "share": 0.20253164556962025
+        },
+        {
+          "source": "output",
+          "label": "Writing replies (output tokens)",
+          "usd": 9,
+          "share": 0.11392405063291139
+        },
+        {
+          "source": "setup",
+          "label": "System prompt and tool definitions",
+          "usd": 5,
+          "share": 0.06329113924050633
+        }
+      ],
+      "causes": [
+        {
+          "id": "context",
+          "text": "Each of 512 requests re-sent 555K tokens on average (peak 949K), so carrying context cost $70. Compacting at 200K would have saved about $41.",
+          "usd": 70,
+          "savedUsd": 41,
+          "tipId": "compact-early"
+        },
+        {
+          "id": "idle",
+          "text": "2 times the session was picked up after its cache expired and wrote its context again, $5.40.",
+          "usd": 5.4,
+          "savedUsd": 5.4,
+          "tipId": null
+        }
+      ],
+      "heavy": [
+        {
+          "source": "web",
+          "label": "mcp__docs__guide",
+          "tokens": 12000,
+          "usd": 1.9
+        },
+        {
+          "source": "fileReads",
+          "label": "Bash cat scripts/vault-probe.ps1",
+          "tokens": 8000,
+          "usd": 1.8
+        }
+      ],
+      "subagents": []
+    }
+  ],
+  "hotFiles": [
+    {
+      "project": "/Users/me/repos/shop",
+      "path": "src/shared/protocol.ts",
+      "sessions": 41,
+      "usd": 38
+    },
+    {
+      "project": "/Users/me/repos/shop",
+      "path": "src/core/app/app.ts",
+      "sessions": 37,
+      "usd": 31
+    },
+    {
+      "project": "/Users/me/repos/shop",
+      "path": "webview/src/theme.css",
+      "sessions": 29,
+      "usd": 19
+    },
+    {
+      "project": "/Users/me/repos/reports",
+      "path": "Migrations/ModelSnapshot.cs",
+      "sessions": 4,
+      "usd": 9
+    }
+  ]
 }

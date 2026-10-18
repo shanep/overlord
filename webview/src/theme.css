@@ -1469,6 +1469,105 @@ button.link-button.row-failure {
   max-width: 1400px;
 }
 
+/* Where the money went: one bar per source, its label in a fixed column. */
+.spend-bars {
+  display: grid;
+  gap: 4px;
+  margin: 6px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.spend-bars li {
+  display: grid;
+  grid-template-columns: minmax(120px, 16em) minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+}
+
+.spend-bars .meter-wrap {
+  display: flex;
+  width: 100%;
+}
+
+.spend-bars .meter {
+  flex: 1;
+  width: auto;
+}
+
+.spend-bars .meter-text {
+  min-width: 9em;
+  white-space: nowrap;
+}
+
+.spend-label {
+  overflow: hidden;
+  color: var(--ov-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A tip's fixes: what each does on the left, its button on the right. */
+.fix-heading {
+  margin: 8px 0 2px;
+  color: var(--ov-muted);
+  font-size: 0.85em;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.auto-fixes {
+  display: grid;
+  gap: 6px;
+  margin: 4px 0 6px;
+  padding: 0;
+  list-style: none;
+}
+
+.auto-fix {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.auto-fix-text {
+  display: grid;
+  flex: 1;
+  gap: 2px;
+  min-width: 0;
+}
+
+.auto-fix-title {
+  font-weight: 600;
+}
+
+.spend h2 {
+  margin: 0;
+}
+
+.spend > p {
+  margin: 2px 0 6px;
+}
+
+.auto-fix button {
+  flex: none;
+}
+
+.costly-causes {
+  margin: 6px 0;
+  padding-left: 1.2em;
+}
+
+.costly-causes li {
+  margin-bottom: 4px;
+}
+
+.costly-causes .chip {
+  margin-left: 6px;
+}
+
 /* Tips sit in a card grid; the cards start at the top so a short one does not stretch. */
 .tips {
   align-items: start;

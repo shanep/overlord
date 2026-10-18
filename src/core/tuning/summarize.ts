@@ -4,6 +4,8 @@ import type { PlanLimits } from '../../shared/protocol.js';
 import type { CatalogPicks, TuningSessionRow, TuningState } from '../../shared/tuning.js';
 
 import { buildTips, tipsFor } from './build.js';
+import { spendSlices, costlySessions, hotFiles } from './costly.js';
+import { unusedTools } from './fixes.js';
 import { buildLimit } from './limit.js';
 import type { SessionMeasure } from './measure.js';
 import { cacheReadShare } from './rules.js';
@@ -28,19 +30,36 @@ export interface SummaryInputs {
   readonly plan: PlanLimits | null;
   /** The catalog search, which runs outside the summary. */
   readonly picks: CatalogPicks;
+  /** The effective value of a Claude Code setting. Unset reads every setting as unset. */
+  readonly knob?: (key: string) => unknown;
+  /** The repository a session folder belongs to. Unset treats each folder as its own. */
+  readonly projectOf?: (cwd: string) => string;
+  /** True when a folder is there to start a session in. Unset offers no sessions to start. */
+  readonly exists?: (folder: string) => boolean;
 }
 
 export function summarize(inputs: SummaryInputs): TuningState {
   // A session with no requests was opened and left, so it says nothing about habits.
   const measures = inputs.measures.filter((measure) => measure.requests > 0);
   const totals = totalsOf(measures, inputs.home);
+  const projectOf = inputs.projectOf ?? ((cwd: string): string => cwd);
+  const hot = hotFiles(measures, projectOf);
   const tips = buildTips({
     totals,
     live: measures,
     all: [...measures, ...inputs.history],
     tracked: inputs.tracked,
     now: inputs.now,
+    fixEnv: {
+      hotFiles: hot,
+      knob: inputs.knob ?? ((): unknown => undefined),
+      installed: inputs.installed,
+      home: inputs.home,
+      projectOf,
+      exists: inputs.exists ?? ((): boolean => false),
+    },
   });
+  const unused = new Set(unusedTools(totals).map((tool) => tool.name));
   const rows: TuningSessionRow[] = measures
     .map((measure) => ({
       sessionId: measure.sessionId,
@@ -62,6 +81,10 @@ export function summarize(inputs: SummaryInputs): TuningState {
     cacheReadUsd: totals.cacheReadUsd,
     averageContext: totals.requests === 0 ? 0 : totals.contextTokens / totals.requests,
     largestContext: totals.largestContext,
+    subagentUsd: totals.subagentUsd,
+    spend: spendSlices(totals.spend),
+    costly: costlySessions(measures, unused),
+    hotFiles: hot,
     tips,
     suggestions: buildSuggestions(totals, inputs.installed),
     picks: inputs.picks,

@@ -4,29 +4,31 @@
 // and short labels are kept, never prompt or file text.
 // cspell:words uvicorn pytest
 
+import type { CostlySubagent, HeavyItem } from '../../shared/tuning.js';
 import { isPlainObject } from '../knobs/json.js';
 import { transcriptPrompts } from '../reputation/prompts.js';
 import type { PriceTable } from '../transcripts/pricing.js';
-import { DEFAULT_PRICES, findPrice } from '../transcripts/pricing.js';
+import { DEFAULT_PRICES } from '../transcripts/pricing.js';
 import type { ContentBlock, TranscriptRecord } from '../transcripts/schemas.js';
 import { parseTimestamp, parseTranscriptLine } from '../transcripts/schemas.js';
 import { resultText } from '../transcripts/text.js';
 
+import { attribute } from './attribute.js';
+import type { CostSplit, Usage } from './cost.js';
+import { addCost, costOfUsage, firstUsage, overCap, ZERO_COST } from './cost.js';
 import type { CommandFamily } from './families.js';
 import { FAMILY_PATTERNS, familyCounts } from './families.js';
 import type { SpendHour } from './spend-hours.js';
-import { HourTally, isPremium } from './spend-hours.js';
+import { HourTally } from './spend-hours.js';
+import type { SpendSplit } from './spend.js';
 import { StackTally } from './stack.js';
+import type { SubagentInfo } from './subagent-tally.js';
+import { measureSubagents } from './subagent-tally.js';
 
 export type { CommandFamily } from './families.js';
-
-/** US dollars at list price, split by token kind. */
-export interface CostSplit {
-  readonly input: number;
-  readonly output: number;
-  readonly cacheRead: number;
-  readonly cacheWrite: number;
-}
+export type { CostSplit } from './cost.js';
+export { COMPACT_AT, costTotal } from './cost.js';
+export type { SubagentInfo } from './subagent-tally.js';
 
 /** Kinds of shell work that a skill or agent could take over. */
 
@@ -53,6 +55,8 @@ export interface SessionMeasure {
   readonly compactions: number;
   /** Main thread cost. */
   readonly cost: CostSplit;
+  /** What capping every context at COMPACT_AT would have saved, main thread and subagents. */
+  readonly compactSavingUsd: number;
   /** Requests that wrote most of a large context again after a long pause. */
   readonly idleRewrites: number;
   readonly idleRewriteUsd: number;
@@ -83,6 +87,22 @@ export interface SessionMeasure {
   readonly hours: readonly SpendHour[];
   /** Programs run and file extensions touched, with counts, the most used first. */
   readonly stack: Readonly<Record<string, number>>;
+  /** Main thread cost by what filled the context. Sums to the main thread cost. */
+  readonly spend: SpendSplit;
+  /** Subagent cost by what filled their context. */
+  readonly subagentSpend: SpendSplit;
+  /** What cost the most to carry on the main thread, worst first. */
+  readonly heavy: readonly HeavyItem[];
+  /** Cost of carrying each file read, main thread and subagents, by absolute path. */
+  readonly files: Readonly<Record<string, number>>;
+  /** Cost of carrying each loaded skill body, by skill folder. */
+  readonly skills: Readonly<Record<string, number>>;
+  /** Cost of sending each tool definition on the main thread, by tool name. */
+  readonly toolSchemas: Readonly<Record<string, number>>;
+  /** Tool calls by tool name, main thread and subagents. */
+  readonly toolUses: Readonly<Record<string, number>>;
+  /** The most expensive subagents, worst first. */
+  readonly subagents: readonly CostlySubagent[];
 }
 
 export interface MeasureInput {
@@ -90,6 +110,8 @@ export interface MeasureInput {
   readonly main: readonly string[];
   /** One list of lines per subagent transcript. */
   readonly subagents: readonly (readonly string[])[];
+  /** The meta file of each subagent, in the same order, when there is one. */
+  readonly subagentInfo?: readonly (SubagentInfo | null)[];
   /** Used when no record has a valid timestamp. */
   readonly fallbackAt: number;
   readonly prices?: PriceTable;
@@ -101,6 +123,7 @@ export const BIG_RESULT_CHARS = 40_000;
 export const IDLE_GAP_MS = 5 * 60_000;
 const IDLE_REWRITE_MIN_TOKENS = 50_000;
 const TITLE_CHARS = 80;
+const TOP_FILES = 12;
 const COMMAND_CHARS = 120;
 
 const DENIAL =
@@ -109,21 +132,6 @@ const CD_FIRST = /^\s*cd\s/u;
 
 const SEARCH_TOOLS: ReadonlySet<string> = new Set(['Read', 'Grep', 'Glob']);
 const SPAWN_TOOLS: ReadonlySet<string> = new Set(['Agent', 'Task']);
-
-const ZERO_COST: CostSplit = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
-
-export function costTotal(cost: CostSplit): number {
-  return cost.input + cost.output + cost.cacheRead + cost.cacheWrite;
-}
-
-function addCost(left: CostSplit, right: CostSplit): CostSplit {
-  return {
-    input: left.input + right.input,
-    output: left.output + right.output,
-    cacheRead: left.cacheRead + right.cacheRead,
-    cacheWrite: left.cacheWrite + right.cacheWrite,
-  };
-}
 
 function oneLine(text: string, max: number): string {
   const flat = text.replaceAll(/\s+/gu, ' ').trim();
@@ -156,26 +164,6 @@ function beyond(map: ReadonlyMap<string, number>, free: number): number {
   return extra;
 }
 
-interface Usage {
-  readonly input: number;
-  readonly output: number;
-  readonly cacheRead: number;
-  readonly cacheWrite: number;
-}
-
-function costOfUsage(model: string, usage: Usage, prices: PriceTable): CostSplit | null {
-  const price = findPrice(model, prices);
-  if (price === null) {
-    return null;
-  }
-  return {
-    input: (usage.input * price.input) / 1_000_000,
-    output: (usage.output * price.output) / 1_000_000,
-    cacheRead: (usage.cacheRead * price.cacheRead) / 1_000_000,
-    cacheWrite: (usage.cacheWrite * price.cacheWrite) / 1_000_000,
-  };
-}
-
 type AssistantRecord = Extract<TranscriptRecord, { type: 'assistant' }>;
 type BaseRecord = Extract<
   TranscriptRecord,
@@ -186,21 +174,6 @@ const BASE_TYPES: ReadonlySet<string> = new Set(['user', 'assistant', 'system', 
 
 function hasBaseFields(record: TranscriptRecord): record is BaseRecord {
   return BASE_TYPES.has(record.type);
-}
-
-/** The usage of a request the first time its message id shows up, or null for repeats. */
-function firstUsage(record: AssistantRecord, seen: Set<string>): Usage | null {
-  const { message } = record;
-  if (seen.has(message.id) || message.usage === null || message.usage === undefined) {
-    return null;
-  }
-  seen.add(message.id);
-  return {
-    input: message.usage.input_tokens,
-    output: message.usage.output_tokens,
-    cacheRead: message.usage.cache_read_input_tokens,
-    cacheWrite: message.usage.cache_creation_input_tokens,
-  };
 }
 
 /** Running totals for the main thread, mutated record by record. */
@@ -216,6 +189,7 @@ class MainTally {
   cost: CostSplit = ZERO_COST;
   idleRewrites = 0;
   idleRewriteUsd = 0;
+  compactSavingUsd = 0;
   bigResults = 0;
   toolCalls = 0;
   toolErrors = 0;
@@ -280,6 +254,7 @@ class MainTally {
     this.peakContext = Math.max(this.peakContext, context);
     const cost = costOfUsage(model, usage, this.prices) ?? ZERO_COST;
     this.cost = addCost(this.cost, cost);
+    this.compactSavingUsd += overCap(cost, context);
     const paused =
       at !== null && this.lastRequestAt !== null && at - this.lastRequestAt >= IDLE_GAP_MS;
     const rewrite =
@@ -345,40 +320,6 @@ class MainTally {
   }
 }
 
-interface SubagentTally {
-  requests: number;
-  premium: number;
-  usd: number;
-}
-
-function tallySubagent(
-  lines: readonly string[],
-  prices: PriceTable,
-  into: SubagentTally,
-  hours: HourTally,
-): void {
-  const seen = new Set<string>();
-  for (const line of lines) {
-    const record = parseTranscriptLine(line);
-    const usage = record?.type === 'assistant' ? firstUsage(record, seen) : null;
-    if (record?.type !== 'assistant' || usage === null) {
-      continue;
-    }
-    into.requests += 1;
-    into.premium += isPremium(record.message.model) ? 1 : 0;
-    const cost = costOfUsage(record.message.model, usage, prices) ?? ZERO_COST;
-    into.usd += costTotal(cost);
-    const { model } = record.message;
-    hours.subagent({
-      at: parseTimestamp(record.timestamp),
-      model,
-      tokens: usage,
-      cost,
-      idleRewriteUsd: 0,
-    });
-  }
-}
-
 function topRepeat(commands: ReadonlyMap<string, number>): RepeatedCommand | null {
   let best: RepeatedCommand | null = null;
   for (const [command, runs] of commands) {
@@ -399,10 +340,13 @@ export function measureSession(input: MeasureInput): SessionMeasure {
       main.ingest(record);
     }
   }
-  const sub: SubagentTally = { requests: 0, premium: 0, usd: 0 };
-  for (const lines of input.subagents) {
-    tallySubagent(lines, prices, sub, hours);
-  }
+  const mainParts = attribute(input.main, prices);
+  const subs = measureSubagents(
+    { lines: input.subagents, info: input.subagentInfo, main: mainParts },
+    prices,
+    hours,
+  );
+  const sub = subs.tally;
   const prompts = transcriptPrompts(input.main, {
     sessionId: input.sessionId,
     fallbackAt: input.fallbackAt,
@@ -422,6 +366,7 @@ export function measureSession(input: MeasureInput): SessionMeasure {
     cost: main.cost,
     idleRewrites: main.idleRewrites,
     idleRewriteUsd: main.idleRewriteUsd,
+    compactSavingUsd: main.compactSavingUsd + sub.compactSavingUsd,
     bigResults: main.bigResults,
     extraReads: beyond(main.reads, 2),
     repeatedRuns: beyond(main.commands, 2),
@@ -438,5 +383,15 @@ export function measureSession(input: MeasureInput): SessionMeasure {
     families: familyCounts(main.families),
     hours: hours.hours(),
     stack: main.stack.labels(),
+    spend: mainParts.spend,
+    subagentSpend: subs.spend,
+    heavy: mainParts.heavy,
+    files: Object.fromEntries(
+      [...subs.files].toSorted((left, right) => right[1] - left[1]).slice(0, TOP_FILES),
+    ),
+    skills: mainParts.skills,
+    toolSchemas: mainParts.toolSchemas,
+    toolUses: Object.fromEntries(subs.toolUses),
+    subagents: subs.subagents,
   };
 }

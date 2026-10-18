@@ -10,6 +10,7 @@ import { z } from 'zod';
 import { readOptional, writeFileAtomic } from '../knobs/atomic-file.js';
 
 import type { SessionMeasure } from './measure.js';
+import { SPEND_SOURCES, zeroSpend } from './spend.js';
 
 export interface FileStamp {
   readonly mtimeMs: number;
@@ -49,6 +50,24 @@ const hourSchema = z.object({
   idleRewriteUsd: count,
 });
 
+const spendSchema = z
+  .object({
+    setup: count,
+    instructions: count,
+    skills: count,
+    reminders: count,
+    fileReads: count,
+    toolOutput: count,
+    web: count,
+    toolInputs: count,
+    subagentReports: count,
+    conversation: count,
+    output: count,
+  })
+  .default(zeroSpend);
+
+const spendSourceSchema = z.enum(SPEND_SOURCES);
+
 const measureSchema = z.object({
   sessionId: z.string(),
   title: z.string(),
@@ -63,6 +82,7 @@ const measureSchema = z.object({
   cost: costSchema,
   idleRewrites: count,
   idleRewriteUsd: count,
+  compactSavingUsd: count.default(0),
   bigResults: count,
   extraReads: count,
   repeatedRuns: count,
@@ -88,12 +108,35 @@ const measureSchema = z.object({
   hours: z.array(hourSchema).readonly().default([]),
   // Version 3 files have no stack, so it reads as empty until the next measure.
   stack: z.record(z.string(), count).default({}),
+  // Version 4 files have none of the spend split, so it reads as empty until the next measure.
+  spend: spendSchema,
+  subagentSpend: spendSchema,
+  heavy: z
+    .array(z.object({ source: spendSourceSchema, label: z.string(), tokens: count, usd: count }))
+    .readonly()
+    .default([]),
+  files: z.record(z.string(), count).default({}),
+  skills: z.record(z.string(), count).default({}),
+  toolSchemas: z.record(z.string(), count).default({}),
+  toolUses: z.record(z.string(), count).default({}),
+  subagents: z
+    .array(
+      z.object({
+        type: z.string(),
+        description: z.string(),
+        usd: count,
+        requests: count,
+        peakContext: count,
+      }),
+    )
+    .readonly()
+    .default([]),
 }) satisfies z.ZodType<SessionMeasure>;
 
 const fileSchema = z.object({
   // Bump when the measure changes meaning, so old entries are measured again.
-  // Versions 2 and 3 lack the hours or the stack, so their live entries are measured again.
-  version: z.union([z.literal(2), z.literal(3), z.literal(4)]),
+  // Versions 2 to 4 lack the hours, the stack or the spend split, so their live entries are measured again.
+  version: z.union([z.literal(2), z.literal(3), z.literal(4), z.literal(5)]),
   scannedAt: z.number().nullable(),
   entries: z.record(
     z.string(),
@@ -125,7 +168,7 @@ function parseIndex(text: string): TuningIndex | null {
   }
   const { version, entries, scannedAt } = parsed.data;
   const stale = (entry: IndexEntry): IndexEntry =>
-    version < 4 && entry.live ? { ...entry, stamp: STALE_STAMP } : entry;
+    version < 5 && entry.live ? { ...entry, stamp: STALE_STAMP } : entry;
   return {
     entries: new Map(Object.entries(entries).map(([file, entry]) => [file, stale(entry)])),
     scannedAt,
@@ -140,7 +183,7 @@ export async function loadIndex(file: string): Promise<TuningIndex> {
 
 export async function saveIndex(file: string, index: TuningIndex): Promise<void> {
   const data: z.input<typeof fileSchema> = {
-    version: 4,
+    version: 5,
     scannedAt: index.scannedAt,
     entries: Object.fromEntries(index.entries),
   };

@@ -1,6 +1,7 @@
 // Session measures for the tips tests. Nothing here comes from a real transcript.
 
 import type { SessionMeasure } from '../measure.js';
+import { zeroSpend } from '../spend.js';
 
 export const HOME = '/home/me';
 
@@ -20,6 +21,7 @@ export function measureOf(overrides: Partial<SessionMeasure> = {}): SessionMeasu
     cost: { input: 0.01, output: 0.2, cacheRead: 0.05, cacheWrite: 0.1 },
     idleRewrites: 0,
     idleRewriteUsd: 0,
+    compactSavingUsd: 0,
     bigResults: 0,
     extraReads: 0,
     repeatedRuns: 0,
@@ -36,6 +38,14 @@ export function measureOf(overrides: Partial<SessionMeasure> = {}): SessionMeasu
     families: { land: 0, ci: 0, server: 0, buildTest: 0, search: 0 },
     hours: [],
     stack: {},
+    spend: zeroSpend(),
+    subagentSpend: zeroSpend(),
+    heavy: [],
+    files: {},
+    skills: {},
+    toolSchemas: {},
+    toolUses: {},
+    subagents: [],
     ...overrides,
   };
 }

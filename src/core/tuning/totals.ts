@@ -2,6 +2,8 @@
 
 import type { CommandFamily, RepeatedCommand, SessionMeasure } from './measure.js';
 import { costTotal } from './measure.js';
+import type { SpendSplit } from './spend.js';
+import { addSpend, zeroSpend } from './spend.js';
 
 /** A context this big is costly to carry on every request. */
 export const LARGE_CONTEXT = 200_000;
@@ -38,6 +40,34 @@ export interface Totals {
   readonly premiumSubagentRequests: number;
   readonly subagentUsd: number;
   readonly families: Readonly<Record<CommandFamily, number>>;
+  /** Main threads and subagents by what filled the context. */
+  readonly spend: SpendSplit;
+  readonly compactSavingUsd: number;
+  /** What moving premium subagent requests to Sonnet would have saved. */
+  readonly subagentSavingUsd: number;
+  /** What sending each tool's definition cost, by tool name. */
+  readonly toolSchemaUsd: Readonly<Record<string, number>>;
+  /** Sessions whose requests carried each tool's definition. */
+  readonly toolSchemaSessions: Readonly<Record<string, number>>;
+  readonly toolUses: Readonly<Record<string, number>>;
+  /** Sessions that called each tool at least once. */
+  readonly toolUseSessions: Readonly<Record<string, number>>;
+  /** What carrying each loaded skill cost, by skill folder. */
+  readonly skillUsd: Readonly<Record<string, number>>;
+}
+
+function sumRecords(
+  measures: readonly SessionMeasure[],
+  pick: (m: SessionMeasure) => Readonly<Record<string, number>>,
+  each: (value: number) => number = (value) => value,
+): Record<string, number> {
+  const sums: Record<string, number> = {};
+  for (const measure of measures) {
+    for (const [key, value] of Object.entries(pick(measure))) {
+      sums[key] = (sums[key] ?? 0) + each(value);
+    }
+  }
+  return sums;
 }
 
 /** Main thread and subagent cost of one session. */
@@ -57,6 +87,14 @@ function topRepeat(measures: readonly SessionMeasure[]): RepeatedCommand | null 
     }
   }
   return best;
+}
+
+function spendOf(measures: readonly SessionMeasure[]): SpendSplit {
+  let total: SpendSplit = zeroSpend();
+  for (const measure of measures) {
+    total = addSpend(total, addSpend(measure.spend, measure.subagentSpend));
+  }
+  return total;
 }
 
 function spawnsOf(measure: SessionMeasure): number {
@@ -100,5 +138,23 @@ export function totalsOf(measures: readonly SessionMeasure[], home: string): Tot
       buildTest: sum(measures, (m) => m.families.buildTest),
       search: sum(measures, (m) => m.families.search),
     },
+    spend: spendOf(measures),
+    compactSavingUsd: sum(measures, (m) => m.compactSavingUsd),
+    subagentSavingUsd: sum(measures, (m) =>
+      m.hours.reduce((total, hour) => total + hour.subagentSavingUsd, 0),
+    ),
+    toolSchemaUsd: sumRecords(measures, (m) => m.toolSchemas),
+    toolSchemaSessions: sumRecords(
+      measures,
+      (m) => m.toolSchemas,
+      () => 1,
+    ),
+    toolUses: sumRecords(measures, (m) => m.toolUses),
+    toolUseSessions: sumRecords(
+      measures,
+      (m) => m.toolUses,
+      () => 1,
+    ),
+    skillUsd: sumRecords(measures, (m) => m.skills),
   };
 }

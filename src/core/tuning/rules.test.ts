@@ -251,6 +251,10 @@ describe('session flags', () => {
 
   it('describes each session in its own words', () => {
     expect(RULES.map((item) => item.detail(NOISY))).toStrictEqual([
+      '$0.00 carrying files',
+      '$0.00 on the system prompt and tools',
+      '$0.00 carrying skills',
+      '$0.00 carrying CLAUDE.md',
       '$10 re-reading context',
       '600K peak context',
       '3 rewrites, $1.50',
@@ -267,7 +271,7 @@ describe('session flags', () => {
 
   it('ranks sessions by how badly each shows the problem', () => {
     expect(RULES.map((item) => item.metric(NOISY))).toStrictEqual([
-      10, 600_000, 1.5, 3, 3, 10, 40, 10, 10, 20, 30,
+      0, 0, 0, 0, 10, 600_000, 1.5, 3, 3, 10, 40, 10, 10, 20, 30,
     ]);
   });
 

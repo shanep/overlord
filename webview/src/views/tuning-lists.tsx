@@ -18,6 +18,7 @@ import {
 import type { Tone } from '../labels.js';
 import { usePostAction } from '../vscode-context.js';
 
+import { AutoFixList } from './tuning-costly.js';
 import { TipResults, VERDICT_INFO } from './tuning-impact.js';
 
 export const SEVERITY_INFO: Readonly<Record<TipSeverity, { label: string; tone: Tone }>> = {
@@ -102,8 +103,16 @@ function TipCard(props: {
       </header>
       <p>{tip.finding}</p>
       <TipResults tipId={tip.id} impact={tip.impact} />
+      {tip.autoFixes.length === 0 ? null : (
+        <>
+          <h4 className="fix-heading">Fix it for me</h4>
+          <AutoFixList label={`Fixes for ${tip.title}`} fixes={tip.autoFixes} />
+        </>
+      )}
       <details>
-        <summary>What to do</summary>
+        <summary>
+          {tip.autoFixes.length === 0 ? 'What to do' : 'Doing it by hand, and the tradeoffs'}
+        </summary>
         <ul className="tip-advice">
           {tip.advice.map((line) => (
             <li key={line}>{line}</li>

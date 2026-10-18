@@ -10,6 +10,7 @@ import { useNow } from '../clock.js';
 import { formatAgo, formatCompact, formatCost, formatDateTime, formatPercent } from '../format.js';
 import { usePostAction } from '../vscode-context.js';
 
+import { CostlySessions, HotFiles, SpendSection } from './tuning-costly.js';
 import { LimitSection } from './tuning-limit.js';
 import { SuggestionList, TipList, TuningSessionTable } from './tuning-lists.js';
 import { PickList } from './tuning-picks.js';
@@ -58,6 +59,7 @@ export function TuningView(props: { readonly state: TuningState }): ReactElement
         <dl className="stats">
           <Stat label="Sessions" value={state.sessions.toLocaleString('en-US')} />
           <Stat label="Spend" value={formatCost(state.totalUsd)} />
+          <Stat label="Subagents" value={formatCost(state.subagentUsd)} />
           <Stat label="Re-reading context" value={formatPercent(reread)} />
           <Stat label="Average context" value={formatCompact(state.averageContext)} />
           <Stat label="Largest context" value={formatCompact(state.largestContext)} />
@@ -81,6 +83,17 @@ export function TuningView(props: { readonly state: TuningState }): ReactElement
           Context counts are tokens sent with each request.
         </p>
         <p>
+          Where the money went splits the cost of each request between the system prompt and tool
+          definitions, which every request carries, and what the transcript shows was in context at
+          the time, by size. A file read early in a long session is charged for every request after
+          it, until a compaction drops it.
+        </p>
+        <p>
+          Fix it for me sets a setting in your user settings, writes a skill or agent, or starts a
+          Claude session with a prompt that makes the change and reports back. The savings are what
+          the fix would have saved on the sessions measured.
+        </p>
+        <p>
           Track a tip when you start following it, and its card compares the sessions you start
           after that with the 30 days before. Lower is better for every measure, and a move under
           10% counts as no change, since the work and the model change too. Setting a knob or
@@ -98,8 +111,11 @@ export function TuningView(props: { readonly state: TuningState }): ReactElement
           searches skills.sh and the agent collections for it, once a day or on Rescan.
         </p>
       </details>
+      <SpendSection slices={state.spend} />
       <LimitSection limit={state.limit} tips={titles} />
       <TipList tips={state.tips} names={names} />
+      <CostlySessions sessions={state.costly} tips={titles} />
+      <HotFiles files={state.hotFiles} />
       <SuggestionList suggestions={state.suggestions} />
       <PickList picks={state.picks} />
       <TuningSessionTable rows={state.rows} titles={titles} />

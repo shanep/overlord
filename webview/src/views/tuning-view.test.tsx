@@ -71,6 +71,10 @@ const EMPTY: TuningState = {
   cacheReadUsd: 0,
   averageContext: 0,
   largestContext: 0,
+  subagentUsd: 0,
+  spend: [],
+  costly: [],
+  hotFiles: [],
   tips: [],
   suggestions: [],
   picks: EMPTY_PICKS,
@@ -85,6 +89,13 @@ const STATE: TuningState = {
   cacheReadUsd: 12,
   averageContext: 250_000,
   largestContext: 949_000,
+  subagentUsd: 4,
+  spend: [
+    { source: 'fileReads', label: 'Reading files', usd: 12, share: 0.6 },
+    { source: 'setup', label: 'System prompt and tool definitions', usd: 8, share: 0.4 },
+  ],
+  costly: [],
+  hotFiles: [],
   tips: [
     {
       id: 'huge-context',
@@ -97,6 +108,7 @@ const STATE: TuningState = {
       pros: ['Compaction happens on its own.'],
       cons: ['The summary can drop details you still needed.'],
       skipWhen: 'Leave it large for big refactors.',
+      autoFixes: [],
       impact: IMPACT,
     },
     {
@@ -110,6 +122,7 @@ const STATE: TuningState = {
       pros: ['Fewer interruptions.'],
       cons: ['A broad rule removes a check.'],
       skipWhen: 'Keep denying pushes.',
+      autoFixes: [],
       impact: null,
     },
   ],
@@ -256,6 +269,119 @@ describe('TuningView', () => {
       { type: 'openAgent', sessionId: S1, agentId: S1 },
       { type: 'openAgent', sessionId: S2, agentId: S2 },
     ]);
+  });
+
+  it('shows where the money went, the costly sessions and the fixes, and posts each fix', async () => {
+    const fixed: TuningState = {
+      ...STATE,
+      tips: STATE.tips.map((tip) =>
+        tip.id === 'huge-context'
+          ? {
+              ...tip,
+              autoFixes: [
+                {
+                  kind: 'knob',
+                  id: 'knob:autoCompactWindow',
+                  title: 'Compact every session at 200K tokens',
+                  detail: 'Sets autoCompactWindow.',
+                  key: 'autoCompactWindow',
+                  value: 200_000,
+                  applied: false,
+                },
+                {
+                  kind: 'launch',
+                  id: 'launch:hot-files',
+                  title: 'Make the most read files cheaper to read',
+                  detail: 'Starts a Claude session.',
+                  label: 'Make hot files cheaper to read',
+                  prompt: 'Split the files.',
+                  cwd: '/work/demo',
+                  worktree: true,
+                  applied: false,
+                },
+                {
+                  kind: 'create',
+                  id: 'create:handoff',
+                  title: 'Add a handoff skill',
+                  detail: 'Writes the handoff skill.',
+                  suggestionId: 'handoff',
+                  applied: true,
+                },
+              ],
+            }
+          : tip,
+      ),
+      costly: [
+        {
+          sessionId: S1,
+          title: 'Vault report',
+          cwd: '/work/demo',
+          updatedAt: NOW - MINUTE,
+          usd: 79,
+          subagentUsd: 4,
+          requests: 512,
+          averageContext: 556_000,
+          peakContext: 949_000,
+          spend: [{ source: 'fileReads', label: 'Reading files', usd: 40, share: 0.5 }],
+          causes: [
+            {
+              id: 'context',
+              text: 'Each request re-sent 556K tokens.',
+              usd: 60,
+              savedUsd: 30,
+              tipId: 'huge-context',
+            },
+          ],
+          heavy: [{ source: 'fileReads', label: 'Read src/app.ts', tokens: 40_000, usd: 6 }],
+          subagents: [
+            {
+              type: 'general-purpose',
+              description: 'Build it',
+              usd: 4,
+              requests: 90,
+              peakContext: 300_000,
+            },
+          ],
+        },
+      ],
+      hotFiles: [{ project: '/work/demo', path: 'src/app.ts', sessions: 3, usd: 9 }],
+    };
+    const { getByRole, getByText, container, api } = renderView(<TuningView state={fixed} />);
+    const spend = getByRole('list', { name: 'Spend by what filled the context' });
+    expect(
+      within(spend)
+        .getAllByRole('listitem')
+        .map((item) => item.textContent),
+    ).toStrictEqual(['Reading files$12.00 · 60%', 'System prompt and tool definitions$8.00 · 40%']);
+    const costly = getByRole('list', { name: 'Why Vault report cost so much' });
+    expect(costly.textContent).toBe(
+      'Each request re-sent 556K tokens.Fix: Sessions grow huge without compacting',
+    );
+    expect(getByText('Read src/app.ts')).toBeDefined();
+    expect(getByRole('table', { name: 'Files sessions keep paying for' }).textContent).toContain(
+      'src/app.ts',
+    );
+    const fixes = getByRole('list', { name: 'Fixes for Sessions grow huge without compacting' });
+    expect(within(fixes).getByText('Done')).toBeDefined();
+    fireEvent.click(within(fixes).getByRole('button', { name: /^Set it/u }));
+    fireEvent.click(within(fixes).getByRole('button', { name: /^Start session/u }));
+    expect(api.actions()).toStrictEqual([
+      { type: 'setKnob', key: 'autoCompactWindow', value: 200_000, layer: 'user' },
+      {
+        type: 'launch',
+        specs: [
+          {
+            prompt: 'Split the files.',
+            cwd: '/work/demo',
+            profileId: null,
+            worktree: true,
+            maxBudgetUsd: null,
+            label: 'Make hot files cheaper to read',
+          },
+        ],
+      },
+    ]);
+    await expectAccessible(container);
   });
 
   it('sorts sessions by any column', () => {
