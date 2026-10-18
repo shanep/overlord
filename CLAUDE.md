@@ -62,6 +62,15 @@ hand. Give it a 20 minute timeout or run it in the background.
 - Exit 0 means landed, 1 means something failed (it says what), and 2 means
   the review found a blocking problem.
 
+## Installing the extension
+
+After landing any user-visible Overlord change, run `npm run install:local`
+without waiting to be asked. It packages the landed `HEAD`, installs it into
+VS Code, reloads open windows, and checks every view against real data.
+Do not report the work complete until it reports that the extension reloaded
+and its self-check passed. If a reload is held for Launcher runs, report that
+it will happen automatically after they finish.
+
 ## Setup
 
 Overlord clones `node_modules` into new worktrees. Only run `npm ci` when
