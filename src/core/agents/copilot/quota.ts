@@ -8,10 +8,10 @@ import type { RateLimitReport } from '../types.js';
 import { modelCallSchema, type QuotaSnapshot } from './events.js';
 
 /** The quota that runs out. Chat and completions are unlimited on paid plans. */
-export const PREMIUM_QUOTA = 'premium_interactions';
+const PREMIUM_QUOTA = 'premium_interactions';
 
 /** The premium request window, or null when the plan has no cap on it. */
-export function premiumWindow(
+function premiumWindow(
   snapshots: Readonly<Record<string, QuotaSnapshot | null>> | null | undefined,
 ): RateLimitWindow | null {
   const quota = snapshots?.[PREMIUM_QUOTA];
