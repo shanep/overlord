@@ -452,6 +452,7 @@ describe('what each fix picks', () => {
         usd: 9 - index,
       })),
       { project: '/repo', path: 'notes.md', sessions: 9, usd: 30 },
+      { project: '/repo', path: 'go', sessions: 9, usd: 30 },
       { project: '/other', path: 'c.py', sessions: 9, usd: 1 },
     ];
     const [fix] = autoFixesFor(
@@ -464,6 +465,7 @@ describe('what each fix picks', () => {
     expect(prompt).toContain('- f7.TS: $2.00');
     expect(prompt).not.toContain('f8.TS');
     expect(prompt).not.toContain('notes.md');
+    expect(prompt).not.toContain('- go:');
   });
 
   it('offers no split worth less than five dollars', () => {

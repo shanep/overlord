@@ -10,6 +10,8 @@ import {
   textPiece,
 } from './pieces.js';
 
+// cspell:words cdcat toolongext
+
 describe('oneLine', () => {
   it('flattens whitespace and cuts at 100 characters', () => {
     expect(oneLine('  a\n\tb  ')).toBe('a b');

@@ -206,8 +206,8 @@ function lastPart(folder: string): string {
 
 /** Source code, the only kind of file the fix splits. A proposal or a log is left alone. */
 function isCode(file: string): boolean {
-  const extension = file.slice(file.lastIndexOf('.') + 1).toLowerCase();
-  return CODE_EXTENSIONS.has(extension);
+  const dot = file.lastIndexOf('.');
+  return dot !== -1 && CODE_EXTENSIONS.has(file.slice(dot + 1).toLowerCase());
 }
 
 function hotFilesFix(context: FixContext): AutoFix | null {
