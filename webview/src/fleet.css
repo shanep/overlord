@@ -37,12 +37,11 @@
   background: var(--vscode-editorWidget-background, var(--ov-panel));
 }
 
+/* Labels wrap rather than cut off, so a long one such as "Copilot 30 day limit" stays readable. */
 .stat-tiles dt {
-  overflow: hidden;
   color: var(--ov-muted);
   font-size: 0.85em;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .stat-tiles dd {
@@ -66,12 +65,10 @@
 }
 
 .stat-tiles dd.stat-detail {
-  overflow: hidden;
   color: var(--ov-muted);
   font-size: 0.8em;
   font-weight: normal;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .stat-tiles .stat-warning {
