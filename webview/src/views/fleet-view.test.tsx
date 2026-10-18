@@ -72,7 +72,7 @@ describe('FleetView', () => {
     expect(screen.getByRole('heading', { name: 'Fleet' })).toBeDefined();
     expect(screen.getByText('1 of 3')).toBeDefined();
     expect(screen.queryByText('Spend per hour')).toBeNull();
-    expect(screen.getByText('Resets in 1h 30m')).toBeDefined();
+    expect(screen.getByText('1h 30m').dataset['tip']).toBe('Resets in 1h 30m');
     expect(
       screen.getByRole('meter', { name: '5 hour limit used' }).getAttribute('aria-valuenow'),
     ).toBe('64');
@@ -107,13 +107,13 @@ describe('FleetView', () => {
   });
 
   it('hides the 7 day limit and reset time when unknown', () => {
-    setup({
+    const { container } = setup({
       ...fleetState,
       pendingPermissions: [],
       rateLimits: { fiveHourPct: 40, sevenDayPct: null, resetsAt: null },
     });
     expect(screen.queryByRole('meter', { name: '7 day limit used' })).toBeNull();
-    expect(screen.queryByText(/Resets in/)).toBeNull();
+    expect(container.querySelector('.stat-detail')).toBeNull();
     expect(screen.queryByRole('region', { name: 'Pending permissions' })).toBeNull();
     expect(
       screen.getByRole('meter', { name: '5 hour limit used' }).getAttribute('aria-valuenow'),

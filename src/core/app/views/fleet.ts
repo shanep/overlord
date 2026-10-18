@@ -4,6 +4,7 @@
 
 import path from 'node:path';
 
+import type { RateLimitWindow } from '../../../shared/agents.js';
 import { CLAUDE_CODE } from '../../../shared/agents.js';
 import type { FleetHealth } from '../../../shared/health.js';
 import type { PermissionRequest, SessionPlace, SessionSummary } from '../../../shared/model.js';
@@ -43,6 +44,29 @@ export function normalizeRateLimits(limits: RateLimits): RateLimits {
 }
 
 /**
+ * The windows with Claude Code's 7 day one set from the plan, so the Fleet
+ * header can say when it resets. RateLimits has a reset time for the 5 hour
+ * window alone.
+ */
+function withSevenDay(
+  windows: readonly RateLimitWindow[],
+  usedPct: number,
+  resetsAt: number,
+): readonly RateLimitWindow[] {
+  const week: RateLimitWindow = {
+    agent: CLAUDE_CODE,
+    id: 'seven_day',
+    label: '7 day',
+    usedPct,
+    resetsAt,
+  };
+  const others = windows.filter(
+    (window) => !(window.agent === CLAUDE_CODE && window.id === 'seven_day'),
+  );
+  return [...others, week];
+}
+
+/**
  * Prefer the plan limits /usage shows. Rate limit events only come from
  * sessions Overlord launched and carry no time, so they fill in only what the
  * plan does not report.
@@ -50,12 +74,15 @@ export function normalizeRateLimits(limits: RateLimits): RateLimits {
 export function withPlanLimits(limits: RateLimits, plan: PlanLimits | null): RateLimits {
   const session = plan?.limits.find((limit) => limit.kind === 'session');
   const week = plan?.limits.find((limit) => limit.kind === 'weekly_all');
-  return {
+  const merged: RateLimits = {
     ...limits,
     fiveHourPct: session === undefined ? limits.fiveHourPct : session.percent / 100,
     sevenDayPct: week === undefined ? limits.sevenDayPct : week.percent / 100,
     resetsAt: session === undefined ? limits.resetsAt : session.resetsAt,
   };
+  return week === undefined || week.resetsAt === null
+    ? merged
+    : { ...merged, windows: withSevenDay(limits.windows ?? [], week.percent / 100, week.resetsAt) };
 }
 
 /** What the fleet calls a session that has not had its first prompt, so Claude Code has not named it. */

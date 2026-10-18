@@ -25,7 +25,7 @@ function Stat(props: {
   readonly tone?: Tone;
   /** The agent the number belongs to, drawn as its logo before the label. */
   readonly agent?: AgentInfo;
-  /** A small line under the value, such as when a limit resets. */
+  /** Time until the limit resets, in small text under the value. */
   readonly detail?: string | null;
   readonly children: ReactElement | string;
 }): ReactElement {
@@ -37,17 +37,17 @@ function Stat(props: {
       </dt>
       <dd>{props.children}</dd>
       {props.detail === undefined || props.detail === null ? null : (
-        <dd className="stat-detail">{props.detail}</dd>
+        <dd className="stat-detail" data-tip={`Resets in ${props.detail}`}>
+          {props.detail}
+        </dd>
       )}
     </div>
   );
 }
 
-/** "Resets in 1h 30m", or null when the reset time is unknown or already past. */
+/** Time left until a limit resets, such as "1h 30m", or null when unknown or already past. */
 function resetsIn(resetsAt: number | null, now: number): string | null {
-  return resetsAt === null || resetsAt <= now
-    ? null
-    : `Resets in ${formatDuration(resetsAt - now)}`;
+  return resetsAt === null || resetsAt <= now ? null : formatDuration(resetsAt - now);
 }
 
 export function FleetHeader(props: {

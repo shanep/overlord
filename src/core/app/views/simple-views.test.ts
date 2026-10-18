@@ -358,6 +358,9 @@ describe('fleet view', () => {
       fiveHourPct: 0.01,
       sevenDayPct: 0.45,
       resetsAt: 9,
+      windows: [
+        { agent: 'claude-code', id: 'seven_day', label: '7 day', usedPct: 0.45, resetsAt: 99 },
+      ],
     });
   });
 

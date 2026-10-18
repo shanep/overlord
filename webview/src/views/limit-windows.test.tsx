@@ -27,6 +27,8 @@ const CODEX_WINDOW: RateLimitWindow = {
   resetsAt: NOW + 2 * 60 * 60_000,
 };
 
+const DAY = 24 * 60 * 60_000;
+
 const MONTH: RateLimitWindow = { ...CODEX_WINDOW, id: 'monthly', label: '30 day', usedPct: 0.92 };
 
 describe('otherWindows', () => {
@@ -40,7 +42,11 @@ describe('otherWindows', () => {
 
 describe('agent limit windows in the views', () => {
   it("adds a tile per window to the Fleet header and keeps Claude Code's tiles", () => {
-    const rateLimits = { ...fleetState.rateLimits, windows: [CLAUDE_WINDOW, CODEX_WINDOW, MONTH] };
+    const week = { ...CLAUDE_WINDOW, id: 'seven_day', label: '7 day', resetsAt: NOW + 3 * DAY };
+    const rateLimits = {
+      ...fleetState.rateLimits,
+      windows: [CLAUDE_WINDOW, week, CODEX_WINDOW, MONTH],
+    };
     const view = renderView(
       <FleetHeader state={{ ...fleetState, rateLimits }} now={NOW} />,
       undefined,
@@ -53,8 +59,9 @@ describe('agent limit windows in the views', () => {
     expect(
       view.getByRole('meter', { name: 'Codex 30 day limit used' }).getAttribute('aria-valuenow'),
     ).toBe('92');
-    expect(view.getByText('Resets in 1h 30m')).toBeDefined();
-    expect(view.getAllByText('Resets in 2h 00m')).toHaveLength(2);
+    expect(view.getByText('1h 30m')).toBeDefined();
+    expect(view.getByText('3d 0h')).toBeDefined();
+    expect(view.getAllByText('2h 00m')).toHaveLength(2);
     expect(view.container.querySelectorAll('.stat-tiles dt .backend-logo')).toHaveLength(2);
     expect(view.container.querySelectorAll('.stat-tiles dt svg.icon')).toHaveLength(2);
   });
