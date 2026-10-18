@@ -1,0 +1,396 @@
+/* The Help page. Loaded in the order webview/src/css/sheets.ts lists. */
+
+/* ---- Help page ------------------------------------------------------------ */
+
+.help {
+  max-width: 72em;
+}
+
+/* Prose stays a readable width even when the page is wide. */
+.help p {
+  max-width: 85ch;
+}
+
+.help-lede {
+  font-size: 1.05em;
+}
+
+.help-toc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: baseline;
+  margin: 10px 0 4px;
+  padding: 8px 10px;
+  border: 1px solid var(--ov-border);
+  border-radius: 6px;
+  background: var(--vscode-editorWidget-background, var(--ov-panel));
+}
+
+.help-toc ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.help-toc a {
+  text-decoration: none;
+}
+
+.help-toc a:hover {
+  text-decoration: underline;
+}
+
+.help-search {
+  display: flex;
+  flex: 0 1 320px;
+  align-self: center;
+  min-width: 180px;
+}
+
+.help-search input[type='search'] {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 8px;
+}
+
+/* What a help search hid stays hidden even where a class sets display, like cards. */
+.help [hidden] {
+  display: none !important;
+}
+
+/* The words a help search found, in the editor's own find colors. */
+::highlight(help-search) {
+  background-color: var(--ov-find);
+}
+
+.help-section {
+  margin-top: 20px;
+  padding-top: 10px;
+  border-top: 1px solid var(--ov-border);
+}
+
+.help-section > h2 {
+  margin-top: 0;
+  font-size: 1.15em;
+}
+
+.help-section h3 {
+  margin-top: 14px;
+}
+
+.help-table {
+  margin-bottom: 12px;
+}
+
+.help-key {
+  width: 12em;
+}
+
+.help-pair {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
+/* Steps keep their order, so the grid never packs a later card into a gap. */
+.help-steps {
+  grid-auto-flow: row;
+  margin-top: 8px;
+}
+
+.help-step-number {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  color: var(--ov-button-fg);
+  background: var(--ov-button);
+  font-size: 0.9em;
+  font-weight: 700;
+}
+
+.help-step-text {
+  margin: 2px 0 0;
+  line-height: 1.4;
+}
+
+/* Flow diagrams on the help page: boxes and arrows in theme colors. */
+
+.flow {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 8px 0 16px;
+}
+
+.flow text {
+  font-family: var(--ov-font);
+  font-size: 13px;
+  fill: var(--ov-fg);
+}
+
+.flow .flow-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.flow .flow-code {
+  font-family: var(--ov-mono);
+  font-size: 12px;
+}
+
+.flow .flow-label {
+  font-size: 12px;
+  fill: var(--ov-muted);
+}
+
+.flow .flow-heading {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  fill: var(--ov-muted);
+}
+
+.flow-box rect {
+  fill: var(--ov-panel);
+  stroke: var(--ov-border);
+  stroke-width: 1.5;
+}
+
+.flow-start rect {
+  stroke: var(--ov-focus);
+}
+
+.flow-good rect {
+  stroke: var(--ov-green);
+}
+
+.flow-warn rect {
+  stroke: var(--ov-yellow);
+}
+
+.flow-side rect {
+  stroke: var(--ov-muted);
+  stroke-dasharray: 5 3;
+}
+
+.flow-arrow {
+  fill: none;
+  stroke: var(--ov-muted);
+  stroke-width: 1.5;
+}
+
+.flow-dashed {
+  stroke-dasharray: 5 4;
+}
+
+.flow-head {
+  fill: var(--ov-muted);
+}
+
+/* The VS Code screen map on the help page. Everything draws from the theme
+   tokens, so it follows light, dark and high contrast themes. */
+
+.ext-diagram {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 8px 0 12px;
+}
+
+.ext-diagram text {
+  font-family: var(--ov-font);
+  font-size: 11px;
+  fill: var(--ov-fg);
+}
+
+.ext-diagram .ext-muted {
+  fill: var(--ov-muted);
+}
+
+.ext-diagram .ext-small {
+  font-size: 10px;
+}
+
+.ext-diagram .ext-italic {
+  font-style: italic;
+}
+
+.ext-diagram .ext-mono {
+  font-family: var(--ov-mono);
+}
+
+.ext-diagram .ext-heading {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.ext-frame,
+.ext-editor {
+  fill: var(--ov-bg);
+  stroke: var(--ov-border);
+}
+
+.ext-outline {
+  fill: none;
+  stroke: var(--ov-border);
+}
+
+.ext-chrome {
+  fill: var(--ov-inactive-selected);
+  stroke: var(--ov-border);
+}
+
+.ext-side {
+  fill: var(--ov-panel);
+  stroke: var(--ov-border);
+}
+
+.ext-box {
+  fill: var(--ov-hover);
+  stroke: var(--ov-border);
+}
+
+.ext-input {
+  fill: var(--ov-input);
+  stroke: var(--ov-focus);
+}
+
+.ext-overlay {
+  fill: var(--vscode-editorWidget-background, var(--ov-panel));
+  stroke: var(--ov-border);
+  filter: drop-shadow(0 2px 4px rgb(0 0 0 / 30%));
+}
+
+.ext-selected {
+  fill: var(--ov-inactive-selected);
+}
+
+.ext-line {
+  fill: var(--ov-muted);
+  opacity: 0.35;
+}
+
+.ext-faint {
+  fill: var(--ov-muted);
+  opacity: 0.25;
+}
+
+.ext-icon {
+  fill: none;
+  stroke: var(--ov-muted);
+  stroke-width: 1.5;
+}
+
+.ext-icon-on {
+  stroke: var(--ov-fg);
+}
+
+.ext-accent {
+  fill: var(--ov-focus);
+}
+
+.ext-state {
+  fill: var(--ov-green);
+}
+
+.ext-squiggle {
+  fill: none;
+  stroke: var(--ov-red);
+  stroke-width: 1.2;
+}
+
+.ext-badge {
+  fill: var(--ov-button);
+}
+
+.ext-diagram .ext-badge-text {
+  font-size: 9px;
+  font-weight: 700;
+  fill: var(--ov-button-fg);
+}
+
+.ext-status {
+  fill: var(--vscode-statusBar-background, var(--ov-button));
+}
+
+.ext-status-item {
+  fill: rgb(255 255 255 / 15%);
+}
+
+.ext-diagram .ext-status-text {
+  fill: var(--vscode-statusBar-foreground, var(--ov-button-fg));
+}
+
+.ext-marker circle {
+  fill: var(--ov-bg);
+  stroke: var(--ov-orange);
+  stroke-width: 2;
+  stroke-dasharray: 4 2;
+}
+
+.ext-marker-used circle {
+  fill: var(--ov-orange);
+  stroke-dasharray: none;
+}
+
+.ext-diagram .ext-marker text {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ext-diagram .ext-marker-used text {
+  fill: #000;
+}
+
+.ext-number {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 2px dashed var(--ov-orange);
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.ext-number-used {
+  border-style: solid;
+  color: #000;
+  background: var(--ov-orange);
+}
+
+.ext-diagram .ext-strong {
+  font-weight: 600;
+}
+
+.ext-diagram .ext-tiny {
+  font-size: 9px;
+}
+
+.ext-spark {
+  fill: none;
+  stroke: var(--ov-focus);
+  stroke-width: 1.5;
+}
+
+/* The screen map number on a flow diagram box, styled like the map's own markers. */
+.flow-area circle {
+  fill: var(--ov-orange);
+}
+
+.flow .flow-area text {
+  font-size: 11px;
+  font-weight: 700;
+  fill: #000;
+}

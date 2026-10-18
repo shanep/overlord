@@ -1,0 +1,38 @@
+/* The Activity view. Loaded in the order webview/src/css/sheets.ts lists. */
+
+/* ---- Activity ---------------------------------------------------------- */
+
+.activity {
+  max-width: 1400px;
+}
+
+/* Lines a problem's message up under its subject, past the status dot. */
+.activity-indent-card {
+  padding-left: 16px;
+}
+
+.activity h3 {
+  margin: 12px 0 6px;
+  color: var(--ov-muted);
+  font-size: 0.9em;
+}
+
+.activity .card .meter-wrap {
+  display: flex;
+}
+
+.activity .card .meter {
+  flex: 1;
+}
+
+/* Process rows sit under their session, past the twisty. */
+.activity-indent {
+  display: inline-block;
+  min-width: 5em;
+  padding-left: 1.2em;
+  color: var(--ov-muted);
+}
+
+.activity-process .badge {
+  margin-right: 4px;
+}

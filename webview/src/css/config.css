@@ -1,0 +1,40 @@
+/* The Config and sync views. Loaded in the order webview/src/css/sheets.ts lists. */
+
+/* ---- Config and sync ------------------------------------------------------ */
+
+.config-repo {
+  margin: 8px 0;
+}
+
+.config-repo .stats {
+  gap: 6px 20px;
+  padding-left: 16px;
+}
+
+.config-repo .stats dd {
+  overflow-wrap: anywhere;
+}
+
+.config-path,
+.config-link {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.config-path {
+  font-size: 0.9em;
+}
+
+.config-path .link-button {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.config-link {
+  margin: 0;
+  font-size: 0.85em;
+}

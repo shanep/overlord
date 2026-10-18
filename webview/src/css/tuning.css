@@ -1,0 +1,246 @@
+/* The Tuning view. Loaded in the order webview/src/css/sheets.ts lists. */
+
+/* ---- Tuning --------------------------------------------------------------- */
+
+.tuning {
+  max-width: 1400px;
+}
+
+/* Where the money went: one bar per source, its label in a fixed column. */
+.spend-bars {
+  display: grid;
+  gap: 4px;
+  margin: 6px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.spend-bars li {
+  display: grid;
+  grid-template-columns: minmax(120px, 16em) minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+}
+
+.spend-bars .meter-wrap {
+  display: flex;
+  width: 100%;
+}
+
+.spend-bars .meter {
+  flex: 1;
+  width: auto;
+}
+
+.spend-bars .meter-text {
+  min-width: 9em;
+  white-space: nowrap;
+}
+
+.spend-label {
+  overflow: hidden;
+  color: var(--ov-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A tip's fixes: what each does on the left, its button on the right. */
+.fix-heading {
+  margin: 8px 0 2px;
+  color: var(--ov-muted);
+  font-size: 0.85em;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.auto-fixes {
+  display: grid;
+  gap: 6px;
+  margin: 4px 0 6px;
+  padding: 0;
+  list-style: none;
+}
+
+.auto-fix {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.auto-fix-text {
+  display: grid;
+  flex: 1;
+  gap: 2px;
+  min-width: 0;
+}
+
+.auto-fix-title {
+  font-weight: 600;
+}
+
+.spend h2 {
+  margin: 0;
+}
+
+.spend > p {
+  margin: 2px 0 6px;
+}
+
+.auto-fix button {
+  flex: none;
+}
+
+.costly-causes {
+  margin: 6px 0;
+  padding-left: 1.2em;
+}
+
+.costly-causes li {
+  margin-bottom: 4px;
+}
+
+.costly-causes .chip {
+  margin-left: 6px;
+}
+
+/* Tips sit in a card grid; the cards start at the top so a short one does not stretch. */
+.tips {
+  align-items: start;
+}
+
+.tip > p {
+  margin: 4px 0;
+}
+
+.tip-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  align-items: center;
+}
+
+.tip-header h3 {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 1em;
+}
+
+.tip-header h3 code {
+  font-weight: 600;
+}
+
+.tip .card-foot {
+  padding-top: 6px;
+}
+
+.tip-advice {
+  margin: 6px 0;
+  padding-left: 1.2em;
+}
+
+.tip-advice li {
+  margin-bottom: 4px;
+}
+
+.tradeoffs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 4px 12px;
+}
+
+.tradeoffs h4 {
+  margin: 6px 0 2px;
+  color: var(--ov-muted);
+  font-size: 0.85em;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.tradeoffs ul {
+  margin: 0;
+  padding-left: 1.2em;
+}
+
+.tradeoffs li {
+  margin-bottom: 4px;
+}
+
+.tip details {
+  margin: 2px 0;
+}
+
+.tip details > :not(summary) {
+  margin-left: 1em;
+}
+
+.tip-impact {
+  margin: 6px 0 2px;
+}
+
+.impact-caption {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+  align-items: baseline;
+}
+
+.impact-caption h4 {
+  margin: 0;
+  margin-right: auto;
+  font-size: 0.95em;
+  font-weight: 600;
+}
+
+.impact-metrics {
+  margin: 4px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.impact-metrics li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 4.5em;
+  gap: 8px;
+  padding: 1px 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.impact-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.impact-target .impact-label {
+  font-weight: 600;
+}
+
+.impact-values {
+  color: var(--ov-muted);
+  white-space: nowrap;
+}
+
+.impact-change {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+summary > h2 {
+  display: inline;
+}
+
+.impact-better {
+  color: var(--ov-green);
+}
+
+.impact-worse {
+  color: var(--ov-red);
+}

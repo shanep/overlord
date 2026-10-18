@@ -1,0 +1,48 @@
+/* The Sessions view. Loaded in the order webview/src/css/sheets.ts lists. */
+
+/* ---- Sessions --------------------------------------------------------------- */
+
+.sessions-filter {
+  flex: 1;
+  min-width: 160px;
+  max-width: 420px;
+  padding: 4px 8px;
+}
+
+.session-group .group-name {
+  font-weight: 600;
+}
+
+/* Fixed columns, so the tables in every group line up. */
+.session-group table.grid {
+  table-layout: fixed;
+}
+
+.session-group .grid th:nth-child(1) {
+  width: 120px;
+}
+
+.session-group .grid th:nth-child(3) {
+  width: 110px;
+}
+
+.session-group .grid th:nth-child(4) {
+  width: 250px;
+}
+
+.session-group .grid td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.session-group .grid td:nth-child(4) {
+  white-space: normal;
+}
+
+.session-group .grid td .link-button {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}

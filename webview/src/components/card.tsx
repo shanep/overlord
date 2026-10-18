@@ -7,7 +7,7 @@ import type { ReactElement, ReactNode } from 'react';
 
 import type { Tone } from '../labels.js';
 
-/** How many avatar colors theme.css defines. */
+/** How many avatar colors css/cards.css defines. */
 const AVATAR_COLORS = 6;
 
 /** A grid of cards. Wide fits fewer, larger cards and fills the gap an open card leaves. */

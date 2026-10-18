@@ -1,0 +1,73 @@
+/* The agent detail view. Loaded in the order webview/src/css/sheets.ts lists. */
+
+/* ---- Agent detail ------------------------------------------------------------ */
+
+.agent-title {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.agent-title h1 {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-where {
+  margin: 2px 0 0;
+}
+
+.agent-actions {
+  margin: 4px 0 8px;
+}
+
+.agent-child-name {
+  display: block;
+  min-width: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+/* Each feed entry gets a colored edge for who said it, so the log scans fast. */
+.agent-feed-list > li {
+  margin: 0 0 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--ov-border);
+  border-left: 3px solid var(--ov-border);
+  border-radius: 4px;
+  background: var(--vscode-editorWidget-background, var(--ov-panel));
+}
+
+.agent-feed-list > li.feed-user {
+  border-left-color: var(--ov-blue);
+}
+
+.agent-feed-list > li.feed-text {
+  border-left-color: var(--ov-green);
+}
+
+.agent-feed-list > li.feed-tool {
+  border-left-color: var(--ov-purple);
+}
+
+.agent-feed-list > li.feed-error {
+  border-left-color: var(--ov-red);
+}
+
+.agent-feed-list .feed-kind {
+  font-size: 0.85em;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.agent-feed-list .feed-meta time {
+  margin-left: auto;
+}
+
+.agent-feed-list p.feed-text {
+  margin: 4px 0 0;
+}

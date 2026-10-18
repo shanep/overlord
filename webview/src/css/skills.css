@@ -1,0 +1,21 @@
+/* The Skills and Agents views. Loaded in the order webview/src/css/sheets.ts lists. */
+
+/* ---- Skills and Agents ---------------------------------------------------- */
+
+.library {
+  max-width: 1400px;
+}
+
+.library .view-header {
+  align-items: center;
+}
+
+.library-catalog {
+  margin-top: 24px;
+  padding-top: 4px;
+  border-top: 1px solid var(--ov-border);
+}
+
+.library-lede {
+  max-width: 90ch;
+}

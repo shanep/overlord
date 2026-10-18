@@ -1,6 +1,6 @@
 ---
 name: webview-design
-description: The look every Overlord view follows, with the shared card components, when to use cards or a table, colors, buttons, and how to screenshot a view before committing. Use whenever you build or change a view or panel under webview/src (a new view, a layout change, new styles in theme.css), and whenever the user says a view looks bad, ugly, cluttered or hard to read, or asks to make one look better or more consistent.
+description: The look every Overlord view follows, with the shared card components, when to use cards or a table, colors, buttons, and how to screenshot a view before committing. Use whenever you build or change a view or panel under webview/src (a new view, a layout change, new styles in webview/src/theme.css or webview/src/css), and whenever the user says a view looks bad, ugly, cluttered or hard to read, or asks to make one look better or more consistent.
 ---
 
 # Overlord webview design
@@ -21,8 +21,13 @@ Every view should look like it came from the same place.
 
 ## 2. Build the page from the shared pieces
 
-The pieces live in `webview/src/components/card.tsx` and the "Cards and groups" section of
-`webview/src/theme.css`. Use them instead of writing new classes for the same thing.
+The pieces live in `webview/src/components/card.tsx` and `webview/src/css/cards.css`. Use
+them instead of writing new classes for the same thing.
+
+The styles are split so a change reads only what it needs: `webview/src/theme.css` holds the
+color tokens, controls, badges and meters, `css/layout.css` and `css/cards.css` the shared
+layout, and each other file in `webview/src/css` one view. `css/sheets.ts` lists them in
+cascade order. Read the shared files and your view's file, not all of them.
 
 | Need                                                           | Use                                                                         |
 | -------------------------------------------------------------- | --------------------------------------------------------------------------- |
@@ -54,9 +59,10 @@ row of chips with no bullets, `pill-check` draws a checkbox as a toggle pill, an
 `choice-grid` with `choice` lays radio buttons out as cards, each with room for a line
 of explanation.
 
-If you need something the pieces do not cover, add it to card.tsx and theme.css so the
+If you need something the pieces do not cover, add it to card.tsx and css/cards.css so the
 next view gets it too. Only add page-specific classes for things that really are
-page-specific, and put them in that view's own section of theme.css.
+page-specific, and put them in that view's file in `webview/src/css`. A new view gets a new
+file, added to `css/sheets.ts`.
 
 ## 3. Rules
 

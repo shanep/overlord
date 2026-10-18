@@ -1,0 +1,145 @@
+/* The Knobs view. Loaded in the order webview/src/css/sheets.ts lists. */
+
+/* ---- Knobs ---------------------------------------------------------------- */
+
+.knob-filters {
+  margin: 12px 0;
+}
+
+.knob-search {
+  display: flex;
+  flex: 1 1 260px;
+  max-width: 480px;
+}
+
+.knob-search input[type='search'] {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 8px;
+}
+
+.knob-file {
+  min-width: 0;
+  overflow: hidden;
+  padding-left: 16px;
+  font-size: 0.9em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.knob-file .link-button {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.knob-area {
+  margin: 8px 0;
+}
+
+.knob-area .area-heading {
+  font-size: 1em;
+}
+
+.knob-summary {
+  margin: 0;
+}
+
+.knob-list {
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.knob-row {
+  padding: 6px 0;
+  border-top: 1px solid var(--ov-border);
+}
+
+.knob-row-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+}
+
+.knob-row-head .spacer {
+  flex: 1;
+}
+
+.knob-key {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.knob-value {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.knob-value .mono {
+  overflow-wrap: anywhere;
+}
+
+/* Lines the description up under the key, past the twisty and the dot. Two lines until opened. */
+.knob-description {
+  display: -webkit-box;
+  margin: 2px 0 0;
+  padding-left: calc(1.2em + 20px);
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.knob-open .knob-description {
+  display: block;
+}
+
+.knob-detail {
+  margin: 8px 0 4px calc(1.2em + 6px);
+  padding: 8px 10px;
+  border-left: 2px solid var(--ov-focus);
+  border-radius: 0 4px 4px 0;
+  background: var(--ov-hover);
+}
+
+.knob-edit,
+.knob-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.profile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 10px;
+}
+
+fieldset.profile-card {
+  margin: 0;
+}
+
+/* A float pulls the legend inside the card's border, so it reads as the card's title. */
+.profile-card > legend {
+  float: left;
+  width: 100%;
+  margin-bottom: 6px;
+  padding: 0;
+}
+
+.profile-card > .form-grid {
+  clear: both;
+}
+
+.profile-env {
+  align-items: stretch;
+}

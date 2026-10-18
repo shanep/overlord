@@ -1,0 +1,570 @@
+/* Shared cards, card groups, stat tiles and the pieces inside them. Loaded in the order webview/src/css/sheets.ts lists. */
+
+/* ---- Cards and groups -----------------------------------------------------
+ * The standard layout for a collection you scan: components/card.tsx renders
+ * these, and the webview-design skill says when to use them.
+ */
+
+.card-group > h2,
+.section-title {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin: 16px 0 8px;
+}
+
+.count {
+  padding: 0 6px;
+  border-radius: 8px;
+  color: var(--ov-badge-fg);
+  background: var(--ov-badge);
+  font-size: 0.8em;
+  font-weight: 600;
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Dense, so the cards after an open one fill the gap it leaves above. */
+.card-grid-wide {
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-auto-flow: dense;
+  gap: 10px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--ov-border);
+  border-radius: 6px;
+  background: var(--vscode-editorWidget-background, var(--ov-panel));
+}
+
+.card-action:hover {
+  border-color: var(--ov-focus);
+}
+
+.card-edge {
+  border-left-width: 3px;
+}
+
+.card-good {
+  border-left-color: var(--ov-green);
+}
+
+.card-warning {
+  border-left-color: var(--ov-yellow);
+}
+
+.card-critical {
+  border-left-color: var(--ov-red);
+}
+
+.card-info {
+  border-left-color: var(--ov-blue);
+}
+
+.card-open {
+  grid-column: 1 / -1;
+  border-color: var(--ov-focus);
+}
+
+.card-head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.card-titles {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.card-title,
+.card-sub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card-title {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+}
+
+.card-sub {
+  color: var(--ov-muted);
+  font-size: 0.85em;
+}
+
+.card-sub.mono {
+  font-size: 0.8em;
+}
+
+.card-text {
+  margin: 2px 0;
+  color: var(--ov-muted);
+  font-size: 0.92em;
+  line-height: 1.3;
+}
+
+/* Three lines of text keep the cards in a row the same height. */
+.card-clamp {
+  display: -webkit-box;
+  min-height: 3.9em;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.card-open .card-clamp {
+  display: block;
+  min-height: 0;
+}
+
+.card-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin-top: auto;
+  padding-top: 4px;
+}
+
+.card-foot .spacer,
+.list-bar .spacer,
+.form-actions .spacer {
+  flex: 1;
+}
+
+.status-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ov-muted);
+}
+
+.status-dot-good {
+  background: var(--ov-green);
+}
+
+.status-dot-warning {
+  background: var(--ov-yellow);
+}
+
+.status-dot-critical {
+  background: var(--ov-red);
+}
+
+.status-dot-info {
+  background: var(--ov-blue);
+}
+
+.avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 1.1em;
+  font-weight: 700;
+}
+
+.avatar-0 {
+  background: var(--ov-blue);
+}
+
+.avatar-1 {
+  background: var(--ov-green);
+}
+
+.avatar-2 {
+  background: var(--ov-purple);
+}
+
+.avatar-3 {
+  background: var(--ov-orange);
+}
+
+.avatar-4 {
+  background: var(--ov-red);
+}
+
+.avatar-5 {
+  background: var(--ov-yellow);
+}
+
+.chip {
+  padding: 0 6px;
+  border: 1px solid var(--ov-border);
+  border-radius: 8px;
+  color: var(--ov-muted);
+  font-size: 0.8em;
+  white-space: nowrap;
+}
+
+.chip-dashed {
+  border-style: dashed;
+}
+
+.segmented {
+  display: inline-flex;
+  overflow: hidden;
+  border: 1px solid var(--ov-border);
+  border-radius: 4px;
+}
+
+.segmented button {
+  padding: 2px 10px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.segmented button + button {
+  border-left: 1px solid var(--ov-border);
+}
+
+.segmented button[aria-pressed='true'] {
+  color: var(--ov-button-fg);
+  background: var(--ov-button);
+}
+
+.notice {
+  margin: 8px 0;
+  padding: 6px 10px;
+  border: 1px solid var(--ov-border);
+  border-left-width: 3px;
+  border-radius: 4px;
+}
+
+.notice-good {
+  border-left-color: var(--ov-green);
+}
+
+.notice-critical {
+  border-left-color: var(--ov-red);
+}
+
+.search-bar {
+  display: flex;
+  gap: 6px;
+  max-width: 720px;
+  margin: 10px 0;
+}
+
+.search-bar input[type='search'] {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 8px;
+}
+
+.search-bar button {
+  padding: 4px 12px;
+}
+
+.list-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 8px 0;
+}
+
+.load-more {
+  display: flex;
+  justify-content: center;
+  margin: 12px 0;
+}
+
+.empty-line {
+  padding: 16px 0;
+}
+
+/* A form inside an open card. */
+.card-form {
+  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--ov-border);
+}
+
+.card-form select {
+  max-width: 100%;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 4px 16px;
+}
+
+.form-grid .field {
+  align-items: stretch;
+  margin-bottom: 2px;
+}
+
+.form-grid .field > input {
+  width: 100%;
+}
+
+.form-grid .hint {
+  margin: 0 0 6px;
+}
+
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin-top: 8px;
+}
+
+/* An explanation most people read once, folded away under the header. */
+.about {
+  margin: 4px 0 8px;
+  color: var(--ov-muted);
+}
+
+.about > p {
+  max-width: 80ch;
+  margin: 4px 0 0 1em;
+}
+
+/* A table or list in a bordered box, so it sits with the cards around it. */
+.panel {
+  margin: 8px 0;
+  overflow-x: auto;
+  border: 1px solid var(--ov-border);
+  border-radius: 6px;
+  background: var(--vscode-editorWidget-background, var(--ov-panel));
+}
+
+.panel-head,
+details.panel > summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: baseline;
+  padding: 8px 12px;
+}
+
+details.panel > summary {
+  list-style: none;
+}
+
+details.panel > summary::-webkit-details-marker {
+  display: none;
+}
+
+details.panel > summary::before {
+  color: var(--ov-muted);
+  content: '\25B8';
+  transition: transform 0.15s ease-out;
+}
+
+details.panel[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+details.panel[open] > summary,
+.panel-head {
+  border-bottom: 1px solid var(--ov-border);
+}
+
+.panel .grid th {
+  background: var(--vscode-editorWidget-background, var(--ov-panel));
+}
+
+.panel .grid th:first-child,
+.panel .grid td:first-child {
+  padding-left: 12px;
+}
+
+.panel .grid th:last-child,
+.panel .grid td:last-child {
+  padding-right: 12px;
+}
+
+.panel .grid td {
+  padding-top: 3px;
+  padding-bottom: 3px;
+}
+
+.panel .grid tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.panel > .muted,
+.panel-body {
+  margin: 0;
+  padding: 8px 12px;
+}
+
+.card-head .spacer {
+  flex: 1;
+}
+
+/* A list of chips with no bullets or indent. */
+.chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* A sortable table framed like a card, so it sits well next to card grids. */
+.table-card {
+  overflow-x: auto;
+  padding: 2px 8px 4px;
+  border: 1px solid var(--ov-border);
+  border-radius: 6px;
+  background: var(--vscode-editorWidget-background, var(--ov-panel));
+  container-type: inline-size;
+}
+
+/* Wrapped text keeps enough width to read as sentences, not a word per line. */
+.table-card td.wrap {
+  min-width: 18ch;
+}
+
+/* Row buttons stack when the table runs out of room instead of pushing it wider. */
+.table-card .actions {
+  flex-wrap: wrap;
+  white-space: normal;
+}
+
+/* Columns marked drop: 1 or 2 in DataTable go as the table narrows, least useful first. */
+@container (width < 900px) {
+  .table-card .drop-1 {
+    display: none;
+  }
+}
+
+@container (width < 720px) {
+  .table-card .drop-2 {
+    display: none;
+  }
+}
+
+/* A checkbox drawn as a pill you toggle, for picking several of a few options. */
+.pill-check {
+  gap: 6px;
+  padding: 2px 10px;
+  border: 1px solid var(--ov-border);
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.pill-check input[type='checkbox'] {
+  margin: 0;
+}
+
+.pill-check:has(input:checked) {
+  border-color: var(--ov-focus);
+  background: var(--ov-inactive-selected);
+}
+
+.about > ul {
+  max-width: 80ch;
+  margin: 4px 0 0 1em;
+  padding-left: 1.2em;
+}
+
+/* Stat tiles: the few numbers a section is about. components/card.tsx renders them. */
+.tile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+  margin: 0 0 8px;
+}
+
+.tile {
+  gap: 2px;
+}
+
+.tile-label {
+  color: var(--ov-muted);
+  font-size: 0.85em;
+}
+
+/* One line, so a long value such as a model name is cut short instead of wrapping. */
+.tile-value {
+  margin: 0;
+  overflow: hidden;
+  font-size: 1.5em;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tile-detail {
+  margin: 0;
+  color: var(--ov-muted);
+  font-size: 0.85em;
+}
+
+/* Radio choices as cards, so each one has room for its explanation. */
+.choice-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 8px;
+  margin: 0 0 8px;
+  padding: 0;
+  border: 0;
+}
+
+.choice {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border: 1px solid var(--ov-border);
+  border-radius: 6px;
+  background: var(--vscode-editorWidget-background, var(--ov-panel));
+  cursor: pointer;
+}
+
+.choice:hover {
+  border-color: var(--ov-focus);
+}
+
+.choice:has(input:checked) {
+  border-color: var(--ov-focus);
+  box-shadow: inset 0 0 0 1px var(--ov-focus);
+}
+
+.choice > label {
+  font-weight: 600;
+}
+
+.choice > p {
+  margin: 0;
+  color: var(--ov-muted);
+  font-size: 0.9em;
+}
+
+/* A chart in a card, for views that lay charts out with the other cards. */
+.chart-card .figure {
+  height: 100%;
+  border-radius: 6px;
+  background: var(--vscode-editorWidget-background, var(--ov-panel));
+}

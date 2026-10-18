@@ -1,0 +1,203 @@
+/* The agent feed in the agent view. Loaded in the order webview/src/css/sheets.ts lists. */
+
+/* ---- Agent feed --------------------------------------------------------- */
+
+.feed {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.feed > li {
+  padding: 3px 0;
+  border-bottom: 1px solid var(--ov-border);
+}
+
+.feed-meta {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  color: var(--ov-muted);
+  font-size: 0.9em;
+}
+
+.feed-text {
+  margin: 2px 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.feed-user .feed-kind {
+  color: var(--ov-blue);
+}
+
+.feed-tool .feed-kind {
+  color: var(--ov-purple);
+}
+
+.feed-error .feed-kind {
+  color: var(--ov-error);
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: 12px;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+fieldset.chips {
+  margin: 0 0 6px;
+  padding: 0;
+  border: 0;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 4px 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (forced-colors: active) {
+  .meter-fill {
+    background: Highlight;
+  }
+
+  .tree-table tr[aria-selected='true'] {
+    outline: 1px solid Highlight;
+  }
+}
+
+.row-title {
+  font-weight: 600;
+}
+
+/* A session's health in the Fleet: a short bar that is also a button. */
+.col-health {
+  white-space: nowrap;
+}
+
+.health-bar {
+  padding: 0 4px;
+  border: none;
+  border-radius: 4px;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  line-height: inherit;
+  vertical-align: middle;
+  cursor: pointer;
+}
+
+.health-bar .meter {
+  width: 40px;
+}
+
+.health-bar .meter-text {
+  min-width: 2.5em;
+  text-align: left;
+}
+
+.health-bar:hover {
+  background: var(--ov-badge);
+}
+
+.health-bar:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder, var(--ov-blue));
+  outline-offset: 1px;
+}
+
+/* A session's task progress in the Fleet, a bar like health's that sets its budget. */
+.col-progress,
+.col-left {
+  white-space: nowrap;
+}
+
+/* With no task list or budget the button only shows on the row in hand. */
+.progress-empty {
+  color: var(--ov-muted);
+  font-size: 0.9em;
+  visibility: hidden;
+}
+
+.tree-table tr:hover .progress-empty,
+.tree-table tr[aria-selected='true'] .progress-empty,
+.progress-bar:focus-visible .progress-empty {
+  visibility: visible;
+}
+
+/* One line under a session's title on what it is working on. */
+.row-summary {
+  display: block;
+  max-width: 60ch;
+  overflow: hidden;
+  font-size: 0.9em;
+  text-overflow: ellipsis;
+}
+
+button.link-button.row-failure {
+  display: block;
+  max-width: 80ch;
+  overflow: hidden;
+  color: var(--ov-red);
+  font-size: 0.9em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.place {
+  display: inline-flex;
+  margin-right: 4px;
+  vertical-align: -3px;
+  color: var(--ov-muted);
+}
+
+.place-good {
+  color: var(--ov-green);
+}
+
+.place-launched {
+  color: var(--ov-purple);
+}
+
+/* The agent CLI behind a session, in front of its title. */
+.agent-mark {
+  display: inline-flex;
+  gap: 3px;
+  align-items: baseline;
+  margin-right: 6px;
+  color: var(--ov-muted);
+  font-size: 0.85em;
+  white-space: nowrap;
+}
+
+.agent-mark .icon {
+  align-self: center;
+  width: 12px;
+  height: 12px;
+}
+
+/* A backend's logo keeps its own colors and shape, so only its height is set. */
+.backend-mark {
+  display: inline-flex;
+  margin-right: 6px;
+}
+
+.backend-logo {
+  align-self: center;
+  width: auto;
+  height: 12px;
+}
+
+/* A session the Launcher started gets a stripe down its left edge. */
+.tree-table tr[data-launched='true'] > td:first-child {
+  box-shadow: inset 3px 0 0 var(--ov-purple);
+}

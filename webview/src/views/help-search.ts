@@ -8,7 +8,7 @@
 const HIDDEN_MARK = 'data-search-hidden';
 const HIDDEN_SELECTOR = '[data-search-hidden]';
 
-/** The name the found words are marked with, styled in theme.css. */
+/** The name the found words are marked with, styled in css/help.css. */
 const HIGHLIGHT_NAME = 'help-search';
 
 /** The lowercase words of a query, empty when there is nothing to search for. */

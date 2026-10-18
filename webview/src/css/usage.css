@@ -1,0 +1,51 @@
+/* The Usage view: plan limit meters, also used by the Boise State quota. Loaded in the order webview/src/css/sheets.ts lists. */
+
+/* ---- Usage: plan limits ------------------------------------------------ */
+
+.usage {
+  max-width: 1400px;
+}
+
+.plan-limits {
+  margin: 8px 0 16px;
+}
+
+.plan-limits h2 {
+  margin: 0;
+}
+
+/* A plan limit's meter, and the Boise State quota's, runs the width of its card. */
+.plan-limits .meter-wrap,
+.bridge-quota .meter-wrap {
+  display: flex;
+  margin: 4px 0 0 16px;
+}
+
+.plan-limits .meter,
+.bridge-quota .meter {
+  flex: 1;
+  height: 8px;
+}
+
+.plan-limits .meter-text,
+.bridge-quota .meter-text {
+  font-weight: 600;
+  text-align: right;
+}
+
+.plan-limits .card-sub {
+  padding-left: 16px;
+}
+
+.usage .climate,
+.usage .bridge-usage {
+  margin-top: 16px;
+}
+
+.usage .bridge-usage .grid + .grid {
+  margin-top: 12px;
+}
+
+.usage .bridge-quota {
+  margin-bottom: 12px;
+}

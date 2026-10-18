@@ -1,0 +1,26 @@
+/* The context inspector. Loaded in the order webview/src/css/sheets.ts lists. */
+
+/* ---- Context inspector ------------------------------------------------------- */
+
+.context-picker select {
+  max-width: min(60ch, 70vw);
+}
+
+.prompt-blocks > details {
+  border-bottom: 1px solid var(--ov-border);
+}
+
+.prompt-blocks > details:last-child {
+  border-bottom: 0;
+}
+
+.prompt-blocks > details > summary {
+  padding: 6px 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.prompt-blocks > details > pre {
+  margin: 0 12px 8px;
+}

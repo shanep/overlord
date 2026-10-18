@@ -1,0 +1,41 @@
+/* The Connectors view. Loaded in the order webview/src/css/sheets.ts lists. */
+
+/* ---- Connectors ----------------------------------------------------------- */
+
+.conn {
+  max-width: 1400px;
+}
+
+.conn .view-header {
+  align-items: center;
+}
+
+/* Lines the kind and detail up under the name, past the status dot. */
+.conn-indent {
+  padding-left: 16px;
+}
+
+.reg {
+  margin-top: 24px;
+  padding-top: 4px;
+  border-top: 1px solid var(--ov-border);
+}
+
+.reg-lede {
+  max-width: 90ch;
+}
+
+.reg-command {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: baseline;
+  margin: 0 0 8px;
+}
+
+.reg-command code {
+  padding: 2px 6px;
+  overflow-wrap: anywhere;
+  border-radius: 3px;
+  background: var(--vscode-textCodeBlock-background, var(--ov-hover));
+}

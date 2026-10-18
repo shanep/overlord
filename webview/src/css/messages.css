@@ -1,0 +1,41 @@
+/* The agent messages view. Loaded in the order webview/src/css/sheets.ts lists. */
+
+/* ---- Agent messages ------------------------------------------------------ */
+
+.messages-view {
+  max-width: 1400px;
+}
+
+/* Each session's messages sit in a card, with its title as the summary. */
+.message-group {
+  margin: 8px 0;
+  padding: 6px 12px 8px;
+  border: 1px solid var(--ov-border);
+  border-radius: 6px;
+  background: var(--vscode-editorWidget-background, var(--ov-panel));
+}
+
+.message-group > summary {
+  padding: 2px 0;
+}
+
+.message-group[open] > summary {
+  margin-bottom: 6px;
+}
+
+/* Every session's table lines up, and the message column gets what is left. */
+table.message-log {
+  table-layout: fixed;
+}
+
+.message-log .col-time {
+  width: 11em;
+}
+
+.message-log .col-party {
+  width: 17%;
+}
+
+.message-log .col-kind {
+  width: 5.5em;
+}

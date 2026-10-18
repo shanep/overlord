@@ -1,0 +1,285 @@
+/* The Launcher. Loaded in the order webview/src/css/sheets.ts lists. */
+
+/* ---- Launcher ------------------------------------------------------------- */
+
+.launcher .view-header {
+  align-items: center;
+}
+
+.launch-card {
+  position: relative;
+  margin: 8px 0 16px;
+  padding: 14px 16px 0;
+  overflow: hidden;
+  counter-reset: launch-step;
+}
+
+/* A thin band of theme colors along the top marks the form as the place to start. */
+.launch-card::before {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: linear-gradient(90deg, var(--ov-blue), var(--ov-purple), var(--ov-green));
+  content: '';
+}
+
+.launch-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.launch-head .spacer {
+  flex: 1;
+}
+
+.launch-title {
+  margin: 0;
+  font-size: 1.15em;
+}
+
+/* The prompt on the left, the choices on the right, stacked when narrow. */
+.launch-body {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 4px 24px;
+  margin-top: 6px;
+}
+
+@media (width <= 760px) {
+  .launch-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.launch-prompt {
+  display: flex;
+  flex-direction: column;
+}
+
+.launch-prompt .field {
+  flex: 1;
+}
+
+.launch-prompt textarea {
+  flex: 1;
+  min-height: 12em;
+  padding: 8px 10px;
+  border-radius: 4px;
+  line-height: 1.45;
+}
+
+.launch-side {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.launch-group {
+  min-width: 0;
+}
+
+/* Numbered steps: the number is drawn, so the heading reads the same to a screen reader. */
+.launch-step {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 12px 0 4px;
+  font-size: 0.95em;
+  counter-increment: launch-step;
+}
+
+.launch-step::before {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  color: var(--ov-button-fg);
+  background: var(--ov-button);
+  font-size: 0.8em;
+  font-weight: 700;
+  content: counter(launch-step);
+}
+
+.launch-card .field {
+  align-items: stretch;
+}
+
+.launch-card .field > select {
+  width: 100%;
+  padding: 3px 6px;
+}
+
+.launch-path {
+  overflow-wrap: anywhere;
+}
+
+.launch-held {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 6px 0;
+}
+
+/* Plans: a goal, its tasks in order, and how far each got. */
+.plan-form {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.plan-form textarea,
+.plan-form select {
+  width: 100%;
+  font: inherit;
+}
+
+.plan {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.plan h3 {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.plan-tasks {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 1.4em;
+}
+
+.plan-task-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  align-items: center;
+}
+
+.plan-task .card-text {
+  margin: 2px 0;
+}
+
+.plan-prompt {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.launch-draft select {
+  max-width: 220px;
+}
+
+.launch-empty {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  align-items: center;
+}
+
+.launch-profiles {
+  margin: 4px 0;
+}
+
+.launch-limits {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0 12px;
+}
+
+.launch-limits .field > input {
+  width: 100%;
+}
+
+/* A checkbox drawn as an on and off switch. */
+.switch {
+  gap: 8px;
+  margin: 6px 0 2px;
+  cursor: pointer;
+}
+
+.switch input[type='checkbox'] {
+  position: relative;
+  flex: none;
+  width: 28px;
+  height: 16px;
+  margin: 0;
+  border: 1px solid var(--ov-input-border);
+  border-radius: 8px;
+  background: var(--ov-input);
+  cursor: pointer;
+  transition: background-color 0.15s;
+  appearance: none;
+}
+
+.switch input[type='checkbox']::after {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--ov-muted);
+  content: '';
+  transition: transform 0.15s;
+}
+
+.switch input[type='checkbox']:checked {
+  border-color: var(--ov-button);
+  background: var(--ov-button);
+}
+
+.switch input[type='checkbox']:checked::after {
+  background: var(--ov-button-fg);
+  transform: translateX(12px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .switch input[type='checkbox'],
+  .switch input[type='checkbox']::after {
+    transition: none;
+  }
+}
+
+/* What Launch will do, beside the button, across the foot of the card. */
+.launch-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+  margin: 12px -16px 0;
+  padding: 10px 16px;
+  border-top: 1px solid var(--ov-border);
+  background: var(--ov-hover);
+}
+
+.launch-summary {
+  flex: 1;
+  min-width: 200px;
+  color: var(--ov-muted);
+}
+
+button.launch-go {
+  padding: 5px 18px;
+  font-weight: 600;
+}
+
+.launch-indent {
+  padding-left: 16px;
+}
+
+.rule-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 4px;
+  padding: 8px 0 4px;
+  border-top: 1px solid var(--ov-border);
+}

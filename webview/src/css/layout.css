@@ -1,0 +1,280 @@
+/* Shared layout: header stats and banners, tables, sections and charts. Loaded in the order webview/src/css/sheets.ts lists. */
+
+/* ---- Header stats and banners ----------------------------------------- */
+
+.view-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+
+.view-header h1 {
+  margin: 0;
+}
+
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 0;
+}
+
+.stat {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+}
+
+.stat dt {
+  color: var(--ov-muted);
+}
+
+.stat dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.banner {
+  margin: 6px 0;
+  padding: 6px 8px;
+  border: 1px solid var(--ov-warning-border);
+  border-radius: 2px;
+  background: var(--ov-warning-bg);
+}
+
+.banner ul {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.plain-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.banner li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 2px 0;
+}
+
+/* The shared tooltip, styled like VS Code's own hovers. */
+.tooltip {
+  position: fixed;
+  z-index: 100;
+  max-width: 320px;
+  padding: 4px 8px;
+  border: 1px solid var(--vscode-editorHoverWidget-border, var(--ov-border));
+  border-radius: 4px;
+  color: var(--vscode-editorHoverWidget-foreground, var(--ov-fg));
+  background: var(--vscode-editorHoverWidget-background, var(--ov-panel));
+  box-shadow: 0 2px 8px var(--vscode-widget-shadow, rgb(0 0 0 / 30%));
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+}
+
+.confirm {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 6px 0;
+  padding: 6px 8px;
+  border: 1px solid var(--ov-red);
+  border-radius: 2px;
+}
+
+.empty {
+  padding: 24px 8px;
+  color: var(--ov-muted);
+  text-align: center;
+}
+
+.empty-title {
+  color: var(--ov-fg);
+  font-weight: 600;
+}
+
+.error-box {
+  padding: 8px;
+  border: 1px solid var(--ov-error);
+}
+
+/* ---- Tables ------------------------------------------------------------- */
+
+table.grid {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.grid th,
+.grid td {
+  padding: 1px 6px;
+  border-bottom: 1px solid var(--ov-border);
+  text-align: left;
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+.grid th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--ov-bg);
+  color: var(--ov-muted);
+  font-weight: 600;
+}
+
+/* Long text wraps, but never down to a letter a line: past this width the table scrolls. */
+.grid td.wrap,
+.grid th.wrap {
+  min-width: 18ch;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.grid .num {
+  text-align: right;
+}
+
+.grid tbody tr:hover {
+  background: var(--ov-hover);
+}
+
+.sort-button {
+  padding: 0;
+  border: none;
+  color: inherit;
+  background: none;
+  font-weight: 600;
+}
+
+.tree-table {
+  outline: none;
+}
+
+.tree-table tr[aria-selected='true'] {
+  background: var(--ov-inactive-selected);
+}
+
+.tree-table:focus-within tr[aria-selected='true'] {
+  color: var(--ov-selected-fg);
+  background: var(--ov-selected);
+}
+
+.tree-table:focus-within tr[aria-selected='true'] .muted {
+  color: inherit;
+}
+
+.twisty {
+  display: inline-block;
+  width: 1.2em;
+  padding: 0;
+  border: none;
+  color: inherit;
+  background: none;
+}
+
+.title-cell {
+  max-width: 28em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---- Sections and charts ---------------------------------------------- */
+
+.section {
+  margin: 12px 0;
+}
+
+details > summary {
+  cursor: pointer;
+}
+
+/* A section folded under its heading, with a turning arrow. */
+.fold > summary {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--ov-border);
+  list-style: none;
+}
+
+.fold > summary::-webkit-details-marker {
+  display: none;
+}
+
+.fold > summary::before {
+  color: var(--ov-muted);
+  content: '\25B8';
+  transition: transform 0.15s ease-out;
+}
+
+.fold[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.fold > summary > h2 {
+  margin: 0;
+}
+
+.fold-note {
+  font-size: 0.85em;
+}
+
+.fold-body {
+  padding-top: 8px;
+}
+
+.charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 12px;
+}
+
+.figure {
+  margin: 0;
+  padding: 6px;
+  border: 1px solid var(--ov-border);
+  border-radius: 2px;
+}
+
+.figure-title {
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+
+.figure-table {
+  margin-top: 4px;
+  font-size: 0.9em;
+}
+
+.chart {
+  width: 100%;
+}
+
+.sparkline {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.json {
+  max-height: 20em;
+  margin: 4px 0;
+  padding: 4px 6px;
+  overflow: auto;
+  border-left: 2px solid var(--ov-border);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
