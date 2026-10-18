@@ -14,7 +14,7 @@ describe('Icon', () => {
     expect(mark?.getAttribute('fill-rule')).toBe('evenodd');
   });
 
-  it("draws OpenAI's filled logomark for Codex and keeps the codicon mapping for the rest", () => {
+  it("draws OpenAI's filled logo for Codex and keeps the codicon mapping for the rest", () => {
     expect(agentIcon(codexAgent)).toBe('openai');
     expect(agentIcon({ id: 'custom', icon: 'terminal' })).toBe('window');
     expect(agentIcon({ id: 'custom', icon: 'unknown' })).toBe('prompt');

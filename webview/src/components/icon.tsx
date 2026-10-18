@@ -89,7 +89,7 @@ const SHAPES = {
   hourglass: (
     <path d="M4 2.5h8M4 13.5h8M5 2.5c0 3.5 6 3 6 5.5s-6 2-6 5.5M11 2.5c0 3.5-6 3-6 5.5s6 2 6 5.5" />
   ),
-  /** OpenAI's logomark, for Codex. Drawn on a 24 unit grid, so it is scaled to 16. */
+  /** OpenAI's logo, for Codex. Drawn on a 24 unit grid, so it is scaled to 16. */
   openai: (
     <path
       transform="scale(0.6667)"
@@ -126,7 +126,7 @@ const AGENT_ICONS: Readonly<Record<string, IconName>> = {
 };
 
 /**
- * The shape for an agent. Codex gets OpenAI's logomark: its codicon is the
+ * The shape for an agent. Codex gets OpenAI's logo: its codicon is the
  * generic terminal, which VS Code needs for the terminal tab, and no codicon
  * draws OpenAI's mark.
  */
