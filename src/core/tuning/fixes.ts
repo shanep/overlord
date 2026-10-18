@@ -3,9 +3,11 @@
 // the change. Each says what it does and, where the transcripts allow, what
 // it would have saved on the sessions measured.
 
-import type { AutoFix, HotFile } from '../../shared/tuning.js';
-import { isArray } from '../knobs/json.js';
+import type { AutoFix } from '../../shared/tuning.js';
 
+import type { FixContext } from './fix-context.js';
+import { stringsOf } from './fix-context.js';
+import { cdFix } from './fixes-cd.js';
 import type { SessionMeasure } from './measure.js';
 import { COMPACT_AT } from './measure.js';
 import { skillName } from './spend.js';
@@ -50,21 +52,6 @@ export interface UnusedTool {
   readonly usd: number;
   readonly carried: number;
   readonly used: number;
-}
-
-export interface FixContext {
-  readonly totals: Totals;
-  readonly live: readonly SessionMeasure[];
-  readonly hotFiles: readonly HotFile[];
-  /** The effective value of a Claude Code setting, or undefined when unset. */
-  readonly knob: (key: string) => unknown;
-  /** Ids of suggestions already saved. */
-  readonly installed: ReadonlySet<string>;
-  readonly home: string;
-  /** The repository a session folder belongs to. */
-  readonly projectOf: (cwd: string) => string;
-  /** When a file or folder last changed, or null when it is gone. */
-  readonly modifiedAt: (path: string) => number | null;
 }
 
 /** Tools whose definitions went out with every request but that sessions almost never call. */
@@ -143,10 +130,7 @@ function denyFix(context: FixContext): AutoFix | null {
   if (tools.length === 0) {
     return null;
   }
-  const current = context.knob('permissions.deny');
-  const existing = isArray(current)
-    ? current.filter((item): item is string => typeof item === 'string')
-    : [];
+  const existing = stringsOf(context.knob('permissions.deny'));
   const names = tools.map((tool) => tool.name);
   const saving = tools.reduce((total, tool) => total + tool.usd, 0);
   const list = tools
@@ -373,6 +357,7 @@ const BUILDERS: Readonly<Record<string, FixBuilder>> = {
   'unused-tools': (c) => [denyFix(c)],
   'heavy-skills': (c) => skillFixes(c),
   instructions: (c) => [instructionsFix(c)],
+  'cd-commands': (c) => [cdFix(c)],
 };
 
 /** The fixes for a tip, the ones not yet applied first. */

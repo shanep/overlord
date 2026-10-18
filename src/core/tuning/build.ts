@@ -6,7 +6,7 @@ import type { Tip, TipSession, TipSeverity } from '../../shared/tuning.js';
 
 import type { TuningAgent } from './agent.js';
 import { inAgentWords, ruleFits, ruleKnobs } from './agent.js';
-import type { FixContext } from './fixes.js';
+import type { FixContext } from './fix-context.js';
 import { autoFixesFor } from './fixes.js';
 import { impactOf } from './impact.js';
 import type { SessionMeasure } from './measure.js';

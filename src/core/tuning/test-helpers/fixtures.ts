@@ -31,6 +31,7 @@ export function measureOf(overrides: Partial<SessionMeasure> = {}): SessionMeasu
     denials: 0,
     bashCommands: 10,
     cdCommands: 0,
+    cdTargets: {},
     spawns: {},
     subagentRequests: 0,
     premiumSubagentRequests: 0,

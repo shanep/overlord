@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { AutoFix } from '../../shared/tuning.js';
 
-import type { FixContext } from './fixes.js';
+import type { FixContext } from './fix-context.js';
 import { autoFixesFor, unusedTools } from './fixes.js';
 import type { SessionMeasure } from './measure.js';
 import { zeroSpend } from './spend.js';
@@ -106,7 +106,7 @@ describe('autoFixesFor', () => {
   });
 
   it('offers nothing for a tip it has no fixes for', () => {
-    expect(autoFixesFor('cd-commands', contextOf())).toStrictEqual([]);
+    expect(autoFixesFor('no-such-tip', contextOf())).toStrictEqual([]);
     expect(autoFixesFor('instructions', contextOf())).toStrictEqual([]);
   });
 });

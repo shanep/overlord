@@ -92,6 +92,7 @@ const measureSchema = z.object({
   denials: count,
   bashCommands: count,
   cdCommands: count,
+  cdTargets: z.record(z.string(), count).default({}),
   spawns: z.record(z.string(), count),
   subagentRequests: count,
   premiumSubagentRequests: count,
@@ -135,8 +136,8 @@ const measureSchema = z.object({
 
 const fileSchema = z.object({
   // Bump when the measure changes meaning, so old entries are measured again.
-  // Versions 2 to 4 lack the hours, the stack or the spend split, so their live entries are measured again.
-  version: z.union([z.literal(2), z.literal(3), z.literal(4), z.literal(5)]),
+  // Versions 2 to 5 lack the hours, the stack, the spend split or the cd targets, so their live entries are measured again.
+  version: z.union([z.literal(2), z.literal(3), z.literal(4), z.literal(5), z.literal(6)]),
   scannedAt: z.number().nullable(),
   entries: z.record(
     z.string(),
@@ -168,7 +169,7 @@ function parseIndex(text: string): TuningIndex | null {
   }
   const { version, entries, scannedAt } = parsed.data;
   const stale = (entry: IndexEntry): IndexEntry =>
-    version < 5 && entry.live ? { ...entry, stamp: STALE_STAMP } : entry;
+    version < 6 && entry.live ? { ...entry, stamp: STALE_STAMP } : entry;
   return {
     entries: new Map(Object.entries(entries).map(([file, entry]) => [file, stale(entry)])),
     scannedAt,
@@ -183,7 +184,7 @@ export async function loadIndex(file: string): Promise<TuningIndex> {
 
 export async function saveIndex(file: string, index: TuningIndex): Promise<void> {
   const data: z.input<typeof fileSchema> = {
-    version: 5,
+    version: 6,
     scannedAt: index.scannedAt,
     entries: Object.fromEntries(index.entries),
   };

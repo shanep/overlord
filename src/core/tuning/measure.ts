@@ -14,6 +14,7 @@ import { parseTimestamp, parseTranscriptLine } from '../transcripts/schemas.js';
 import { resultText } from '../transcripts/text.js';
 
 import { attribute } from './attribute.js';
+import { cdTarget } from './cd-target.js';
 import type { CostSplit, Usage } from './cost.js';
 import { addCost, costOfUsage, firstUsage, overCap, ZERO_COST } from './cost.js';
 import type { CommandFamily } from './families.js';
@@ -74,6 +75,8 @@ export interface SessionMeasure {
   readonly bashCommands: number;
   /** Shell commands that start with cd. */
   readonly cdCommands: number;
+  /** Folders outside the session folder that a leading cd went to, with counts, the most used first. */
+  readonly cdTargets: Readonly<Record<string, number>>;
   /** Subagents spawned, by agent type. */
   readonly spawns: Readonly<Record<string, number>>;
   readonly subagentRequests: number;
@@ -124,6 +127,7 @@ const IDLE_REWRITE_MIN_TOKENS = 50_000;
 const TITLE_CHARS = 80;
 const TOP_FILES = 12;
 const COMMAND_CHARS = 120;
+const TOP_CD_TARGETS = 8;
 
 const DENIAL =
   /doesn't want to proceed|denied by (?:the )?(?:Claude Code )?auto[- ]mode|permission to use \S+ (?:has been|was) denied/iu;
@@ -195,6 +199,7 @@ class MainTally {
   denials = 0;
   bashCommands = 0;
   cdCommands = 0;
+  readonly cdTargets = new Map<string, number>();
   readonly reads = new Map<string, number>();
   readonly commands = new Map<string, number>();
   readonly spawns = new Map<string, number>();
@@ -294,6 +299,10 @@ class MainTally {
     this.bashCommands += 1;
     this.stack.command(command);
     this.cdCommands += CD_FIRST.test(command) ? 1 : 0;
+    const target = cdTarget(command, this.cwd);
+    if (target !== null) {
+      bump(this.cdTargets, target);
+    }
     const trimmed = command.trim();
     if (trimmed !== '') {
       bump(this.commands, trimmed);
@@ -375,6 +384,9 @@ export function measureSession(input: MeasureInput): SessionMeasure {
     denials: main.denials,
     bashCommands: main.bashCommands,
     cdCommands: main.cdCommands,
+    cdTargets: Object.fromEntries(
+      [...main.cdTargets].toSorted((left, right) => right[1] - left[1]).slice(0, TOP_CD_TARGETS),
+    ),
     spawns: Object.fromEntries(main.spawns),
     subagentRequests: sub.requests,
     premiumSubagentRequests: sub.premium,

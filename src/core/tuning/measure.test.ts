@@ -257,6 +257,7 @@ describe('measureSession', () => {
     ]);
     expect(result.bashCommands).toBe(26);
     expect(result.cdCommands).toBe(4);
+    expect(result.cdTargets).toStrictEqual({ '/x': 4 });
     // Four runs of one command and three of another: (4 - 2) + (3 - 2).
     expect(result.repeatedRuns).toBe(3);
     expect(result.topRepeat).toStrictEqual({ command: 'cd /x && npm test', runs: 4 });

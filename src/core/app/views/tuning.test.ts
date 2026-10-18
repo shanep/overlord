@@ -97,7 +97,7 @@ describe('buildTuning', () => {
     const saved: unknown = JSON.parse(
       await readFile(path.join(env.storageDir, TUNING_FILE), 'utf8'),
     );
-    expect(saved).toMatchObject({ version: 5, scannedAt: NOW });
+    expect(saved).toMatchObject({ version: 6, scannedAt: NOW });
   });
 
   it('writes nothing for an empty home', async () => {
