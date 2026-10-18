@@ -4,16 +4,23 @@
 // fails on a prompt that starts with a dash. Flags checked against `copilot
 // --help` in 1.0.89.
 
+import path from 'node:path';
+
 import type { HandoffKind } from '../../../shared/protocol.js';
+import { sourceError } from '../../surfaces/common.js';
+import type { Collected } from '../../surfaces/common.js';
 import type { HandoffCommand } from '../../surfaces/handoff.js';
-import type { LiveProcess } from '../../surfaces/live.js';
+import type { RegistryEntry, LiveProcess } from '../../surfaces/live.js';
 import type { TerminalFacet, TerminalStart } from '../types.js';
 
 import { COPILOT_SHORT } from './capabilities.js';
 import { copilotModeFlags } from './config.js';
+import { scanCopilotSessions } from './observer.js';
+import { readWorkspace, WORKSPACE_FILE } from './workspace.js';
 
 export const COPILOT_BINARY = 'copilot';
 const PS_TIMEOUT_MS = 5000;
+const SOURCE = 'copilot-registry';
 
 /** The flags that name the session a copilot process runs. */
 const SESSION_FLAGS = ['--session-id', '--resume', '-r'];
@@ -89,6 +96,53 @@ function liveProcess(sessionId: string, pid: number): LiveProcess {
   };
 }
 
+async function copilotRegistry(
+  sources: Parameters<NonNullable<TerminalFacet['registry']>>[0],
+): Promise<Collected<RegistryEntry>> {
+  let ps = sources.processTable;
+  if (ps === null) {
+    return { items: [], errors: [] };
+  }
+  if (ps === undefined) {
+    try {
+      const result = await sources.exec('ps', ['-A', '-o', 'pid=,ppid=,args='], {
+        timeoutMs: PS_TIMEOUT_MS,
+      });
+      ps = result.stdout;
+    } catch (error: unknown) {
+      return { items: [], errors: [sourceError(SOURCE, error, null)] };
+    }
+  }
+  const stateDir = path.join(sources.paths.home, '.copilot', 'session-state');
+  const sessions = await scanCopilotSessions(stateDir);
+  const items = await Promise.all(
+    sessions.map(async (session): Promise<RegistryEntry | null> => {
+      const pid = findCopilot(ps, session.sessionId);
+      if (pid === null || !sources.isAlive(pid)) {
+        return null;
+      }
+      const workspace = await readWorkspace(
+        path.join(path.dirname(session.transcriptPath), WORKSPACE_FILE),
+      );
+      return {
+        pid,
+        sessionId: session.sessionId,
+        cwd: workspace?.cwd ?? null,
+        kind: 'interactive',
+        entrypoint: null,
+        status: null,
+        statusUpdatedAt: null,
+        startedAt: null,
+        updatedAt: null,
+        name: workspace?.name ?? null,
+        version: null,
+        messagingSocketPath: null,
+      };
+    }),
+  );
+  return { items: items.filter((item): item is RegistryEntry => item !== null), errors: [] };
+}
+
 function resumeArgs(sessionId: string): string[] {
   return [`--resume=${sessionId}`];
 }
@@ -122,6 +176,7 @@ export const copilotTerminal: TerminalFacet = {
   // Copilot shuts down on SIGINT, the same as on SIGTERM, so only Esc in its tab stops a turn.
   interruptSignal: null,
   tabName: (label) => `${COPILOT_SHORT} ${label}`,
+  registry: copilotRegistry,
   findLive: async (sources, sessionId) => {
     let ps = '';
     try {

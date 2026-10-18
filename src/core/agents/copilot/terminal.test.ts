@@ -61,6 +61,17 @@ function sources(
   };
 }
 
+/** A session Copilot left on disk, run in cwd. */
+async function writeSession(copilotHome: string, cwd: string): Promise<void> {
+  const dir = path.join(copilotHome, 'session-state', ID);
+  await mkdir(dir, { recursive: true });
+  await copyFile(FIXTURE, path.join(dir, 'events.jsonl'));
+  await writeFile(
+    path.join(dir, 'workspace.yaml'),
+    `id: ${ID}\ncwd: ${cwd}\nname: Reply with the word ok\n`,
+  );
+}
+
 describe('copilotTerminal', () => {
   it('picks a new session id up front and passes a first prompt that starts with a dash', () => {
     expect(copilotTerminal.command).toBe('copilot');
@@ -131,6 +142,30 @@ describe('copilotTerminal', () => {
     };
     expect(await copilotTerminal.findLive(failing, ID)).toBeUndefined();
   });
+
+  it('lists a live Copilot terminal session for Fleet placement', async () => {
+    const { paths } = await makeEnv();
+    await writeSession(path.join(paths.home, '.copilot'), '/work/repo');
+    expect(await copilotTerminal.registry?.(sources(paths, PS))).toStrictEqual({
+      items: [
+        {
+          pid: 200,
+          sessionId: ID,
+          cwd: '/work/repo',
+          kind: 'interactive',
+          entrypoint: null,
+          status: null,
+          statusUpdatedAt: null,
+          startedAt: null,
+          updatedAt: null,
+          name: 'Reply with the word ok',
+          version: null,
+          messagingSocketPath: null,
+        },
+      ],
+      errors: [],
+    });
+  });
 });
 
 /** An app whose login shell finds a fake copilot, with Copilot's files in their own home. */
@@ -148,17 +183,6 @@ async function copilotApp(): Promise<{ readonly test: TestApp; readonly copilotH
     deps: { env: { PATH: bin, COPILOT_HOME: copilotHome } },
   });
   return { test, copilotHome };
-}
-
-/** A session Copilot left on disk, run in cwd. */
-async function writeSession(copilotHome: string, cwd: string): Promise<void> {
-  const dir = path.join(copilotHome, 'session-state', ID);
-  await mkdir(dir, { recursive: true });
-  await copyFile(FIXTURE, path.join(dir, 'events.jsonl'));
-  await writeFile(
-    path.join(dir, 'workspace.yaml'),
-    `id: ${ID}\ncwd: ${cwd}\nname: Reply with the word ok\n`,
-  );
 }
 
 describe('a Copilot tab', () => {

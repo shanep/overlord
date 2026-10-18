@@ -115,6 +115,8 @@ export interface LiveSources {
   /** Throws when the command fails. */
   readonly exec: ExecFunction;
   readonly isAlive: IsAlive;
+  /** A current process table when the caller already needed one, null when no terminal is open. */
+  readonly processTable?: string | null;
 }
 
 /** A tab that starts a session or continues one. */

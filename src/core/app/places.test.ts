@@ -102,7 +102,9 @@ describe('SessionPlaces', () => {
 
     await h.places.refresh();
     expect(h.changes).toBe(1);
-    expect(h.psCalls).toHaveLength(1);
+    // Copilot records its sessions on disk, so placement polls ps to see
+    // whether an observed session still has a terminal process.
+    expect(h.psCalls).toHaveLength(2);
 
     h.terminals = [];
     await h.places.refresh();
@@ -112,7 +114,7 @@ describe('SessionPlaces', () => {
       bg: 'background',
     });
     expect(h.changes).toBe(2);
-    expect(h.psCalls).toHaveLength(1);
+    expect(h.psCalls).toHaveLength(2);
     // The fleet holds what a terminal shows, never a background session.
     expect(h.kept).toStrictEqual([
       ['elsewhere', 'here'],

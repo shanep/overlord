@@ -1,9 +1,9 @@
 // Keeps each live session's place (VS Code terminal, other terminal or
 // background) and its busy, idle or waiting status current for the fleet. The session
 // registry is cheap to read, so it is polled every second, which is what
-// makes a row's state icon follow the session closely. `ps` runs only when the
-// interactive processes or the terminals change, and panels hear about it
-// only when a place, a pid or a status changes. Every agent that keeps a
+// makes a row's state icon follow the session closely. Some registries need a
+// process table to connect observed sessions to terminals. Panels hear about
+// it only when a place, a pid or a status changes. Every agent that keeps a
 // registry of its running sessions is read, through its terminal facet.
 
 import type { SessionPlace } from '../../shared/model.js';
@@ -64,8 +64,11 @@ function statusesOf(live: readonly RegistryEntry[]): Record<string, RegistryStat
 }
 
 /** What every agent's registry lists, in agent order. */
-async function readRegistries(deps: PlacesDeps): Promise<Collected<RegistryEntry>> {
-  const sources = { paths: deps.paths, exec: deps.exec, isAlive: deps.isAlive };
+async function readRegistries(
+  deps: PlacesDeps,
+  processTable: string | null,
+): Promise<Collected<RegistryEntry>> {
+  const sources = { paths: deps.paths, exec: deps.exec, isAlive: deps.isAlive, processTable };
   const lists = await Promise.all(
     terminalAgents().map(async ({ terminal }): Promise<Collected<RegistryEntry>> =>
       terminal.registry === undefined ? { items: [], errors: [] } : terminal.registry(sources),
@@ -197,18 +200,23 @@ export class SessionPlaces {
 
   private async load(): Promise<void> {
     try {
-      const [registry, terminals] = await Promise.all([
-        readRegistries(this.deps),
-        this.deps.terminalPids(),
-      ]);
+      const terminals = await this.deps.terminalPids();
+      const roots = new Set(terminals);
+      const process =
+        roots.size === 0
+          ? null
+          : await this.deps.exec('ps', ['-A', '-o', 'pid=,ppid=,args='], {
+              timeoutMs: PS_TIMEOUT_MS,
+            });
+      const processTable = process?.stdout ?? null;
+      const registry = await readRegistries(this.deps, processTable);
       const live = liveEntries(registry.items, this.deps.isAlive);
       // A registry that failed to read would make every session look exited.
       if (registry.errors.length === 0) {
         this.noteExits(live);
       }
       this.live = live;
-      const roots = new Set(terminals);
-      await this.readTree(live, roots);
+      this.readTree(live, roots, processTable);
       this.placements = placeSessions(live, this.parents, roots, this.attaches);
       const next = Object.fromEntries(
         [...this.placements].map(([sessionId, placement]) => [sessionId, placement.place]),
@@ -250,10 +258,11 @@ export class SessionPlaces {
    * interactive session to its terminal, and a background session to the tab
    * attached to it, such as `claude attach`.
    */
-  private async readTree(
+  private readTree(
     live: readonly RegistryEntry[],
     roots: ReadonlySet<number>,
-  ): Promise<void> {
+    processTable: string | null,
+  ): void {
     const placed = live.filter(
       (entry) => entry.kind === 'interactive' || entry.kind === 'background',
     );
@@ -271,11 +280,9 @@ export class SessionPlaces {
       this.parents = new Map();
       this.attaches = [];
     } else {
-      const ps = await this.deps.exec('ps', ['-A', '-o', 'pid=,ppid=,args='], {
-        timeoutMs: PS_TIMEOUT_MS,
-      });
-      this.parents = parseProcessTable(ps.stdout);
-      this.attaches = attachClients(ps.stdout);
+      const ps = processTable ?? '';
+      this.parents = parseProcessTable(ps);
+      this.attaches = attachClients(ps);
     }
     this.treeKey = key;
   }
