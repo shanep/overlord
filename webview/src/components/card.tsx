@@ -184,10 +184,15 @@ export function StatTile(props: {
   readonly tone?: Tone | undefined;
   /** A hover note, such as the exact number behind a rounded one. */
   readonly title?: string | undefined;
+  /** A small icon before the label, such as the agent the number belongs to. */
+  readonly icon?: ReactNode;
 }): ReactElement {
   return (
     <div className={cardClassName({ tone: props.tone, extra: 'tile' })} title={props.title}>
-      <dt className="tile-label">{props.label}</dt>
+      <dt className="tile-label">
+        {props.icon}
+        {props.label}
+      </dt>
       <dd className="tile-value">{props.value}</dd>
       {props.detail === undefined ? null : <dd className="tile-detail">{props.detail}</dd>}
     </div>

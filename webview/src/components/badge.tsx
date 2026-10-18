@@ -95,7 +95,7 @@ const BACKENDS: Readonly<Record<ModelBackend, { readonly logo: string; readonly 
 };
 
 /** Clawd for a session on Anthropic, the Boise State B for one on the boisestate.ai bridge. */
-function BackendLogo(props: { readonly backend: ModelBackend }): ReactElement {
+export function BackendLogo(props: { readonly backend: ModelBackend }): ReactElement {
   return <img className="backend-logo" src={BACKENDS[props.backend].logo} alt="" />;
 }
 
@@ -104,7 +104,7 @@ export function AgentLogo(props: { readonly agent: AgentInfo }): ReactElement {
   return props.agent.id === CLAUDE_CODE ? (
     <BackendLogo backend="anthropic" />
   ) : (
-    <Icon name={agentIcon(props.agent.icon)} />
+    <Icon name={agentIcon(props.agent)} />
   );
 }
 
@@ -130,7 +130,7 @@ export function AgentMark(props: {
   const on = backend === null ? '' : ` on ${BACKENDS[backend].name}`;
   return (
     <span className="agent-mark" data-tip={`Agent: ${agent.name}${version}${on}`}>
-      {backend === null ? <Icon name={agentIcon(agent.icon)} /> : <BackendLogo backend={backend} />}
+      {backend === null ? <Icon name={agentIcon(agent)} /> : <BackendLogo backend={backend} />}
       <span className="agent-mark-name">{agent.short}</span>
     </span>
   );

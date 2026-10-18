@@ -55,7 +55,7 @@ export function NewSessionMenu(props: {
                 post({ type: 'newSession', agent: agent.id });
               }}
             >
-              <Icon name={agentIcon(agent.icon)} />
+              <Icon name={agentIcon(agent)} />
               {agent.name}
             </button>
           ))}

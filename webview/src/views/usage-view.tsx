@@ -5,13 +5,14 @@ import type { ReactElement } from 'react';
 import { useMemo } from 'react';
 
 import type { RateLimitWindow } from '../../../src/shared/agents.js';
+import { CLAUDE_CODE } from '../../../src/shared/agents.js';
 import type {
   ClimateEstimate,
   PlanLimit,
   PlanLimits,
   UsageState,
 } from '../../../src/shared/protocol.js';
-import { knowsClaude, useAgents } from '../agents.js';
+import { findAgent, knowsClaude, useAgents } from '../agents.js';
 import { useChartTheme } from '../charts/chart-theme.js';
 import {
   buildDailyUsage,
@@ -26,6 +27,7 @@ import { AgentLogo } from '../components/badge.js';
 import { Card, CardGrid, StatTile, StatTiles, StatusDot } from '../components/card.js';
 import type { FigureTable } from '../components/chart-figure.js';
 import { ChartFigure } from '../components/chart-figure.js';
+import { Icon } from '../components/icon.js';
 import { Meter, meterTone } from '../components/meter.js';
 import {
   formatAgo,
@@ -97,6 +99,7 @@ function resetText(limit: PlanLimit, now: number): string {
 function PlanSection(props: { readonly plan: PlanLimits | null }): ReactElement | null {
   const { plan } = props;
   const now = useNow();
+  const claude = findAgent(useAgents(), CLAUDE_CODE);
   if (plan === null || plan.limits.length === 0) {
     return null;
   }
@@ -115,7 +118,10 @@ function PlanSection(props: { readonly plan: PlanLimits | null }): ReactElement 
             <Card key={`${limit.kind}:${limit.label}`} tone={tone}>
               <div className="card-head">
                 <StatusDot tone={tone} />
-                <span className="card-title">{limit.label}</span>
+                <span className="card-title">
+                  <AgentLogo agent={claude} />
+                  {limit.label}
+                </span>
               </div>
               <Meter label={`${limit.label} used`} ratio={limit.percent / 100} tone={tone} />
               <span
@@ -202,11 +208,31 @@ function ClimateSection(props: { readonly climate: ClimateEstimate }): ReactElem
         Climate impact (estimate)
       </h2>
       <StatTiles label="Climate impact">
-        <StatTile label="Energy" value={`${formatAmount(climate.energyKwh)} kWh`} />
-        <StatTile label="CO2e" value={`${formatAmount(climate.co2eKg)} kg`} />
-        <StatTile label="Cooling water" value={`${formatAmount(climate.waterLiters)} L`} />
-        <StatTile label="Same as driving" value={`${formatAmount(climate.drivingMiles)} miles`} />
-        <StatTile label="Same as a US home for" value={`${formatAmount(climate.homeDays)} days`} />
+        <StatTile
+          icon={<Icon name="energy" />}
+          label="Energy"
+          value={`${formatAmount(climate.energyKwh)} kWh`}
+        />
+        <StatTile
+          icon={<Icon name="emissions" />}
+          label="CO2e"
+          value={`${formatAmount(climate.co2eKg)} kg`}
+        />
+        <StatTile
+          icon={<Icon name="water" />}
+          label="Cooling water"
+          value={`${formatAmount(climate.waterLiters)} L`}
+        />
+        <StatTile
+          icon={<Icon name="driving" />}
+          label="Same as driving"
+          value={`${formatAmount(climate.drivingMiles)} miles`}
+        />
+        <StatTile
+          icon={<Icon name="home" />}
+          label="Same as a US home for"
+          value={`${formatAmount(climate.homeDays)} days`}
+        />
       </StatTiles>
       <details className="about">
         <summary>How this is worked out</summary>

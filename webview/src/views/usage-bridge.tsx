@@ -11,6 +11,7 @@ import type {
 } from '../../../src/shared/bridge-usage.js';
 import { BOISESTATE_USAGE_URL } from '../../../src/shared/bridge-usage.js';
 import { useNow } from '../clock.js';
+import { BackendLogo } from '../components/badge.js';
 import { cardClassName, StatTile, StatTiles, StatusDot } from '../components/card.js';
 import { Meter } from '../components/meter.js';
 import { formatCompact, formatDateTime, formatInteger } from '../format.js';
@@ -127,7 +128,10 @@ function QuotaCard(props: { readonly quota: BridgeQuota }): ReactElement {
     >
       <div className="card-head">
         <StatusDot tone={tone} />
-        <span className="card-title">{`This month: ${formatUsd(quota.spentUsd)} of ${formatUsd(quota.limitUsd)}`}</span>
+        <span className="card-title">
+          <BackendLogo backend="boisestate" />
+          {`This month: ${formatUsd(quota.spentUsd)} of ${formatUsd(quota.limitUsd)}`}
+        </span>
         {percent >= 100 ? <span className="chip">Used up</span> : null}
       </div>
       <Meter label="Boise State quota used" ratio={Math.min(1, percent / 100)} tone={tone} />
@@ -151,6 +155,7 @@ export function BridgeSection(props: {
   const today = bridgeTotals(bridge, localDate(now));
   const week = bridgeTotals(bridge, localDate(now - WEEK_MS + 24 * 60 * 60_000));
   const all = bridgeTotals(bridge);
+  const logo = <BackendLogo backend="boisestate" />;
   const days = bridge.days
     .toReversed()
     .slice(0, BRIDGE_DAYS)
@@ -162,9 +167,9 @@ export function BridgeSection(props: {
       </h2>
       <QuotaCard quota={bridge.quota} />
       <StatTiles label="Boise State usage">
-        <StatTile label="Today" value={tokens(today)} detail={detail(today)} />
-        <StatTile label="Last 7 days" value={tokens(week)} detail={detail(week)} />
-        <StatTile label="All time" value={tokens(all)} detail={detail(all)} />
+        <StatTile icon={logo} label="Today" value={tokens(today)} detail={detail(today)} />
+        <StatTile icon={logo} label="Last 7 days" value={tokens(week)} detail={detail(week)} />
+        <StatTile icon={logo} label="All time" value={tokens(all)} detail={detail(all)} />
       </StatTiles>
       <details className="about">
         <summary>How this is counted</summary>

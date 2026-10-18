@@ -505,6 +505,19 @@ details.panel[open] > summary,
   font-size: 0.85em;
 }
 
+/* An icon before a tile's label: the agent the number is about, or what it measures. */
+.tile-label .icon,
+.tile-label .backend-logo {
+  display: inline-block;
+  height: 12px;
+  margin-right: 4px;
+  vertical-align: -1px;
+}
+
+.tile-label .icon {
+  width: 12px;
+}
+
 /* One line, so a long value such as a model name is cut short instead of wrapping. */
 .tile-value {
   margin: 0;
