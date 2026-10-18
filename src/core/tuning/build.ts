@@ -53,7 +53,7 @@ const NO_ENV: FixEnv = {
   installed: new Set(),
   home: '',
   projectOf: (cwd) => cwd,
-  exists: () => false,
+  modifiedAt: () => null,
 };
 
 /** Every text of a rule that shows, to check the agent has a word for each name in it. */

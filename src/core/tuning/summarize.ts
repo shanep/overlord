@@ -34,8 +34,8 @@ export interface SummaryInputs {
   readonly knob?: (key: string) => unknown;
   /** The repository a session folder belongs to. Unset treats each folder as its own. */
   readonly projectOf?: (cwd: string) => string;
-  /** True when a folder is there to start a session in. Unset offers no sessions to start. */
-  readonly exists?: (folder: string) => boolean;
+  /** When a path last changed, or null when it is not there. Unset offers no sessions to start. */
+  readonly modifiedAt?: (path: string) => number | null;
 }
 
 export function summarize(inputs: SummaryInputs): TuningState {
@@ -43,7 +43,7 @@ export function summarize(inputs: SummaryInputs): TuningState {
   const measures = inputs.measures.filter((measure) => measure.requests > 0);
   const totals = totalsOf(measures, inputs.home);
   const projectOf = inputs.projectOf ?? ((cwd: string): string => cwd);
-  const hot = hotFiles(measures, projectOf);
+  const hot = hotFiles(measures, projectOf, inputs.modifiedAt);
   const tips = buildTips({
     totals,
     live: measures,
@@ -56,7 +56,7 @@ export function summarize(inputs: SummaryInputs): TuningState {
       installed: inputs.installed,
       home: inputs.home,
       projectOf,
-      exists: inputs.exists ?? ((): boolean => false),
+      modifiedAt: inputs.modifiedAt ?? ((): null => null),
     },
   });
   const unused = new Set(unusedTools(totals).map((tool) => tool.name));

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { EMPTY_PICKS } from '../../shared/tuning.js';
 
+import { zeroSpend } from './spend.js';
 import { summarize } from './summarize.js';
 import { HOME, measureOf } from './test-helpers/fixtures.js';
 
@@ -69,6 +70,34 @@ describe('summarize', () => {
       picks: EMPTY_PICKS,
     });
     expect(state).toMatchObject({ sessions: 0, averageContext: 0, largestContext: 0, rows: [] });
+  });
+
+  it('treats each folder as its own project and offers no sessions to start unless told', () => {
+    const measures = ['s1', 's2', 's3', 's4', 's5'].map((sessionId) =>
+      measureOf({
+        sessionId,
+        cwd: '/r',
+        cost: { input: 0, output: 0, cacheRead: 4, cacheWrite: 0 },
+        spend: { ...zeroSpend(), setup: 2, fileReads: 1 },
+        toolSchemas: { Artifact: 0.5 },
+        files: { '/r/src/a.ts': 0.1 },
+      }),
+    );
+    const state = summarize({
+      ...NONE,
+      measures,
+      installed: new Set(),
+      home: HOME,
+      scannedAt: null,
+      plan: null,
+      picks: EMPTY_PICKS,
+    });
+    expect(state.hotFiles).toStrictEqual([
+      { project: '/r', path: 'src/a.ts', sessions: 5, usd: expect.closeTo(0.5) as number },
+    ]);
+    expect(state.costly[0]?.causes.map((cause) => cause.tipId)).toContain('unused-tools');
+    const reads = state.tips.find((tip) => tip.id === 'file-reads');
+    expect(reads?.autoFixes.map((fix) => fix.kind)).toStrictEqual(['create']);
   });
 
   it('keeps the 200 most expensive sessions', () => {

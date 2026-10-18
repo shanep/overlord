@@ -4,7 +4,6 @@
 // is a synchronous read of both; a rescan runs in the background when the
 // last one started more than a minute ago, and the panels re-render after.
 
-import { existsSync } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -14,6 +13,7 @@ import type { PickTopic } from '../../catalog/picks.js';
 import { installKey } from '../../catalog/picks.js';
 import type { AdviceStep } from '../../tuning/build.js';
 import { tipsTakenBy } from '../../tuning/build.js';
+import { knobReader, modifiedCheck } from '../../tuning/readers.js';
 import { scanInto } from '../../tuning/scan.js';
 import type { TuningIndex } from '../../tuning/store.js';
 import { loadIndex, saveIndex } from '../../tuning/store.js';
@@ -236,29 +236,6 @@ export function tuningPicks(rt: Runtime): TuningPicks {
   return picksOf(rt, entryFor(rt));
 }
 
-/** A Claude Code setting as the user layer has it, or as it takes effect when that layer does not set it. */
-function knobReader(rt: Runtime): (key: string) => unknown {
-  const effective = knobsOf(rt.caches.knobs.value).effective;
-  return (key) => {
-    const found =
-      effective.find((value) => value.key === key) ??
-      effective.find((value) => value.key === `env.${key}`);
-    return found?.chain.find((link) => link.layer === 'user')?.value ?? found?.value;
-  };
-}
-
-function folderCheck(): (folder: string) => boolean {
-  const known = new Map<string, boolean>();
-  return (folder) => {
-    let found = known.get(folder);
-    if (found === undefined) {
-      found = existsSync(folder);
-      known.set(folder, found);
-    }
-    return found;
-  };
-}
-
 function stateOf(rt: Runtime, entry: Entry): TuningState {
   if (entry.saved === null) {
     return EMPTY_TUNING;
@@ -275,9 +252,9 @@ function stateOf(rt: Runtime, entry: Entry): TuningState {
     scannedAt: index.scannedAt,
     plan: currentPlan(rt),
     picks: picksOf(rt, entry).view(installedNames(rt)),
-    knob: knobReader(rt),
+    knob: knobReader(knobsOf(rt.caches.knobs.value).effective),
     projectOf: rt.worktrees.projectFor,
-    exists: folderCheck(),
+    modifiedAt: modifiedCheck(),
   });
 }
 

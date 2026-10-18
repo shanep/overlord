@@ -175,3 +175,209 @@ describe('attribute', () => {
     expect(skillName('/home/me/.claude/skills/voice/')).toBe('voice');
   });
 });
+
+/** An assistant record with exactly this usage on Opus 5.5. */
+function exact(
+  id: string,
+  spec: Parameters<typeof usage>[0],
+  content: readonly Fields[] = [],
+  model: string | null = 'claude-opus-5-5',
+): Fields {
+  const record = assistant({ uuid: `a-${id}`, at: 0, messageId: id, content, usage: usage(spec) });
+  const message = record['message'] as Fields;
+  return { ...record, message: { ...message, model: model ?? undefined } };
+}
+
+const PROMPT = 'p'.repeat(3600);
+
+describe('attribute, to the cent', () => {
+  it('splits each request between setup and what was in context, by size', () => {
+    const result = attribute(
+      lines([
+        exact('r1', { input: 1000, cacheRead: 2000, cacheCreation: 7000, output: 50 }),
+        userPrompt('p1', 1, PROMPT),
+        exact('r2', { cacheRead: 11_000 }),
+      ]),
+      DEFAULT_PRICES,
+    );
+    // r1: 1000 * $4 + 2000 * $0.2 + 7000 * $5 per million, all setup. r2: $0.0022, a tenth of it the prompt.
+    expect(result.spend.setup).toBeCloseTo(0.0394 + 0.002, 12);
+    expect(result.spend.conversation).toBeCloseTo(0.0002, 12);
+    expect(result.spend.output).toBeCloseTo(0.001, 12);
+    expect(result.heavy).toStrictEqual([
+      {
+        source: 'conversation',
+        label: 'prompt',
+        tokens: 1000,
+        usd: expect.closeTo(0.0002, 12) as number,
+      },
+    ]);
+  });
+
+  it('measures setup from the first request, less what was already in context', () => {
+    const result = attribute(
+      lines([userPrompt('p1', 0, PROMPT), exact('r1', { cacheRead: 10_000 })]),
+      DEFAULT_PRICES,
+    );
+    expect(result.spend.setup).toBeCloseTo(0.0018, 12);
+    expect(result.spend.conversation).toBeCloseTo(0.0002, 12);
+  });
+
+  it('waits for a request with context before measuring setup, and counts each request once', () => {
+    const result = attribute(
+      lines([
+        exact('r0', { output: 10 }),
+        exact('r0', { output: 10 }),
+        userPrompt('p1', 0, PROMPT),
+        exact('r1', { cacheRead: 2000 }),
+        exact('r1', { cacheRead: 2000 }),
+        exact('r2', { cacheRead: 3000 }),
+      ]),
+      DEFAULT_PRICES,
+    );
+    expect(result.spend.output).toBeCloseTo(0.0002, 12);
+    // r1 sets setup at 1000 tokens, so the prompt is half of r1 and two thirds of r2.
+    expect(result.spend.setup).toBeCloseTo(0.0002 + 0.0002, 12);
+    expect(result.spend.conversation).toBeCloseTo(0.0002 + 0.0004, 12);
+  });
+
+  it('charges nothing for a model it has no price for, or a usage it cannot read', () => {
+    const result = attribute(
+      lines([
+        exact('r1', { cacheRead: 5000 }, [], null),
+        exact('r2', { cacheRead: 5000 }, [], 'gpt-5'),
+        {
+          ...exact('r3', {}),
+          message: {
+            id: 'r3',
+            model: 'claude-opus-5-5',
+            content: [],
+            usage: { input_tokens: '9' },
+          },
+        },
+      ]),
+      DEFAULT_PRICES,
+    );
+    expect(Object.values(result.spend).every((value) => value === 0)).toBe(true);
+  });
+
+  it('keeps the six heaviest pieces, heaviest first', () => {
+    const records: Fields[] = [exact('r0', { cacheRead: 1000 })];
+    for (const size of [1, 7, 3, 5, 2, 6, 4]) {
+      records.push(userPrompt(`p${String(size)}`, 0, 'x'.repeat(size * 360)));
+    }
+    records.push(exact('r1', { cacheRead: 1000 + 28 * 100 }));
+    const result = attribute(lines(records), DEFAULT_PRICES);
+    expect(result.heavy.map((item) => item.tokens)).toStrictEqual([700, 600, 500, 400, 300, 200]);
+  });
+
+  it('records nothing for a piece that never went out with a request', () => {
+    const result = attribute(
+      lines([
+        exact('r1', { cacheRead: 1000 }, [toolUse('t1', 'Read', { file_path: '/r/a.ts' })]),
+        toolResult('u1', 1, [{ toolUseId: 't1', text: FILE }]),
+      ]),
+      DEFAULT_PRICES,
+    );
+    expect(result.files).toStrictEqual({});
+    expect(result.heavy).toStrictEqual([]);
+  });
+
+  it('sorts user text, compaction summaries, results and assistant blocks', () => {
+    const result = attribute(
+      lines([
+        exact('r1', { cacheRead: 1000 }, [
+          text('r'.repeat(360)),
+          { type: 'thinking', thinking: 't'.repeat(720) },
+          { type: 'thinking' },
+          toolUse('t1', 'Bash', { command: 'npm test a.ts' }),
+          toolUse('t1', 'Bash', { command: 'npm test a.ts' }),
+          { type: 'tool_use', id: 't2' },
+          { type: 'tool_use', name: 'Read' },
+        ]),
+        toolResult('u1', 1, [
+          { toolUseId: 't1', text: 'o'.repeat(360) },
+          { toolUseId: 'missing', text: 'm'.repeat(360) },
+        ]),
+        userPrompt('m1', 1, 'reminder text', { isMeta: true }),
+        {
+          ...userPrompt('m2', 1, ''),
+          message: {
+            role: 'user',
+            content: [{ type: 'text', text: 'typed' }, { type: 'text' }, { type: 'image' }],
+          },
+        },
+        exact('r2', { cacheRead: 10_000 }),
+      ]),
+      DEFAULT_PRICES,
+    );
+    expect(result.toolUses).toStrictEqual({ Bash: 1, tool: 1 });
+    expect(result.files).toStrictEqual({});
+    const labels = result.heavy.map((item) => [item.source, item.label]);
+    expect(labels).toContainEqual(['conversation', 'thinking']);
+    expect(labels).toContainEqual(['conversation', 'reply']);
+    expect(labels).toContainEqual(['toolOutput', 'Bash npm test a.ts']);
+    expect(labels).toContainEqual(['toolOutput', '?']);
+    expect(result.spend.reminders).toBeGreaterThan(0);
+    expect(result.spend.toolInputs).toBeGreaterThan(0);
+  });
+
+  it('starts over after a compaction summary', () => {
+    const result = attribute(
+      lines([
+        exact('r1', { cacheRead: 1000 }),
+        userPrompt('p1', 0, PROMPT),
+        { ...userPrompt('c1', 0, 's'.repeat(360)), isCompactSummary: true },
+        exact('r2', { cacheRead: 1100 }),
+      ]),
+      DEFAULT_PRICES,
+    );
+    expect(result.spend.conversation).toBeCloseTo(0.00002, 12);
+    expect(result.heavy.map((item) => item.label)).toStrictEqual(['compact summary']);
+  });
+
+  it('splits a cat of several files evenly, and keeps the twelve that cost most', () => {
+    const names = Array.from({ length: 13 }, (_, index) => `f${String(index).padStart(2, '0')}.ts`);
+    const result = attribute(
+      lines([
+        exact('r1', { cacheRead: 1000 }, [
+          toolUse('t1', 'Bash', { command: `cat ${names.join(' ')}` }),
+          toolUse('t2', 'Read', { file_path: '/r/big.ts' }),
+        ]),
+        toolResult('u1', 1, [
+          { toolUseId: 't1', text: 'x'.repeat(13 * 360) },
+          { toolUseId: 't2', text: 'y'.repeat(3600) },
+        ]),
+        exact('r2', { cacheRead: 3000 }),
+      ]),
+      DEFAULT_PRICES,
+    );
+    const files = Object.keys(result.files);
+    expect(files).toHaveLength(12);
+    expect(files[0]).toBe('/r/big.ts');
+    expect(result.heavy[0]).toMatchObject({ label: 'Read /r/big.ts', tokens: 1000 });
+    expect(result.heavy[1]).toMatchObject({ label: 'Bash f00.ts', tokens: 100 });
+  });
+
+  it('splits setup between the system prompt and each named tool', () => {
+    const shape = { system: 'x', tools: [{ name: 'A' }, { d: 1 }] };
+    const result = attribute(
+      [
+        JSON.stringify({ type: 'api-request-shape', shape }),
+        ...lines([exact('r1', { cacheRead: 15_000 })]),
+      ],
+      DEFAULT_PRICES,
+    );
+    // '"x"' is 3 characters and '{"name":"A"}' is 12, so A gets 12 of 15.
+    expect(result.toolSchemas).toStrictEqual({ A: expect.closeTo(0.003 * 0.8, 12) as number });
+    const bare = attribute(
+      [
+        JSON.stringify({ type: 'api-request-shape', shape: { tools: [{ name: 'A' }] } }),
+        ...lines([exact('r1', { cacheRead: 14_000 })]),
+      ],
+      DEFAULT_PRICES,
+    );
+    // No system prompt reads as '""', 2 characters.
+    expect(bare.toolSchemas['A']).toBeCloseTo(0.0028 * (12 / 14), 12);
+  });
+});

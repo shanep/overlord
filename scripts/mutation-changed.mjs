@@ -3,7 +3,7 @@
 // or origin/master, and includes uncommitted changes. A changed test file
 // counts as a change to the source file it tests.
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import process from 'node:process';
 
 const base = process.env.MUTATION_BASE ?? 'origin/master';
@@ -23,12 +23,40 @@ function changedFiles() {
   return [...new Set([...committed, ...working, ...untracked])];
 }
 
+// How a line starts when it runs, as opposed to a type, an interface or a type import.
+const RUNTIME_STARTS = [
+  'const ',
+  'let ',
+  'var ',
+  'function ',
+  'async ',
+  'class ',
+  'enum ',
+  'default ',
+];
+const RUNTIME_EXPORTS = ['export {', 'export *'];
+
+function runs(line) {
+  if (RUNTIME_EXPORTS.some((start) => line.startsWith(start))) {
+    return true;
+  }
+  const code = line.startsWith('export ') ? line.slice('export '.length) : line;
+  return RUNTIME_STARTS.some((start) => code.startsWith(start));
+}
+
+/** False for a file of types only, which has nothing to mutate and no tests of its own. */
+function hasRuntimeCode(file) {
+  return readFileSync(file, 'utf8')
+    .split('\n')
+    .some((line) => runs(line));
+}
+
 function sourceFor(file) {
   if (!MUTABLE.test(file) || file.includes('/test-helpers/')) {
     return null;
   }
   const source = file.endsWith('.test.ts') ? file.replace(/\.test\.ts$/u, '.ts') : file;
-  return existsSync(source) ? source : null;
+  return existsSync(source) && hasRuntimeCode(source) ? source : null;
 }
 
 const targets = [

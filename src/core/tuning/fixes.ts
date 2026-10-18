@@ -19,7 +19,31 @@ const UNUSED_MIN_SESSIONS = 5;
 const UNUSED_MIN_USD = 0.5;
 const SMALL_OUTPUT = 15_000;
 const PROMPT_FILES = 8;
+/** Below this, a session to split the files would cost about what it saves. */
+const HOT_FIX_MIN_USD = 5;
 const HEAVY_SKILLS = 3;
+const CODE_EXTENSIONS: ReadonlySet<string> = new Set([
+  'ts',
+  'tsx',
+  'js',
+  'jsx',
+  'mjs',
+  'cjs',
+  'css',
+  'py',
+  'cs',
+  'go',
+  'rs',
+  'java',
+  'kt',
+  'swift',
+  'rb',
+  'php',
+  'c',
+  'h',
+  'cpp',
+  'hpp',
+]);
 
 export interface UnusedTool {
   readonly name: string;
@@ -39,8 +63,8 @@ export interface FixContext {
   readonly home: string;
   /** The repository a session folder belongs to. */
   readonly projectOf: (cwd: string) => string;
-  /** True when a folder is still there to start a session in. */
-  readonly exists: (folder: string) => boolean;
+  /** When a file or folder last changed, or null when it is gone. */
+  readonly modifiedAt: (path: string) => number | null;
 }
 
 /** Tools whose definitions went out with every request but that sessions almost never call. */
@@ -173,22 +197,30 @@ function worstProject(
     return null;
   }
   const project = context.projectOf(worst.cwd);
-  return context.exists(project) ? project : null;
+  return context.modifiedAt(project) === null ? null : project;
 }
 
 function lastPart(folder: string): string {
   return folder.split('/').findLast((part) => part !== '') ?? folder;
 }
 
+/** Source code, the only kind of file the fix splits. A proposal or a log is left alone. */
+function isCode(file: string): boolean {
+  const extension = file.slice(file.lastIndexOf('.') + 1).toLowerCase();
+  return CODE_EXTENSIONS.has(extension);
+}
+
 function hotFilesFix(context: FixContext): AutoFix | null {
-  const project = context.hotFiles.find(
-    (file) => file.project !== '' && context.exists(file.project),
-  )?.project;
+  const code = context.hotFiles.filter((file) => file.project !== '' && isCode(file.path));
+  const project = code.find((file) => context.modifiedAt(file.project) !== null)?.project;
   if (project === undefined) {
     return null;
   }
-  const files = context.hotFiles.filter((file) => file.project === project).slice(0, PROMPT_FILES);
+  const files = code.filter((file) => file.project === project).slice(0, PROMPT_FILES);
   const cost = files.reduce((total, file) => total + file.usd, 0);
+  if (cost < HOT_FIX_MIN_USD) {
+    return null;
+  }
   const list = files
     .map((file) => `- ${file.path}: ${usd(file.usd)} over ${plural(file.sessions, 'session')}`)
     .join('\n');
@@ -210,11 +242,28 @@ Reply with what you split and how many lines each file lost.`,
   });
 }
 
+/**
+ * What carrying the skill in `folder` cost in sessions that started after SKILL.md last changed,
+ * so a skill already slimmed is priced on its new size and not offered again for the old one.
+ */
+function costSinceChange(context: FixContext, folder: string): number {
+  const changed = context.modifiedAt(`${folder}/SKILL.md`);
+  if (changed === null) {
+    return 0;
+  }
+  let total = 0;
+  for (const measure of context.live) {
+    total += measure.startedAt >= changed ? (measure.skills[folder] ?? 0) : 0;
+  }
+  return total;
+}
+
 function skillFixes(context: FixContext): AutoFix[] {
-  return Object.entries(context.totals.skillUsd)
+  return Object.keys(context.totals.skillUsd)
+    .map((folder): [string, number] => [folder, costSinceChange(context, folder)])
     .toSorted((left, right) => right[1] - left[1])
     .slice(0, HEAVY_SKILLS)
-    .filter(([folder, cost]) => cost >= 1 && context.exists(folder))
+    .filter(([, cost]) => cost >= 1)
     .map(([folder, cost]) =>
       launchFix({
         id: `launch:skill:${folder}`,
@@ -233,8 +282,21 @@ If the folder is a git repository, commit the change. Reply with how many lines 
     );
 }
 
+/** What CLAUDE.md and memory cost in sessions that started after ~/.claude/CLAUDE.md last changed. */
+function instructionsSinceChange(context: FixContext): number {
+  const changed = context.modifiedAt(`${context.home}/.claude/CLAUDE.md`) ?? 0;
+  let total = 0;
+  for (const measure of context.live) {
+    total +=
+      measure.startedAt >= changed
+        ? measure.spend.instructions + measure.subagentSpend.instructions
+        : 0;
+  }
+  return total;
+}
+
 function instructionsFix(context: FixContext): AutoFix | null {
-  const cost = context.totals.spend.instructions;
+  const cost = instructionsSinceChange(context);
   if (cost < 1) {
     return null;
   }

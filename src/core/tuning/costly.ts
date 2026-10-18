@@ -113,7 +113,7 @@ function fileCause({ m, split }: CauseInput): CostCause {
 
 function setupCause({ m, split, unused }: CauseInput): CostCause {
   const saving = unusedSchemaUsd(m, unused);
-  const idle = saving > 0 ? ` Tools this machine never uses made up ${usd(saving)} of it.` : '';
+  const idle = saving > 0 ? ` Tools sessions here rarely call made up ${usd(saving)} of it.` : '';
   return {
     id: 'setup',
     text: `The system prompt and tool definitions went out with every request and cost ${usd(split.setup)}.${idle}`,
@@ -235,15 +235,36 @@ function insideProject(file: string): boolean {
   return !file.startsWith('/') && !file.startsWith('~') && !file.startsWith('..');
 }
 
+interface FileReads {
+  readonly project: string;
+  readonly path: string;
+  readonly reads: { readonly startedAt: number; readonly usd: number }[];
+}
+
+/** The reads of a file since it last changed, none when it is gone, or all of them when `changedAt` is not given. */
+function readsSinceChange(
+  file: FileReads,
+  changedAt: ((path: string) => number | null) | undefined,
+): FileReads['reads'] {
+  if (changedAt === undefined) {
+    return file.reads;
+  }
+  const changed = changedAt(`${file.project}/${file.path}`);
+  return changed === null ? [] : file.reads.filter((read) => read.startedAt >= changed);
+}
+
 /**
  * Files that cost the most to carry across sessions, keyed by project and
  * the path inside it, so the same file read from different worktrees adds up.
+ * With `changedAt`, only sessions that started after a file last changed count,
+ * so a file already split is priced on what it is now.
  */
 export function hotFiles(
   measures: readonly SessionMeasure[],
   projectOf: (cwd: string) => string,
+  changedAt?: (path: string) => number | null,
 ): HotFile[] {
-  const found = new Map<string, { project: string; path: string; usd: number; sessions: number }>();
+  const found = new Map<string, FileReads>();
   for (const measure of measures) {
     const cwd = measure.cwd;
     const project = cwd === null ? '' : projectOf(cwd);
@@ -254,11 +275,22 @@ export function hotFiles(
         continue;
       }
       const key = `${project}\0${inside}`;
-      const entry = found.get(key) ?? { project, path: inside, usd: 0, sessions: 0 };
-      found.set(key, { ...entry, usd: entry.usd + value, sessions: entry.sessions + 1 });
+      const entry = found.get(key) ?? { project, path: inside, reads: [] };
+      entry.reads.push({ startedAt: measure.startedAt, usd: value });
+      found.set(key, entry);
     }
   }
   return [...found.values()]
+    .filter((file) => file.reads.length >= HOT_MIN_SESSIONS)
+    .map((file) => {
+      const reads = readsSinceChange(file, changedAt);
+      return {
+        project: file.project,
+        path: file.path,
+        usd: reads.reduce((total, read) => total + read.usd, 0),
+        sessions: reads.length,
+      };
+    })
     .filter((file) => file.sessions >= HOT_MIN_SESSIONS)
     .toSorted((left, right) => right.usd - left.usd)
     .slice(0, HOT_FILES);
