@@ -158,7 +158,11 @@ export interface VscodeHostPortOptions {
   readonly context: vscode.ExtensionContext;
   readonly openPanel: (view: ViewId, params: PanelParams) => void;
   /** Called with each terminal that runs a known Claude Code session. */
-  readonly onSessionTerminal: (terminal: vscode.Terminal, sessionId: string) => void;
+  readonly onSessionTerminal: (
+    terminal: vscode.Terminal,
+    sessionId: string,
+    worktreeId?: string,
+  ) => void;
   /** Focuses the tab Overlord opened for a session. False when there is none. */
   readonly showSessionTerminal: (sessionId: string) => boolean;
   /** Starts a backend's endpoint, such as the boisestate.ai sidecar. */
@@ -208,13 +212,13 @@ export function createVscodeHostPort(options: VscodeHostPortOptions): HostPort {
       });
       terminal.show();
       if (request.sessionId !== null) {
-        options.onSessionTerminal(terminal, request.sessionId);
+        options.onSessionTerminal(terminal, request.sessionId, request.worktreeId);
       }
       // An agent that picks its own session id is tied to the tab once that session shows up.
       void (async (): Promise<void> => {
         const later = (await request.sessionLater) ?? null;
         if (later !== null && terminal.exitStatus === undefined) {
-          options.onSessionTerminal(terminal, later);
+          options.onSessionTerminal(terminal, later, request.worktreeId);
         }
       })();
     },

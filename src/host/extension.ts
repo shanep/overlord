@@ -11,6 +11,7 @@ import type { PanelParams } from '../core/app/host-port.js';
 import { storagePath } from '../core/app/storage.js';
 import { parseTransferUri } from '../core/app/transfer.js';
 import { fleetSessionName } from '../core/app/views/fleet.js';
+import { restoreSessionWorktree } from '../core/app/worktrees.js';
 import { BOISESTATE_KEY_SECRET, BOISESTATE_PROFILE } from '../core/bridge/boisestate.js';
 import { noticeText } from '../core/bridge/quota-watch.js';
 import { isTerminal } from '../core/harness/launcher.js';
@@ -148,8 +149,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       }
       panelHolder.current?.open(view, params);
     },
-    onSessionTerminal: (terminal, sessionId) => {
-      tabsHolder.current?.track(terminal, sessionId);
+    onSessionTerminal: (terminal, sessionId, worktreeId) => {
+      tabsHolder.current?.track(terminal, sessionId, worktreeId);
     },
     showSessionTerminal: (sessionId) => tabsHolder.current?.show(sessionId) ?? false,
   });
@@ -192,7 +193,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     context.workspaceState,
   );
   // Pick up the Claude tabs Overlord opened before this reload, then say which is active.
-  await tabs.restore();
+  const restoredTabs = await tabs.restore();
+  await Promise.all(
+    restoredTabs.flatMap((tab) =>
+      tab.worktreeId === undefined
+        ? []
+        : [restoreSessionWorktree(overlord.runtime, tab.sessionId, tab.worktreeId)],
+    ),
+  );
   tabs.announceActive();
   tabsHolder.current = tabs;
 

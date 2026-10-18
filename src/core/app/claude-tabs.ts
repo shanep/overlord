@@ -26,6 +26,10 @@ export const READY_TRIES = 30;
 export const READY_DELAY_MS = 500;
 const SOURCE = 'claude tab';
 
+function worktreeOption(tab: ClaudeTab): Pick<ClaudeTab, 'worktreeId'> {
+  return tab.worktreeId === undefined ? {} : { worktreeId: tab.worktreeId };
+}
+
 export interface ClaudeTab {
   /** The agent the tab runs. Claude Code when left out. */
   readonly agent?: AgentId;
@@ -39,6 +43,8 @@ export interface ClaudeTab {
   readonly env?: Readonly<Record<string, string>>;
   /** The id a new session takes when claude runs in the tab itself. Random when left out. */
   readonly newId?: string;
+  /** The Overlord worktree the tab keeps alive, when it runs in one. */
+  readonly worktreeId?: string;
   /** The first message, which the session starts working on at once. */
   readonly prompt?: string;
   /** CLI args that go before the session's own, such as the bridge's model. */
@@ -126,6 +132,7 @@ async function openAttached(
     args: background.attachArgs(short),
     cwd: tab.cwd,
     sessionId,
+    ...worktreeOption(tab),
   });
   tab.tied?.(sessionId);
   void rt.places.refresh();
@@ -164,6 +171,7 @@ function openPlain(rt: Runtime, at: AgentTerminal, tab: ClaudeTab): string | nul
     args: plainArgs(at, tab, sessionId),
     cwd: tab.cwd,
     sessionId: known ? sessionId : null,
+    ...worktreeOption(tab),
     ...(later === null ? {} : { sessionLater: later }),
     ...(tab.env === undefined ? {} : { env: tab.env }),
   });

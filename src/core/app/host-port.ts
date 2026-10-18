@@ -24,6 +24,8 @@ export interface TerminalRequest {
   readonly cwd: string;
   /** The Claude Code session the terminal runs, when known, for the properties panel. */
   readonly sessionId: string | null;
+  /** The Overlord worktree the terminal keeps alive, when it has one. */
+  readonly worktreeId?: string;
   /** For an agent that picks a new session's id itself: the id once the session shows up, or null. */
   readonly sessionLater?: Promise<string | null>;
   /** Variables layered over the terminal's environment, such as a worktree's port slot. */

@@ -33,6 +33,10 @@ type Gap =
       readonly target: string;
     };
 
+function worktreeOption(worktreeId: string | undefined): { readonly worktreeId?: string } {
+  return worktreeId === undefined ? {} : { worktreeId };
+}
+
 function plural(count: number, word: string): string {
   return `${String(count)} ${word}${count === 1 ? '' : 's'}`;
 }
@@ -200,6 +204,7 @@ export async function continueHere(rt: Runtime, at: Continuing): Promise<void> {
     return;
   }
   const held = await heldWorktreeEnv(rt, session.id);
+  const worktreeId = rt.sessionWorktrees.get(session.id);
   const env =
     held === undefined && backend.env === undefined ? undefined : { ...held, ...backend.env };
   await openClaudeTab(rt, {
@@ -208,6 +213,7 @@ export async function continueHere(rt: Runtime, at: Continuing): Promise<void> {
     name,
     cwd,
     resume: session.id,
+    ...worktreeOption(worktreeId),
     ...(env === undefined ? {} : { env }),
     ...(plan.prompt === undefined ? {} : { prompt: plan.prompt }),
   });

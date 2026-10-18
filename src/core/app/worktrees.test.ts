@@ -36,7 +36,13 @@ import {
   waitFor,
   writeJson,
 } from './test-helpers/fixtures.js';
-import { newSession as startNew, startSession, tidyWorktrees, worktreeRoot } from './worktrees.js';
+import {
+  newSession as startNew,
+  restoreSessionWorktree,
+  startSession,
+  tidyWorktrees,
+  worktreeRoot,
+} from './worktrees.js';
 
 const PID = 4242;
 
@@ -355,6 +361,20 @@ describe('worktrees in the app', { timeout: 30_000 }, () => {
   });
 
   describe('live sessions', () => {
+    it('reclaims a restored terminal worktree before tidy removes landed work', async () => {
+      const test = await setup();
+      await newSession(test);
+      const terminal = lastTerminal(test);
+      const sessionId = terminal.sessionId ?? '';
+      test.app.runtime.sessionWorktrees.clear();
+      await restoreSessionWorktree(test.app.runtime, sessionId, sessionId);
+      await tidyWorktrees(test.app.runtime);
+      expect(existsSync(terminal.cwd)).toBe(true);
+      expect(await summaries(test)).toMatchObject([{ id: sessionId, state: 'active' }]);
+      await test.app.sessionClosed(sessionId);
+      expect(existsSync(terminal.cwd)).toBe(false);
+    });
+
     it('keep a released worktree while a Claude process still works in it', async () => {
       const test = await setup();
       await newSession(test);

@@ -203,6 +203,7 @@ async function openSession(
     ...tabStart(start),
     ...backend,
     cwd: lease.entry.path,
+    worktreeId: lease.entry.id,
     env: { ...lease.env, ...backend.env },
     newId,
     tied: (sessionId) => {
@@ -330,6 +331,7 @@ export async function restoreWorktree(
     rt.report(SOURCE, messageOf(error));
     return false;
   }
+
   if (lease === null) {
     return false;
   }
@@ -337,6 +339,21 @@ export async function restoreWorktree(
   void showSetupWarnings(rt, lease);
   void rt.caches.worktrees.refresh();
   return true;
+}
+
+/** Reclaims a session worktree after VS Code restores the terminal that owns it. */
+export async function restoreSessionWorktree(
+  rt: Runtime,
+  sessionId: string,
+  worktreeId: string,
+): Promise<void> {
+  try {
+    if ((await rt.worktrees.adopt(worktreeId)) !== null) {
+      rt.sessionWorktrees.set(sessionId, worktreeId);
+    }
+  } catch (error: unknown) {
+    rt.report(SOURCE, messageOf(error));
+  }
 }
 
 /** The variables a session gets from the worktree this window holds for it, if any. */

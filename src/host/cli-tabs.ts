@@ -7,7 +7,13 @@
 import * as vscode from 'vscode';
 
 import type { ActiveTerminal } from '../core/app/places.js';
-import { forgetTab, parseStoredTabs, rememberTab, restoreTabs } from '../core/tab-memory.js';
+import {
+  forgetTab,
+  parseStoredTabs,
+  rememberTab,
+  restoreTabs,
+  type StoredTab,
+} from '../core/tab-memory.js';
 
 import type { SidebarView } from './panels.js';
 
@@ -31,7 +37,7 @@ export interface CliTabHooks {
 }
 
 export class CliTabs implements vscode.Disposable {
-  private readonly sessions = new Map<vscode.Terminal, string>();
+  private readonly sessions = new Map<vscode.Terminal, StoredTab>();
   /** The name each tab was last given, since a terminal's name may not follow a rename. */
   private readonly names = new Map<vscode.Terminal, string>();
   private readonly subscriptions: readonly vscode.Disposable[];
@@ -51,7 +57,7 @@ export class CliTabs implements vscode.Disposable {
         this.sessions.delete(terminal);
         this.names.delete(terminal);
         if (sessionId !== undefined) {
-          this.hooks.onClosed(sessionId);
+          this.hooks.onClosed(sessionId.sessionId);
         }
         void this.forget(terminal);
         this.follow(vscode.window.activeTerminal);
@@ -63,7 +69,7 @@ export class CliTabs implements vscode.Disposable {
    * Picks the tabs Overlord opened back up after a reload. VS Code reconnects
    * a tab to the same running process, so its shell pid still matches.
    */
-  async restore(): Promise<void> {
+  async restore(): Promise<readonly StoredTab[]> {
     const terminals = await Promise.all(
       vscode.window.terminals.map(async (terminal) => ({
         terminal,
@@ -73,29 +79,31 @@ export class CliTabs implements vscode.Disposable {
     const open = terminals.flatMap(({ pid }) => (pid === undefined ? [] : [pid]));
     const { matched, kept } = restoreTabs(parseStoredTabs(this.store.get(STORE_KEY)), open);
     for (const { terminal, pid } of terminals) {
-      const sessionId = pid === undefined ? undefined : matched.get(pid);
-      if (sessionId !== undefined) {
-        this.sessions.set(terminal, sessionId);
+      const tab = pid === undefined ? undefined : matched.get(pid);
+      if (tab !== undefined) {
+        this.sessions.set(terminal, tab);
       }
     }
     await this.store.update(STORE_KEY, kept);
+    return [...matched.values()];
   }
 
   /** Ties a new CLI tab to its session and shows its properties in the sidebar. */
-  track(terminal: vscode.Terminal, sessionId: string): void {
-    this.sessions.set(terminal, sessionId);
-    void this.remember(terminal, sessionId);
+  track(terminal: vscode.Terminal, sessionId: string, worktreeId?: string): void {
+    const tab = { sessionId, ...(worktreeId === undefined ? {} : { worktreeId }) };
+    this.sessions.set(terminal, tab);
+    void this.remember(terminal, tab);
     this.setActiveContext(true);
     this.announceActive();
     this.syncName();
     this.properties.reveal();
   }
 
-  private async remember(terminal: vscode.Terminal, sessionId: string): Promise<void> {
+  private async remember(terminal: vscode.Terminal, tab: StoredTab): Promise<void> {
     const pid = await terminal.processId;
     if (pid !== undefined) {
       const stored = parseStoredTabs(this.store.get(STORE_KEY));
-      await this.store.update(STORE_KEY, rememberTab(stored, pid, sessionId));
+      await this.store.update(STORE_KEY, rememberTab(stored, pid, tab.sessionId, tab.worktreeId));
     }
   }
 
@@ -116,7 +124,7 @@ export class CliTabs implements vscode.Disposable {
   show(sessionId: string): boolean {
     let newest: vscode.Terminal | undefined;
     for (const [terminal, id] of this.sessions) {
-      if (id === sessionId) {
+      if (id.sessionId === sessionId) {
         newest = terminal;
       }
     }
@@ -131,11 +139,11 @@ export class CliTabs implements vscode.Disposable {
    */
   syncName(): void {
     const terminal = vscode.window.activeTerminal;
-    const sessionId = terminal === undefined ? undefined : this.sessions.get(terminal);
-    if (terminal === undefined || sessionId === undefined) {
+    const tab = terminal === undefined ? undefined : this.sessions.get(terminal);
+    if (terminal === undefined || tab === undefined) {
       return;
     }
-    const name = this.hooks.nameOf(sessionId);
+    const name = this.hooks.nameOf(tab.sessionId);
     if (name === null || name === '' || name === (this.names.get(terminal) ?? terminal.name)) {
       return;
     }
@@ -155,7 +163,7 @@ export class CliTabs implements vscode.Disposable {
       return;
     }
     const processId = (await terminal.processId) ?? null;
-    this.hooks.onActive({ sessionId: this.sessions.get(terminal) ?? null, processId });
+    this.hooks.onActive({ sessionId: this.sessions.get(terminal)?.sessionId ?? null, processId });
   }
 
   private follow(terminal: vscode.Terminal | undefined): void {
