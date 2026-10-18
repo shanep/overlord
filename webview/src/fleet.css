@@ -19,7 +19,7 @@
 
 .stat-tiles {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   gap: 6px;
   max-width: 76em;
   margin: 0 0 8px;
@@ -37,11 +37,13 @@
   background: var(--vscode-editorWidget-background, var(--ov-panel));
 }
 
-/* Labels wrap rather than cut off, so a long one such as "Copilot 30 day limit" stays readable. */
+/* Tiles are wide enough for "Copilot 30 day limit" on one line, so labels, bars and times line up. */
 .stat-tiles dt {
+  overflow: hidden;
   color: var(--ov-muted);
   font-size: 0.85em;
-  overflow-wrap: anywhere;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .stat-tiles dd {
@@ -68,7 +70,7 @@
   color: var(--ov-muted);
   font-size: 0.8em;
   font-weight: normal;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
 }
 
 .stat-tiles .stat-warning {
