@@ -88,6 +88,12 @@ export interface SessionObserver<A extends RecordAccumulator = RecordAccumulator
   readonly source: string;
   /** The folder fs.watch follows, or null to rely on polling alone. */
   readonly watchRoot: string | null;
+  /**
+   * True when the agent writes its plan limits to its session files, like
+   * Codex and Copilot, so the newest sessions are read for them at startup
+   * even when none is active.
+   */
+  readonly reportsLimits?: boolean;
   /** Every session on disk, newest first, from file metadata alone. */
   scan: () => Promise<readonly ObservedSession[]>;
   /** Files past the main one, such as subagent transcripts. Asked again on every read. */

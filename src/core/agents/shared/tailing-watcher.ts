@@ -16,6 +16,7 @@ import type {
   TailedFile,
 } from '../types.js';
 
+import { latestLimits } from './limit-seed.js';
 import { collectBatch } from './tailing-batch.js';
 
 export interface WatchHandle {
@@ -145,6 +146,22 @@ export class TailingWatcher<A extends RecordAccumulator = RecordAccumulator> {
     this.timer.unref();
     this.startWatching();
     await this.refresh();
+    await this.seedLimits();
+  }
+
+  /** Reads the newest sessions once for their limits, for an agent that writes them to its files. */
+  private async seedLimits(): Promise<void> {
+    if (this.observer.reportsLimits !== true || this.limitsAt !== Number.NEGATIVE_INFINITY) {
+      return;
+    }
+    try {
+      const report = await latestLimits(this.observer);
+      if (!this.disposed) {
+        this.publishLimits(report);
+      }
+    } catch (error: unknown) {
+      this.reportError(error);
+    }
   }
 
   /** The live accumulator for a tailed session. */

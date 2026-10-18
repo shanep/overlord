@@ -124,6 +124,7 @@ export function codexObserver(
     source: SOURCE,
     // fs.watch throws on a missing folder, and polling finds it if Codex runs later.
     watchRoot: existsSync(sessionsDir) ? sessionsDir : null,
+    reportsLimits: true,
     scan: async () => scanRollouts(sessionsDir),
     childFiles: async (): Promise<readonly TailedFile[]> => {
       // Codex keeps a thread in one file.

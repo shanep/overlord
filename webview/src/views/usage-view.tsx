@@ -4,6 +4,7 @@
 import type { ReactElement } from 'react';
 import { useMemo } from 'react';
 
+import type { RateLimitWindow } from '../../../src/shared/agents.js';
 import type {
   ClimateEstimate,
   PlanLimit,
@@ -21,6 +22,7 @@ import {
   OTHER,
 } from '../charts/usage-charts.js';
 import { useNow } from '../clock.js';
+import { AgentLogo } from '../components/badge.js';
 import { Card, CardGrid, StatTile, StatTiles, StatusDot } from '../components/card.js';
 import type { FigureTable } from '../components/chart-figure.js';
 import { ChartFigure } from '../components/chart-figure.js';
@@ -34,7 +36,6 @@ import {
 } from '../format.js';
 import type { Tone } from '../labels.js';
 
-import type { NamedWindow } from './limit-windows.js';
 import { otherWindows } from './limit-windows.js';
 import { BridgeSection } from './usage-bridge.js';
 
@@ -131,12 +132,13 @@ function PlanSection(props: { readonly plan: PlanLimits | null }): ReactElement 
   );
 }
 
-/** The usage limit windows other agents' sessions reported, one card each. */
+/** Other agents' usage limit windows, one card each, with an empty card until a session reports one. */
 function AgentLimitsSection(props: {
-  readonly windows: readonly NamedWindow[];
+  readonly windows: readonly RateLimitWindow[] | undefined;
 }): ReactElement | null {
   const now = useNow();
-  if (props.windows.length === 0) {
+  const windows = otherWindows(props.windows, useAgents(), now);
+  if (windows.length === 0) {
     return null;
   }
   return (
@@ -145,14 +147,17 @@ function AgentLimitsSection(props: {
         <h2 id="agent-limits-title">Agent limits</h2>
       </div>
       <CardGrid labelledBy="agent-limits-title">
-        {props.windows.map(({ key, label, window }) => {
+        {windows.map(({ key, label, title, agent, window }) => {
           const ratio = window.usedPct;
           const tone: Tone = ratio === null ? 'neutral' : meterTone(ratio);
           return (
             <Card key={key} tone={tone}>
               <div className="card-head">
                 <StatusDot tone={tone} />
-                <span className="card-title">{label}</span>
+                <span className="card-title" data-tip={`${agent.name} ${title}`}>
+                  <AgentLogo agent={agent} />
+                  {title}
+                </span>
               </div>
               <Meter label={`${label} used`} ratio={ratio} />
               <span
@@ -272,7 +277,7 @@ export function UsageView(props: { readonly state: UsageState }): ReactElement {
         </dl>
       </header>
       <PlanSection plan={claude ? state.plan : null} />
-      <AgentLimitsSection windows={otherWindows(state.windows, agents)} />
+      <AgentLimitsSection windows={state.windows} />
       <BridgeSection bridge={state.bridge} />
       <div className="charts chart-card">
         <ChartFigure

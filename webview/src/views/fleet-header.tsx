@@ -104,13 +104,8 @@ export function FleetHeader(props: {
             <Meter label="7 day limit used" ratio={normalizeRatio(sevenDayPct)} />
           </Stat>
         )}
-        {otherWindows(windows, agents).map(({ key, label, window }) => (
-          <Stat
-            key={key}
-            label={`${window.label} limit`}
-            agent={findAgent(agents, window.agent)}
-            detail={resetsIn(window.resetsAt, now)}
-          >
+        {otherWindows(windows, agents, now).map(({ key, label, title, agent, window }) => (
+          <Stat key={key} label={title} agent={agent} detail={resetsIn(window.resetsAt, now)}>
             <Meter label={`${label} used`} ratio={window.usedPct} />
           </Stat>
         ))}

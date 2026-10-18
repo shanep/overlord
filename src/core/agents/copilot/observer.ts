@@ -82,6 +82,7 @@ export function copilotObserver(home: string): SessionObserver<CopilotRecords> {
     source: SOURCE,
     // fs.watch throws on a folder that is not there, and polling finds it once Copilot makes it.
     watchRoot: existsSync(stateDir) ? stateDir : null,
+    reportsLimits: true,
     scan: async () => scanCopilotSessions(stateDir),
     childFiles: async (): Promise<TailedFile[]> => {
       await Promise.resolve();

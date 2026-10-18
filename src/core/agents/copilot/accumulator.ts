@@ -36,6 +36,7 @@ import {
 } from './events.js';
 import { CallLedger, shutdownBuckets } from './ledger.js';
 import { ContextGauge } from './models.js';
+import { quotaLimits } from './quota.js';
 import { SESSION_FIELD_EVENTS, SessionFields } from './session-fields.js';
 import { ThreadSet } from './thread-set.js';
 import type { Thread, ToolContext } from './threads.js';
@@ -76,7 +77,7 @@ const USEFUL_EPHEMERAL: ReadonlySet<string> = new Set([
   'session.usage_info',
 ]);
 
-interface Delta {
+interface Delta extends Pick<RecordDelta, 'rateLimits'> {
   tools: ToolCall[];
   requests: ApiRequest[];
   feed: FeedItem[];
@@ -246,6 +247,7 @@ export class CopilotRecords implements RecordAccumulator {
       'session.usage_checkpoint': (event, _thread, at) => this.onCheckpoint(event, at),
       'session.shutdown': (event, _thread, at) => this.onShutdown(event, at),
       'session.usage_info': (event) => this.onUsageInfo(event),
+      'model.model_call_success': (event, _thread, at) => delta(quotaLimits(event.data, at)),
       'session.compaction_complete': (event, _thread, at) => {
         const parsed = compactionSchema.safeParse(event.data);
         return delta({ compactions: parsed.success && parsed.data.success ? [at] : [] });

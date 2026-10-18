@@ -208,6 +208,39 @@ describe('CopilotRecords on events the recordings do not have', () => {
   const ID = 'aaaaaaaa-0000-4000-8000-000000000000';
   const T = Date.parse('2026-10-17T05:00:00.000Z');
 
+  it('reports the premium request quota each model call leaves, and nothing for an unlimited one', () => {
+    const records = new CopilotRecords({ sessionId: ID, transcriptPath: null });
+    const quota = (remainingPercentage: number, isUnlimitedEntitlement = false): string =>
+      event('model.model_call_success', T, {
+        quotaSnapshots: {
+          chat: { isUnlimitedEntitlement: true, remainingPercentage: 100, resetDate: null },
+          premium_interactions: {
+            isUnlimitedEntitlement,
+            entitlementRequests: 1500,
+            usedRequests: 590,
+            remainingPercentage,
+            resetDate: '2026-11-01T00:00:00Z',
+          },
+        },
+      });
+    expect(records.ingest(quota(60.7), ID)?.rateLimits).toStrictEqual({
+      at: T,
+      windows: [
+        {
+          agent: COPILOT,
+          id: 'premium_interactions',
+          label: 'Monthly',
+          usedPct: expect.closeTo(39.3, 5) as number,
+          resetsAt: Date.parse('2026-11-01T00:00:00Z'),
+        },
+      ],
+    });
+    expect(records.ingest(quota(100, true), ID)?.rateLimits).toBeUndefined();
+    expect(
+      records.ingest(event('model.model_call_success', T, {}), ID)?.rateLimits,
+    ).toBeUndefined();
+  });
+
   it('takes per call usage and adds only the rest from the shutdown totals', () => {
     const records = new CopilotRecords({ sessionId: ID, transcriptPath: null });
     const usage = {

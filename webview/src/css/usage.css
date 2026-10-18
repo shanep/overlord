@@ -37,6 +37,19 @@
   padding-left: 16px;
 }
 
+/* An agent limit names its agent with the agent's logo before the title. */
+.plan-limits .card-title .icon,
+.plan-limits .card-title .backend-logo {
+  display: inline-block;
+  height: 12px;
+  margin-right: 4px;
+  vertical-align: -1px;
+}
+
+.plan-limits .card-title .icon {
+  width: 12px;
+}
+
 .usage .climate,
 .usage .bridge-usage {
   margin-top: 16px;

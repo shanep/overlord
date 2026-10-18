@@ -2,7 +2,7 @@ import { within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import type { RateLimitWindow } from '../../../src/shared/agents.js';
-import { twoAgents } from '../../test/fixtures-agents.js';
+import { codexAgent, twoAgents } from '../../test/fixtures-agents.js';
 import { usageState } from '../../test/fixtures-tools.js';
 import { fleetState, NOW } from '../../test/fixtures.js';
 import { renderView } from '../../test/render.js';
@@ -33,10 +33,28 @@ const MONTH: RateLimitWindow = { ...CODEX_WINDOW, id: 'monthly', label: '30 day'
 
 describe('otherWindows', () => {
   it('leaves Claude Code out and names the rest by agent', () => {
-    expect(otherWindows([CLAUDE_WINDOW, CODEX_WINDOW], twoAgents)).toStrictEqual([
-      { key: 'codex:primary', label: 'Codex 5 hour limit', window: CODEX_WINDOW },
+    expect(otherWindows([CLAUDE_WINDOW, CODEX_WINDOW], twoAgents, NOW)).toStrictEqual([
+      {
+        key: 'codex:primary',
+        label: 'Codex 5 hour limit',
+        title: '5 hour limit',
+        agent: codexAgent,
+        window: CODEX_WINDOW,
+      },
     ]);
-    expect(otherWindows(undefined, twoAgents)).toStrictEqual([]);
+  });
+
+  it('gives an installed agent empty windows until it reports, and none to one not installed', () => {
+    const empty = { agent: 'codex', usedPct: null, resetsAt: null };
+    expect(otherWindows(undefined, twoAgents, NOW).map(({ window }) => window)).toStrictEqual([
+      { ...empty, id: 'primary', label: 'Plan' },
+    ]);
+    expect(otherWindows(undefined, [{ ...codexAgent, installed: false }], NOW)).toStrictEqual([]);
+  });
+
+  it('starts a window over once its reset time passes', () => {
+    const [named] = otherWindows([CODEX_WINDOW], twoAgents, CODEX_WINDOW.resetsAt ?? 0);
+    expect(named?.window).toMatchObject({ usedPct: 0, resetsAt: null });
   });
 });
 
@@ -85,8 +103,10 @@ describe('agent limit windows in the views', () => {
       twoAgents,
     );
     expect(view.getByRole('heading', { name: 'Agent limits' })).toBeDefined();
-    expect(view.getByText('Codex 5 hour limit')).toBeDefined();
+    expect(view.getByText('5 hour limit').dataset['tip']).toBe('Codex CLI 5 hour limit');
     expect(view.getByText('Resets in 2h 00m')).toBeDefined();
+    // Codex reported only its 5 hour window, so its 7 day one gets no empty card.
+    expect(view.queryByText('7 day limit')).toBeNull();
     view.unmount();
     const plain = renderView(<UsageView state={usageState} />);
     expect(within(plain.container).queryByRole('heading', { name: 'Agent limits' })).toBeNull();

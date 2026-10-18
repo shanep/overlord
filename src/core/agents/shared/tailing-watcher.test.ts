@@ -192,6 +192,11 @@ function count(events: readonly { name: EventName }[], name: EventName): number 
   return events.filter((event) => event.name === name).length;
 }
 
+/** A day after now, so no session is active and only the startup read can find limits. */
+function aDayLater(): number {
+  return Date.now() + 24 * 60 * 60_000;
+}
+
 describe('TailingWatcher with other agents', () => {
   let root = '';
   const watchers: TailingWatcher<FakeRecords>[] = [];
@@ -210,11 +215,12 @@ describe('TailingWatcher with other agents', () => {
   function make(
     observer: SessionObserver<FakeRecords>,
     bus: EventBus,
+    now: () => number = Date.now,
   ): TailingWatcher<FakeRecords> {
     const watcher = new TailingWatcher({
       observer,
       bus,
-      now: (): number => Date.now(),
+      now,
       watchFactory: (): never => {
         throw new Error('this observer has nothing to watch');
       },
@@ -280,6 +286,32 @@ describe('TailingWatcher with other agents', () => {
       source: 'codex',
       message: 'this observer has nothing to watch',
     });
+  });
+
+  it('reads the newest quiet sessions once at startup for their limits, when the agent writes them', async () => {
+    const day = path.join(root, '2026', '10', '16');
+    await mkdir(day, { recursive: true });
+    const rollout = (n: number): string =>
+      path.join(
+        day,
+        `rollout-2026-10-16T22-06-42-019a0000-6060-7000-8000-00000000000${String(n)}.jsonl`,
+      );
+    await writeFile(rollout(1), lines([{ type: 'limit', at: 200, used: 50 }, { type: 'reply' }]));
+    await writeFile(rollout(2), lines([{ type: 'limit', at: 100, used: 10 }]));
+    await writeFile(rollout(3), lines([{ type: 'reply' }]));
+    const used = async (observer: SessionObserver<FakeRecords>): Promise<(number | null)[]> => {
+      const bus = new EventBus();
+      const seen: (number | null)[] = [];
+      bus.on('rateLimits.updated', (limits) => {
+        seen.push(...(limits.windows ?? []).map((window) => window.usedPct));
+      });
+      const watcher = make(observer, bus, aDayLater);
+      await watcher.start();
+      expect(watcher.sessionIds()).toStrictEqual([]);
+      return seen;
+    };
+    expect(await used({ ...codexObserver(root), reportsLimits: true })).toStrictEqual([50]);
+    expect(await used(codexObserver(root))).toStrictEqual([]);
   });
 
   it('sends the newest rate limits from any rollout and never an older one after them', async () => {

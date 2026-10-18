@@ -161,6 +161,22 @@ export const usageInfoSchema = z.object({ tokenLimit: count, currentTokens: coun
 
 export const compactionSchema = z.object({ success: z.boolean().catch(false) });
 
+const quotaSnapshotSchema = z.object({
+  isUnlimitedEntitlement: looseBoolean,
+  remainingPercentage: looseNumber,
+  resetDate: looseString,
+});
+
+/** model.model_call_success carries the account's quotas as they stood after the call. */
+export const modelCallSchema = z.object({
+  quotaSnapshots: z
+    .record(z.string(), quotaSnapshotSchema.nullable().catch(null))
+    .nullish()
+    .catch(null),
+});
+
+export type QuotaSnapshot = z.infer<typeof quotaSnapshotSchema>;
+
 export const subagentStartSchema = z.object({
   toolCallId: z.string(),
   agentName: z.string().catch('subagent'),

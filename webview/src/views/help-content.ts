@@ -207,7 +207,7 @@ export const FLEET_STATS: readonly Column[] = [
   {
     name: '5 hour and 7 day limit',
     meaning:
-      "How much of Claude Code's plan limits you have used, and when each resets. Other agents' limits, such as Codex's, get a tile each. Each tile shows the logo of the agent it belongs to, and hovering the label names it.",
+      "How much of Claude Code's plan limits you have used, and when each resets. Codex's plan limits and Copilot's monthly premium requests get a tile each once those agents are installed, filled from their newest sessions. Each tile shows the logo of the agent it belongs to, and hovering the label names it.",
   },
 ];
 
