@@ -1,6 +1,6 @@
 ---
 name: install-overlord
-description: Package Overlord, install it into VS Code and reload the windows onto the new build, all without the user doing anything. Use after committing any change to Overlord the user should see, and whenever the user asks to install, deploy, update or reload the extension, or asks whether a change is installed.
+description: Package Overlord, install it into VS Code and reload the windows onto the new build, all without the user doing anything. Use after landing any change to Overlord the user should see, and whenever the user asks to install, deploy, update or reload the extension, or asks whether a change is installed.
 ---
 
 # Install Overlord
@@ -8,9 +8,11 @@ description: Package Overlord, install it into VS Code and reload the windows on
 Shane wants every change installed and running in VS Code without being asked
 and without pressing Reload Window himself.
 
-1. Commit the change first. The script builds `HEAD` in a temporary worktree,
-   so uncommitted edits are not installed. Other sessions often have
-   uncommitted work in this checkout, and this keeps it out of the build.
+1. Land the change first with `npm run land`. The script builds `HEAD` in a
+   temporary worktree, so uncommitted edits are not installed, and it refuses
+   commits that are not on origin/master yet. A build only this worktree has
+   would be dropped by the next install from master, while the session that
+   made it reports the work installed.
 2. From the repo root run:
 
    ```sh
@@ -45,6 +47,9 @@ and without pressing Reload Window himself.
   Overlord back. Run `git fetch origin master && git rebase origin/master`,
   then install again. Pass `--allow-behind` only to install an older build on
   purpose.
+- **"HEAD has N commits that are not on origin/master"**: the work never
+  landed. Run `npm run land`, then install again. Pass `--allow-unlanded` only
+  to try a build before landing it, and land it right after.
 - **"no window reloaded within 60 seconds"**: the running window has a build
   from before auto reload existed (or VS Code is closed). The install itself
   worked. Ask Shane to run Developer: Reload Window once. Every install after

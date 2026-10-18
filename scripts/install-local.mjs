@@ -2,7 +2,9 @@
 // window has reloaded onto the new build. It builds HEAD in a temporary
 // worktree, so uncommitted work (yours or another session's) never ships.
 // It refuses a HEAD that is behind origin/master, since that build would drop
-// whatever other sessions landed since the branch was cut.
+// whatever other sessions landed since the branch was cut, and a HEAD with
+// commits that never landed, since the next install from master would drop
+// them while the session that made them reports its work installed.
 // Installed copies watch their own bundle and reload themselves, then write
 // ~/.overlord/loaded.json, which is what this waits for. A window with
 // Launcher runs going holds the reload until they finish and writes held.json
@@ -80,33 +82,43 @@ async function waitForReload(installed) {
   return { reloaded: false, runs: 0 };
 }
 
+function count(range) {
+  return execFileSync('git', ['rev-list', '--count', range], {
+    cwd: repo,
+    encoding: 'utf8',
+  }).trim();
+}
+
 /**
- * Stops when HEAD is missing commits from origin/master. A failed fetch falls
- * back to the last origin/master this checkout saw. --allow-behind skips it.
+ * Stops when HEAD is missing commits from origin/master, or has commits it
+ * lacks. A failed fetch falls back to the last origin/master this checkout
+ * saw. --allow-behind and --allow-unlanded skip each half.
  */
-function checkUpToDate() {
-  if (process.argv.includes('--allow-behind')) {
-    return;
-  }
+function checkLanded() {
   try {
     execFileSync('git', ['fetch', '--quiet', 'origin', 'master'], { cwd: repo, stdio: 'ignore' });
   } catch {
     process.stderr.write('Could not fetch origin/master, so checking against the last one seen.\n');
   }
-  const behind = execFileSync('git', ['rev-list', '--count', 'HEAD..origin/master'], {
-    cwd: repo,
-    encoding: 'utf8',
-  }).trim();
-  if (behind !== '0') {
+  const behind = count('HEAD..origin/master');
+  if (behind !== '0' && !process.argv.includes('--allow-behind')) {
     throw new Error(
       `HEAD is ${behind} commits behind origin/master, so this build would drop what landed since. ` +
         'Rebase first (git fetch origin master && git rebase origin/master) and install again, ' +
         'or pass --allow-behind to install this older build on purpose.',
     );
   }
+  const unlanded = count('origin/master..HEAD');
+  if (unlanded !== '0' && !process.argv.includes('--allow-unlanded')) {
+    throw new Error(
+      `HEAD has ${unlanded} commits that are not on origin/master, so the next install from master ` +
+        'would drop them. Land them first (npm run land) and install again, ' +
+        'or pass --allow-unlanded to try this build before landing it.',
+    );
+  }
 }
 
-checkUpToDate();
+checkLanded();
 
 const tree = path.join(mkdtempSync(path.join(os.tmpdir(), 'overlord-install-')), 'tree');
 run('git', ['worktree', 'add', '--detach', tree, 'HEAD']);

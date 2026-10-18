@@ -67,6 +67,7 @@ hand. Give it a 20 minute timeout or run it in the background.
 After landing any user-visible Overlord change, run `npm run install:local`
 without waiting to be asked. It packages the landed `HEAD`, installs it into
 VS Code, reloads open windows, and checks every view against real data.
+It refuses a `HEAD` with commits that have not landed, so land first.
 Do not report the work complete until it reports that the extension reloaded
 and its self-check passed. If a reload is held for Launcher runs, report that
 it will happen automatically after they finish.
