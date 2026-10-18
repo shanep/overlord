@@ -7,7 +7,7 @@
 // tool names, file paths and short command labels are kept.
 
 import type { HeavyItem } from '../../shared/tuning.js';
-import { isPlainObject } from '../knobs/json.js';
+import { isArray, isPlainObject } from '../knobs/json.js';
 import type { PriceTable } from '../transcripts/pricing.js';
 import { findPrice } from '../transcripts/pricing.js';
 
@@ -65,7 +65,7 @@ function bump(map: Map<string, number>, key: string, by: number): void {
 function readShape(shape: unknown): Shape {
   const tools = new Map<string, number>();
   const list = field(shape, 'tools');
-  for (const tool of Array.isArray(list) ? list : []) {
+  for (const tool of isArray(list) ? list : []) {
     const name = asString(field(tool, 'name'));
     if (name !== null) {
       tools.set(name, JSON.stringify(tool).length);
@@ -174,7 +174,7 @@ class Tally {
       this.request(asString(field(message, 'model')) ?? '', usage);
     }
     const content = field(message, 'content');
-    for (const block of Array.isArray(content) ? content : []) {
+    for (const block of isArray(content) ? content : []) {
       this.assistantBlock(block);
     }
   }
@@ -268,7 +268,7 @@ class Tally {
       this.add(textPiece(content, meta));
       return;
     }
-    for (const block of Array.isArray(content) ? content : []) {
+    for (const block of isArray(content) ? content : []) {
       const type = field(block, 'type');
       if (type === 'tool_result') {
         this.result(block);

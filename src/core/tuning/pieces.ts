@@ -2,7 +2,7 @@
 // block, a tool result or an attachment is, and how big.
 
 import type { SpendSource } from '../../shared/tuning.js';
-import { isPlainObject } from '../knobs/json.js';
+import { isArray, isPlainObject } from '../knobs/json.js';
 
 import { skillName } from './spend.js';
 
@@ -41,7 +41,7 @@ export function textLength(content: unknown): number {
   if (typeof content === 'string') {
     return content.length;
   }
-  if (!Array.isArray(content)) {
+  if (!isArray(content)) {
     return 0;
   }
   let total = 0;
@@ -154,7 +154,7 @@ export function attachmentPiece(record: unknown): Piece {
   const type = asString(field(attachment, 'type')) ?? 'attachment';
   const rendered = field(record, 'rendered');
   let chars = 0;
-  for (const part of Array.isArray(rendered) ? rendered : []) {
+  for (const part of isArray(rendered) ? rendered : []) {
     chars += asString(field(part, 'content'))?.length ?? 0;
   }
   if (chars === 0 && type === 'hook_additional_context') {

@@ -4,6 +4,7 @@
 // it would have saved on the sessions measured.
 
 import type { AutoFix, HotFile } from '../../shared/tuning.js';
+import { isArray } from '../knobs/json.js';
 
 import type { SessionMeasure } from './measure.js';
 import { COMPACT_AT } from './measure.js';
@@ -119,7 +120,7 @@ function denyFix(context: FixContext): AutoFix | null {
     return null;
   }
   const current = context.knob('permissions.deny');
-  const existing = Array.isArray(current)
+  const existing = isArray(current)
     ? current.filter((item): item is string => typeof item === 'string')
     : [];
   const names = tools.map((tool) => tool.name);

@@ -36,10 +36,19 @@ export const SPEND_LABELS: Readonly<Record<SpendSource, string>> = {
 };
 
 export function zeroSpend(): Record<SpendSource, number> {
-  return Object.fromEntries(SPEND_SOURCES.map((source) => [source, 0])) as Record<
-    SpendSource,
-    number
-  >;
+  return {
+    setup: 0,
+    instructions: 0,
+    skills: 0,
+    reminders: 0,
+    fileReads: 0,
+    toolOutput: 0,
+    web: 0,
+    toolInputs: 0,
+    subagentReports: 0,
+    conversation: 0,
+    output: 0,
+  };
 }
 
 export function addSpend(left: SpendSplit, right: SpendSplit): SpendSplit {
