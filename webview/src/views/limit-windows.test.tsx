@@ -61,6 +61,11 @@ describe('agent limit windows in the views', () => {
     ).toBe('92');
     expect(view.getByText('1h 30m')).toBeDefined();
     expect(view.getByText('3d 0h')).toBeDefined();
+    // The icon names the agent, so the label is the window alone, like Claude Code's.
+    expect(view.getAllByText('5 hour limit').map((label) => label.dataset['tip'])).toStrictEqual([
+      'Claude Code 5 hour limit',
+      'Codex CLI 5 hour limit',
+    ]);
     expect(view.getAllByText('2h 00m')).toHaveLength(2);
     expect(view.container.querySelectorAll('.stat-tiles dt .backend-logo')).toHaveLength(2);
     expect(view.container.querySelectorAll('.stat-tiles dt svg.icon')).toHaveLength(2);

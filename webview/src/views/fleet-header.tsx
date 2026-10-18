@@ -23,7 +23,7 @@ import { otherWindows } from './limit-windows.js';
 function Stat(props: {
   readonly label: string;
   readonly tone?: Tone;
-  /** The agent the number belongs to, drawn as its logo before the label. */
+  /** The agent the number belongs to, drawn as its logo before the label and named in its tooltip. */
   readonly agent?: AgentInfo;
   /** Time until the limit resets, in small text under the value. */
   readonly detail?: string | null;
@@ -31,7 +31,7 @@ function Stat(props: {
 }): ReactElement {
   return (
     <div className={`stat stat-${props.tone ?? 'neutral'}`}>
-      <dt>
+      <dt data-tip={props.agent === undefined ? undefined : `${props.agent.name} ${props.label}`}>
         {props.agent === undefined ? null : <AgentLogo agent={props.agent} />}
         {props.label}
       </dt>
@@ -107,7 +107,7 @@ export function FleetHeader(props: {
         {otherWindows(windows, agents).map(({ key, label, window }) => (
           <Stat
             key={key}
-            label={label}
+            label={`${window.label} limit`}
             agent={findAgent(agents, window.agent)}
             detail={resetsIn(window.resetsAt, now)}
           >
