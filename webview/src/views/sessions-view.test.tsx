@@ -141,6 +141,22 @@ describe('SessionsView', () => {
     expect(HANDOFF_LABELS['resume-local']).toBe('Continue');
   });
 
+  it('marks running sessions active and opens them instead of continuing', async () => {
+    const { getByRole, queryByRole, getByText, api } = renderView(
+      <SessionsView state={{ ...sessionsState, active: ['x1'] }} />,
+    );
+    const repo = getByRole('table', { name: 'Sessions in /repo' });
+    expect(titles(repo)).toStrictEqual(['Refactor parser active']);
+    expect(getByText('active').dataset['tip']).toBe('Running now');
+    expect(queryByRole('button', { name: 'Continue: Refactor parser' })).toBeNull();
+    expect(queryByRole('button', { name: 'Remote control: Refactor parser' })).toBeNull();
+    const open = getByRole('button', { name: 'Open: Refactor parser' });
+    expect(open.className).toBe('primary');
+    await userEvent.click(open);
+    expect(api.actions()).toStrictEqual([{ type: 'openSession', sessionId: 'x1' }]);
+    expect(getByRole('button', { name: 'Pull to local: Cloud fix' })).toBeDefined();
+  });
+
   it('opens the agent view from a local session title only', async () => {
     const { getByRole, queryByRole, api } = renderView(<SessionsView state={sessionsState} />);
     const title = getByRole('button', { name: 'Refactor parser' });

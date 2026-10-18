@@ -174,6 +174,7 @@ export const sessionsState: SessionsState = {
   ],
   claudeAiImportedAt: NOW - 24 * 60 * MINUTE,
   projects: {},
+  active: [],
 };
 
 function configItem(overrides: Partial<ConfigItem> & { id: string }): ConfigItem {

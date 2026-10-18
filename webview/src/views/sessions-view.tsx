@@ -119,11 +119,38 @@ function SessionTitle(props: { readonly entry: SurfaceSession }): ReactElement {
   );
 }
 
-function HandoffButtons(props: { readonly entry: SurfaceSession }): ReactElement {
+/** A running session opens where it runs, since continuing it would start a second copy. */
+function OpenButton(props: { readonly entry: SurfaceSession }): ReactElement {
+  const post = usePostAction();
+  const { entry } = props;
+  return (
+    <span className="actions">
+      <button
+        type="button"
+        className="primary"
+        aria-label={`Open: ${entry.title}`}
+        data-tip="Open: Go to this session where it runs in Overlord"
+        onClick={() => {
+          post({ type: 'openSession', sessionId: entry.id });
+        }}
+      >
+        Open
+      </button>
+    </span>
+  );
+}
+
+function HandoffButtons(props: {
+  readonly entry: SurfaceSession;
+  readonly active: boolean;
+}): ReactElement {
   const post = usePostAction();
   const { entry } = props;
   // Only the handoffs the session's agent offers, whatever the surface reports.
   const offered = useAgent(entry.agent).capabilities.handoffs;
+  if (props.active) {
+    return <OpenButton entry={entry} />;
+  }
   const handoffs = entry.handoffs.filter((kind) => offered.includes(kind));
   if (handoffs.length === 0) {
     return <span className="muted">none</span>;
@@ -147,7 +174,7 @@ function HandoffButtons(props: { readonly entry: SurfaceSession }): ReactElement
   );
 }
 
-function columns(now: number): readonly Column<SurfaceSession>[] {
+function columns(now: number, active: ReadonlySet<string>): readonly Column<SurfaceSession>[] {
   return [
     {
       id: 'surface',
@@ -161,6 +188,12 @@ function columns(now: number): readonly Column<SurfaceSession>[] {
       cell: (entry) => (
         <>
           <SessionTitle entry={entry} />
+          {active.has(entry.id) ? (
+            <>
+              {' '}
+              <Badge label="active" tone="good" title="Running now" />
+            </>
+          ) : null}
           {entry.archived ? (
             <>
               {' '}
@@ -177,7 +210,11 @@ function columns(now: number): readonly Column<SurfaceSession>[] {
       cell: (entry) => formatAgo(entry.updatedAt, now),
       sortValue: (entry) => entry.updatedAt,
     },
-    { id: 'handoff', header: 'Handoff', cell: (entry) => <HandoffButtons entry={entry} /> },
+    {
+      id: 'handoff',
+      header: 'Handoff',
+      cell: (entry) => <HandoffButtons entry={entry} active={active.has(entry.id)} />,
+    },
   ];
 }
 
@@ -237,7 +274,11 @@ function Filters(props: {
   );
 }
 
-function GroupPanel(props: { readonly group: ProjectGroup; readonly now: number }): ReactElement {
+function GroupPanel(props: {
+  readonly group: ProjectGroup;
+  readonly now: number;
+  readonly active: ReadonlySet<string>;
+}): ReactElement {
   const { group } = props;
   return (
     <details open className="panel session-group">
@@ -248,7 +289,7 @@ function GroupPanel(props: { readonly group: ProjectGroup; readonly now: number 
       </summary>
       <DataTable
         caption={`Sessions in ${group.cwd ?? 'no folder'}`}
-        columns={columns(props.now)}
+        columns={columns(props.now, props.active)}
         rows={group.sessions}
         rowKey={(entry) => `${entry.surface}:${entry.id}`}
       />
@@ -267,6 +308,7 @@ export function SessionsView(props: { readonly state: SessionsState }): ReactEle
   const claudeAi = knowsClaude(useAgents());
   const rows = filterSessions(state.sessions, filter);
   const groups = groupByProject(rows, state.projects);
+  const active = new Set(state.active);
   return (
     <section aria-labelledby="sessions-title">
       <header className="view-header">
@@ -297,7 +339,7 @@ export function SessionsView(props: { readonly state: SessionsState }): ReactEle
       <Filters sessions={state.sessions} controls={{ filter, setText, setSurface, setArchived }} />
       {groups.length === 0 ? <p className="empty-line muted">No sessions match.</p> : null}
       {groups.map((group) => (
-        <GroupPanel key={group.cwd ?? ''} group={group} now={now} />
+        <GroupPanel key={group.cwd ?? ''} group={group} now={now} active={active} />
       ))}
     </section>
   );

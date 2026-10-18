@@ -134,10 +134,11 @@ describe('sessions view', () => {
     expect(byId.get('chat')?.surface).toBe('claude-ai');
     expect(data.sessions).toHaveLength(4);
     expect(report).not.toHaveBeenCalled();
-    expect(buildSessions(data, liveIsInRepo)).toStrictEqual({
+    expect(buildSessions(data, liveIsInRepo, ['live', 'chat', 'live'])).toStrictEqual({
       sessions: data.sessions,
       claudeAiImportedAt: 5,
       projects: { '/live': '/repo' },
+      active: ['chat', 'live'],
     });
     expect(EMPTY_SESSIONS).toStrictEqual({ sessions: [], importedAt: null });
   });

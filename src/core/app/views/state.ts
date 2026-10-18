@@ -8,6 +8,7 @@ import type {
   ViewId,
 } from '../../../shared/protocol.js';
 import { agents } from '../../agents/index.js';
+import { isTerminal } from '../../harness/launcher.js';
 import { launchFolder, launchFolders } from '../actions-launch.js';
 import { agentEnabled } from '../claude-bin.js';
 import type { PanelParams } from '../host-port.js';
@@ -46,6 +47,14 @@ function buildLauncher(rt: Runtime): LauncherState {
     folders: launchFolders(rt),
     browsed: rt.browsedFolders[0] ?? null,
   };
+}
+
+/** Sessions with a live process, plus those a launcher run is driving. */
+function activeSessions(rt: Runtime): string[] {
+  const launched = rt.launcher
+    .runs()
+    .flatMap((run) => (run.sessionId === null || isTerminal(run.state) ? [] : [run.sessionId]));
+  return [...Object.keys(rt.places.value), ...launched];
 }
 
 type SessionView = 'agent' | 'context' | 'properties';
@@ -153,7 +162,7 @@ export function stateFor(rt: Runtime, view: ViewId, params: PanelParams): ViewSt
       return {
         type: 'state',
         view,
-        state: buildSessions(rt.caches.sessions.value, rt.worktrees.projectFor),
+        state: buildSessions(rt.caches.sessions.value, rt.worktrees.projectFor, activeSessions(rt)),
       };
     }
     case 'config': {

@@ -178,10 +178,15 @@ export async function loadSessions(deps: SessionsLoadDeps): Promise<SessionsData
   return { sessions, importedAt: stored?.importedAt ?? null };
 }
 
-/** Each worktree folder maps to its repository, so its sessions group with the repo. */
+/**
+ * Each worktree folder maps to its repository, so its sessions group with the
+ * repo. `active` lists the sessions running now, so the view opens them
+ * instead of offering to continue them.
+ */
 export function buildSessions(
   data: SessionsData,
   projectFor: (cwd: string) => string,
+  active: readonly string[],
 ): SessionsState {
   const projects: Record<string, string> = {};
   for (const { cwd } of data.sessions) {
@@ -192,5 +197,10 @@ export function buildSessions(
       }
     }
   }
-  return { sessions: data.sessions, claudeAiImportedAt: data.importedAt, projects };
+  return {
+    sessions: data.sessions,
+    claudeAiImportedAt: data.importedAt,
+    projects,
+    active: [...new Set(active)].toSorted((left, right) => left.localeCompare(right)),
+  };
 }

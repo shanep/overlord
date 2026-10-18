@@ -216,6 +216,8 @@ export interface SessionsState {
   readonly claudeAiImportedAt: number | null;
   /** Session folder to the repository it belongs to, for folders that are worktrees. */
   readonly projects: Readonly<Record<string, string>>;
+  /** Ids of the sessions running now, in a terminal, in the background or in the launcher. */
+  readonly active: readonly string[];
 }
 
 /** Where the background config sync is. */

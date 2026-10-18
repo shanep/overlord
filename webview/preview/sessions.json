@@ -94,5 +94,6 @@
   "claudeAiImportedAt": 1791689484971,
   "projects": {
     "/Users/shane/.overlord/worktrees/overlord-3093d58c/7a1b": "/Users/shane/repos/overlord"
-  }
+  },
+  "active": ["s1"]
 }
