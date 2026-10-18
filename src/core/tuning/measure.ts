@@ -26,7 +26,6 @@ import type { SubagentInfo } from './subagent-tally.js';
 import { measureSubagents } from './subagent-tally.js';
 
 export type { CommandFamily } from './families.js';
-export type { CostSplit } from './cost.js';
 export { COMPACT_AT, costTotal } from './cost.js';
 export type { SubagentInfo } from './subagent-tally.js';
 

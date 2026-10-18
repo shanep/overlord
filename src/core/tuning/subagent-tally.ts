@@ -22,7 +22,7 @@ export interface SubagentInfo {
   readonly description: string;
 }
 
-export interface SubagentTally {
+interface SubagentTally {
   requests: number;
   premium: number;
   usd: number;

@@ -45,7 +45,7 @@ export interface TipInputs {
   readonly fixEnv?: FixEnv;
 }
 
-export type FixEnv = Omit<FixContext, 'totals' | 'live'>;
+type FixEnv = Omit<FixContext, 'totals' | 'live'>;
 
 const NO_ENV: FixEnv = {
   hotFiles: [],
