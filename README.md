@@ -1,5 +1,11 @@
 # Overlord
 
+**Archived.** Overlord is no longer maintained. Its workflow lives on as two
+Claude Code plugins: [workflow](https://github.com/shanep/claude-workflow)
+coordinates sessions, worktrees, checks and plans, and
+[drboom](https://github.com/shanep/claude-DrBOOM) shows it all in the `/boom`
+pane.
+
 ![Overlord: run a fleet of coding agents from VS Code](media/banner.png)
 
 SkyNet version 1.0, let it begin.
